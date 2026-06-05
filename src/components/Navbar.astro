@@ -1,0 +1,148 @@
+---
+// Navbar generik — dipakai homepage & semua modul.
+// Brand (logo + nama situs) SELALU jadi link ke beranda → jalan pulang yang konsisten.
+// Module switcher: lompat ke modul mana pun dari halaman mana pun (Popover API).
+import { getCollection } from 'astro:content';
+import Icon from './Icon.astro';
+
+interface Props {
+  variant: 'home' | 'module';
+  badge?: string; // badge brand situs (generik), opsional
+  siteName?: string; // nama situs di wordmark
+  moduleTitle?: string; // konteks halaman saat di modul (dipakai sbg fallback judul)
+  moduleSub?: string;
+  summaryHref?: string;
+  fontControls?: boolean; // tampilkan pengatur ukuran font (modul saja)
+  toc?: boolean; // tampilkan tombol menu TOC (mobile)
+}
+const {
+  variant,
+  siteName = 'Go Artisan',
+  summaryHref,
+  fontControls = false,
+  toc = false,
+} = Astro.props;
+
+// Wordmark dua-warna: kata terakhir di-aksen (mis. Go Artisan -> "Artisan" di-aksen).
+const words = siteName.trim().split(/\s+/);
+const lead = words.slice(0, -1).join(' ');
+const tail = words[words.length - 1];
+
+// Daftar modul untuk switcher + modul aktif (dari URL).
+const mods = (await getCollection('modules')).sort(
+  (a, b) => a.data.order - b.data.order
+);
+const path = Astro.url.pathname.replace(/\/$/, '');
+const current = mods.find((m) => path === `/modul/${m.id}`) ?? null;
+const switchLabel = current ? current.data.topTitle : 'Semua modul';
+---
+<header class="topbar">
+  <div class="topbar-inner">
+    {toc && (
+      <button
+        type="button"
+        class="nav-menu-btn"
+        data-toc-toggle
+        aria-label="Buka daftar isi"
+        aria-expanded="false"
+        aria-controls="toc-nav"
+      >
+        <Icon name="menu" size={20} />
+      </button>
+    )}
+
+    <a class="nav-brand" href="/" aria-label="Ke beranda, semua modul" title="Beranda">
+      <span class="logo-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor">
+          <rect x="7" y="4" width="10" height="3.3" rx="1.4" />
+          <rect x="4.5" y="10.35" width="15" height="3.3" rx="1.4" opacity=".8" />
+          <rect x="2" y="16.7" width="20" height="3.3" rx="1.4" opacity=".58" />
+        </svg>
+      </span>
+      <span class="nav-wordmark">{lead}{lead && ' '}<span class="nav-wordmark-accent">{tail}</span></span>
+    </a>
+
+    <div class="nav-switch">
+      <button
+        type="button"
+        class="nav-switch-btn"
+        popovertarget="mod-switcher"
+        aria-haspopup="menu"
+        aria-label={current ? `Modul aktif: ${switchLabel}. Pindah modul` : 'Pilih modul'}
+      >
+        <Icon name="grid" size={16} class="nav-switch-glyph" />
+        <span class="nav-switch-label">{switchLabel}</span>
+        <Icon name="chevron-down" size={15} class="nav-switch-caret" />
+      </button>
+      <div id="mod-switcher" popover="auto" class="nav-switch-menu" role="menu" aria-label="Daftar modul">
+        <p class="nss-head">Pindah ke modul</p>
+        {mods.map((m) => (
+          <a
+            href={`/modul/${m.id}`}
+            class={`nss-item${current && current.id === m.id ? ' is-current' : ''}`}
+            role="menuitem"
+            aria-current={current && current.id === m.id ? 'page' : undefined}
+          >
+            <span class="nss-badge" aria-hidden="true">{m.data.badge}</span>
+            <span class="nss-body">
+              <span class="nss-title">{m.data.topTitle}</span>
+              <span class="nss-sub">{m.data.target ?? 'Go'}{m.data.readingTime ? ` · ${m.data.readingTime.replace(' baca', '')}` : ''}</span>
+            </span>
+            {current && current.id === m.id && <span class="nss-here">Dibaca</span>}
+          </a>
+        ))}
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      {fontControls && (
+        <div class="rc-group" role="group" aria-label="Ukuran teks">
+          <button type="button" class="rc-btn" data-font="dec" aria-label="Perkecil ukuran teks">A<Icon name="minus" size={12} class="rc-ic" /></button>
+          <span class="rc-sep"></span>
+          <button type="button" class="rc-btn" data-font="inc" aria-label="Perbesar ukuran teks">A<Icon name="plus" size={13} class="rc-ic" /></button>
+        </div>
+      )}
+      <button type="button" class="rc-btn rc-theme" data-theme-toggle aria-label="Ganti tema baca">
+        <span class="ti" aria-hidden="true"><Icon name="sun" size={18} /></span>
+      </button>
+      {variant === 'module' && summaryHref && (
+        <a class="topbar-link" href={summaryHref}>Ringkasan</a>
+      )}
+    </div>
+  </div>
+</header>
+
+<script is:inline>
+  // Posisikan popover switcher tepat di bawah tombolnya (Popover API render di
+  // top-layer, jadi default-nya tengah layar). Light-dismiss & Escape ditangani UA.
+  (function () {
+    var btn = document.querySelector('.nav-switch-btn');
+    var menu = document.getElementById('mod-switcher');
+    if (!btn || !menu || typeof menu.showPopover !== 'function') return;
+    menu.addEventListener('beforetoggle', function (e) {
+      if (e.newState !== 'open') return;
+      var r = btn.getBoundingClientRect();
+      var w = Math.min(344, window.innerWidth - 24);
+      var left = Math.min(r.left, window.innerWidth - w - 12);
+      menu.style.width = w + 'px';
+      menu.style.left = Math.max(12, left) + 'px';
+      menu.style.top = r.bottom + 8 + 'px';
+    });
+  })();
+
+  // Floating nav: pertegas elevasi saat halaman di-scroll (konten lewat di bawahnya).
+  (function () {
+    var bar = document.querySelector('.topbar');
+    if (!bar) return;
+    var on = false;
+    function sync() {
+      var next = window.scrollY > 6;
+      if (next === on) return;
+      on = next;
+      if (on) bar.setAttribute('data-scrolled', '');
+      else bar.removeAttribute('data-scrolled');
+    }
+    window.addEventListener('scroll', sync, { passive: true });
+    sync();
+  })();
+</script>

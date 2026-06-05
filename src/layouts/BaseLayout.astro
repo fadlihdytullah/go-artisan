@@ -1,0 +1,108 @@
+---
+import '../styles/globals.css';
+import Navbar from '../components/Navbar.astro';
+
+export interface NavProps {
+  variant: 'home' | 'module';
+  badge?: string;
+  siteName?: string;
+  moduleTitle?: string;
+  moduleSub?: string;
+  summaryHref?: string;
+  fontControls?: boolean;
+  toc?: boolean;
+}
+interface Props {
+  title: string;
+  nav: NavProps;
+  footer?: { title: string; sub: string };
+}
+const { title, nav, footer } = Astro.props;
+---
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  {/* Cegah FOUC: terapkan tema & skala sebelum render — di SEMUA halaman */}
+  <script is:inline>
+    (function () {
+      try {
+        var r = document.documentElement;
+        var t = localStorage.getItem('reader-theme');
+        r.setAttribute('data-theme', t || 'light');
+        var s = localStorage.getItem('reader-scale');
+        if (s) r.style.setProperty('--scale', s);
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <Navbar {...nav} />
+
+  <slot />
+
+  {footer && (
+    <footer>
+      <div class="wrap">
+        <p><b set:html={footer.title} /><br /><span set:html={footer.sub} /></p>
+      </div>
+    </footer>
+  )}
+
+  <script is:inline>
+    // Kontrol baca: siklus tema (light → sepia → dark) + ukuran font. Aktif di semua halaman.
+    (function () {
+      var root = document.documentElement;
+      var THEMES = ['light', 'sepia', 'dark'];
+      // Tabler Icons (MIT) — bagian dalam SVG per tema baca.
+      var ICON = {
+        light: '<path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7" />',
+        sepia: '<path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0" /><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0" /><path d="M3 6l0 13" /><path d="M12 6l0 13" /><path d="M21 6l0 13" />',
+        dark: '<path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />',
+      };
+      function iconSvg(inner) {
+        return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
+      }
+      var MIN = 0.85, MAX = 1.3, STEP = 0.1;
+      var scale = parseFloat(localStorage.getItem('reader-scale')) || 1;
+
+      function setTheme(t) {
+        root.setAttribute('data-theme', t);
+        try { localStorage.setItem('reader-theme', t); } catch (e) {}
+        document.querySelectorAll('[data-theme-toggle] .ti').forEach(function (el) {
+          el.innerHTML = iconSvg(ICON[t]);
+        });
+      }
+      function setScale(s) {
+        scale = Math.min(MAX, Math.max(MIN, Math.round(s * 100) / 100));
+        root.style.setProperty('--scale', scale);
+        try { localStorage.setItem('reader-scale', scale); } catch (e) {}
+      }
+
+      setTheme(root.getAttribute('data-theme') || 'light');
+      setScale(scale);
+
+      document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var i = THEMES.indexOf(root.getAttribute('data-theme'));
+          setTheme(THEMES[(i + 1) % THEMES.length]);
+        });
+      });
+      document.querySelectorAll('[data-font="inc"]').forEach(function (b) {
+        b.addEventListener('click', function () { setScale(scale + STEP); });
+      });
+      document.querySelectorAll('[data-font="dec"]').forEach(function (b) {
+        b.addEventListener('click', function () { setScale(scale - STEP); });
+      });
+    })();
+  </script>
+</body>
+</html>

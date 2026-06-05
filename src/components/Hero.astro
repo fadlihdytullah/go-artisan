@@ -1,0 +1,18 @@
+---
+// Hero modul. eyebrow di atas, judul (h1), lalu slot (lede), lalu slot "meta" (chips).
+// PENTING: `title` di-render di .astro via set:html — JANGAN tulis <h1> multi-baris di
+// dalam MDX, karena parser MDX akan membungkus isinya ke <p> (judul jadi mengecil 19px).
+interface Props {
+  eyebrow?: string;
+  title?: string; // HTML judul, mis. 'Fondasi <em>Go</em><br />untuk Developer JS &amp; PHP'
+}
+const { eyebrow, title } = Astro.props;
+---
+<div class="hero">
+  {eyebrow && <div class="eyebrow" set:html={eyebrow} />}
+  {title && <h1 set:html={title} />}
+  <slot />
+  <div class="hero-meta">
+    <slot name="meta" />
+  </div>
+</div>

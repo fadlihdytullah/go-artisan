@@ -1,0 +1,13 @@
+---
+// Chip kecil (dipakai di hero-meta). Ikon Tabler opsional via prop `icon`.
+import Icon from './Icon.astro';
+interface Props {
+  icon?:
+    | 'clock' | 'target' | 'world' | 'ban' | 'gift'
+    | 'book' | 'sun' | 'moon'
+    | 'code' | 'terminal' | 'database' | 'stack' | 'git' | 'package'
+    | 'bolt' | 'server' | 'shield' | 'rocket' | 'route' | 'check' | 'copy';
+}
+const { icon } = Astro.props;
+---
+<span class="chip">{icon && <Icon name={icon} size={15} class="chip-ic" />}<slot /></span>

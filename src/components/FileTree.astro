@@ -1,0 +1,48 @@
+---
+// Pohon struktur folder/file. Sentral untuk Go (cmd/, internal/, modular monolith).
+// Sumber pohon lewat prop `tree` (string template-literal) agar aman di MDX:
+// whitespace & baris terjaga, tidak perlu escape kurawal. Indentasi 2 spasi = 1 level.
+// Direktori = baris yang diakhiri "/". Komentar inline pakai " # ..." (spasi-pagar).
+interface Props {
+  tree: string;
+  title?: string;
+}
+const { tree, title } = Astro.props;
+
+// Buang baris kosong di ujung, ratakan tab -> 2 spasi, lalu parse tiap baris.
+const lines = tree.replace(/\t/g, '  ').replace(/\r/g, '').split('\n');
+while (lines.length && lines[0].trim() === '') lines.shift();
+while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+
+const rows = lines.map((raw) => {
+  const indent = (raw.match(/^\s*/)?.[0].length) ?? 0;
+  let body = raw.trim();
+  let comment = '';
+  const hash = body.indexOf(' #');
+  if (hash !== -1) {
+    comment = body.slice(hash + 2).trim();
+    body = body.slice(0, hash).trim();
+  }
+  const isDir = body.endsWith('/');
+  const name = isDir ? body.slice(0, -1) : body;
+  return { depth: Math.floor(indent / 2), name, isDir, comment };
+});
+---
+<div class="filetree">
+  {title && <div class="ft-head" set:html={title} />}
+  <ul class="ft-list">
+    {rows.map((r) => (
+      <li class={`ft-row ${r.isDir ? 'ft-dir' : 'ft-file'}`} style={`--d:${r.depth}`}>
+        <span class="ft-ic" aria-hidden="true">
+          {r.isDir ? (
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2 -2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" /></svg>
+          ) : (
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /></svg>
+          )}
+        </span>
+        <span class="ft-name">{r.name}{r.isDir && <span class="ft-slash">/</span>}</span>
+        {r.comment && <span class="ft-cmt" set:html={r.comment} />}
+      </li>
+    ))}
+  </ul>
+</div>

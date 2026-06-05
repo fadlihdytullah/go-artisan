@@ -1,0 +1,11 @@
+---
+// Kotak ringkasan poin. Isi slot: <ul><li>...</li></ul>
+interface Props {
+  title?: string;
+}
+const { title = 'Poin Penting' } = Astro.props;
+---
+<div class="recap">
+  <h4 set:html={title} />
+  <slot />
+</div>

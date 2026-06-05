@@ -1,0 +1,17 @@
+---
+// Satu endpoint REST: badge method + path monospace + deskripsi opsional.
+// Warna method konsisten (GET teal, POST biru, PUT ungu, PATCH amber, DELETE merah).
+// Beberapa <Endpoint> berurutan otomatis menyatu jadi daftar (lihat .endpoint di globals.css).
+interface Props {
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
+  path: string;
+  desc?: string;
+}
+const { method, path, desc } = Astro.props;
+const m = method.toUpperCase();
+---
+<div class="endpoint">
+  <span class={`ep-method ep-${m.toLowerCase()}`}>{m}</span>
+  <code class="ep-path">{path}</code>
+  {desc && <span class="ep-desc" set:html={desc} />}
+</div>

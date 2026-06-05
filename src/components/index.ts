@@ -1,0 +1,15 @@
+// Satu titik import untuk MDX:  import { Box, Steps, ... } from '@components';
+export { default as Section } from './Section.astro';
+export { default as Box } from './Box.astro';
+export { default as Steps } from './Steps.astro';
+export { default as Step } from './Step.astro';
+export { default as Recap } from './Recap.astro';
+export { default as CardGrid } from './CardGrid.astro';
+export { default as Card } from './Card.astro';
+export { default as Figure } from './Figure.astro';
+export { default as Chip } from './Chip.astro';
+export { default as Hero } from './Hero.astro';
+export { default as Compare } from './Compare.astro';
+export { default as FileTree } from './FileTree.astro';
+export { default as Endpoint } from './Endpoint.astro';
+export { default as Def } from './Def.astro';

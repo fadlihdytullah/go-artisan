@@ -1,0 +1,12 @@
+---
+// Kotak definisi istilah: istilah (prop `term`, boleh HTML) + penjelasan (slot).
+// Memakai gaya .def / .dterm yang sudah ada di globals.css (reaktif tema).
+interface Props {
+  term: string;
+}
+const { term } = Astro.props;
+---
+<div class="def">
+  <span class="dterm" set:html={term} />
+  <slot />
+</div>

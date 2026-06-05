@@ -1,0 +1,10 @@
+---
+// Pembungkus figure: slot utama untuk komponen SVG, slot "caption" opsional.
+const hasCaption = Astro.slots.has('caption');
+---
+<figure>
+  <slot />
+  {hasCaption && (
+    <figcaption><slot name="caption" /></figcaption>
+  )}
+</figure>

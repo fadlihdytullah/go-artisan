@@ -1,0 +1,70 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+
+const mods = (await getCollection('modules')).sort(
+  (a, b) => a.data.order - b.data.order
+);
+
+// Estimasi total waktu baca: jumlahkan angka pertama tiap readingTime ("~45 menit").
+const totalMinutes = mods.reduce((sum, m) => {
+  const match = (m.data.readingTime ?? '').match(/\d+/);
+  return sum + (match ? Number(match[0]) : 0);
+}, 0);
+const totalHours = Math.max(1, Math.round(totalMinutes / 60));
+---
+<BaseLayout title="Go Artisan — Belajar Go Backend untuk Developer" nav={{ variant: 'home' }}>
+  <main class="home">
+    <section class="home-hero">
+      <p class="home-kicker"><span class="dot" aria-hidden="true"></span>Go backend untuk developer JavaScript &amp; PHP</p>
+      <h1 class="home-title">Belajar Go dengan <em>Bekal</em> yang Sudah Kamu Punya</h1>
+      <p class="home-lede">
+        Materi berbahasa Indonesia untuk developer berpengalaman, bukan pemula
+        ngoding. Setiap konsep Go dijembatani dari <b>React/JavaScript</b> dan
+        <b>Laravel/PHP</b> yang sudah kamu kenal, sambil membangun satu proyek nyata,
+        backend <b>online shop skincare</b> dari fondasi Go sampai deploy ke AWS.
+      </p>
+
+      <p class="home-facts">
+        <span><b>{mods.length}</b> modul terstruktur</span>
+        <span><b>~{totalHours} jam</b> materi</span>
+        <span><b>1</b> proyek nyata end-to-end</span>
+        <span><b>Gratis</b>, tanpa login</span>
+      </p>
+    </section>
+
+    <section class="home-modules">
+      <div class="home-modules-head">
+        <h2>Kurikulum</h2>
+        <span class="count">{mods.length} modul tersedia</span>
+      </div>
+
+      <ol class="curr">
+        {mods.map((mod, i) => (
+          <li class="curr-item" style={`--i:${i}`}>
+            <a href={`/modul/${mod.id}`}>
+              <span class="curr-index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+              <span class="curr-title-row">
+                <span class="curr-title">{mod.data.topTitle}</span>
+                <span class="curr-badge" aria-hidden="true">{mod.data.badge}</span>
+                {mod.data.order === 1 && <span class="curr-flag">Mulai di sini</span>}
+              </span>
+              <span class="curr-sum-row">
+                <span class="curr-sum">{mod.data.summary}</span>
+                <span class="curr-meta">
+                  {mod.data.target && <span class="curr-target">{mod.data.target}</span>}
+                  {mod.data.target && mod.data.readingTime && <span class="dotsep" aria-hidden="true">&middot;</span>}
+                  {mod.data.readingTime && <span>{mod.data.readingTime.replace(' baca', '')}</span>}
+                  <span class="dotsep" aria-hidden="true">&middot;</span>
+                  <span>{mod.data.toc.length} bagian</span>
+                </span>
+              </span>
+              <span class="curr-go" aria-hidden="true"><Icon name="chevron-right" size={17} /></span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </section>
+  </main>
+</BaseLayout>

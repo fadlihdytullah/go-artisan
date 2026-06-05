@@ -1,0 +1,14 @@
+---
+// Callout box. variant Go Artisan: tip | analogy | warn | note | bridge (lihat globals.css).
+// icon opsional dirender sebagai chip .b-icon; tanpa icon, label tampil polos.
+interface Props {
+  variant: string;
+  label: string;
+  icon?: string;
+}
+const { variant, label, icon } = Astro.props;
+---
+<div class={`box ${variant}`}>
+  <div class="box-tag">{icon && <span class="b-icon">{icon}</span>}<span set:html={label} /></div>
+  <slot />
+</div>

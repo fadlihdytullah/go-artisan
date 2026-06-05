@@ -1,0 +1,25 @@
+---
+// Perbandingan dua sisi yang sering tertukar (mis. try/catch vs error nilai,
+// value vs pointer receiver, cara JS/PHP vs cara Go). Dua panel berdampingan dengan
+// badge "vs" di tengah. Isi tiap sisi lewat slot "a" dan "b"; label & nada warna lewat prop.
+// Markup memakai class semantik; semua gaya ada di globals.css.
+interface Props {
+  aLabel: string;
+  bLabel: string;
+  aTone?: 'muted' | 'blue' | 'teal' | 'red' | 'violet';
+  bTone?: 'muted' | 'blue' | 'teal' | 'red' | 'violet';
+  vs?: string;
+}
+const { aLabel, bLabel, aTone = 'muted', bTone = 'blue', vs = 'vs' } = Astro.props;
+---
+<div class="compare">
+  <div class={`cmp-side cmp-${aTone}`}>
+    <div class="cmp-label" set:html={aLabel} />
+    <div class="cmp-body"><slot name="a" /></div>
+  </div>
+  <div class="cmp-vs" aria-hidden="true">{vs}</div>
+  <div class={`cmp-side cmp-${bTone}`}>
+    <div class="cmp-label" set:html={bLabel} />
+    <div class="cmp-body"><slot name="b" /></div>
+  </div>
+</div>

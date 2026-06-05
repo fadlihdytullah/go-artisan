@@ -1,0 +1,286 @@
+================================================================================
+COMPONENT REFERENCE - Go Artisan (Astro + MDX)
+================================================================================
+
+Ground truth seluruh komponen yang boleh di-import dari "@components" di dalam
+modul .mdx, plus pola penulisan code block dan diagram Mermaid. Lampirkan file ini
+ke Project ChatGPT bersama ai-instructions.md supaya model menulis import, prop,
+slot, code block, dan diagram PERSIS sesuai sumber (anti-halusinasi).
+
+Aturan singkat yang paling sering salah:
+- Import HANYA dari "@components": Section, Box, Steps, Step, Recap, CardGrid,
+  Card, Figure, Chip, Hero, Compare, FileTree, Endpoint, Def. Tidak ada komponen
+  lain. Jangan mengarang.
+- KODE ditulis sebagai fenced code block (```go, ```bash, ```sql, ...), BUKAN
+  komponen dan BUKAN <pre> manual. Lihat bagian "CODE BLOCK" di bawah.
+- DIAGRAM alur/arsitektur/urutan/state ditulis sebagai fenced ```mermaid block.
+  Lihat bagian "MERMAID". SVG tangan (lewat <Figure>) hanya untuk diagram konsep
+  khusus (memori, pointer) yang tak cocok di Mermaid.
+- Hero: judul lewat prop `title` (HTML, set:html). JANGAN tulis <h1> di MDX.
+- Chip: HANYA di slot meta Hero; `icon` dari daftar sah (lihat Chip.astro).
+- Box: 5 varian sah untuk Go (tip|analogy|warn|note|bridge); `label` boleh HTML;
+  `icon` emoji kecil opsional.
+- Section: `title`/`sub` boleh HTML; <h2> milik Section (sub-judul pakai <h3>/<h4>).
+- Tiap blok/komponen berteks ditulis SATU baris (lihat ai-instructions.md). Isi
+  fenced code block & mermaid BEBAS multi-baris (itu memang blok kode).
+
+--------------------------------------------------------------------------------
+FILE: src/components/index.ts   (barrel — nama import resmi dari "@components")
+--------------------------------------------------------------------------------
+// Satu titik import untuk MDX:  import { Box, Steps, ... } from '@components';
+export { default as Section } from './Section.astro';
+export { default as Box } from './Box.astro';
+export { default as Steps } from './Steps.astro';
+export { default as Step } from './Step.astro';
+export { default as Recap } from './Recap.astro';
+export { default as CardGrid } from './CardGrid.astro';
+export { default as Card } from './Card.astro';
+export { default as Figure } from './Figure.astro';
+export { default as Chip } from './Chip.astro';
+export { default as Hero } from './Hero.astro';
+export { default as Compare } from './Compare.astro';
+export { default as FileTree } from './FileTree.astro';
+export { default as Endpoint } from './Endpoint.astro';
+export { default as Def } from './Def.astro';
+
+--------------------------------------------------------------------------------
+CODE BLOCK   (fenced code block — disorot Shiki, BUKAN komponen)
+--------------------------------------------------------------------------------
+Tulis kode sebagai fenced code block biasa. Highlight, header nama file, label
+bahasa, dan tombol "Salin" dibuat otomatis oleh transformer Shiki di astro.config.
+JANGAN menulis <pre>/<code> manual dan JANGAN memakai komponen untuk kode.
+
+- Bahasa yang umum: go, bash, sh, sql, json, yaml, dockerfile, text, toml, makefile.
+- Tambahkan nama file lewat meta `title="..."` setelah nama bahasa. Nama file akan
+  tampil di header code block.
+- Bahasa bash/sh/shell/zsh/console otomatis tampil dengan "chrome terminal"
+  (tiga titik lampu + label). Untuk sesi terminal pakai title="Terminal".
+- PENTING: di DALAM fenced code block, kurawal { }, backtick struct tag, panah,
+  dan karakter apa pun bersifat LITERAL. Tidak perlu escape &#123;/&#125;. Inilah
+  kenapa kode Go (yang penuh { }) ditulis di fenced block, bukan di teks MDX.
+
+CONTOH (tulis persis seperti ini di .mdx):
+
+```go title="internal/product/model.go"
+package product
+
+type Product struct {
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Price int64  `json:"price"`
+}
+```
+
+```bash title="Terminal"
+go mod init github.com/kamu/skincare-backend
+go run .
+go test ./...
+```
+
+--------------------------------------------------------------------------------
+MERMAID   (fenced ```mermaid block — render via integrasi astro-mermaid)
+--------------------------------------------------------------------------------
+Diagram alur, arsitektur, urutan (sequence), dan state ditulis sebagai fenced
+```mermaid block. Integrasi astro-mermaid mengubahnya jadi SVG di sisi klien dan
+mengikuti tema baca (light -> default, dark -> dark, sepia -> tema default).
+
+- Jenis yang berguna: flowchart LR/TD, sequenceDiagram, stateDiagram-v2,
+  erDiagram, classDiagram.
+- Sintaks Mermaid penuh { } [] --> | | aman di dalam fence (literal, tak di-parse MDX).
+- Caption OPSIONAL: taruh satu paragraf <p class="fig-cap"> tepat di bawah blok.
+- JANGAN bungkus ```mermaid di dalam komponen; tulis sebagai blok berdiri sendiri.
+
+CONTOH (tulis persis seperti ini di .mdx):
+
+```mermaid
+flowchart LR
+  FE["Frontend React"] -->|HTTP JSON| API["Go API (chi)"]
+  API --> SVC["Service"]
+  SVC --> REPO["Repository (pgx)"]
+  REPO --> DB[("PostgreSQL")]
+```
+
+<p class="fig-cap"><b>Gambar 1.</b> Penjelasan singkat di bawah diagram.</p>
+
+--------------------------------------------------------------------------------
+FILE: src/components/Hero.astro   (sekali per modul, di atas; judul = <h1>)
+--------------------------------------------------------------------------------
+interface Props {
+  eyebrow?: string;
+  title?: string; // HTML judul, mis. 'Fondasi <em>Go</em><br />untuk Developer'
+}
+// Render: eyebrow (set:html) -> h1 (title set:html) -> slot (lede) -> slot "meta".
+
+PEMAKAIAN (MDX):
+<Hero eyebrow="Roadmap 1 &middot; Fondasi" title="Fondasi <em>Go</em><br />untuk Developer JS &amp; PHP">
+  <p>Satu kalimat pembuka dalam satu baris.</p>
+  <Fragment slot="meta">
+    <Chip icon="code">Bahasa: <b>Go 1.26</b></Chip>
+    <Chip icon="clock">~70 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+--------------------------------------------------------------------------------
+FILE: src/components/Section.astro   (ulang sebanyak entri toc; bawa <h2>)
+--------------------------------------------------------------------------------
+interface Props { num: string; id: string; title: string; sub?: string; }
+// Render: <section id><div.sec-head><div.sec-num>{num}</div><h2 set:html=title></div>
+//         {sub && <p.sec-sub set:html=sub>} <slot />
+
+PEMAKAIAN (MDX) — beri baris kosong di dalam Section agar Markdown ter-render:
+<Section num="01" id="intro" title="Kenapa Go?" sub="subjudul opsional">
+
+<p class="lead">Paragraf pembuka.</p>
+
+Paragraf Markdown biasa. **Tebal**, `kode inline`, [tautan](https://go.dev).
+
+</Section>
+
+--------------------------------------------------------------------------------
+FILE: src/components/Box.astro   (callout; 5 varian sah: tip|analogy|warn|note|bridge)
+--------------------------------------------------------------------------------
+interface Props { variant: string; label: string; icon?: string; }
+// Render: <div class={`box ${variant}`}><div.box-tag>{icon?<span.b-icon>}{label set:html}</div><slot /></div>
+
+Varian sah untuk Go Artisan (warna dari globals.css):
+- tip     (biru)  : tips, best practice, idiom Go.
+- analogy (teal)  : analogi dunia nyata.
+- warn    (merah) : jebakan, footgun, kesalahan umum.
+- note    (netral): catatan tambahan yang tidak mendesak.
+- bridge  (ungu)  : "Jembatan" — memetakan konsep Go dari JS/React/PHP/Laravel
+                    yang sudah dikenal pembaca. Inilah varian khas materi ini.
+(Varian lama "exam" masih ada di CSS tetapi JANGAN dipakai untuk Go.)
+
+PEMAKAIAN (MDX):
+<Box variant="bridge" icon="🌉" label="Jembatan: dari try/catch ke error nilai"><p>Isi callout satu baris.</p></Box>
+
+--------------------------------------------------------------------------------
+FILE: src/components/Chip.astro   (HANYA di slot meta Hero)
+--------------------------------------------------------------------------------
+interface Props {
+  icon?: 'clock' | 'target' | 'world' | 'ban' | 'gift' | 'book' | 'sun' | 'moon'
+       | 'code' | 'terminal' | 'database' | 'stack' | 'git' | 'package'
+       | 'bolt' | 'server' | 'shield' | 'rocket' | 'route' | 'check' | 'copy';
+}
+// Render: <span class="chip">{icon && <Icon ... class="chip-ic" />}<slot /></span>
+
+PEMAKAIAN (MDX) — icon WAJIB dari daftar di atas:
+<Chip icon="rocket">Proyek: <b>Online Shop</b></Chip>
+
+--------------------------------------------------------------------------------
+FILE: src/components/Steps.astro + Step.astro   (langkah bernomor; nomor via CSS)
+--------------------------------------------------------------------------------
+// Steps = pembungkus; Step = satu langkah. Isi Step biasanya <b>Judul</b><p>...</p>.
+
+PEMAKAIAN (MDX):
+<Steps>
+  <Step><b>Inisialisasi modul</b><p>`go mod init` membuat go.mod.</p></Step>
+  <Step><b>Jalankan</b><p>`go run .` mengompilasi lalu menjalankan.</p></Step>
+</Steps>
+
+--------------------------------------------------------------------------------
+FILE: src/components/Recap.astro   (kotak ringkasan gelap; isi <ul><li>)
+--------------------------------------------------------------------------------
+interface Props { title?: string; }  // default 'Poin Penting'
+// Render: <div class="recap"><h4 set:html=title /><slot /></div>
+
+PEMAKAIAN (MDX):
+<Recap title="Yang Wajib Menempel"><ul><li>Poin satu.</li><li>Poin dua.</li></ul></Recap>
+
+--------------------------------------------------------------------------------
+FILE: src/components/CardGrid.astro + Card.astro   (grid; cols 2 | 3)
+--------------------------------------------------------------------------------
+interface Props { cols?: 2 | 3; }  // CardGrid
+// Card = kartu; isi slot <h4>...</h4><p>...</p>.
+
+PEMAKAIAN (MDX):
+<CardGrid cols={3}>
+  <Card><h4>API cepat</h4><p>chi untuk routing dan middleware.</p></Card>
+  <Card><h4>Data konsisten</h4><p>PostgreSQL lewat pgx.</p></Card>
+  <Card><h4>Tugas async</h4><p>Worker terpisah dari antrian.</p></Card>
+</CardGrid>
+
+--------------------------------------------------------------------------------
+FILE: src/components/Compare.astro   (dua sisi berdampingan; isi via slot a/b)
+--------------------------------------------------------------------------------
+interface Props {
+  aLabel: string;  bLabel: string;   // judul panel (boleh HTML)
+  aTone?: 'muted' | 'blue' | 'teal' | 'red' | 'violet';   // default muted
+  bTone?: 'muted' | 'blue' | 'teal' | 'red' | 'violet';   // default blue
+  vs?: string;     // teks badge tengah, default "vs"
+}
+// Ideal untuk "cara JS/PHP vs cara Go", "value vs pointer receiver", dll.
+
+PEMAKAIAN (MDX) — isi slot "a"/"b" dengan <p> atau <ul><li>:
+<Compare aLabel="JS / PHP: try / catch" bLabel="Go: error sebagai nilai" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>throw melempar, stack unwind otomatis.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>error dikembalikan, diperiksa if err != nil.</li></ul></Fragment>
+</Compare>
+
+--------------------------------------------------------------------------------
+FILE: src/components/FileTree.astro   (struktur folder/file proyek)
+--------------------------------------------------------------------------------
+interface Props { tree: string; title?: string; }
+// `tree` = template-literal string. Indentasi 2 spasi = 1 level. Direktori
+// diakhiri "/". Komentar inline pakai " # ..." (spasi-pagar). Parsing & ikon
+// folder/file dikerjakan komponen; reaktif tema.
+
+PEMAKAIAN (MDX) — pakai backtick template-literal pada prop `tree`:
+<FileTree title="Struktur modular monolith" tree={`
+cmd/
+  api/
+    main.go        # entry point API
+internal/
+  product/         # domain katalog
+    handler.go
+    service.go
+    repository.go
+go.mod
+`} />
+
+--------------------------------------------------------------------------------
+FILE: src/components/Endpoint.astro   (satu baris REST: method + path + deskripsi)
+--------------------------------------------------------------------------------
+interface Props {
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
+  path: string;
+  desc?: string;   // boleh HTML
+}
+// Warna method otomatis (GET teal, POST biru, PUT ungu, PATCH amber, DELETE merah).
+// Beberapa <Endpoint> berurutan otomatis tampak seperti daftar.
+
+PEMAKAIAN (MDX) — self-closing:
+<Endpoint method="GET" path="/v1/products" desc="Daftar produk dengan filter dan paginasi" />
+<Endpoint method="POST" path="/v1/checkout" desc="Ubah keranjang jadi order dalam satu transaksi" />
+
+--------------------------------------------------------------------------------
+FILE: src/components/Def.astro   (kotak definisi: istilah + penjelasan)
+--------------------------------------------------------------------------------
+interface Props { term: string; }   // boleh HTML
+// Render: <div class="def"><span class="dterm" set:html=term /><slot /></div>
+
+PEMAKAIAN (MDX):
+<Def term="zero value"><p>Nilai default otomatis tiap tipe: 0, "", false, nil. Tak ada undefined di Go.</p></Def>
+
+--------------------------------------------------------------------------------
+FILE: src/components/Figure.astro   (pembungkus diagram SVG TANGAN; caption opsional)
+--------------------------------------------------------------------------------
+// Pembungkus figure untuk SVG buatan tangan (di file .astro terpisah, lihat
+// ai-instructions.md). Untuk diagram alur/arsitektur biasa, PAKAI MERMAID, bukan ini.
+// Slot utama = komponen SVG; slot "caption" opsional.
+
+PEMAKAIAN (MDX) — komponen SVG di-import dari "@figures/<Nama>.astro":
+import PointerFig01 from "@figures/PointerFig01.astro";
+<Figure><PointerFig01 /><Fragment slot="caption"><b>Gambar 1.</b> Penjelasan singkat.</Fragment></Figure>
+
+================================================================================
+CATATAN
+- Icon.astro & Navbar.astro TIDAK di-import di MDX (Chip sudah memuat ikon sah-nya
+  sendiri; Navbar adalah chrome situs).
+- Gaya/komponen baru ditaruh di src/styles/globals.css (area "GO-ARTISAN 2026"),
+  bukan utility Tailwind mentah di MDX. Lihat ai-instructions.md.
+- Bila butuh komponen yang BELUM ada di sini: jangan memaksakan komponen lama
+  dengan prop karangan. Buat komponen baru lewat jalur adaptif (src/components/
+  <Nama>.astro + catat ekspor di index.ts + dokumentasikan di file ini), lalu beri
+  satu baris alasan.
+================================================================================

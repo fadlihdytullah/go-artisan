@@ -1,0 +1,1216 @@
+---
+title: "Modul Membaca Data dari PostgreSQL dengan pgx - Go Artisan"
+badge: "PGX"
+topTitle: "Membaca Data dari PostgreSQL dengan pgx"
+topSub: "Go untuk Developer JavaScript & PHP"
+summary: "Belajar membaca satu atau banyak baris PostgreSQL dengan pgxpool, lalu memetakan hasil SELECT ke struct Go secara eksplisit, dari detail produk sampai order bersarang."
+order: 26
+target: "Roadmap 3 · PostgreSQL dan pgx"
+readingTime: "~80 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Dari SELECT ke struct Go" }
+  - { num: "02", id: "mental-model", title: "Mental Model: ORM vs pgx" }
+  - { num: "03", id: "queryrow", title: "Membaca Satu Baris dengan QueryRow" }
+  - { num: "04", id: "err-no-rows", title: "Menangani Data Tidak Ditemukan" }
+  - { num: "05", id: "query-banyak-baris", title: "Membaca Banyak Baris dengan Query" }
+  - { num: "06", id: "tipe-data", title: "Pemetaan Tipe PostgreSQL ke Go" }
+  - { num: "07", id: "null-handling", title: "Menangani NULL: Pointer vs pgtype" }
+  - { num: "08", id: "helper-modern", title: "Helper Modern: CollectRows dan RowToStructByName" }
+  - { num: "09", id: "filter-list-products", title: "Filter, Pagination, dan SQL Aman" }
+  - { num: "10", id: "order-bersarang", title: "Order Bersarang dan Masalah N+1" }
+  - { num: "11", id: "repository-lengkap", title: "Repository Produk Lengkap" }
+  - { num: "12", id: "hands-on", title: "Hands-on: Rakit Query Pertama" }
+  - { num: "13", id: "jebakan-umum", title: "Jebakan Umum" }
+  - { num: "14", id: "ringkasan", title: "Ringkasan & Poin Penting" }
+footerTitle: "Modul Membaca Data dari PostgreSQL dengan pgx - Go Artisan"
+footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Endpoint, Def } from "@components";
+
+<Hero eyebrow="Roadmap 3 &middot; PostgreSQL dan pgx" title="Membaca Data<br /><em>dengan pgx</em>">
+  <p>Dari query SELECT ke struct Go yang siap dipakai handler, service, dan response API skincare, termasuk order bersarang tanpa jebakan N+1.</p>
+  <Fragment slot="meta">
+    <Chip icon="database">Roadmap 3</Chip>
+    <Chip icon="code">Bahasa: <b>Go 1.26</b></Chip>
+    <Chip icon="package">pgx v5</Chip>
+    <Chip icon="clock">~80 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Dari SELECT ke struct Go" sub="Pool yang sudah ada, sekarang dipakai membaca katalog">
+
+<p class="lead">Di chapter sebelumnya kita sudah membuat `pgxpool.Pool` dan memverifikasinya dengan `Ping`. Sekarang pool itu mulai bekerja: membaca produk, varian, dan order dari PostgreSQL ke struct Go.</p>
+
+Di React atau Laravel, membaca data sering terasa seperti memanggil satu fungsi yang langsung mengembalikan object. Di Go dengan [pgxpool](https://pkg.go.dev/github.com/jackc/pgx/v5/pgxpool), prosesnya lebih eksplisit dan punya tiga langkah yang jelas: kirim SQL, ambil baris, lalu `Scan` kolom ke field struct. Tidak ada lapisan sihir di tengah yang menebak relasi atau nama kolom untukmu.
+
+Itu terasa lebih "manual", tetapi justru di situ kekuatannya. Setiap query yang dieksekusi backend skincare terlihat apa adanya, bisa di-`EXPLAIN`, bisa di-index, dan bisa dites. Tidak ada query tersembunyi yang muncul karena kamu mengakses sebuah properti relasi tanpa sengaja.
+
+PostgreSQL mendefinisikan `SELECT` sebagai perintah mengambil baris dari satu atau lebih tabel, dengan filter `WHERE`, urutan `ORDER BY`, dan batas `LIMIT`. Tiga klausa itulah yang akan kita pakai berulang kali untuk endpoint katalog, detail produk, dan riwayat order.
+
+<Endpoint method="GET" path="/v1/products" desc="Membaca banyak produk untuk katalog, dengan filter dan pagination" />
+<Endpoint method="GET" path="/v1/products/{id}" desc="Membaca satu produk untuk halaman detail" />
+<Endpoint method="GET" path="/v1/orders/{id}" desc="Membaca satu order beserta item-nya untuk halaman riwayat" />
+
+Tiga endpoint inilah target konkret chapter ini. Di akhir modul, repository `product` punya `GetProductByID` dan `ListProducts`, dan repository `order` punya `GetOrderByID` yang mengembalikan order beserta seluruh `order_items`-nya dalam satu struct bersarang, tanpa membombardir database dengan puluhan query kecil.
+
+<FileTree title="Letak file yang kita sentuh di chapter ini" tree={`
+internal/
+  product/
+    model.go          # struct Product, ProductVariant, filter query
+    repository.go      # implementasi SELECT dengan pgxpool
+    service.go         # aturan bisnis dan not found error
+  order/
+    model.go           # struct Order dan OrderItem (bersarang)
+    repository.go       # GetOrderByID dengan join, anti N+1
+  database/
+    postgres.go        # setup pgxpool dari chapter sebelumnya
+`} />
+
+<Box variant="note" icon="📝" label="Skema yang kita pakai itu kanonik"><p>Semua nama tabel dan kolom (`products`, `product_variants`, `price_rupiah`, `order_items.unit_price_rupiah`) mengikuti skema kanonik proyek. Uang selalu `bigint` rupiah (`price_rupiah`), PK selalu `id bigint`, dan tidak ada kolom `_cents` atau `float` untuk uang di mana pun.</p></Box>
+
+</Section>
+
+<Section num="02" id="mental-model" title="Mental Model: ORM vs pgx" sub="pgx bukan ORM, dan itu disengaja">
+
+<p class="lead">pgx bukan ORM. Ia tidak menebak relasi, tidak otomatis meng-hydrate struct, dan tidak menyembunyikan SQL. Kamu menulis SQL, kamu menentukan mapping.</p>
+
+Buat developer yang datang dari Eloquent atau Prisma, ini perubahan cara berpikir yang paling besar di Roadmap 3. Di ORM, satu pemanggilan finder bisa diam-diam menjalankan beberapa query (satu untuk model utama, beberapa lagi untuk relasi yang diakses). Di pgx, satu pemanggilan `Query` adalah tepat satu round-trip ke database, dan kamu yang menentukan SQL-nya.
+
+<Compare aLabel="Laravel Eloquent / Prisma" bLabel="Go + pgx" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>`Product::with('variants')->find($id)` menggabungkan query, mapping, dan model behavior dalam satu baris.</li><li>Kolom dan relasi dipetakan otomatis dari konvensi penamaan.</li><li>Query yang benar-benar jalan sering tersembunyi (lazy load, eager load).</li><li>`Product::find($id)` mengembalikan model atau `null`.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>`pool.QueryRow(ctx, sql, id).Scan(...)` membuat SQL dan mapping terlihat jelas.</li><li>Kamu menulis daftar kolom, urutan `Scan`, dan tipe Go-nya sendiri.</li><li>Satu pemanggilan = satu round-trip; tidak ada query mengejutkan.</li><li>Tidak ditemukan adalah `pgx.ErrNoRows` yang harus kamu tangani eksplisit.</li></ul></Fragment>
+</Compare>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari Prisma findMany ke Query manual"><p>`prisma.product.findMany({ where, take, skip })` menghasilkan SQL di belakang layar lalu mengembalikan array object yang sudah jadi. Di pgx, kamu menulis `SELECT ... WHERE ... LIMIT ... OFFSET ...` sendiri, lalu memetakan tiap baris ke struct. Lebih verbose, tetapi SQL-nya milikmu sepenuhnya: bisa diaudit, dioptimalkan, dan tidak pernah mengejutkanmu dengan query tersembunyi.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari JSON.parse ke Scan"><p>Saat `fetch().then(r => r.json())`, JavaScript mem-parsing JSON jadi object secara otomatis berdasarkan nama key. `Scan` di pgx adalah versi manual dan positional dari itu: kamu menyodorkan pointer ke field tujuan, satu per satu, sesuai urutan kolom `SELECT`. Tidak ada pencocokan nama. Yang menentukan kemana sebuah nilai mendarat adalah posisi, bukan label.</p></Box>
+
+<Def term="row mapping"><p>Proses memindahkan nilai kolom hasil query ke field struct Go. Pada `Scan` manual, mapping bersifat positional: urutan argumen `Scan` harus sama persis dengan urutan kolom di `SELECT`. Pada helper `RowToStructByName`, mapping bersifat by-name lewat tag `db:"..."`.</p></Def>
+
+Ada tiga primitif pgx yang akan kita pakai sepanjang chapter. Memahami kapan memakai yang mana adalah separuh dari pekerjaan.
+
+<CardGrid cols={3}>
+  <Card><h4>`QueryRow`</h4><p>Untuk query yang diharapkan mengembalikan maksimal satu baris, seperti detail produk by ID. Error baru muncul saat `Scan`.</p></Card>
+  <Card><h4>`Query`</h4><p>Untuk query yang mengembalikan banyak baris, seperti katalog dengan pagination. Mengembalikan `pgx.Rows` yang wajib ditutup.</p></Card>
+  <Card><h4>`Scan`</h4><p>Memindahkan kolom PostgreSQL ke variable atau field struct Go secara positional. Dipanggil pada `pgx.Row` maupun `pgx.Rows`.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Konteks selalu argumen pertama"><p>Setiap method pgx (`QueryRow`, `Query`, `Exec`) menerima `context.Context` sebagai argumen pertama. Di handler, oper `r.Context()` agar query ikut dibatalkan ketika client memutus koneksi. Ini idiom Go yang sama dengan yang sudah kamu pakai di middleware Roadmap 2.</p></Box>
+
+</Section>
+
+<Section num="03" id="queryrow" title="Membaca Satu Baris dengan QueryRow" sub="Satu resource, satu object">
+
+<p class="lead">Gunakan `pool.QueryRow(ctx, sql, args...)` saat endpoint hanya butuh satu resource, misalnya detail produk dari ID.</p>
+
+`QueryRow` mengembalikan `pgx.Row`. Yang sering bikin kaget developer baru: error query tidak langsung keluar dari `QueryRow`, melainkan ditunda sampai `Scan` dipanggil. Jadi pola error handling-nya selalu berada di sebelah `Scan`, bukan di sebelah `QueryRow`.
+
+```go title="internal/product/repository.go"
+func (r *PostgresRepository) GetProductByID(ctx context.Context, id int64) (*Product, error) {
+	const query = `
+SELECT
+	p.id,
+	p.brand_id,
+	p.slug,
+	p.name,
+	p.description,
+	p.status,
+	p.created_at,
+	p.updated_at
+FROM products p
+WHERE p.id = $1
+	AND p.deleted_at IS NULL
+LIMIT 1
+`
+
+	var product Product
+	err := r.pool.QueryRow(ctx, query, id).Scan(
+		&product.ID,
+		&product.BrandID,
+		&product.Slug,
+		&product.Name,
+		&product.Description,
+		&product.Status,
+		&product.CreatedAt,
+		&product.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &product, nil
+}
+```
+
+Perhatikan pemakaian placeholder `$1`. PostgreSQL dan pgx memakai placeholder posisi `$1, $2, $3`, bukan `?` ala MySQL. Nilai `id` tidak pernah digabung ke string SQL; ia dikirim terpisah lewat argumen `Query`, sehingga aman dari SQL injection secara default.
+
+<Box variant="tip" icon="💡" label="Urutan kolom itu kontrak"><p>Urutan field di `Scan` harus sama dengan urutan kolom di `SELECT`. pgx tidak membaca nama field struct untuk mapping manual ini, ia hanya memindahkan kolom ke-1 ke argumen ke-1, dan seterusnya. Tukar satu baris saja, dan `slug` bisa mendarat di `name`.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Hindari SELECT bintang"><p>`SELECT *` membuat urutan kolom rapuh: begitu sebuah migration menambah atau menyusun ulang kolom, urutan `Scan` ikut bergeser dan mapping diam-diam jadi salah. Selalu sebut kolom secara eksplisit agar kontrak `Scan` stabil terhadap perubahan skema.</p></Box>
+
+Diagram berikut menunjukkan empat tahap yang terjadi saat satu detail produk dibaca, dari handler sampai database dan kembali lagi.
+
+```mermaid
+sequenceDiagram
+  participant Handler as HTTP Handler
+  participant Service as Product Service
+  participant Repo as Product Repository
+  participant DB as PostgreSQL
+  Handler->>Service: GetProductByID(ctx, id)
+  Service->>Repo: GetProductByID(ctx, id)
+  Repo->>DB: QueryRow(ctx, SELECT ... WHERE id = $1, id)
+  DB-->>Repo: satu row (atau ErrNoRows)
+  Repo->>Repo: Scan kolom -> field Product
+  Repo-->>Service: *Product atau error
+  Service-->>Handler: hasil siap jadi response DTO
+```
+
+<p class="fig-cap"><b>Gambar 1.</b> `QueryRow` cocok untuk jalur detail produk karena hasilnya satu object, bukan list. Error baru terdeteksi saat `Scan`, bukan saat `QueryRow`.</p>
+
+</Section>
+
+<Section num="04" id="err-no-rows" title="Menangani Data Tidak Ditemukan" sub="ErrNoRows bukan kegagalan database">
+
+<p class="lead">Saat query satu baris tidak menemukan data, pgx mengembalikan `pgx.ErrNoRows` dari `Scan`. Ini sinyal "tidak ada", bukan sinyal "database rusak".</p>
+
+Di Laravel, `find` mengembalikan `null`, sedangkan `findOrFail` melempar `ModelNotFoundException` yang otomatis jadi HTTP 404. Di Go tidak ada otomatisasi itu: kamu memutuskan sendiri bagaimana repository melaporkan "tidak ditemukan", lalu service menerjemahkannya jadi error domain yang dipahami handler.
+
+<Compare aLabel="Laravel: find vs findOrFail" bLabel="Go + pgx: pilihan eksplisit" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>`find($id)` mengembalikan `null` saat tidak ada.</li><li>`findOrFail($id)` melempar exception yang jadi 404 otomatis.</li><li>Perilaku not-found ditentukan method yang kamu pilih.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>`Scan` mengembalikan `pgx.ErrNoRows` saat tidak ada baris.</li><li>Repository menerjemahkannya jadi `nil, nil` atau error domain.</li><li>Tidak ada panic; semua jalur kembali lewat nilai error.</li></ul></Fragment>
+</Compare>
+
+Ada dua pola yang sama-sama idiomatik. Pertama, repository mengembalikan `(nil, nil)` untuk "tidak ada", lalu service mengubahnya jadi `ErrProductNotFound`. Kedua, repository langsung mengembalikan error domain. Kita pakai pola pertama agar repository tetap netral terhadap kebijakan HTTP.
+
+```go title="internal/product/repository.go"
+func (r *PostgresRepository) GetProductByID(ctx context.Context, id int64) (*Product, error) {
+	var product Product
+	err := r.pool.QueryRow(ctx, getProductByIDSQL, id).Scan(
+		&product.ID,
+		&product.BrandID,
+		&product.Slug,
+		&product.Name,
+		&product.Description,
+		&product.Status,
+		&product.CreatedAt,
+		&product.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil // tidak ditemukan, bukan error database
+		}
+		return nil, fmt.Errorf("get product by id: %w", err)
+	}
+
+	return &product, nil
+}
+```
+
+Service menerima `(nil, nil)` itu lalu memutuskan bahwa "produk tidak ada" adalah kondisi domain yang punya error sendiri. Handler nanti memetakan `ErrProductNotFound` ke HTTP 404 dengan kode `product_not_found`, persis seperti yang sudah dirancang di kontrak API Roadmap 2.
+
+```go title="internal/product/service.go"
+var ErrProductNotFound = errors.New("product not found")
+
+type Service struct {
+	repo Repository
+}
+
+func (s *Service) Detail(ctx context.Context, id int64) (*Product, error) {
+	product, err := s.repo.GetProductByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if product == nil {
+		return nil, ErrProductNotFound
+	}
+
+	return product, nil
+}
+```
+
+<Box variant="note" icon="📝" label="Kapan `nil, nil` masuk akal?"><p>`nil, nil` cocok saat "tidak ditemukan" bukan kegagalan database, dan kamu ingin layer di atasnya yang menentukan artinya. Repository melapor secara netral, service yang memutuskan apakah itu 404, daftar kosong, atau langkah berikutnya. Pemisahan ini menjaga repository bebas dari kebijakan HTTP.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jangan bandingkan string error"><p>Pakai `errors.Is(err, pgx.ErrNoRows)`, bukan `err.Error() == "no rows in result set"`. Perbandingan string rapuh terhadap wrapping dengan `%w`, dan pesannya bisa berubah antar versi. `errors.Is` menelusuri rantai wrap dan tetap cocok meski error sudah dibungkus berlapis.</p></Box>
+
+<Box variant="tip" icon="💡" label="Satu ErrNoRows, dua database/sql"><p>`pgx.ErrNoRows` adalah proxy dari `database/sql.ErrNoRows`. Artinya `errors.Is(err, pgx.ErrNoRows)` dan `errors.Is(err, sql.ErrNoRows)` sama-sama cocok. Kalau kode lamamu masih memeriksa `sql.ErrNoRows`, ia tetap jalan saat pindah ke pgx.</p></Box>
+
+</Section>
+
+<Section num="05" id="query-banyak-baris" title="Membaca Banyak Baris dengan Query" sub="Lifecycle Rows yang wajib dijaga">
+
+<p class="lead">Gunakan `pool.Query(ctx, sql, args...)` untuk daftar produk, riwayat order, review, dan hasil pencarian. Ia mengembalikan `pgx.Rows` yang punya lifecycle ketat.</p>
+
+Inilah bagian yang paling sering jadi sumber bug awal. `pgx.Rows` memegang sebuah koneksi dari pool selama belum ditutup. Selama `Rows` masih terbuka, koneksi itu tidak bisa dikembalikan dan dipakai query lain. Lupa menutupnya, dan saat traffic naik pool terasa "habis" padahal database baik-baik saja.
+
+Pola amannya selalu sama: cek error dari `Query` dulu, baru `defer rows.Close()`. Urutan ini penting, karena kalau `Query` gagal, `rows` bisa nil dan `defer` pada nil aman, tetapi cek error duluan membuat alurnya jelas.
+
+```go title="internal/product/repository.go"
+func (r *PostgresRepository) listVariants(ctx context.Context, productID int64) ([]ProductVariant, error) {
+	const query = `
+SELECT
+	pv.id,
+	pv.product_id,
+	pv.sku,
+	pv.variant_name,
+	pv.size_label,
+	pv.shade,
+	pv.price_rupiah,
+	pv.compare_at_price_rupiah,
+	pv.weight_grams,
+	pv.is_active,
+	pv.created_at,
+	pv.updated_at
+FROM product_variants pv
+WHERE pv.product_id = $1
+	AND pv.is_active = true
+ORDER BY pv.price_rupiah ASC
+`
+
+	rows, err := r.pool.Query(ctx, query, productID)
+	if err != nil {
+		return nil, fmt.Errorf("query variants: %w", err)
+	}
+	defer rows.Close()
+
+	variants := make([]ProductVariant, 0, 4)
+	for rows.Next() {
+		var v ProductVariant
+		if err := rows.Scan(
+			&v.ID,
+			&v.ProductID,
+			&v.SKU,
+			&v.VariantName,
+			&v.SizeLabel,
+			&v.Shade,
+			&v.PriceRupiah,
+			&v.CompareAtPriceRupiah,
+			&v.WeightGrams,
+			&v.IsActive,
+			&v.CreatedAt,
+			&v.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan variant: %w", err)
+		}
+
+		variants = append(variants, v)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate variants: %w", err)
+	}
+
+	return variants, nil
+}
+```
+
+Dua hal di sini wajib jadi refleks. Pertama, `defer rows.Close()` segera setelah error `Query` aman. Kedua, `rows.Err()` setelah loop selesai. Loop `for rows.Next()` berhenti baik karena baris habis maupun karena error di tengah jalan, dan keduanya membuat `Next()` mengembalikan `false`. Hanya `rows.Err()` yang bisa membedakan keduanya.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari .map() ke loop rows.Next"><p>Di JS kamu menulis `rows.map(r => toProduct(r))` di atas array yang sudah lengkap di memori. Di pgx, `rows.Next()` adalah cursor yang berjalan maju satu baris setiap iterasi, dan baris berikutnya bisa saja belum tiba dari database. Karena streaming inilah error bisa muncul di tengah, dan karena itulah `rows.Err()` setelah loop tidak boleh dilewati.</p></Box>
+
+Flowchart berikut memperjelas alur loop, termasuk kenapa cek `rows.Err()` setelah loop adalah cabang yang mudah terlupa tetapi krusial.
+
+```mermaid
+flowchart TD
+  START["pool.Query(ctx, sql, args)"] --> QERR{"err != nil?"}
+  QERR -->|ya| FAIL["return error query"]
+  QERR -->|tidak| DEFER["defer rows.Close()"]
+  DEFER --> NEXT{"rows.Next() true?"}
+  NEXT -->|ya| SCAN["rows.Scan(&dst...)"]
+  SCAN --> SERR{"scan error?"}
+  SERR -->|ya| FAIL2["return error scan"]
+  SERR -->|tidak| APPEND["append ke slice"]
+  APPEND --> NEXT
+  NEXT -->|tidak| RERR{"rows.Err() != nil?"}
+  RERR -->|ya| FAIL3["return error iterasi"]
+  RERR -->|tidak| OK["return slice hasil"]
+```
+
+<p class="fig-cap"><b>Gambar 2.</b> Loop `rows.Next` punya tiga gerbang error: error dari `Query`, error per baris dari `Scan`, dan error iterasi dari `rows.Err`. Loop berhenti tanpa keluhan saat error iterasi, jadi `rows.Err()` adalah satu-satunya cara mengetahuinya.</p>
+
+<Steps>
+  <Step><b>Panggil `Query`</b><p>Kirim SQL dan parameter ke PostgreSQL lewat pool. Cek error-nya lebih dulu.</p></Step>
+  <Step><b>`defer rows.Close()`</b><p>Pastikan koneksi kembali ke pool apa pun yang terjadi setelahnya.</p></Step>
+  <Step><b>Loop `rows.Next`</b><p>Setiap iterasi mewakili satu baris yang siap di-`Scan` ke struct.</p></Step>
+  <Step><b>Cek `rows.Err`</b><p>Setelah loop selesai, pastikan tidak ada error iterasi yang menyamar sebagai "baris habis".</p></Step>
+</Steps>
+
+</Section>
+
+<Section num="06" id="tipe-data" title="Pemetaan Tipe PostgreSQL ke Go" sub="Apa yang ditampung tiap field Scan">
+
+<p class="lead">`Scan` hanya berhasil kalau tipe Go di sisi penerima cocok dengan tipe kolom PostgreSQL. Mengetahui pemetaan ini menghemat banyak waktu debugging.</p>
+
+pgx mengubah representasi biner PostgreSQL menjadi tipe Go yang masuk akal. Sebagian besar pemetaan intuitif (`bigint` jadi `int64`, `text` jadi `string`), tetapi beberapa punya kejutan, terutama kolom yang bisa `NULL` dan tipe khas PostgreSQL seperti array dan `jsonb` yang kita pakai di tabel `products`.
+
+<div class="tbl-wrap">
+<table>
+<thead>
+<tr><th>Kolom PostgreSQL</th><th>Tipe Go (NOT NULL)</th><th>Tipe Go (nullable)</th><th>Contoh di skema skincare</th></tr>
+</thead>
+<tbody>
+<tr><td><code>bigint</code></td><td><code>int64</code></td><td><code>*int64</code> / <code>pgtype.Int8</code></td><td><code>products.id</code>, <code>price_rupiah</code></td></tr>
+<tr><td><code>integer</code></td><td><code>int32</code> / <code>int</code></td><td><code>*int32</code> / <code>pgtype.Int4</code></td><td><code>inventories.quantity_available</code></td></tr>
+<tr><td><code>text</code> / <code>varchar</code></td><td><code>string</code></td><td><code>*string</code> / <code>pgtype.Text</code></td><td><code>products.name</code>, <code>slug</code></td></tr>
+<tr><td><code>boolean</code></td><td><code>bool</code></td><td><code>*bool</code> / <code>pgtype.Bool</code></td><td><code>product_variants.is_active</code></td></tr>
+<tr><td><code>timestamptz</code></td><td><code>time.Time</code></td><td><code>*time.Time</code> / <code>pgtype.Timestamptz</code></td><td><code>created_at</code>, <code>deleted_at</code></td></tr>
+<tr><td><code>text[]</code></td><td><code>[]string</code></td><td><code>[]string</code> (NULL jadi nil)</td><td><code>products.skin_types</code>, <code>concerns</code></td></tr>
+<tr><td><code>jsonb</code></td><td><code>[]byte</code> / struct via <code>json</code></td><td><code>[]byte</code></td><td><code>products.ingredients</code>, <code>orders.shipping_address</code></td></tr>
+<tr><td><code>numeric</code></td><td><code>pgtype.Numeric</code></td><td><code>pgtype.Numeric</code></td><td>tidak dipakai untuk uang di proyek ini</td></tr>
+</tbody>
+</table>
+</div>
+
+<Box variant="warn" icon="⚠️" label="Uang tidak pernah numeric atau float"><p>Di proyek ini uang selalu `bigint` rupiah penuh: `price_rupiah`, `unit_price_rupiah`, `total_rupiah`. Maka di Go selalu `int64`, tidak pernah `float64` apalagi `pgtype.Numeric`. Memetakan rupiah ke `float64` membuka pintu galat pembulatan yang fatal untuk hitungan uang.</p></Box>
+
+Untuk kolom array `text[]` seperti `products.skin_types` (berisi nilai seperti `oily`, `dry`, `combination`), pgx memetakannya langsung ke `[]string`. Kamu tidak perlu mem-parsing string `{oily,dry}` secara manual; pgx yang menangani format array PostgreSQL.
+
+```go title="internal/product/repository.go (membaca kolom array)"
+func (r *PostgresRepository) getProductWithArrays(ctx context.Context, id int64) (*Product, error) {
+	const query = `
+SELECT
+	p.id,
+	p.slug,
+	p.name,
+	p.skin_types,
+	p.concerns,
+	p.status
+FROM products p
+WHERE p.id = $1 AND p.deleted_at IS NULL
+`
+
+	var product Product
+	err := r.pool.QueryRow(ctx, query, id).Scan(
+		&product.ID,
+		&product.Slug,
+		&product.Name,
+		&product.SkinTypes, // []string menerima text[] langsung
+		&product.Concerns,  // []string
+		&product.Status,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get product with arrays: %w", err)
+	}
+
+	return &product, nil
+}
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: tipe TypeScript vs tipe Scan"><p>Di TypeScript kamu cukup menulis `skinTypes: string[]` di interface dan berharap parser JSON mengisinya. Di Go, kamu memilih tipe field (`[]string`) dan pgx memvalidasi bahwa kolom `text[]` memang cocok. Kalau kamu salah pasang (misalnya `string` untuk kolom `text[]`), `Scan` langsung error, bukan diam-diam menghasilkan data rusak.</p></Box>
+
+</Section>
+
+<Section num="07" id="null-handling" title="Menangani NULL: Pointer vs pgtype" sub="Kolom yang boleh kosong butuh penampung yang tahu kosong">
+
+<p class="lead">Scan NULL ke `string` atau `int64` biasa akan error. Kolom yang bisa `NULL` butuh penampung yang bisa membedakan "nol" dari "tidak ada nilai".</p>
+
+Ini perbedaan halus yang penting. Go tidak punya `null` di tipe nilai biasa: `string` zero value-nya `""`, `int64` zero value-nya `0`. Padahal di database, `NULL` berbeda dari `""` dan dari `0`. Kolom `product_variants.size_label` bisa `NULL` (varian tanpa label ukuran), dan `compare_at_price_rupiah` bisa `NULL` (produk tanpa harga coret).
+
+Ada dua cara idiomatik menampung NULL. Pakai pointer Go (`*string`, `*int64`), di mana `nil` berarti NULL. Atau pakai wrapper `pgtype` (`pgtype.Text`, `pgtype.Int8`) yang membawa flag `Valid bool`.
+
+<Compare aLabel="Pointer Go (*string, *int64)" bLabel="pgtype (pgtype.Text, pgtype.Int8)" aTone="blue" bTone="teal">
+  <Fragment slot="a"><ul><li>`nil` berarti NULL, non-nil berarti ada nilai.</li><li>Ringan dan langsung jadi JSON `null` saat di-marshal.</li><li>Sempurna untuk struct domain dan response API.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Punya field `Valid bool` plus nilainya (`Text.String`, `Int8.Int64`).</li><li>Lebih eksplisit, tidak perlu dereference pointer.</li><li>Cocok saat butuh kontrol penuh, mis. menulis NULL balik ke DB.</li></ul></Fragment>
+</Compare>
+
+Di proyek skincare kita memilih pointer untuk struct domain, karena pointer otomatis jadi `null` di JSON response, sejalan dengan tag seperti `json:"size_label,omitempty"`.
+
+```go title="internal/product/model.go"
+package product
+
+import "time"
+
+type Product struct {
+	ID          int64      `json:"id"`
+	BrandID     int64      `json:"brand_id"`
+	Slug        string     `json:"slug"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	SkinTypes   []string   `json:"skin_types"`
+	Concerns    []string   `json:"concerns"`
+	Status      string     `json:"status"` // draft, active, archived
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	DeletedAt   *time.Time `json:"deleted_at,omitempty"`
+}
+
+type ProductVariant struct {
+	ID                   int64     `json:"id"`
+	ProductID            int64     `json:"product_id"`
+	SKU                  string    `json:"sku"`
+	VariantName          string    `json:"variant_name"`
+	SizeLabel            *string   `json:"size_label,omitempty"`        // text NULL
+	Shade                *string   `json:"shade,omitempty"`             // text NULL
+	PriceRupiah          int64     `json:"price"`                       // bigint NOT NULL
+	CompareAtPriceRupiah *int64    `json:"compare_at_price,omitempty"`  // bigint NULL
+	WeightGrams          *int      `json:"weight_grams,omitempty"`      // integer NULL
+	IsActive             bool      `json:"is_active"`
+	CreatedAt            time.Time `json:"created_at"`
+	UpdatedAt            time.Time `json:"updated_at"`
+}
+```
+
+<Box variant="warn" icon="⚠️" label="Scan NULL ke non-pointer akan gagal"><p>Kalau `size_label` di-`Scan` ke `string` biasa dan baris itu NULL, pgx mengembalikan error "cannot scan NULL into *string". Penampung untuk kolom nullable harus pointer (`*string`) atau `pgtype`. Jangan tergoda memberi setiap kolom tipe pointer, hanya kolom yang benar-benar bisa NULL.</p></Box>
+
+Kalau suatu saat kamu lebih suka gaya `pgtype` (misalnya ingin field `Valid` eksplisit tanpa dereference pointer), pola Scan-nya seperti ini.
+
+```go title="internal/product/repository.go (varian pgtype)"
+import "github.com/jackc/pgx/v5/pgtype"
+
+func (r *PostgresRepository) variantPrice(ctx context.Context, id int64) (int64, *int64, error) {
+	var price int64
+	var compareAt pgtype.Int8 // bigint nullable, punya Valid bool
+
+	err := r.pool.QueryRow(ctx,
+		`SELECT price_rupiah, compare_at_price_rupiah FROM product_variants WHERE id = $1`,
+		id,
+	).Scan(&price, &compareAt)
+	if err != nil {
+		return 0, nil, fmt.Errorf("variant price: %w", err)
+	}
+
+	if compareAt.Valid {
+		v := compareAt.Int64
+		return price, &v, nil
+	}
+	return price, nil, nil
+}
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: null di JS vs zero value di Go"><p>Di JavaScript, `price ?? null` membedakan nilai yang ada dari yang absen, karena `null` dan `0` itu berbeda. Go tidak punya `null` di `int64`, jadi `0` ambigu: bisa berarti harga nol atau "tidak diisi". Pointer `*int64` (atau `pgtype.Int8`) mengembalikan kemampuan membedakan keduanya, sama seperti `null` di JS.</p></Box>
+
+</Section>
+
+<Section num="08" id="helper-modern" title="Helper Modern: CollectRows dan RowToStructByName" sub="pgx v5 memangkas boilerplate Scan">
+
+<p class="lead">Menulis `Scan` positional untuk tiap struct itu eksplisit, tetapi melelahkan untuk struct lebar. pgx v5 punya helper generik yang memetakan baris ke struct by-name lewat tag `db`.</p>
+
+Sejak pgx v5, ada keluarga fungsi generik yang menggabungkan loop `rows.Next` + `Scan` + `append` menjadi satu pemanggilan. Yang paling sering dipakai adalah `pgx.CollectRows` (untuk slice) dan `pgx.CollectOneRow` (untuk satu baris), dikombinasikan dengan `pgx.RowToStructByName[T]` yang mencocokkan kolom ke field struct lewat tag `db:"..."`.
+
+```go title="internal/product/model.go (tambah tag db)"
+type Product struct {
+	ID          int64      `json:"id"          db:"id"`
+	BrandID     int64      `json:"brand_id"    db:"brand_id"`
+	Slug        string     `json:"slug"        db:"slug"`
+	Name        string     `json:"name"        db:"name"`
+	Description string     `json:"description" db:"description"`
+	Status      string     `json:"status"      db:"status"`
+	CreatedAt   time.Time  `json:"created_at"  db:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"  db:"updated_at"`
+}
+```
+
+Dengan tag `db` terpasang, mapping jadi by-name. Urutan kolom `SELECT` tidak lagi harus sinkron dengan urutan field, asalkan nama kolom hasil query cocok dengan tag `db`.
+
+```go title="internal/product/repository.go (gaya helper)"
+func (r *PostgresRepository) ListProductsModern(ctx context.Context, limit, offset int32) ([]Product, error) {
+	const query = `
+SELECT
+	p.id,
+	p.brand_id,
+	p.slug,
+	p.name,
+	p.description,
+	p.status,
+	p.created_at,
+	p.updated_at
+FROM products p
+WHERE p.deleted_at IS NULL
+	AND p.status = 'active'
+ORDER BY p.created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+	rows, err := r.pool.Query(ctx, query, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("list products: %w", err)
+	}
+
+	products, err := pgx.CollectRows(rows, pgx.RowToStructByName[Product])
+	if err != nil {
+		return nil, fmt.Errorf("collect products: %w", err)
+	}
+
+	return products, nil
+}
+```
+
+Perhatikan: `CollectRows` menangani loop, `Scan`, `rows.Err()`, dan `rows.Close()` di dalamnya. Untuk satu baris, `pgx.CollectOneRow` mengembalikan `pgx.ErrNoRows` saat kosong, jadi penanganan not-found tetap sama persis.
+
+```go title="internal/product/repository.go (satu baris dengan helper)"
+func (r *PostgresRepository) GetProductByIDModern(ctx context.Context, id int64) (*Product, error) {
+	rows, err := r.pool.Query(ctx, getProductByIDSQL, id)
+	if err != nil {
+		return nil, fmt.Errorf("query product: %w", err)
+	}
+
+	product, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[Product])
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("collect product: %w", err)
+	}
+
+	return &product, nil
+}
+```
+
+<Compare aLabel="Scan manual positional" bLabel="CollectRows + RowToStructByName" aTone="muted" bTone="teal">
+  <Fragment slot="a"><ul><li>Urutan `Scan` wajib sinkron dengan urutan kolom.</li><li>Kontrol penuh, cocok untuk join kompleks atau kolom hasil agregasi.</li><li>Lebih banyak baris kode untuk struct lebar.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Mapping by-name lewat tag `db`, tahan terhadap urutan kolom.</li><li>Boilerplate loop hilang, lebih ringkas dan sulit salah urutan.</li><li>Butuh tag `db` dan kolom hasil query harus cocok namanya.</li></ul></Fragment>
+</Compare>
+
+<Box variant="tip" icon="💡" label="Pakai keduanya sesuai konteks"><p>Untuk SELECT lurus dari satu tabel, helper `RowToStructByName` paling nyaman. Untuk query dengan join, alias kolom, dan kolom agregasi seperti `MIN(pv.price_rupiah)`, Scan manual sering lebih jujur karena kolom hasilnya bukan cerminan satu tabel. Tidak ada keharusan memilih satu untuk seluruh repository.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: RowToStructByName mirip hydrate ORM"><p>`RowToStructByName` adalah versi terkontrol dari auto-hydration ORM: ia mencocokkan kolom ke field berdasarkan nama, sama seperti Eloquent mengisi atribut model. Bedanya, kamu tetap menulis SQL-nya sendiri dan tag `db` membuat pencocokan eksplisit, bukan tebakan konvensi.</p></Box>
+
+</Section>
+
+<Section num="09" id="filter-list-products" title="Filter, Pagination, dan SQL Aman" sub="Optional filter tanpa membuka celah injection">
+
+<p class="lead">Katalog butuh filter opsional (slug, kategori) dan pagination. Tantangannya: menyusun SQL dinamis yang tetap memakai placeholder, bukan menggabung nilai user ke string.</p>
+
+Aturan emasnya: yang boleh disusun dinamis adalah potongan SQL tetap (menambah klausa `AND c.slug = $N`), sedangkan nilai user selalu masuk lewat `args`. PostgreSQL menerima parameter terpisah dari teks query, jadi nilai user tidak pernah jadi bagian SQL yang dieksekusi.
+
+Karena katalog menampilkan harga mulai dari (starting price) sementara harga ada di tabel `product_variants`, query list menggabungkan `products`, `brands`, dan `product_variants`, lalu mengambil `MIN(price_rupiah)` per produk. Kategori dihubungkan lewat join table `product_categories` (relasi many-to-many).
+
+```sql title="query-list-products.sql"
+SELECT
+	p.id,
+	p.slug,
+	p.name,
+	p.description,
+	b.name AS brand_name,
+	COALESCE(MIN(pv.price_rupiah), 0)::bigint AS starting_price_rupiah,
+	p.status,
+	p.created_at,
+	p.updated_at
+FROM products p
+JOIN brands b ON b.id = p.brand_id
+JOIN product_categories pc ON pc.product_id = p.id
+JOIN categories c ON c.id = pc.category_id
+LEFT JOIN product_variants pv ON pv.product_id = p.id AND pv.is_active = true
+WHERE p.deleted_at IS NULL
+	AND p.status = 'active'
+	AND c.slug = $1
+GROUP BY
+	p.id, p.slug, p.name, p.description, b.name, p.status, p.created_at, p.updated_at
+ORDER BY p.created_at DESC
+LIMIT $2 OFFSET $3;
+```
+
+Pagination di sini memakai `LIMIT` dan `OFFSET`, pasangan paling sederhana dan paling mudah dipahami. `LIMIT $2` membatasi jumlah baris, `OFFSET $3` melompati baris awal. Untuk halaman 1 dengan 20 item, `LIMIT 20 OFFSET 0`; halaman 2, `LIMIT 20 OFFSET 20`.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: LIMIT/OFFSET vs take/skip Prisma"><p>`prisma.product.findMany({ take: 20, skip: 20 })` menghasilkan tepat `LIMIT 20 OFFSET 20`. `take` adalah `LIMIT`, `skip` adalah `OFFSET`. Konsepnya identik; di pgx kamu hanya menulisnya langsung di SQL alih-alih lewat object opsi.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="OFFSET melambat di halaman dalam"><p>`OFFSET 100000` tetap memindai dan membuang 100.000 baris sebelum mengembalikan 20. Untuk katalog yang dalam, ini boros. Solusi yang lebih cepat adalah keyset pagination (`WHERE (created_at, id) < ($1, $2) ORDER BY created_at DESC, id DESC LIMIT 20`), yang akan kita bahas tuntas di chapter indexing. Untuk sekarang, `LIMIT/OFFSET` sudah memadai dan kita batasi `per_page` agar tidak disalahgunakan.</p></Box>
+
+Untuk filter opsional, kita bangun query bertahap. Yang ditambah ke string hanya klausa dengan nomor placeholder; nilainya selalu masuk ke slice `args`.
+
+```go title="internal/product/repository.go (filter dinamis aman)"
+func buildListProductsQuery(filter ListProductsFilter) (string, []any) {
+	var sql strings.Builder
+	args := make([]any, 0, 4)
+
+	sql.WriteString(productSelectSQL)
+	sql.WriteString("\nWHERE p.deleted_at IS NULL\n\tAND p.status = 'active'\n")
+
+	if filter.Slug != "" {
+		args = append(args, filter.Slug)
+		fmt.Fprintf(&sql, "\tAND p.slug = $%d\n", len(args))
+	}
+
+	if filter.CategorySlug != "" {
+		args = append(args, filter.CategorySlug)
+		fmt.Fprintf(&sql, "\tAND c.slug = $%d\n", len(args))
+	}
+
+	sql.WriteString(productGroupBySQL)
+	sql.WriteString("ORDER BY p.created_at DESC\n")
+
+	args = append(args, clampLimit(filter.Limit))
+	fmt.Fprintf(&sql, "LIMIT $%d\n", len(args))
+
+	args = append(args, clampOffset(filter.Offset))
+	fmt.Fprintf(&sql, "OFFSET $%d\n", len(args))
+
+	return sql.String(), args
+}
+```
+
+<Box variant="note" icon="📝" label="Kenapa `fmt.Fprintf` di sini aman?"><p>Yang diformat hanya nomor placeholder (`$1`, `$2`), bukan nilai user. Nilai `filter.Slug` dan `filter.CategorySlug` masuk lewat `append(args, ...)`, lalu dikirim terpisah ke PostgreSQL via `pool.Query(ctx, sql, args...)`. Teks SQL tidak pernah memuat data user, jadi tidak ada celah injection.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jangan format nilai user ke SQL"><p>`fmt.Sprintf("... WHERE slug = '%s'", userSlug)` adalah pintu masuk klasik SQL injection. Sekali kamu menyisipkan nilai user ke teks SQL, semua jaminan keamanan placeholder hilang. Nilai user wajib lewat `args`, titik.</p></Box>
+
+</Section>
+
+<Section num="10" id="order-bersarang" title="Order Bersarang dan Masalah N+1" sub="Satu order, banyak item, tetap dua query saja">
+
+<p class="lead">Order detail butuh data dari dua tabel: `orders` (satu baris) dan `order_items` (banyak baris). Pertanyaannya: bagaimana memuat keduanya tanpa terjebak N+1 query?</p>
+
+Masalah N+1 adalah jebakan klasik yang dibawa banyak orang dari ORM. Pola buruknya: ambil 1 order, lalu untuk setiap item jalankan 1 query terpisah mengambil detail produk. Untuk order berisi 30 item, itu 1 + 30 = 31 query. Untuk halaman riwayat berisi 20 order, ledakannya makin parah.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: N+1 yang sama di Eloquent"><p>Di Laravel, mengakses `$order->items` di dalam loop tanpa `with('items')` memicu satu query per order. Di pgx tidak ada lazy loading yang memicu query diam-diam, jadi N+1 hanya terjadi kalau kamu menulisnya sendiri. Justru karena eksplisit, lebih mudah dihindari: kamu sadar setiap query yang kamu tulis.</p></Box>
+
+Pendekatan kita: ambil order dengan 1 `QueryRow`, lalu ambil semua item-nya dengan 1 `Query` yang difilter `order_id`. Dua query, berapa pun jumlah item. Karena `order_items` sudah menyimpan snapshot (`product_name`, `sku`, `unit_price_rupiah`), kita bahkan tidak perlu join ke `products` untuk menampilkan order. Snapshot itulah yang membuat invoice lama tidak berubah saat katalog diperbarui.
+
+```mermaid
+flowchart LR
+  REQ["GET /v1/orders/{id}"] --> Q1["QueryRow orders WHERE id = $1"]
+  Q1 --> ORD["Order (1 baris)"]
+  ORD --> Q2["Query order_items WHERE order_id = $1"]
+  Q2 --> ITEMS["[]OrderItem (N baris, 1 query)"]
+  ITEMS --> NEST["Rakit Order.Items = items"]
+  NEST --> RESP["Order bersarang -> JSON response"]
+```
+
+<p class="fig-cap"><b>Gambar 3.</b> Order detail dimuat dengan dua query saja: satu untuk order, satu untuk semua item-nya. Jumlah item tidak menambah jumlah query, jadi tidak ada N+1.</p>
+
+Struct order bersarang mengikuti skema kanonik: `order_items` membawa snapshot nama dan harga, `unit_price_rupiah` adalah harga beku saat checkout, dan `line_total_rupiah` adalah kolom generated yang kita baca apa adanya.
+
+```go title="internal/order/model.go"
+package order
+
+import "time"
+
+type Order struct {
+	ID             int64       `json:"id"`
+	UserID         int64       `json:"user_id"`
+	OrderNumber    string      `json:"order_number"`
+	Status         string      `json:"status"`         // pending, paid, processing, shipped, completed, cancelled, refunded
+	PaymentStatus  string      `json:"payment_status"` // unpaid, pending, paid, failed, refunded
+	Currency       string      `json:"currency"`
+	SubtotalRupiah int64       `json:"subtotal"`
+	DiscountRupiah int64       `json:"discount"`
+	ShippingRupiah int64       `json:"shipping"`
+	TotalRupiah    int64       `json:"total"`
+	Items          []OrderItem `json:"items"`
+	PlacedAt       time.Time   `json:"placed_at"`
+	CreatedAt      time.Time   `json:"created_at"`
+}
+
+type OrderItem struct {
+	ID                 int64  `json:"id"`
+	OrderID            int64  `json:"order_id"`
+	VariantID          int64  `json:"variant_id"`
+	ProductName        string `json:"name"`          // snapshot saat checkout
+	VariantName        string `json:"variant_name"`
+	SKU                string `json:"sku"`           // snapshot saat checkout
+	UnitPriceRupiah    int64  `json:"price"`         // snapshot saat checkout
+	Quantity           int    `json:"quantity"`
+	ItemDiscountRupiah int64  `json:"item_discount"`
+	LineTotalRupiah    int64  `json:"subtotal"`      // kolom generated
+}
+```
+
+Sekarang repository order. `GetOrderByID` memuat header order, lalu memanggil `listOrderItems` untuk seluruh item dalam satu query.
+
+```go title="internal/order/repository.go"
+package order
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type PostgresRepository struct {
+	pool *pgxpool.Pool
+}
+
+func NewPostgresRepository(pool *pgxpool.Pool) *PostgresRepository {
+	return &PostgresRepository{pool: pool}
+}
+
+func (r *PostgresRepository) GetOrderByID(ctx context.Context, id int64) (*Order, error) {
+	const orderSQL = `
+SELECT
+	o.id,
+	o.user_id,
+	o.order_number,
+	o.status,
+	o.payment_status,
+	o.currency,
+	o.subtotal_rupiah,
+	o.discount_rupiah,
+	o.shipping_rupiah,
+	o.total_rupiah,
+	o.placed_at,
+	o.created_at
+FROM orders o
+WHERE o.id = $1
+`
+
+	var ord Order
+	err := r.pool.QueryRow(ctx, orderSQL, id).Scan(
+		&ord.ID,
+		&ord.UserID,
+		&ord.OrderNumber,
+		&ord.Status,
+		&ord.PaymentStatus,
+		&ord.Currency,
+		&ord.SubtotalRupiah,
+		&ord.DiscountRupiah,
+		&ord.ShippingRupiah,
+		&ord.TotalRupiah,
+		&ord.PlacedAt,
+		&ord.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get order by id: %w", err)
+	}
+
+	items, err := r.listOrderItems(ctx, ord.ID)
+	if err != nil {
+		return nil, err
+	}
+	ord.Items = items
+
+	return &ord, nil
+}
+
+func (r *PostgresRepository) listOrderItems(ctx context.Context, orderID int64) ([]OrderItem, error) {
+	const itemsSQL = `
+SELECT
+	oi.id,
+	oi.order_id,
+	oi.variant_id,
+	oi.product_name,
+	oi.variant_name,
+	oi.sku,
+	oi.unit_price_rupiah,
+	oi.quantity,
+	oi.item_discount_rupiah,
+	oi.line_total_rupiah
+FROM order_items oi
+WHERE oi.order_id = $1
+ORDER BY oi.id ASC
+`
+
+	rows, err := r.pool.Query(ctx, itemsSQL, orderID)
+	if err != nil {
+		return nil, fmt.Errorf("query order items: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]OrderItem, 0, 8)
+	for rows.Next() {
+		var it OrderItem
+		if err := rows.Scan(
+			&it.ID,
+			&it.OrderID,
+			&it.VariantID,
+			&it.ProductName,
+			&it.VariantName,
+			&it.SKU,
+			&it.UnitPriceRupiah,
+			&it.Quantity,
+			&it.ItemDiscountRupiah,
+			&it.LineTotalRupiah,
+		); err != nil {
+			return nil, fmt.Errorf("scan order item: %w", err)
+		}
+
+		items = append(items, it)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate order items: %w", err)
+	}
+
+	return items, nil
+}
+```
+
+<Box variant="tip" icon="💡" label="Dua query jelas mengalahkan satu join rumit"><p>Bisa saja kita memuat order plus item dalam satu query join, tetapi hasilnya baris duplikat header order (satu baris per item) yang harus di-deduplikasi di Go. Untuk satu order, pola dua query (1 untuk header, 1 untuk item) lebih bersih dan tetap hanya dua round-trip. Join besar lebih berguna saat memuat banyak order sekaligus.</p></Box>
+
+Kalau kamu perlu memuat banyak order sekaligus (misalnya riwayat 20 order beserta itemnya) tanpa N+1, polanya: ambil 20 order, kumpulkan semua `id`-nya, lalu satu query `WHERE order_id = ANY($1)` mengambil semua item dalam sekali jalan, baru kelompokkan item ke order-nya di Go.
+
+```go title="internal/order/repository.go (memuat item banyak order tanpa N+1)"
+func (r *PostgresRepository) itemsByOrderIDs(ctx context.Context, orderIDs []int64) (map[int64][]OrderItem, error) {
+	const query = `
+SELECT
+	oi.order_id,
+	oi.id,
+	oi.product_name,
+	oi.sku,
+	oi.unit_price_rupiah,
+	oi.quantity,
+	oi.line_total_rupiah
+FROM order_items oi
+WHERE oi.order_id = ANY($1)
+ORDER BY oi.order_id, oi.id
+`
+
+	rows, err := r.pool.Query(ctx, query, orderIDs)
+	if err != nil {
+		return nil, fmt.Errorf("query items by order ids: %w", err)
+	}
+	defer rows.Close()
+
+	grouped := make(map[int64][]OrderItem, len(orderIDs))
+	for rows.Next() {
+		var it OrderItem
+		if err := rows.Scan(
+			&it.OrderID,
+			&it.ID,
+			&it.ProductName,
+			&it.SKU,
+			&it.UnitPriceRupiah,
+			&it.Quantity,
+			&it.LineTotalRupiah,
+		); err != nil {
+			return nil, fmt.Errorf("scan grouped item: %w", err)
+		}
+
+		grouped[it.OrderID] = append(grouped[it.OrderID], it)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate grouped items: %w", err)
+	}
+
+	return grouped, nil
+}
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: WHERE IN ($ids) seperti whereIn Eloquent"><p>`Item::whereIn('order_id', $ids)->get()` di Laravel adalah cara eager load menghindari N+1. `WHERE order_id = ANY($1)` di pgx adalah padanan langsungnya, dengan `$1` berupa `[]int64` yang pgx ubah jadi array PostgreSQL. Setelah datanya datang, kamu kelompokkan ke `map[int64][]OrderItem` persis seperti collection grouping di Eloquent.</p></Box>
+
+</Section>
+
+<Section num="11" id="repository-lengkap" title="Repository Produk Lengkap" sub="Semua potongan dirakit jadi satu file siap pakai">
+
+<p class="lead">Sekarang kita satukan: model, SQL konstan, scan helper, builder filter, dan dua method publik menjadi satu repository produk yang siap dipakai service layer.</p>
+
+Kita pakai satu interface kecil `rowScanner` agar fungsi `scanListItem` bisa menerima baik `pgx.Row` (dari `QueryRow`) maupun `pgx.Rows` (dari `Query`), karena keduanya punya method `Scan`. Ini menghemat duplikasi antara jalur satu-baris dan banyak-baris.
+
+```go title="internal/product/repository.go"
+package product
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type Repository interface {
+	GetProductByID(ctx context.Context, id int64) (*Product, error)
+	ListProducts(ctx context.Context, filter ListProductsFilter) ([]ProductListItem, error)
+}
+
+type PostgresRepository struct {
+	pool *pgxpool.Pool
+}
+
+func NewPostgresRepository(pool *pgxpool.Pool) *PostgresRepository {
+	return &PostgresRepository{pool: pool}
+}
+
+type ListProductsFilter struct {
+	Slug         string
+	CategorySlug string
+	Limit        int32
+	Offset       int32
+}
+
+const productSelectSQL = `
+SELECT
+	p.id,
+	p.slug,
+	p.name,
+	p.description,
+	b.name AS brand_name,
+	COALESCE(MIN(pv.price_rupiah), 0)::bigint AS starting_price_rupiah,
+	p.status,
+	p.created_at,
+	p.updated_at
+FROM products p
+JOIN brands b ON b.id = p.brand_id
+LEFT JOIN product_categories pc ON pc.product_id = p.id
+LEFT JOIN categories c ON c.id = pc.category_id
+LEFT JOIN product_variants pv ON pv.product_id = p.id AND pv.is_active = true
+`
+
+const productGroupBySQL = `
+GROUP BY
+	p.id, p.slug, p.name, p.description, b.name, p.status, p.created_at, p.updated_at
+`
+
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+// ProductListItem adalah bentuk baris katalog (produk + brand + harga mulai).
+type ProductListItem struct {
+	ID                  int64
+	Slug                string
+	Name                string
+	Description         string
+	BrandName           string
+	StartingPriceRupiah int64
+	Status              string
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+}
+
+func scanListItem(row rowScanner) (ProductListItem, error) {
+	var item ProductListItem
+	err := row.Scan(
+		&item.ID,
+		&item.Slug,
+		&item.Name,
+		&item.Description,
+		&item.BrandName,
+		&item.StartingPriceRupiah,
+		&item.Status,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	return item, err
+}
+
+func (r *PostgresRepository) GetProductByID(ctx context.Context, id int64) (*Product, error) {
+	const query = `
+SELECT
+	p.id,
+	p.brand_id,
+	p.slug,
+	p.name,
+	p.description,
+	p.skin_types,
+	p.concerns,
+	p.status,
+	p.created_at,
+	p.updated_at
+FROM products p
+WHERE p.id = $1
+	AND p.deleted_at IS NULL
+LIMIT 1
+`
+
+	var product Product
+	err := r.pool.QueryRow(ctx, query, id).Scan(
+		&product.ID,
+		&product.BrandID,
+		&product.Slug,
+		&product.Name,
+		&product.Description,
+		&product.SkinTypes,
+		&product.Concerns,
+		&product.Status,
+		&product.CreatedAt,
+		&product.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get product by id: %w", err)
+	}
+
+	return &product, nil
+}
+
+func (r *PostgresRepository) ListProducts(ctx context.Context, filter ListProductsFilter) ([]ProductListItem, error) {
+	query, args := buildListProductsQuery(filter)
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list products: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]ProductListItem, 0, int(clampLimit(filter.Limit)))
+	for rows.Next() {
+		item, err := scanListItem(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan product list item: %w", err)
+		}
+
+		items = append(items, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate products: %w", err)
+	}
+
+	return items, nil
+}
+
+func buildListProductsQuery(filter ListProductsFilter) (string, []any) {
+	var sql strings.Builder
+	args := make([]any, 0, 4)
+
+	sql.WriteString(productSelectSQL)
+	sql.WriteString("WHERE p.deleted_at IS NULL\n\tAND p.status = 'active'\n")
+
+	if filter.Slug != "" {
+		args = append(args, filter.Slug)
+		fmt.Fprintf(&sql, "\tAND p.slug = $%d\n", len(args))
+	}
+
+	if filter.CategorySlug != "" {
+		args = append(args, filter.CategorySlug)
+		fmt.Fprintf(&sql, "\tAND c.slug = $%d\n", len(args))
+	}
+
+	sql.WriteString(productGroupBySQL)
+	sql.WriteString("ORDER BY p.created_at DESC\n")
+
+	args = append(args, clampLimit(filter.Limit))
+	fmt.Fprintf(&sql, "LIMIT $%d\n", len(args))
+
+	args = append(args, clampOffset(filter.Offset))
+	fmt.Fprintf(&sql, "OFFSET $%d\n", len(args))
+
+	return sql.String(), args
+}
+
+func clampLimit(limit int32) int32 {
+	switch {
+	case limit <= 0:
+		return 20
+	case limit > 100:
+		return 100
+	default:
+		return limit
+	}
+}
+
+func clampOffset(offset int32) int32 {
+	if offset < 0 {
+		return 0
+	}
+	return offset
+}
+```
+
+<Box variant="note" icon="📝" label="Catatan import time"><p>Karena `ProductListItem` memakai `time.Time` untuk `CreatedAt` dan `UpdatedAt`, tambahkan `"time"` ke blok import file ini. Di repo nyata `gofmt` dan `goimports` akan merapikannya otomatis saat kamu simpan.</p></Box>
+
+<Box variant="tip" icon="💡" label="ProductListItem terpisah dari Product"><p>Baris katalog (`ProductListItem`) berbeda dari detail produk (`Product`): ia membawa `brand_name` dan `starting_price_rupiah` hasil agregasi, tetapi tidak membawa `skin_types` atau `ingredients`. Memisahkan tipe list dari tipe detail menjaga setiap query tetap fokus dan response-nya pas dengan kebutuhan layar.</p></Box>
+
+</Section>
+
+<Section num="12" id="hands-on" title="Hands-on: Rakit Query Pertama" sub="Sambungkan repository ke pool dari chapter sebelumnya">
+
+<p class="lead">Latihan ini menyambungkan repository ke `pgxpool.Pool` yang sudah kamu buat di chapter koneksi pgx, lalu menjalankan query pertama dari sebuah command kecil.</p>
+
+<Steps>
+  <Step><b>Tambahkan model</b><p>Buat `internal/product/model.go` berisi `Product`, `ProductVariant`, `ProductListItem`, dan `ListProductsFilter`. Pastikan uang memakai `int64` dan kolom nullable memakai pointer.</p></Step>
+  <Step><b>Tulis repository</b><p>Buat `internal/product/repository.go` lalu inject `*pgxpool.Pool` lewat `NewPostgresRepository`. Mulai dari `GetProductByID`, baru `ListProducts`.</p></Step>
+  <Step><b>Sambungkan service</b><p>Service menerima interface `Repository`, bukan `*pgxpool.Pool` langsung. Inilah yang membuat service mudah dites dengan repository palsu nanti di Roadmap 6.</p></Step>
+  <Step><b>Jalankan smoke test</b><p>Panggil repository dari `cmd/api/main.go` sementara, cetak hasilnya, dan amati SQL yang jalan. Lebih mudah men-debug query dari command kecil daripada lewat handler penuh.</p></Step>
+</Steps>
+
+```go title="cmd/api/main.go"
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/kamu/skincare-backend/internal/database"
+	"github.com/kamu/skincare-backend/internal/product"
+)
+
+func main() {
+	ctx := context.Background()
+
+	pool, err := database.NewPostgresPool(ctx, os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatalf("connect database: %v", err)
+	}
+	defer pool.Close()
+
+	repo := product.NewPostgresRepository(pool)
+
+	// Smoke test 1: detail produk by ID.
+	p, err := repo.GetProductByID(ctx, 1)
+	if err != nil {
+		log.Fatalf("get product: %v", err)
+	}
+	if p == nil {
+		log.Println("produk id=1 tidak ditemukan")
+	} else {
+		log.Printf("produk: %s (%s), status=%s", p.Name, p.Slug, p.Status)
+	}
+
+	// Smoke test 2: katalog dengan filter kategori dan pagination.
+	items, err := repo.ListProducts(ctx, product.ListProductsFilter{
+		CategorySlug: "serum",
+		Limit:        10,
+		Offset:       0,
+	})
+	if err != nil {
+		log.Fatalf("list products: %v", err)
+	}
+	log.Printf("ditemukan %d produk di kategori serum", len(items))
+	for _, it := range items {
+		log.Printf("- %s | %s | mulai dari Rp%d", it.Name, it.BrandName, it.StartingPriceRupiah)
+	}
+}
+```
+
+```bash title="Terminal"
+export DATABASE_URL="postgres://postgres:postgres@localhost:5432/skincare?sslmode=disable"
+go run ./cmd/api
+go test ./...
+```
+
+<Box variant="tip" icon="💡" label="Mulai dari query kecil"><p>Sebelum membungkus repository dengan handler dan service penuh, panggil ia dari command kecil atau test integrasi. Error SQL (kolom salah ketik, tipe tidak cocok, urutan `Scan` geser) jauh lebih mudah dibaca tanpa lapisan HTTP di atasnya.</p></Box>
+
+<Box variant="note" icon="📝" label="Butuh data dulu"><p>Smoke test ini mengasumsikan tabel sudah terisi. Kalau database masih kosong, jalankan migration dari chapter migration lalu seed beberapa brand, produk, dan varian. Query yang benar pada tabel kosong akan mengembalikan slice kosong (`len == 0`), bukan error, jadi pastikan datanya ada sebelum mengira ada bug.</p></Box>
+
+</Section>
+
+<Section num="13" id="jebakan-umum" title="Jebakan Umum" sub="Bug pgx awal jarang soal SQL rumit">
+
+<p class="lead">Sebagian besar bug awal saat memakai pgx bukan di SQL yang kompleks, melainkan di lifecycle `Rows`, urutan mapping, dan penanganan NULL. Kenali polanya, dan kamu menghemat berjam-jam.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Lupa `rows.Close`</h4><p>Koneksi tertahan dan pool terasa habis saat traffic naik. Pasang `defer rows.Close()` segera setelah error `Query` aman.</p></Card>
+  <Card><h4>Lupa `rows.Err`</h4><p>Query bisa gagal di tengah iterasi, tetapi `Next()` cuma mengembalikan `false`. Tanpa `rows.Err()`, error itu hilang diam-diam.</p></Card>
+  <Card><h4>Urutan `Scan` geser</h4><p>`slug` bisa mendarat di `name`, atau tipe tidak cocok dan query gagal. Sebut kolom eksplisit, jangan `SELECT *`.</p></Card>
+  <Card><h4>NULL ke non-pointer</h4><p>Scan kolom nullable ke `string` atau `int64` biasa langsung error. Pakai pointer (`*string`) atau `pgtype` hanya untuk kolom yang bisa NULL.</p></Card>
+  <Card><h4>`ErrNoRows` dianggap 500</h4><p>Tidak ditemukan harus jadi 404 di layer HTTP, bukan internal server error. Pisahkan `pgx.ErrNoRows` dari error database sungguhan.</p></Card>
+  <Card><h4>Placeholder `?`</h4><p>PostgreSQL memakai `$1, $2`, bukan `?`. Memakai `?` langsung gagal. Ini beda dari MySQL/PDO yang mungkin kamu hafal dari PHP.</p></Card>
+  <Card><h4>N+1 buatan sendiri</h4><p>Loop yang menjalankan satu query per item meledakkan jumlah round-trip. Pakai satu query `WHERE order_id = ANY($1)` lalu kelompokkan di Go.</p></Card>
+  <Card><h4>Uang jadi `float64`</h4><p>Memetakan `price_rupiah` ke `float64` membuka galat pembulatan. Selalu `int64` untuk rupiah, tanpa kecuali.</p></Card>
+</CardGrid>
+
+<Compare aLabel="Kebiasaan JS/PHP" bLabel="Kebiasaan Go + pgx" aTone="muted" bTone="blue">
+  <Fragment slot="a"><ul><li>Mengandalkan auto-hydration ORM untuk relasi.</li><li>Not-found berupa exception atau `null` otomatis.</li><li>Filter sering ditulis bebas, dipercayakan ke query builder.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Menulis kolom `SELECT` dan urutan `Scan` (atau tag `db`) secara eksplisit.</li><li>Memilah `pgx.ErrNoRows`, error query, dan error scan dengan sengaja.</li><li>Nilai user selalu lewat placeholder `$N` dan `args`, tidak pernah digabung ke SQL.</li></ul></Fragment>
+</Compare>
+
+<Box variant="warn" icon="⚠️" label="Context yang batal bukan error database"><p>Kalau client memutus koneksi, `ctx` dibatalkan dan query mengembalikan error yang membungkus `context.Canceled`. Itu bukan kegagalan database dan tidak perlu jadi 500 yang menakutkan di log. Saat menyusun logging, pertimbangkan memeriksa `errors.Is(err, context.Canceled)` agar pembatalan normal tidak terlihat seperti insiden.</p></Box>
+
+</Section>
+
+<Section num="14" id="ringkasan" title="Ringkasan &amp; Poin Penting">
+
+<p class="lead">Sekarang backend skincare bisa membaca data dari PostgreSQL dengan pola repository yang eksplisit, aman, dan testable, dari detail produk sampai order bersarang.</p>
+
+<Recap title="Yang Wajib Menempel"><ul><li>`pool.QueryRow(ctx, sql, args...)` untuk satu baris; error baru keluar saat `Scan`, dan not-found ditandai `pgx.ErrNoRows`.</li><li>`pool.Query(ctx, sql, args...)` untuk banyak baris; wajib `defer rows.Close()`, loop `rows.Next()` + `rows.Scan()`, lalu `rows.Err()` setelah loop.</li><li>`errors.Is(err, pgx.ErrNoRows)` adalah cara benar mendeteksi data tidak ditemukan, biasanya diterjemahkan jadi `nil, nil` di repository atau error domain di service.</li><li>Mapping manual bersifat positional (urutan `Scan` = urutan kolom), sedangkan `pgx.CollectRows` dengan `pgx.RowToStructByName[T]` memetakan by-name lewat tag `db` dan memangkas boilerplate.</li><li>Kolom nullable butuh pointer (`*string`, `*int64`) atau `pgtype`; `text[]` jadi `[]string`; uang selalu `bigint` ke `int64`, tidak pernah `float64`.</li><li>Filter dinamis aman selama nilai user masuk lewat placeholder `$N` dan `args`, bukan digabung ke string SQL.</li><li>Order bersarang dimuat dengan dua query (header + semua item), dan riwayat banyak order memakai `WHERE order_id = ANY($1)` agar tidak terjebak N+1.</li></ul></Recap>
+
+Dengan modul ini, repository `product` punya `GetProductByID` untuk halaman detail dan `ListProducts` untuk katalog, sementara repository `order` punya `GetOrderByID` yang mengembalikan order beserta seluruh item-nya. Snapshot di `order_items` (`product_name`, `sku`, `unit_price_rupiah`) memastikan invoice lama tetap stabil walau katalog berubah.
+
+<Box variant="tip" icon="🚀" label="Langkah berikutnya"><p>Di chapter selanjutnya, pola yang sama diperluas ke operasi tulis: `INSERT ... RETURNING id`, `UPDATE`, dan `DELETE` lewat `pool.Exec` dan `CommandTag.RowsAffected()`. Setelah itu kita masuk ke transaksi checkout, di mana validasi cart, reserve stok, dan insert order dibungkus satu `pgx.Tx` yang `Commit` atau `Rollback` sebagai satu kesatuan.</p></Box>
+
+</Section>

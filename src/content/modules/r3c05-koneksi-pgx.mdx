@@ -1,0 +1,830 @@
+---
+title: "Modul Koneksi Go ke PostgreSQL dengan pgx - Go Artisan"
+badge: "PGX"
+topTitle: "Koneksi Go ke PostgreSQL dengan pgx"
+topSub: "Go untuk Developer JavaScript & PHP"
+summary: "Setup pgxpool yang efisien, aman, dan siap dipakai repository untuk API online shop skincare."
+order: 25
+target: "Roadmap 3 · PostgreSQL dan pgx"
+readingTime: "~80 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa API Butuh Connection Pool?" }
+  - { num: "02", id: "pgxpool-vs-pgx-connect", title: "pgxpool vs pgx.Connect" }
+  - { num: "03", id: "connection-string", title: "Connection String dan Timeout" }
+  - { num: "04", id: "setup-pool", title: "Setup Pool di internal/database" }
+  - { num: "05", id: "konfigurasi-pool", title: "MaxConns, MinConns, dan Lifetime" }
+  - { num: "06", id: "acquire-release", title: "Acquire dan Release Koneksi" }
+  - { num: "07", id: "dependency-injection", title: "Meneruskan Pool ke Repository" }
+  - { num: "08", id: "request-lifecycle", title: "Cara Pool Bekerja Saat Request Masuk" }
+  - { num: "09", id: "healthz-observability", title: "Healthz, Ping, dan pool.Stat" }
+  - { num: "10", id: "graceful-shutdown", title: "Graceful Shutdown dan pool.Close" }
+  - { num: "11", id: "hands-on", title: "Hands-on: Pool dari Nol sampai Healthz" }
+  - { num: "12", id: "jebakan-umum", title: "Jebakan Umum dari JS dan Laravel" }
+  - { num: "13", id: "ringkasan", title: "Ringkasan & Poin Penting" }
+footerTitle: "Modul Koneksi Go ke PostgreSQL dengan pgx - Go Artisan"
+footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Def } from "@components";
+
+<Hero eyebrow="Roadmap 3 &middot; PostgreSQL dan pgx" title="Koneksi Go ke <em>PostgreSQL</em><br />dengan pgxpool">
+  <p>Di modul ini kita menyiapkan koneksi database yang benar untuk API Go, bukan sekadar berhasil connect di laptop, tetapi pool yang hemat, teramati, dan mati dengan rapi saat shutdown.</p>
+  <Fragment slot="meta">
+    <Chip icon="code">Bahasa: <b>Go 1.26</b></Chip>
+    <Chip icon="database">PostgreSQL 18 + pgx v5</Chip>
+    <Chip icon="bolt">pgxpool</Chip>
+    <Chip icon="clock">~80 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa API Butuh Connection Pool?" sub="Backend bukan script sekali jalan, ia melayani ribuan request">
+
+<p class="lead">Backend API berbeda dari script sekali jalan. Ia melayani banyak request bersamaan dan setiap request bisa butuh query ke database. Kunci pertama supaya hal itu hemat dan aman adalah connection pool.</p>
+
+Di React atau Next.js, kamu sering memanggil `fetch()` berkali-kali dari browser. Di sisi backend, setiap panggilan itu bisa berubah menjadi query PostgreSQL. Kalau setiap request membuka koneksi PostgreSQL baru dari nol, API membayar biaya TCP handshake, autentikasi, negosiasi TLS, dan setup session berulang-ulang. Untuk satu query yang menghasilkan beberapa milidetik kerja nyata, biaya membuka koneksi bisa berkali lipat lebih mahal.
+
+Connection pool menyimpan sejumlah koneksi yang sudah terbuka dan siap pakai. Saat handler produk butuh data, repository meminjam (acquire) koneksi dari pool, menjalankan query, lalu mengembalikannya (release) untuk request lain. Koneksi fisik ke PostgreSQL dipakai ulang, bukan dibuang setelah satu query.
+
+<Def term="connection pool"><p>Sekumpulan koneksi database yang sudah terbuka dan dikelola aplikasi, agar request tidak perlu membuat koneksi baru setiap kali query dijalankan. Koneksi dipinjam saat dibutuhkan dan dikembalikan setelah selesai.</p></Def>
+
+<Box variant="analogy" icon="🧴" label="Analogi: kasir toko skincare"><p>Bayangkan toko skincare dengan beberapa kasir yang sudah berdiri siap melayani. Pelanggan (request) datang, dilayani kasir yang kosong, lalu kasir kembali bebas untuk pelanggan berikutnya. Tanpa pool, setiap pelanggan harus menunggu kasir baru direkrut, dilatih, dan dipasang dulu sebelum melayani, lalu dipecat setelah satu transaksi. Itu jelas konyol, dan begitulah membuka koneksi baru per request.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari Laravel dan Node ke Go"><p>Di Laravel, detail koneksi disembunyikan oleh `config/database.php` dan layer Eloquent, sedangkan di Node kamu mungkin pakai `pg.Pool` dari node-postgres. Di Go kita membuat pool secara eksplisit di satu tempat (composition root), lalu meneruskannya ke repository, sehingga alur dependency terlihat jelas dan tidak ada sihir tersembunyi.</p></Box>
+
+<CardGrid cols={3}>
+  <Card><h4>Lebih hemat latency</h4><p>Koneksi yang sudah terbuka dipakai ulang, sehingga request tidak selalu membayar biaya connect, autentikasi, dan TLS dari awal.</p></Card>
+  <Card><h4>Lebih aman untuk PostgreSQL</h4><p>Jumlah koneksi dibatasi lewat `MaxConns`, sehingga aplikasi tidak membanjiri database saat traffic naik dan kena batas `max_connections`.</p></Card>
+  <Card><h4>Lebih mudah diobservasi</h4><p>Pool punya statistik seperti koneksi idle, total koneksi, dan waktu tunggu acquire lewat `pool.Stat()`, yang dipakai untuk health check dan monitoring.</p></Card>
+</CardGrid>
+
+Sepanjang modul ini kita memakai paket `github.com/jackc/pgx/v5` dan sub-paket `pgxpool`. Versi yang dipakai proyek adalah pgx v5 (seri v5.10.x per Juni 2026) dengan Go 1.26 dan PostgreSQL 18. Outcome akhir: backend skincare punya file `internal/database/postgres.go` yang membuat pool, endpoint `/healthz` yang memastikan database benar-benar siap, dan shutdown yang menutup pool dengan rapi.
+
+</Section>
+
+<Section num="02" id="pgxpool-vs-pgx-connect" title="pgxpool vs pgx.Connect" sub="Satu koneksi untuk script, pool untuk API">
+
+<p class="lead">`pgx.Connect` membuka satu koneksi tunggal, cocok untuk script sederhana. API production hampir selalu memakai `pgxpool` karena harus melayani banyak request paralel.</p>
+
+Paket utama yang kita pakai adalah [`github.com/jackc/pgx/v5/pgxpool`](https://pkg.go.dev/github.com/jackc/pgx/v5/pgxpool). Dokumentasi resminya menyebut `pgxpool` sebagai connection pool yang concurrency-safe, artinya aman dipanggil dari banyak goroutine sekaligus. Sebuah `*pgxpool.Pool` punya method yang mirip koneksi pgx biasa (`Query`, `QueryRow`, `Exec`, `Begin`), jadi repository bisa langsung memakainya tanpa repot mengurus koneksi fisik.
+
+<Compare aLabel="Satu koneksi: pgx.Connect" bLabel="Pool: pgxpool" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>Cocok untuk CLI, migrasi kecil, atau eksperimen lokal.</li><li>Tidak ideal untuk banyak request paralel, satu koneksi cepat menjadi bottleneck karena query harus antre.</li><li>Tidak aman dipakai banyak goroutine sekaligus tanpa penjagaan manual.</li><li>Lifecycle koneksi harus kamu jaga sendiri dengan `conn.Close(ctx)`.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Cocok untuk API, koneksi dipinjam dan dikembalikan otomatis di balik setiap query.</li><li>Concurrency-safe, banyak goroutine boleh memanggil pool yang sama.</li><li>Jumlah koneksi dikontrol dengan `MaxConns` dan `MinConns`.</li><li>Bisa dipakai langsung oleh repository lewat `Query`, `QueryRow`, `Exec`, dan `Begin`.</li></ul></Fragment>
+</Compare>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari node-postgres Client vs Pool"><p>Di node-postgres kamu mengenal dua benda: `new Client()` (satu koneksi, ideal untuk script) dan `new Pool()` (banyak koneksi untuk web server). `pgx.Connect` sejajar dengan `Client`, dan `pgxpool` sejajar dengan `Pool`. Sama seperti di Node kamu jarang memakai `Client` untuk API, di Go kamu jarang memakai `pgx.Connect` untuk HTTP server.</p></Box>
+
+Contoh `pgxpool` paling sederhana: buat pool dari connection string, ping untuk memastikan database hidup, lalu jangan lupa tutup saat selesai. Perhatikan `defer pool.Close()` yang menjamin pool dilepas walau fungsi keluar lebih awal.
+
+```go title="contoh-sederhana/main.go"
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+func main() {
+	ctx := context.Background()
+
+	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatalf("create pool: %v", err)
+	}
+	defer pool.Close()
+
+	if err := pool.Ping(ctx); err != nil {
+		log.Fatalf("ping database: %v", err)
+	}
+
+	log.Println("database is ready")
+}
+```
+
+<Box variant="note" icon="🧭" label="pgx.Connect tetap berguna"><p>Di modul ini kita tetap mengenal `pgx.Connect` sebagai pembanding, dan kamu akan menjumpainya lagi saat menulis tool migrasi atau seeder kecil yang cukup satu koneksi. Untuk backend skincare API, default pilihan kita selalu `pgxpool`.</p></Box>
+
+</Section>
+
+<Section num="03" id="connection-string" title="Connection String dan Timeout" sub="Alamat lengkap database plus batas waktu yang masuk akal">
+
+<p class="lead">Connection string adalah alamat lengkap yang memberi tahu aplikasi cara masuk ke PostgreSQL. Connection timeout adalah batas berapa lama kita rela menunggu sebelum menyerah.</p>
+
+Format URL yang umum dipakai oleh pgx adalah `postgres://user:pass@host:port/dbname?sslmode=...`. Di local development, `sslmode=disable` sering dipakai. Di staging dan production, terutama saat memakai managed database seperti Amazon RDS, gunakan `sslmode=require` atau lebih ketat sesuai konfigurasi environment.
+
+```text title="Format connection string (URL)"
+postgres://user:password@host:5432/dbname?sslmode=disable
+```
+
+```bash title="Terminal"
+export DATABASE_URL='postgres://skincare:secret@localhost:5432/skincare_dev?sslmode=disable'
+```
+
+<Box variant="warn" icon="⚠️" label="Jangan commit credential"><p>Connection string mengandung username dan password database. Simpan di environment variable, secret manager, atau konfigurasi deployment, bukan di repository Git. Sekali kredensial bocor ke histori Git, ia praktis selamanya ada di sana.</p></Box>
+
+<Def term="sslmode"><p>Parameter PostgreSQL yang mengatur apakah koneksi memakai TLS, memverifikasi sertifikat, atau mematikan SSL. Nilai umum: `disable`, `require`, `verify-ca`, `verify-full`. Pilih sesuai environment, longgar di lokal, ketat di production.</p></Def>
+
+<h3>Parameter pool di dalam connection string</h3>
+
+Selain parameter PostgreSQL standar, `pgxpool.ParseConfig` juga membaca parameter pool langsung dari connection string. Contoh berikut membatasi pool maksimum 10 koneksi, minimum 2, dan lifetime koneksi 1 jam 30 menit. Durasi memakai sintaks Go (`1h30m`, `30s`).
+
+```text title="DATABASE_URL dengan parameter pool"
+postgres://skincare:secret@localhost:5432/skincare_dev?sslmode=disable&pool_max_conns=10&pool_min_conns=2&pool_max_conn_lifetime=1h30m
+```
+
+Parameter pool yang dipahami pgxpool antara lain `pool_max_conns`, `pool_min_conns`, `pool_max_conn_lifetime`, `pool_max_conn_idle_time`, dan `pool_health_check_period`. Sisi libpq seperti `connect_timeout` dan `application_name` juga ikut terbaca, jadi satu string bisa menampung banyak pengaturan.
+
+<Box variant="tip" icon="💡" label="Praktik yang enak untuk tim"><p>Untuk production, lebih mudah membaca connection string dasar dari secret, lalu override angka pool dari konfigurasi aplikasi (struct `Config`). Dengan begitu, review perubahan kapasitas tidak bercampur dengan credential, dan ops bisa menaikkan `MaxConns` tanpa menyentuh secret.</p></Box>
+
+<h3>Connection timeout: gagal cepat, bukan menggantung</h3>
+
+Saat startup, kita tidak ingin aplikasi menggantung selamanya menunggu database yang tidak pernah merespons. Solusinya adalah membungkus proses pembuatan pool dan `Ping` dengan `context.WithTimeout`. Jika dalam batas waktu (misalnya 10 detik) database belum siap, context dibatalkan, `Ping` mengembalikan error, dan aplikasi gagal cepat dengan pesan yang jelas.
+
+```go title="cmd/api/main.go (potongan startup)"
+// Batas waktu khusus untuk fase startup, bukan untuk seluruh hidup aplikasi.
+startupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+defer cancel()
+
+pool, err := database.NewPostgresPool(startupCtx, cfg)
+if err != nil {
+	log.Fatalf("database: %v", err)
+}
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: AbortController vs context"><p>Di JS modern, `AbortController` membatalkan `fetch` yang terlalu lama. Di Go, `context.Context` adalah mekanisme pembatalan yang setara, tetapi lebih merata: hampir setiap operasi pgx menerima `ctx` sebagai parameter pertama, jadi timeout dan pembatalan mengalir konsisten dari handler sampai query.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jangan pakai context startup untuk query request"><p>Context dengan timeout 10 detik di atas hanya untuk fase startup. Jangan menyimpannya lalu memakainya untuk query saat request masuk, karena ia akan kedaluwarsa dalam 10 detik dan semua query setelahnya gagal. Setiap request membawa context-nya sendiri dari `r.Context()`.</p></Box>
+
+</Section>
+
+<Section num="04" id="setup-pool" title="Setup Pool di internal/database" sub="Satu package kecil agar main.go tetap fokus">
+
+<p class="lead">Kita pisahkan setup database ke package kecil agar `main.go` tetap fokus pada wiring aplikasi, dan supaya logika pembuatan pool bisa diuji terpisah.</p>
+
+<FileTree title="Struktur koneksi database" tree={`
+cmd/
+  api/
+    main.go                 # entry point HTTP API, wiring pool dan router
+internal/
+  database/
+    postgres.go             # setup pgxpool, Ping, helper stat
+  product/
+    repository.go           # query produk memakai pool
+go.mod                      # module github.com/kamu/skincare-backend, go 1.26
+`} />
+
+File `internal/database/postgres.go` berikut menerima `Config`, mem-parse connection string menjadi `pgxpool.Config`, mengatur opsi pool, menjalankan `Ping`, lalu mengembalikan `*pgxpool.Pool` yang siap dipakai repository. Pola "parse config dulu, override angka, baru buat pool" lebih fleksibel daripada `pgxpool.New` polos, karena memberi kita kendali penuh atas setiap opsi.
+
+```go title="internal/database/postgres.go"
+package database
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+// Config memisahkan connection string (dari secret) dari angka pool
+// (dari konfigurasi aplikasi), sehingga keduanya bisa di-review terpisah.
+type Config struct {
+	ConnString        string
+	MaxConns          int32
+	MinConns          int32
+	MaxConnLifetime   time.Duration
+	MaxConnIdleTime   time.Duration
+	HealthCheckPeriod time.Duration
+}
+
+// NewPostgresPool membuat pool, mengatur opsi, lalu memastikan database
+// benar-benar siap lewat Ping. Jika Ping gagal, pool ditutup agar tidak bocor.
+func NewPostgresPool(ctx context.Context, cfg Config) (*pgxpool.Pool, error) {
+	poolConfig, err := pgxpool.ParseConfig(cfg.ConnString)
+	if err != nil {
+		return nil, fmt.Errorf("parse postgres config: %w", err)
+	}
+
+	if cfg.MaxConns > 0 {
+		poolConfig.MaxConns = cfg.MaxConns
+	}
+	if cfg.MinConns > 0 {
+		poolConfig.MinConns = cfg.MinConns
+	}
+	if cfg.MaxConnLifetime > 0 {
+		poolConfig.MaxConnLifetime = cfg.MaxConnLifetime
+	}
+	if cfg.MaxConnIdleTime > 0 {
+		poolConfig.MaxConnIdleTime = cfg.MaxConnIdleTime
+	}
+	if cfg.HealthCheckPeriod > 0 {
+		poolConfig.HealthCheckPeriod = cfg.HealthCheckPeriod
+	}
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("create postgres pool: %w", err)
+	}
+
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("ping postgres: %w", err)
+	}
+
+	return pool, nil
+}
+```
+
+<Box variant="tip" icon="💡" label="Bungkus error dengan %w"><p>Perhatikan `fmt.Errorf("...: %w", err)`. Kata kerja `%w` membungkus error asli sehingga `errors.Is` dan `errors.As` di lapisan atas masih bisa memeriksa penyebab aslinya. Ini idiom error wrapping standar Go yang akan dipakai di seluruh repository.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jangan buat koneksi baru per request"><p>Buat pool sekali saat aplikasi start, simpan di dependency aplikasi, lalu pakai ulang di handler dan repository. Membuka pool baru di setiap request adalah anti-pattern paling mahal: ia membatalkan seluruh manfaat pooling dan cepat menabrak `max_connections` PostgreSQL.</p></Box>
+
+<h3>Dipanggil dari main.go</h3>
+
+`main.go` membaca environment variable, membuat context dengan timeout untuk startup, membuat pool, lalu menjadwalkan penutupannya. Di sinilah composition root berada: satu tempat yang tahu cara merakit semua dependency.
+
+```go title="cmd/api/main.go"
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+	"time"
+
+	"github.com/kamu/skincare-backend/internal/database"
+)
+
+func main() {
+	startupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := database.NewPostgresPool(startupCtx, database.Config{
+		ConnString:        os.Getenv("DATABASE_URL"),
+		MaxConns:          10,
+		MinConns:          2,
+		MaxConnLifetime:   time.Hour,
+		MaxConnIdleTime:   30 * time.Minute,
+		HealthCheckPeriod: time.Minute,
+	})
+	if err != nil {
+		log.Fatalf("database: %v", err)
+	}
+	defer pool.Close()
+
+	log.Println("postgres pool is ready")
+
+	// router := router.New(pool)
+	// srv := &http.Server{Addr: ":8080", Handler: router}
+	// log.Fatal(srv.ListenAndServe())
+}
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: composition root vs service container"><p>Di Laravel, service container otomatis menyusun dependency lewat binding di service provider. Di Go, composition root (`main.go`) menyusun dependency secara manual dan eksplisit. Lebih banyak ketikan, tetapi alurnya bisa dibaca dari atas ke bawah tanpa menebak resolver apa yang berjalan di balik layar.</p></Box>
+
+</Section>
+
+<Section num="05" id="konfigurasi-pool" title="MaxConns, MinConns, dan Lifetime" sub="Angka pool menentukan throughput, latency, dan keamanan database">
+
+<p class="lead">Pool bukan sekadar hidup atau mati. Angka pool menentukan bagaimana API menjaga throughput, latency, dan keamanan database di bawah beban nyata.</p>
+
+<CardGrid cols={3}>
+  <Card><h4>MaxConns</h4><p>Batas maksimum koneksi yang boleh dibuka pool. Angka ini melindungi PostgreSQL dari lonjakan request yang tidak terkendali. Default pgxpool adalah 4 atau jumlah CPU, mana yang lebih besar.</p></Card>
+  <Card><h4>MinConns</h4><p>Jumlah minimum koneksi yang dipertahankan pool. Membantu API tetap responsif setelah idle, karena tidak perlu connect dari nol saat request pertama datang.</p></Card>
+  <Card><h4>MaxConnLifetime</h4><p>Umur maksimum sebuah koneksi sebelum ditutup dan diganti. Berguna untuk merefresh koneksi lama dan agar load balancer database bisa memindahkan trafik.</p></Card>
+</CardGrid>
+
+Selain tiga di atas, ada `MaxConnIdleTime` (berapa lama koneksi boleh nganggur sebelum ditutup) dan `HealthCheckPeriod` (seberapa sering pool memeriksa kesehatan koneksi idle). Kombinasi lifetime dan idle time membuat pool tidak menyimpan koneksi basi yang sudah ditolak server.
+
+```go title="internal/config/database.go (contoh nilai baseline)"
+cfg := database.Config{
+	ConnString:        os.Getenv("DATABASE_URL"),
+	MaxConns:          10,
+	MinConns:          2,
+	MaxConnLifetime:   time.Hour,
+	MaxConnIdleTime:   30 * time.Minute,
+	HealthCheckPeriod: time.Minute,
+}
+```
+
+<Box variant="analogy" icon="🧴" label="Analogi: shift kasir toko"><p>`MaxConns` adalah jumlah kasir maksimum yang boleh buka, `MinConns` adalah kasir minimum yang tetap standby walau toko sepi, `MaxConnLifetime` adalah jadwal pergantian shift agar kasir tidak bekerja terlalu lama, dan `MaxConnIdleTime` adalah aturan memulangkan kasir yang sudah lama menganggur supaya tidak membayar gaji sia-sia.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Hitung dari sisi database, bukan satu proses"><p>Kalau ada 5 instance API dan setiap instance punya `MaxConns=20`, total potensi koneksi ke PostgreSQL adalah 100. Tambahkan koneksi dari background worker, tool migrasi, dan dashboard admin. Bandingkan dengan `max_connections` PostgreSQL (default sering 100). Lebihi batas itu, dan koneksi baru ditolak dengan error `too many clients already`.</p></Box>
+
+<h3>Baseline angka untuk proyek skincare</h3>
+
+Untuk tahap belajar dan staging kecil, mulai dari `MaxConns=10` dan `MinConns=2`. Jangan buru-buru menaikkan. Saat traffic naik, ukur dulu empat hal sebelum mengubah angka: query lambat, penggunaan CPU database, jumlah koneksi aktif di server, dan waktu tunggu acquire pool (`EmptyAcquireWaitTime` dari `pool.Stat()`).
+
+<Box variant="bridge" icon="🌉" label="Jembatan: Laravel database.php vs Config Go"><p>Di Laravel, koneksi diatur lewat `config/database.php` plus `.env` (`DB_HOST`, `DB_DATABASE`, `DB_USERNAME`). Laravel sendiri tidak melakukan pooling persisten di proses PHP-FPM standar, setiap request PHP biasanya membuka koneksi baru per worker. Di Go, pool hidup selama proses berjalan, jadi pengaturan `MaxConns` dan lifetime jadi tanggung jawab kita yang sebelumnya ditangani PHP-FPM atau pgbouncer di sisi Laravel.</p></Box>
+
+<Box variant="note" icon="📌" label="Naikkan setelah mengukur, bukan menebak"><p>Angka pool yang lebih besar tidak selalu lebih cepat. Jika database sudah jadi bottleneck pada CPU atau I/O, menambah koneksi hanya memperbanyak antrean di sisi server. Naikkan `MaxConns` hanya setelah data menunjukkan request menunggu lama di tahap acquire, bukan di tahap eksekusi query.</p></Box>
+
+</Section>
+
+<Section num="06" id="acquire-release" title="Acquire dan Release Koneksi" sub="Pinjam koneksi fisik, lalu wajib kembalikan">
+
+<p class="lead">Untuk query biasa, pool meminjam dan mengembalikan koneksi otomatis di balik `Query`, `QueryRow`, dan `Exec`. Tetapi kadang kamu butuh memegang satu koneksi fisik secara eksplisit, dan di situlah `Acquire` dan `Release` masuk.</p>
+
+<Def term="acquire / release"><p>`pool.Acquire(ctx)` meminjam satu koneksi fisik dari pool dan menyerahkannya ke kode kamu. `conn.Release()` mengembalikannya ke pool agar bisa dipakai request lain. Selama dipinjam, koneksi itu tidak tersedia untuk siapa pun.</p></Def>
+
+<h3>Kapan tidak perlu Acquire</h3>
+
+Sebagian besar repository tidak perlu menyentuh `Acquire` sama sekali. Saat kamu memanggil `pool.QueryRow(ctx, ...)`, pool sudah otomatis acquire sebuah koneksi, menjalankan query, dan release koneksi itu begitu hasil selesai dibaca. Inilah jalur normal yang dipakai 95 persen kode kita.
+
+```go title="internal/product/repository.go (jalur normal, tanpa Acquire manual)"
+// Pool meng-acquire dan me-release koneksi sendiri di balik QueryRow.
+var p Product
+err := r.pool.QueryRow(ctx, query, slug).Scan(&p.ID, &p.Name, &p.PriceRupiah)
+```
+
+<h3>Kapan benar-benar perlu Acquire</h3>
+
+`Acquire` baru kamu butuhkan ketika beberapa operasi harus berjalan di koneksi fisik yang sama. Tiga kasus khas: menjalankan beberapa statement yang bergantung pada session state yang sama, memakai `LISTEN`/`NOTIFY`, atau menjalankan perintah `SET` lalu beberapa query yang harus melihat efeknya. Untuk transaksi, kamu tidak perlu `Acquire` manual karena `pool.Begin(ctx)` sudah memegang satu koneksi sepanjang transaksi (dibahas tuntas di modul transaksi).
+
+```go title="internal/inventory/repository.go (Acquire eksplisit untuk session state)"
+func (r *Repository) ReadAvailableWithTimeout(ctx context.Context, variantID int64) (int, error) {
+	conn, err := r.pool.Acquire(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("acquire conn: %w", err)
+	}
+	defer conn.Release() // WAJIB: kembalikan koneksi apa pun yang terjadi
+
+	// SET berlaku pada koneksi ini saja (session state), jadi query berikutnya
+	// harus jalan di koneksi yang sama agar melihat efek SET. Pakai SET biasa,
+	// bukan SET LOCAL, karena SET LOCAL hanya hidup di dalam satu transaksi.
+	if _, err := conn.Exec(ctx, "SET statement_timeout = '3s'"); err != nil {
+		return 0, fmt.Errorf("set timeout: %w", err)
+	}
+
+	var available int
+	err = conn.QueryRow(ctx,
+		`SELECT quantity_available FROM inventories WHERE variant_id = $1`,
+		variantID,
+	).Scan(&available)
+	if err != nil {
+		return 0, fmt.Errorf("read inventory: %w", err)
+	}
+
+	return available, nil
+}
+```
+
+<Box variant="warn" icon="🚫" label="defer conn.Release() atau pool kering"><p>Setiap `Acquire` yang berhasil WAJIB diimbangi `Release`. Lupa release berarti koneksi itu hilang dari pool selamanya. Beberapa kebocoran saja cukup untuk menguras pool sampai `MaxConns`, lalu seluruh request menggantung menunggu koneksi yang tidak pernah kembali. Selalu `defer conn.Release()` tepat setelah cek error acquire.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: pool.connect() di node-postgres"><p>Di node-postgres, `const client = await pool.connect()` meminjam koneksi dan `client.release()` mengembalikannya, persis seperti `Acquire`/`Release` di pgx. Bedanya, di JS kamu sering membungkusnya dengan `try/finally` agar release pasti jalan. Di Go, `defer conn.Release()` melakukan hal yang sama dengan satu baris, dan jalan walau terjadi panic.</p></Box>
+
+<Box variant="tip" icon="💡" label="AcquireFunc menutup celah lupa release"><p>pgxpool menyediakan `pool.AcquireFunc(ctx, func(conn *pgxpool.Conn) error { ... })` yang otomatis melepas koneksi setelah fungsi selesai. Jika gaya kamu rawan lupa `defer`, `AcquireFunc` membuat acquire dan release tidak mungkin terpisah.</p></Box>
+
+</Section>
+
+<Section num="07" id="dependency-injection" title="Meneruskan Pool ke Repository" sub="Constructor injection, bukan global magic">
+
+<p class="lead">Setelah pool dibuat di startup, repository menerima pool lewat constructor, bukan membuat koneksi sendiri atau membaca environment sendiri.</p>
+
+Di Go, dependency injection sering sesederhana menerima dependency lewat parameter constructor. Tidak perlu container besar seperti sebagian ekosistem PHP. Tujuannya sama: dependency terlihat jelas, mudah diuji, dan lifecycle tetap dipegang oleh `main.go`. Perhatikan struct `Product` memakai `PriceRupiah int64` dengan kolom `price_rupiah`, sesuai konvensi uang proyek (selalu integer rupiah, tidak pernah float).
+
+```go title="internal/product/repository.go"
+package product
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type Product struct {
+	ID          int64     `json:"id"`
+	Slug        string    `json:"slug"`
+	Name        string    `json:"name"`
+	PriceRupiah int64     `json:"price"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type Repository struct {
+	pool *pgxpool.Pool
+}
+
+func NewRepository(pool *pgxpool.Pool) *Repository {
+	return &Repository{pool: pool}
+}
+
+func (r *Repository) FindActiveBySlug(ctx context.Context, slug string) (*Product, error) {
+	const query = `
+		SELECT pv.id, p.slug, p.name, pv.price_rupiah, p.status, p.created_at
+		FROM products p
+		JOIN product_variants pv ON pv.product_id = p.id
+		WHERE p.slug = $1 AND p.status = 'active' AND pv.is_active = true
+		ORDER BY pv.price_rupiah ASC
+		LIMIT 1
+	`
+
+	var prod Product
+	err := r.pool.QueryRow(ctx, query, slug).Scan(
+		&prod.ID,
+		&prod.Slug,
+		&prod.Name,
+		&prod.PriceRupiah,
+		&prod.Status,
+		&prod.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("find active product by slug: %w", err)
+	}
+
+	return &prod, nil
+}
+```
+
+<Box variant="warn" icon="⚠️" label="Harga itu price_rupiah, milik variant"><p>Di skema kanonik skincare, harga tidak menempel di `products` tetapi di `product_variants.price_rupiah` (kolom `bigint`, Go `PriceRupiah int64`, JSON tag `price`). Sebuah produk bisa punya beberapa varian (ukuran, shade) dengan harga berbeda. Selalu gabungkan ke `product_variants` saat butuh harga, dan jangan pernah memakai `float` atau kolom bernama `_cents` untuk uang.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari repository Laravel"><p>Di Laravel, repository sering mengambil database lewat facade `DB::` atau model Eloquent statis. Di Go, repository menerima `*pgxpool.Pool` dari luar lewat `NewRepository(pool)`, agar dependency tidak tersembunyi dan mudah diganti dengan pool test saat menulis test integrasi.</p></Box>
+
+<Compare aLabel="Dependency tersembunyi" bLabel="Dependency eksplisit" aTone="red" bTone="violet">
+  <Fragment slot="a"><ul><li>Repository membaca environment sendiri.</li><li>Repository membuka pool sendiri di dalamnya.</li><li>Sulit mengontrol lifecycle dan sulit diuji karena pool tercipta diam-diam.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>`main.go` membuat pool sekali saat startup.</li><li>Repository menerima pool lewat `NewRepository(pool)`.</li><li>Shutdown cukup memanggil `pool.Close()` sekali di composition root.</li></ul></Fragment>
+</Compare>
+
+</Section>
+
+<Section num="08" id="request-lifecycle" title="Cara Pool Bekerja Saat Request Masuk" sub="Pool jadi batas antara kode Go dan koneksi fisik">
+
+<p class="lead">Repository tidak perlu memilih koneksi manual untuk query sederhana. pgxpool akan meminjam dan mengembalikan koneksi di balik method seperti `QueryRow` dan `Exec`, sambil membawa `ctx` agar pembatalan tetap mengalir.</p>
+
+```mermaid
+sequenceDiagram
+  participant FE as React Client
+  participant API as Go Handler
+  participant SVC as Product Service
+  participant REPO as Product Repository
+  participant POOL as pgxpool
+  participant DB as PostgreSQL
+  FE->>API: GET /v1/products/serum-niacinamide
+  API->>SVC: GetProduct(ctx, slug)
+  SVC->>REPO: FindActiveBySlug(ctx, slug)
+  REPO->>POOL: QueryRow(ctx, sql, slug)
+  POOL->>POOL: acquire koneksi idle
+  POOL->>DB: kirim query lewat koneksi pinjaman
+  DB-->>POOL: row produk
+  POOL->>POOL: release koneksi setelah Scan
+  POOL-->>REPO: hasil Scan
+  REPO-->>SVC: *Product
+  SVC-->>API: ProductResponse
+  API-->>FE: 200 JSON
+```
+
+<p class="fig-cap"><b>Gambar 1.</b> Pool menjadi batas antara kode Go dan koneksi fisik PostgreSQL. Acquire dan release terjadi otomatis di dalam satu pemanggilan QueryRow.</p>
+
+Untuk query sederhana, pakai `pool.QueryRow`, `pool.Query`, atau `pool.Exec`. Untuk transaksi checkout, kita akan memakai `pool.Begin` atau `pool.BeginTx` di modul transaksi, karena seluruh operasi order, payment, dan inventory harus berada dalam satu transaction boundary dan satu koneksi.
+
+<Box variant="tip" icon="💡" label="Context selalu diteruskan dari handler"><p>Selalu bawa `ctx` dari handler ke service lalu ke repository, dimulai dari `r.Context()`. Jika client disconnect atau timeout terjadi di tengah jalan, query database punya kesempatan ikut dibatalkan, sehingga koneksi tidak terkunci menjalankan query yang hasilnya sudah tidak ada yang menunggu.</p></Box>
+
+<h3>Pool punya state internal yang berputar</h3>
+
+Setiap koneksi di dalam pool berpindah antara beberapa keadaan. Memahami siklus ini membantu kamu membaca angka `pool.Stat()` nanti dan mengerti apa yang terjadi saat pool penuh.
+
+```mermaid
+stateDiagram-v2
+  [*] --> idle: pool dibuat, MinConns dipanaskan
+  idle --> acquired: Acquire (query masuk)
+  acquired --> idle: Release (query selesai)
+  idle --> closed: lifetime / idle time habis
+  acquired --> closing: pool.Close() dipanggil
+  idle --> closing: pool.Close() dipanggil
+  closing --> [*]: semua koneksi dilepas
+  closed --> [*]
+  note right of acquired: Saat semua koneksi acquired dan jumlahnya MaxConns,<br/>Acquire berikutnya menunggu sampai ada yang Release.
+```
+
+<p class="fig-cap"><b>Gambar 2.</b> Lifecycle koneksi pool. Koneksi idle dipinjam menjadi acquired, dikembalikan menjadi idle, dan akhirnya ditutup karena lifetime habis atau pool ditutup.</p>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: event loop Node vs goroutine"><p>Di Node, satu proses memakai event loop tunggal, jadi pool node-postgres melayani query secara non-blocking dalam satu thread. Di Go, setiap request berjalan di goroutine-nya sendiri, dan pgxpool aman dipakai banyak goroutine sekaligus. Yang membatasi paralelisme bukan thread, melainkan jumlah koneksi (`MaxConns`). Jika semua koneksi sedang acquired, goroutine berikutnya menunggu (atau timeout lewat ctx) sampai ada yang release.</p></Box>
+
+</Section>
+
+<Section num="09" id="healthz-observability" title="Healthz, Ping, dan pool.Stat" sub="Buktikan database benar-benar siap, bukan sekadar proses hidup">
+
+<p class="lead">Proses Go yang hidup belum tentu siap melayani. Endpoint `/healthz` yang melakukan `Ping` membuktikan bahwa database benar-benar terjangkau, dan `pool.Stat()` membuka isi pool untuk monitoring.</p>
+
+Di production (Docker, ECS, Kubernetes), platform memanggil endpoint readiness secara berkala untuk memutuskan apakah sebuah instance layak menerima trafik. Endpoint itu harus benar-benar menyentuh database, bukan sekadar membalas `200` karena proses hidup. Jika database mati, instance harus jujur melaporkan dirinya tidak siap agar load balancer berhenti mengirim request ke sana.
+
+<Def term="readiness probe"><p>Pemeriksaan berkala dari platform deployment untuk menentukan apakah sebuah instance siap menerima trafik. Berbeda dari liveness probe (apakah proses perlu di-restart), readiness menjawab "apakah dependency seperti database sudah siap?".</p></Def>
+
+```go title="internal/database/postgres.go (tambahan helper)"
+// Ping membungkus pool.Ping dengan timeout pendek khusus health check,
+// agar probe tidak ikut menggantung saat database lambat.
+func Ping(ctx context.Context, pool *pgxpool.Pool) error {
+	pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	return pool.Ping(pingCtx)
+}
+```
+
+```go title="internal/health/handler.go"
+package health
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/kamu/skincare-backend/internal/database"
+)
+
+type Handler struct {
+	pool *pgxpool.Pool
+}
+
+func NewHandler(pool *pgxpool.Pool) *Handler {
+	return &Handler{pool: pool}
+}
+
+// Readiness memastikan database benar-benar terjangkau sebelum membalas 200.
+func (h *Handler) Readiness(w http.ResponseWriter, r *http.Request) {
+	if err := database.Ping(r.Context(), h.pool); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"status": "unavailable",
+			"db":     "down",
+		})
+		return
+	}
+
+	stat := h.pool.Stat()
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"status":         "ok",
+		"db":             "up",
+		"total_conns":    stat.TotalConns(),
+		"acquired_conns": stat.AcquiredConns(),
+		"idle_conns":     stat.IdleConns(),
+		"max_conns":      stat.MaxConns(),
+	})
+}
+```
+
+Route-nya dipasang di luar grup auth, karena probe platform tidak membawa JWT. Bentuk `/healthz` ini juga yang dipakai stub `curl -i http://localhost:8080/healthz` di modul sebelumnya, sekarang dengan isi yang nyata.
+
+```go title="internal/router/router.go (potongan)"
+health := health.NewHandler(pool)
+r.Get("/healthz", health.Readiness)
+```
+
+<h3>Membaca pool.Stat untuk monitoring</h3>
+
+`pool.Stat()` mengembalikan snapshot keadaan pool. Beberapa angka yang paling berguna untuk memutuskan apakah pool kekecilan atau bocor:
+
+<div class="tbl-wrap">
+<table>
+<thead><tr><th>Metode Stat</th><th>Arti</th><th>Sinyal yang dibaca</th></tr></thead>
+<tbody>
+<tr><td><code>TotalConns()</code></td><td>Total koneksi yang dimiliki pool saat ini.</td><td>Mendekati <code>MaxConns()</code> terus menerus berarti pool sering penuh.</td></tr>
+<tr><td><code>AcquiredConns()</code></td><td>Koneksi yang sedang dipinjam (sibuk).</td><td>Selalu sama dengan total berarti tidak ada koneksi nganggur untuk request baru.</td></tr>
+<tr><td><code>IdleConns()</code></td><td>Koneksi siap pakai yang menganggur.</td><td>Sering nol di bawah beban berarti perlu menaikkan kapasitas atau mempercepat query.</td></tr>
+<tr><td><code>EmptyAcquireCount()</code></td><td>Berapa kali Acquire harus menunggu karena pool kosong.</td><td>Naik cepat berarti request antre menunggu koneksi.</td></tr>
+<tr><td><code>EmptyAcquireWaitTime()</code></td><td>Total waktu menunggu acquire saat pool kosong.</td><td>Tinggi berarti latency tambahan datang dari antre pool, bukan dari query.</td></tr>
+</tbody>
+</table>
+</div>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: pool.totalCount di node-postgres"><p>node-postgres mengekspos `pool.totalCount`, `pool.idleCount`, dan `pool.waitingCount` untuk memantau pool. `pool.Stat()` di pgx adalah padanannya yang lebih kaya, dengan tambahan metrik waktu tunggu acquire yang sangat membantu saat menyetel `MaxConns`.</p></Box>
+
+<Box variant="tip" icon="💡" label="Kirim Stat ke metrics, bukan hanya healthz"><p>Di production, ekspor angka `pool.Stat()` secara periodik ke sistem metrics (Prometheus, CloudWatch) sebagai gauge. Grafik `AcquiredConns` versus `MaxConns` dari waktu ke waktu lebih informatif daripada satu snapshot di `/healthz`, dan langsung memberi tahu kapan pool mulai jadi bottleneck.</p></Box>
+
+</Section>
+
+<Section num="10" id="graceful-shutdown" title="Graceful Shutdown dan pool.Close" sub="Selesaikan request yang sedang jalan, lalu tutup pool dengan rapi">
+
+<p class="lead">Saat aplikasi di-deploy ulang atau di-scale down, platform mengirim sinyal berhenti. Graceful shutdown menyelesaikan request yang sedang berjalan dulu, baru menutup pool, agar tidak ada request yang terpotong di tengah.</p>
+
+Kebalikan dari graceful shutdown adalah aplikasi yang langsung mati saat menerima `SIGTERM`. Request yang sedang menulis order ke database bisa terpotong, koneksi tidak dilepas rapi, dan client menerima error koneksi terputus. Go punya pola standar untuk ini: tangkap sinyal lewat `signal.NotifyContext`, lalu `srv.Shutdown(ctx)` dan `pool.Close()`.
+
+<Def term="graceful shutdown"><p>Proses berhenti yang tertib: server berhenti menerima request baru, menyelesaikan request yang sedang diproses sampai batas waktu tertentu, lalu melepas resource (pool database, file, koneksi) sebelum proses benar-benar keluar.</p></Def>
+
+```go title="cmd/api/main.go (versi lengkap dengan graceful shutdown)"
+package main
+
+import (
+	"context"
+	"errors"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/kamu/skincare-backend/internal/database"
+	"github.com/kamu/skincare-backend/internal/router"
+)
+
+func main() {
+	// 1. Context yang dibatalkan saat menerima SIGINT (Ctrl+C) atau SIGTERM (deploy).
+	rootCtx, stop := signal.NotifyContext(context.Background(),
+		syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	// 2. Pool dibuat dengan timeout startup terpisah.
+	startupCtx, cancel := context.WithTimeout(rootCtx, 10*time.Second)
+	defer cancel()
+
+	pool, err := database.NewPostgresPool(startupCtx, database.Config{
+		ConnString:      os.Getenv("DATABASE_URL"),
+		MaxConns:        10,
+		MinConns:        2,
+		MaxConnLifetime: time.Hour,
+	})
+	if err != nil {
+		log.Fatalf("database: %v", err)
+	}
+	defer pool.Close() // jaring pengaman terakhir kalau jalur shutdown gagal
+
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: router.New(pool),
+	}
+
+	// 3. Jalankan server di goroutine agar main bisa menunggu sinyal.
+	go func() {
+		log.Println("server listening on :8080")
+		if err := srv.ListenAndServe(); err != nil &&
+			!errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("listen: %v", err)
+		}
+	}()
+
+	// 4. Blok di sini sampai sinyal datang, lalu rootCtx.Done() tertutup.
+	<-rootCtx.Done()
+	log.Println("shutdown signal received")
+
+	// 5. Beri request yang sedang jalan waktu menyelesaikan diri.
+	shutdownCtx, cancelShutdown := context.WithTimeout(
+		context.Background(), 15*time.Second)
+	defer cancelShutdown()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("graceful shutdown failed: %v", err)
+	}
+
+	// 6. Setelah server berhenti menerima request, baru tutup pool.
+	pool.Close()
+	log.Println("postgres pool closed, bye")
+}
+```
+
+<Box variant="warn" icon="⚠️" label="Urutan penting: server dulu, pool kemudian"><p>Tutup HTTP server sebelum menutup pool, bukan sebaliknya. `srv.Shutdown` menunggu request yang sedang jalan selesai, dan request itu masih butuh pool untuk query terakhirnya. Jika kamu `pool.Close()` lebih dulu, request yang sedang menulis order tiba-tiba kehilangan database dan gagal di detik terakhir.</p></Box>
+
+<Box variant="note" icon="📌" label="pool.Close tidak mengembalikan error"><p>`pool.Close()` tidak punya return value. Ia menutup semua koneksi idle segera dan menunggu koneksi yang masih dipinjam dilepas. Karena itu, urutan yang benar (server shutdown dulu) menjamin semua koneksi sudah di-release sebelum pool ditutup, sehingga `Close` tidak menggantung.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: SIGTERM di Laravel dan Node"><p>Di Laravel queue worker, kamu mengenal `php artisan queue:work` yang menangani sinyal restart agar job tidak terpotong. Di Node, kamu mendengarkan `process.on('SIGTERM', ...)` lalu memanggil `server.close()` dan `pool.end()`. `signal.NotifyContext` di Go menggabungkan keduanya menjadi satu context yang otomatis tertutup saat sinyal datang, lalu kamu tinggal merespons `<-ctx.Done()`.</p></Box>
+
+```mermaid
+sequenceDiagram
+  participant OS as OS / Platform
+  participant APP as main goroutine
+  participant SRV as http.Server
+  participant POOL as pgxpool
+  OS->>APP: SIGTERM (deploy / scale down)
+  APP->>APP: rootCtx.Done() tertutup
+  APP->>SRV: srv.Shutdown(ctx)
+  SRV->>SRV: tolak request baru, selesaikan yang sedang jalan
+  SRV-->>APP: semua handler selesai
+  APP->>POOL: pool.Close()
+  POOL->>POOL: lepas semua koneksi
+  POOL-->>APP: selesai
+  APP-->>OS: exit 0
+```
+
+<p class="fig-cap"><b>Gambar 3.</b> Urutan graceful shutdown. Server berhenti dan menuntaskan request lebih dulu, baru pool ditutup, sehingga tidak ada query yang terpotong.</p>
+
+</Section>
+
+<Section num="11" id="hands-on" title="Hands-on: Pool dari Nol sampai Healthz" sub="Buat pool, ping, query pertama, dan readiness yang nyata">
+
+<p class="lead">Latihan ini memastikan kamu bisa membuat pool, ping database, menjalankan query pertama, dan membuktikan kesiapan lewat `/healthz`.</p>
+
+<Steps>
+  <Step><b>Tambahkan dependency pgx v5</b><p>Jalankan `go get github.com/jackc/pgx/v5` dari root project agar package `pgxpool` tersedia, lalu `go mod tidy`.</p></Step>
+  <Step><b>Siapkan DATABASE_URL</b><p>Gunakan database lokal dari modul awal Roadmap 3, lalu set environment variable berisi connection string PostgreSQL.</p></Step>
+  <Step><b>Buat package database</b><p>Tambahkan `internal/database/postgres.go` untuk membuat pool, mengatur opsi, dan melakukan `Ping` saat startup.</p></Step>
+  <Step><b>Pasang healthz</b><p>Tambahkan `internal/health/handler.go` dan daftarkan `r.Get("/healthz", health.Readiness)` di router agar kesiapan database bisa dicek.</p></Step>
+  <Step><b>Inject pool ke repository</b><p>Buat `product.NewRepository(pool)` di wiring aplikasi, lalu pakai repository itu dari service untuk satu query nyata.</p></Step>
+  <Step><b>Jalankan dengan graceful shutdown</b><p>Start aplikasi, cek `/healthz`, lalu tekan Ctrl+C dan pastikan log menampilkan pool ditutup dengan rapi.</p></Step>
+</Steps>
+
+```bash title="Terminal"
+go get github.com/jackc/pgx/v5
+export DATABASE_URL='postgres://skincare:secret@localhost:5432/skincare_dev?sslmode=disable'
+go run ./cmd/api
+```
+
+<h3>Seed satu produk untuk dicoba</h3>
+
+Kalau tabel katalog dari modul migrasi sudah ada, isi satu brand, satu produk, dan satu varian dengan harga. Ingat, harga ada di `product_variants.price_rupiah`, bukan di `products`.
+
+```sql title="seed-product.sql"
+INSERT INTO brands (slug, name)
+VALUES ('glow-lab', 'Glow Lab')
+ON CONFLICT (slug) DO NOTHING;
+
+INSERT INTO products (brand_id, slug, name, status)
+VALUES (
+	(SELECT id FROM brands WHERE slug = 'glow-lab'),
+	'serum-niacinamide',
+	'Serum Niacinamide 10%',
+	'active'
+)
+ON CONFLICT (slug) DO NOTHING;
+
+INSERT INTO product_variants (product_id, sku, variant_name, price_rupiah, is_active)
+VALUES (
+	(SELECT id FROM products WHERE slug = 'serum-niacinamide'),
+	'GLOW-NIA-30',
+	'30 ml',
+	129000,
+	true
+)
+ON CONFLICT (sku) DO NOTHING;
+```
+
+<h3>Cek kesiapan dan query pertama</h3>
+
+Setelah aplikasi jalan, panggil `/healthz`. Jika database hidup, kamu akan melihat angka pool yang nyata dari `pool.Stat()`.
+
+```bash title="Terminal"
+curl -i http://localhost:8080/healthz
+```
+
+```json title="Contoh respons /healthz saat siap"
+{
+  "status": "ok",
+  "db": "up",
+  "total_conns": 2,
+  "acquired_conns": 0,
+  "idle_conns": 2,
+  "max_conns": 10
+}
+```
+
+Kalau query repository mengembalikan `nil` karena `ErrNoRows`, itu bukan error fatal, melainkan kondisi produk tidak ditemukan. Pola `if errors.Is(err, pgx.ErrNoRows)` inilah yang membedakan "data tidak ada" dari "query gagal".
+
+<Box variant="tip" icon="💡" label="Uji jalur gagal juga"><p>Matikan PostgreSQL lalu panggil `/healthz` lagi. Kamu harus melihat `503 Service Unavailable` dengan `"db": "down"`. Membuktikan jalur gagal sama pentingnya dengan membuktikan jalur sukses, karena readiness probe gunanya justru saat ada yang rusak.</p></Box>
+
+</Section>
+
+<Section num="12" id="jebakan-umum" title="Jebakan Umum dari JS dan Laravel" sub="Bug koneksi sering soal lifecycle, bukan SQL">
+
+<p class="lead">Banyak bug koneksi database di Go bukan karena SQL salah, tetapi karena lifecycle pool tidak dipahami. Ini daftar jebakan yang paling sering terbawa dari kebiasaan Node atau Laravel.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Membuat pool di handler</h4><p>Ini seperti membuka koneksi database baru setiap HTTP request. Buat pool sekali saat startup, lalu inject ke handler, bukan bikin di dalam handler.</p></Card>
+  <Card><h4>Lupa pool.Close saat shutdown</h4><p>Pool harus ditutup saat aplikasi berhenti agar koneksi dilepas rapi. Pasang lewat graceful shutdown, dengan `defer pool.Close()` sebagai jaring pengaman.</p></Card>
+  <Card><h4>Acquire tanpa Release</h4><p>Setiap `Acquire` wajib diimbangi `defer conn.Release()`. Lupa release menguras pool sampai semua request menggantung menunggu koneksi.</p></Card>
+  <Card><h4>MaxConns terlalu besar</h4><p>Angka besar tidak selalu lebih cepat. PostgreSQL punya `max_connections` dan setiap koneksi memakai memori server. Hitung total lintas instance.</p></Card>
+  <Card><h4>Tidak Ping saat startup</h4><p>Pool bisa dibuat tanpa langsung memastikan koneksi berhasil. `Ping` membuat aplikasi gagal cepat bila DATABASE_URL salah, bukan gagal misterius di request pertama.</p></Card>
+  <Card><h4>Pakai float untuk harga</h4><p>Uang selalu `int64` rupiah dengan kolom `price_rupiah` bigint. `float` membawa galat pembulatan yang fatal untuk uang.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="🚫" label="Gotcha: pool bukan global magic"><p>Hindari global variable `var DB *pgxpool.Pool` yang dipakai dari semua package. Untuk project kecil mungkin terasa praktis, tetapi dependency menjadi tersembunyi, urutan inisialisasi jadi rapuh, dan test sulit menukar pool. Buat pool di `main.go`, lalu teruskan lewat constructor.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Gotcha: context request bukan context background"><p>Jangan memakai `context.Background()` untuk query di dalam handler. Selalu pakai `r.Context()` agar pembatalan dari client (disconnect, timeout) mengalir ke query. Memakai `Background()` membuat query tetap jalan walau client sudah pergi, memboroskan koneksi pool.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari singleton Node ke composition root"><p>Di Node.js kamu mungkin meng-export satu instance `pool` dari modul lalu `import` di mana-mana, sebuah singleton implisit. Di Go, pola yang lebih sehat adalah membuat pool di composition root (`main.go`), lalu meneruskannya lewat constructor. Hasilnya sama persis (satu pool dipakai bersama), tetapi dependency-nya terlihat di tanda tangan fungsi, bukan tersembunyi di import.</p></Box>
+
+</Section>
+
+<Section num="13" id="ringkasan" title="Ringkasan & Poin Penting">
+
+<p class="lead">Koneksi database yang benar adalah fondasi semua fitur berikutnya: katalog produk, cart, checkout, payment, dan admin inventory. Pool yang hemat, teramati, dan mati dengan rapi membuat sisa Roadmap 3 berdiri di atas tanah yang kokoh.</p>
+
+<Recap title="Yang Wajib Menempel">
+  <ul>
+    <li>`pgxpool` adalah pilihan default untuk API Go yang melayani banyak request paralel, sedangkan `pgx.Connect` untuk script satu koneksi.</li>
+    <li>Connection string dibaca dari environment atau secret, jangan ditulis di kode. Bungkus startup dengan `context.WithTimeout` agar gagal cepat saat database tidak siap.</li>
+    <li>Buat pool sekali saat startup lewat `internal/database`, jalankan `pool.Ping(ctx)`, lalu inject `*pgxpool.Pool` ke repository via constructor.</li>
+    <li>`MaxConns`, `MinConns`, dan lifetime dihitung dari kapasitas database dan jumlah instance, bukan ditebak. Naikkan setelah mengukur `pool.Stat()`.</li>
+    <li>`Acquire`/`Release` hanya untuk operasi yang butuh koneksi fisik yang sama (session state, LISTEN/NOTIFY). Selalu `defer conn.Release()`.</li>
+    <li>Endpoint `/healthz` melakukan `Ping` dan melaporkan `pool.Stat()`, membuktikan database benar-benar siap, bukan sekadar proses hidup.</li>
+    <li>Graceful shutdown dengan `signal.NotifyContext`: tutup HTTP server lebih dulu, baru `pool.Close()`, agar tidak ada request yang terpotong.</li>
+    <li>Uang selalu `PriceRupiah int64` dengan kolom `price_rupiah` (bigint), milik `product_variants`, tidak pernah float.</li>
+  </ul>
+</Recap>
+
+Di proyek online shop skincare, pool ini akan dipakai oleh repository `products`, `product_variants`, `carts`, `orders`, `payments`, dan `shipments`. Setelah koneksi siap dan teramati, langkah berikutnya adalah menjalankan query baca dengan pgx: `Query`, `QueryRow`, `Scan` ke struct, menangani `ErrNoRows`, lalu memetakan banyak row menjadi slice dengan `pgx.CollectRows`. Setelah itu kita masuk ke write, transaksi checkout, dan repository penuh.
+
+<Box variant="tip" icon="🚀" label="Langkah berikutnya"><p>Dengan pool yang sehat di tangan, modul query pgx akan terasa ringan: kamu tinggal memanggil method pool yang sudah kamu kenal di sini. Jaga agar setiap repository tetap menerima pool dari luar dan setiap query membawa `ctx` dari request, dan sebagian besar masalah koneksi tidak akan pernah muncul.</p></Box>
+
+</Section>

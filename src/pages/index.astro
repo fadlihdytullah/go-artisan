@@ -14,6 +14,24 @@ const totalMinutes = mods.reduce((sum, m) => {
 }, 0);
 const totalHours = Math.max(1, Math.round(totalMinutes / 60));
 const moduleIds = mods.map((mod) => mod.id);
+
+// Map id → global index untuk animasi stagger yang konsisten
+const globalIndexMap = new Map(mods.map((m, i) => [m.id, i]));
+
+// Kelompokkan modul per roadmap (r1c01 → roadmap 1, r2c03 → roadmap 2, dst.)
+type RoadmapGroup = { num: number; name: string; modules: typeof mods };
+const roadmapMap = new Map<number, RoadmapGroup>();
+for (const mod of mods) {
+  const idMatch = mod.id.match(/^r(\d+)/);
+  const roadmapNum = idMatch ? parseInt(idMatch[1]) : 99;
+  const targetParts = mod.data.target?.split('·') ?? [];
+  const roadmapName = targetParts[1]?.trim() ?? `Roadmap ${roadmapNum}`;
+  if (!roadmapMap.has(roadmapNum)) {
+    roadmapMap.set(roadmapNum, { num: roadmapNum, name: roadmapName, modules: [] });
+  }
+  roadmapMap.get(roadmapNum)!.modules.push(mod);
+}
+const roadmaps = Array.from(roadmapMap.values()).sort((a, b) => a.num - b.num);
 ---
 <BaseLayout title="Go Artisan — Belajar Go Backend untuk Developer" nav={{ variant: 'home' }}>
   <main class="home" data-home-progress data-module-ids={JSON.stringify(moduleIds)}>
@@ -53,35 +71,47 @@ const moduleIds = mods.map((mod) => mod.id);
         <span class="count">{mods.length} modul tersedia</span>
       </div>
 
-      <ol class="curr">
-        {mods.map((mod, i) => (
-          <li class="curr-item" style={`--i:${i}`} data-module-item data-module-id={mod.id}>
-            <a href={`/modul/${mod.id}`} data-module-link>
-              <span class="curr-index" aria-hidden="true">
-                <span class="curr-index-num">{String(i + 1).padStart(2, '0')}</span>
-                <span class="curr-index-check">✓</span>
-              </span>
-              <span class="curr-title-row">
-                <span class="curr-title">{mod.data.topTitle}</span>
-                <span class="curr-badge" aria-hidden="true">{mod.data.badge}</span>
-                {mod.data.order === 1 && <span class="curr-flag">Mulai di sini</span>}
-                <span class="curr-state" data-module-state hidden>Belum mulai</span>
-              </span>
-              <span class="curr-sum-row">
-                <span class="curr-sum">{mod.data.summary}</span>
-                <span class="curr-meta">
-                  {mod.data.target && <span class="curr-target">{mod.data.target}</span>}
-                  {mod.data.target && mod.data.readingTime && <span class="dotsep" aria-hidden="true">&middot;</span>}
-                  {mod.data.readingTime && <span>{mod.data.readingTime.replace(' baca', '')}</span>}
-                  <span class="dotsep" aria-hidden="true">&middot;</span>
-                  <span>{mod.data.toc.length} bagian</span>
-                </span>
-              </span>
-              <span class="curr-go" aria-hidden="true"><Icon name="chevron-right" size={17} /></span>
-            </a>
-          </li>
-        ))}
-      </ol>
+      {roadmaps.map((roadmap) => (
+        <div class="curr-roadmap">
+          <div class="curr-roadmap-head">
+            <span class="curr-roadmap-label">Roadmap {roadmap.num}</span>
+            <span class="curr-roadmap-name">{roadmap.name}</span>
+            <span class="curr-roadmap-count">{roadmap.modules.length} modul</span>
+          </div>
+          <ol class="curr">
+            {roadmap.modules.map((mod) => {
+              const gi = globalIndexMap.get(mod.id) ?? 0;
+              const chMatch = mod.id.match(/c(\d+)/);
+              const chNum = chMatch ? parseInt(chMatch[1]) : gi + 1;
+              return (
+                <li class="curr-item" style={`--i:${gi}`} data-module-item data-module-id={mod.id}>
+                  <a href={`/modul/${mod.id}`} data-module-link>
+                    <span class="curr-index" aria-hidden="true">
+                      <span class="curr-index-num">{String(chNum).padStart(2, '0')}</span>
+                      <span class="curr-index-check">✓</span>
+                    </span>
+                    <span class="curr-title-row">
+                      <span class="curr-title">{mod.data.topTitle}</span>
+                      <span class="curr-badge" aria-hidden="true">{mod.data.badge}</span>
+                      {mod.data.order === 1 && <span class="curr-flag">Mulai di sini</span>}
+                      <span class="curr-state" data-module-state hidden>Belum mulai</span>
+                    </span>
+                    <span class="curr-sum-row">
+                      <span class="curr-sum">{mod.data.summary}</span>
+                      <span class="curr-meta">
+                        {mod.data.readingTime && <span>{mod.data.readingTime.replace(' baca', '')}</span>}
+                        <span class="dotsep" aria-hidden="true">&middot;</span>
+                        <span>{mod.data.toc.length} bagian</span>
+                      </span>
+                    </span>
+                    <span class="curr-go" aria-hidden="true"><Icon name="chevron-right" size={17} /></span>
+                  </a>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      ))}
     </section>
   </main>
 

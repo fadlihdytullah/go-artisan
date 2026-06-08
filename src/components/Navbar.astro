@@ -35,6 +35,21 @@ const mods = (await getCollection('modules')).sort(
 const path = Astro.url.pathname.replace(/\/$/, '');
 const current = mods.find((m) => path === `/modul/${m.id}`) ?? null;
 const switchLabel = current ? current.data.topTitle : 'Semua modul';
+
+// Kelompokkan modul per roadmap untuk switcher
+type NssGroup = { num: number; name: string; modules: typeof mods };
+const nssMap = new Map<number, NssGroup>();
+for (const mod of mods) {
+  const idMatch = mod.id.match(/^r(\d+)/);
+  const roadmapNum = idMatch ? parseInt(idMatch[1]) : 99;
+  const targetParts = mod.data.target?.split('·') ?? [];
+  const roadmapName = targetParts[1]?.trim() ?? `Roadmap ${roadmapNum}`;
+  if (!nssMap.has(roadmapNum)) {
+    nssMap.set(roadmapNum, { num: roadmapNum, name: roadmapName, modules: [] });
+  }
+  nssMap.get(roadmapNum)!.modules.push(mod);
+}
+const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
 ---
 <header class="topbar">
   <div class="topbar-inner">
@@ -76,20 +91,25 @@ const switchLabel = current ? current.data.topTitle : 'Semua modul';
       </button>
       <div id="mod-switcher" popover="auto" class="nav-switch-menu" role="menu" aria-label="Daftar modul">
         <p class="nss-head">Pindah ke modul</p>
-        {mods.map((m) => (
-          <a
-            href={`/modul/${m.id}`}
-            class={`nss-item${current && current.id === m.id ? ' is-current' : ''}`}
-            role="menuitem"
-            aria-current={current && current.id === m.id ? 'page' : undefined}
-          >
-            <span class="nss-badge" aria-hidden="true">{m.data.badge}</span>
-            <span class="nss-body">
-              <span class="nss-title">{m.data.topTitle}</span>
-              <span class="nss-sub">{m.data.target ?? 'Go'}{m.data.readingTime ? ` · ${m.data.readingTime.replace(' baca', '')}` : ''}</span>
-            </span>
-            {current && current.id === m.id && <span class="nss-here">Dibaca</span>}
-          </a>
+        {nssGroups.map((group) => (
+          <>
+            <p class="nss-group">R{group.num} · {group.name}</p>
+            {group.modules.map((m) => (
+              <a
+                href={`/modul/${m.id}`}
+                class={`nss-item${current && current.id === m.id ? ' is-current' : ''}`}
+                role="menuitem"
+                aria-current={current && current.id === m.id ? 'page' : undefined}
+              >
+                <span class="nss-badge" aria-hidden="true">{m.data.badge}</span>
+                <span class="nss-body">
+                  <span class="nss-title">{m.data.topTitle}</span>
+                  <span class="nss-sub">{m.data.readingTime ? m.data.readingTime.replace(' baca', '') : ''}</span>
+                </span>
+                {current && current.id === m.id && <span class="nss-here">Dibaca</span>}
+              </a>
+            ))}
+          </>
         ))}
       </div>
     </div>

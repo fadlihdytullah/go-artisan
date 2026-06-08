@@ -1,0 +1,797 @@
+---
+title: "Modul Manajemen Konfigurasi - Go Artisan"
+badge: "CFG"
+topTitle: "Manajemen Konfigurasi"
+topSub: "Go untuk Developer JavaScript & PHP"
+summary: "Kelola DB URL, JWT, AWS, dan payment gateway dengan aman: baca env ke Config struct, validasi fail-fast saat start, dan jalankan satu binary di local, staging, serta production."
+order: 33
+target: "Roadmap 4 · Clean Backend Architecture"
+readingTime: "~65 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa Konfigurasi Perlu Dikelola" }
+  - { num: "02", id: "env-var", title: "Environment Variable sebagai Sumber Config" }
+  - { num: "03", id: "config-struct", title: "Config Struct di Go" }
+  - { num: "04", id: "per-environment", title: "Local, Staging, dan Production" }
+  - { num: "05", id: "godotenv-local", title: ".env untuk Local Development" }
+  - { num: "06", id: "secrets", title: "Secrets vs Config Biasa" }
+  - { num: "07", id: "domain-config", title: "DB URL, JWT, AWS, dan Payment Gateway" }
+  - { num: "08", id: "validasi-failfast", title: "Validasi Fail-Fast saat Start" }
+  - { num: "09", id: "hands-on", title: "Hands-on: Loader Config Skincare API" }
+  - { num: "10", id: "integrasi", title: "Integrasi ke API dan Worker" }
+  - { num: "11", id: "jebakan", title: "Jebakan Umum dari JS dan PHP" }
+  - { num: "12", id: "ringkasan", title: "Ringkasan & Poin Penting" }
+footerTitle: "Modul Manajemen Konfigurasi - Go Artisan"
+footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Def } from "@components";
+
+<Hero eyebrow="Roadmap 4 &middot; Clean Architecture" title="Manajemen <em>Konfigurasi</em><br />Satu Binary, Banyak Environment">
+  <p>Config yang rapi membuat satu binary Go berjalan aman di local, staging, dan production tanpa mengubah kode: env dibaca ke satu Config struct, divalidasi fail-fast, lalu dibekukan.</p>
+  <Fragment slot="meta">
+    <Chip icon="code">Bahasa: <b>Go 1.26</b></Chip>
+    <Chip icon="shield">DB &middot; JWT &middot; AWS &middot; Payment</Chip>
+    <Chip icon="clock">~65 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa Konfigurasi Perlu Dikelola" sub="Satu binary, banyak environment, tanpa edit source code">
+
+<p class="lead">Di React atau Next.js kamu terbiasa dengan `.env.local` dan `process.env`; di Laravel kamu terbiasa dengan `.env` plus `config/*.php` dan helper `config()`; di Go tidak ada framework yang membaca itu untukmu, jadi kita rancang polanya sendiri secara eksplisit.</p>
+
+Konfigurasi adalah nilai yang berubah antar environment: alamat PostgreSQL, secret penanda-tangan JWT, port HTTP, region AWS, dan kunci payment gateway. Kode bisnisnya sama persis, tetapi nilai konfigurasinya berbeda antara laptop developer, staging, dan production. Tujuan modul ini adalah membuat satu binary yang dibangun sekali, lalu dijalankan di mana saja hanya dengan mengganti environment di sekitarnya.
+
+Dalam proyek online shop skincare, endpoint product listing, cart, checkout, payment webhook, dan worker notifikasi semuanya butuh config yang konsisten. Tanpa manajemen config yang disiplin, `cmd/api/main.go` cepat berubah menjadi tempat bercampurnya string rahasia, default asal-asalan, dan validasi yang tersebar. Begitu satu nilai salah di production (`DB_URL` lupa diisi, `JWT_SECRET` masih placeholder), bug-nya baru muncul saat customer pertama checkout, bukan saat deploy.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: .env Laravel dan Next.js ke Go"><p>Mirip `.env` di Laravel atau Next.js, tetapi di Go tidak ada `php.ini` magic, tidak ada `config()` helper bawaan, dan tidak ada `process.env` global yang dianggap normal dibaca dari mana saja. Kita sendiri yang memutuskan kapan env dibaca, divalidasi, lalu dibekukan menjadi sebuah struct yang diteruskan secara eksplisit.</p></Box>
+
+<Def term="configuration"><p>Nilai eksternal yang mengatur perilaku aplikasi tanpa perlu mengubah source code, misalnya `DB_URL`, `JWT_SECRET`, `PORT`, `AWS_REGION`, dan `MIDTRANS_SERVER_KEY`. Yang berubah antar environment adalah nilainya, bukan binary-nya.</p></Def>
+
+<FileTree title="Letak config dalam modular monolith skincare" tree={`
+cmd/
+  api/
+    main.go              # entry point HTTP API, memanggil config.Load
+  worker/
+    main.go              # entry point background worker, memanggil config.Load
+internal/
+  config/
+    config.go            # Load: baca env, parse, validasi fail-fast
+    config_test.go       # tes loader dengan t.Setenv, deterministik
+  database/
+    postgres.go          # menerima cfg.DB untuk pgxpool
+  auth/
+    jwt.go               # menerima cfg.JWT untuk sign dan verify
+  payment/
+    midtrans_client.go   # menerima cfg.Payment untuk Snap dan webhook
+  storage/
+    s3.go                # menerima cfg.AWS untuk upload foto produk
+.env.example             # template local, aman di-commit
+.env                     # nilai local sungguhan, JANGAN di-commit
+`} />
+
+</Section>
+
+<Section num="02" id="env-var" title="Environment Variable sebagai Sumber Config" sub="Prinsip Twelve-Factor App untuk deploy modern">
+
+<p class="lead">Twelve-Factor App menyarankan config disimpan di environment variable, bukan di-hard-code di source code dan bukan pula di file config yang ikut ter-commit.</p>
+
+Prinsipnya sederhana: aplikasi membaca config dari environment saat startup. Di laptop, environment bisa diisi dari `.env`. Di staging dan production, environment diisi oleh platform deployment seperti Docker Compose, ECS task definition, atau secret manager. Karena binary hasil build tetap sama, yang berbeda hanya environment yang membungkus binary itu saat dijalankan.
+
+[Dokumentasi Twelve-Factor Config](https://12factor.net/config) menekankan dua hal: env var mudah diubah antar deploy tanpa menyentuh kode, dan kecil peluangnya ikut ter-commit dibanding file config custom. Untuk Go ini sangat pas karena tidak ada langkah build per-environment: satu `go build` menghasilkan satu binary, dan environment-lah yang menentukan ia bicara ke database mana.
+
+<Compare aLabel="Laravel / Next.js" bLabel="Go" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>Framework otomatis membaca `.env` dan menyediakan helper `env()` atau `process.env` di mana saja.</li><li>Banyak default tersembunyi datang dari framework, file config, atau runtime.</li><li>Config sering dianggap "ada begitu saja" tanpa langkah baca yang jelas.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Aplikasi membaca env sendiri dengan `os.Getenv` atau `os.LookupEnv`, satu kali, di boundary.</li><li>Tidak ada default tersembunyi: setiap fallback ditulis eksplisit di loader.</li><li>Semua nilai dikumpulkan ke satu `Config` agar tidak ada package yang membaca env diam-diam.</li></ul></Fragment>
+</Compare>
+
+<CardGrid cols={3}>
+  <Card><h4>Local</h4><p>Developer memakai `.env` di laptop agar tidak perlu mengekspor env var satu per satu setiap buka terminal baru.</p></Card>
+  <Card><h4>Staging</h4><p>Nilai mendekati production, tetapi memakai database, secret, dan key sandbox sehingga aman untuk uji coba.</p></Card>
+  <Card><h4>Production</h4><p>Env var berasal dari platform deploy atau secret manager (AWS), bukan dari file `.env` di repository.</p></Card>
+</CardGrid>
+
+```mermaid
+flowchart LR
+  DEV["Local .env"] --> APP["Go process"]
+  STG["Staging env vars"] --> APP
+  PROD["Production secrets manager"] --> APP
+  APP --> CFG["internal/config.Config"]
+  CFG --> API["cmd/api"]
+  CFG --> WORKER["cmd/worker"]
+  CFG --> DB["PostgreSQL (pgxpool)"]
+  CFG --> AUTH["JWT signer"]
+  CFG --> AWS["AWS S3 client"]
+  CFG --> PAY["Midtrans client"]
+```
+<p class="fig-cap"><b>Gambar 1.</b> Satu cara baca config dipakai ulang oleh API, worker, database, auth, storage, dan payment. Yang berganti hanya sumber env di kiri, bukan binary di tengah.</p>
+
+</Section>
+
+<Section num="03" id="config-struct" title="Config Struct di Go" sub="Jangan sebarkan os.Getenv ke seluruh codebase">
+
+<p class="lead">Pola yang bersih adalah membaca env sekali saat startup, mem-parse ke tipe yang benar, memvalidasi, lalu meneruskan `Config` ke komponen yang membutuhkannya. Setelah itu, tidak ada lagi package yang menyentuh `os.Getenv`.</p>
+
+Di Go, `os.Getenv` mengembalikan string kosong bila key tidak ada. Karena string kosong kadang juga nilai yang valid, [dokumentasi package `os`](https://pkg.go.dev/os) menyediakan `os.LookupEnv` yang mengembalikan `(value, ok bool)` agar kamu bisa membedakan "key tidak ada" dari "key ada tetapi kosong". Perbedaan kecil ini penting saat kamu ingin tahu apakah developer benar-benar lupa mengisi sesuatu.
+
+```go title="contoh-env-read.go"
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	// os.Getenv: key tidak ada -> "" (tidak bisa dibedakan dari kosong sungguhan).
+	port := os.Getenv("PORT")
+	fmt.Println("PORT:", port)
+
+	// os.LookupEnv: ok membedakan "tidak diset" dari "diset tapi kosong".
+	jwtSecret, ok := os.LookupEnv("JWT_SECRET")
+	if !ok {
+		fmt.Println("JWT_SECRET belum diset sama sekali")
+		return
+	}
+	fmt.Println("JWT_SECRET length:", len(jwtSecret))
+}
+```
+
+<Box variant="tip" icon="💡" label="Idiom Go: baca env di boundary, bukan di mana-mana"><p>Hanya `cmd/api/main.go` dan `cmd/worker/main.go` yang memanggil `config.Load()`. Handler, service, dan repository tidak pernah memanggil `os.Getenv` sendiri. Dengan begitu, semua nilai yang menentukan perilaku aplikasi terkumpul di satu tempat yang bisa dibaca, dites, dan divalidasi.</p></Box>
+
+Config struct memberi kontrak eksplisit. Daripada string tersebar, kita punya satu bentuk data bertipe benar yang bisa dites dan diteruskan ke dependency lain. Untuk proyek yang punya banyak domain config (DB, JWT, AWS, payment), pisahkan menjadi sub-struct agar terbaca dan tidak menjadi satu struct raksasa berisi puluhan field datar.
+
+```go title="internal/config/config.go (bentuk struct)"
+package config
+
+import "time"
+
+// Config adalah seluruh konfigurasi aplikasi, dikelompokkan per domain.
+type Config struct {
+	App      AppConfig
+	HTTP     HTTPConfig
+	DB       DBConfig
+	JWT      JWTConfig
+	AWS      AWSConfig
+	Payment  PaymentConfig
+}
+
+type AppConfig struct {
+	Env      string // local, staging, production
+	LogLevel string // debug, info, warn, error
+}
+
+type HTTPConfig struct {
+	Port            string
+	ReadTimeout     time.Duration
+	ShutdownTimeout time.Duration
+}
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: config('database.url') Laravel vs cfg.DB.URL Go"><p>Di Laravel kamu menulis `config('database.connections.pgsql.url')` dan string kunci itu rawan salah ketik karena tidak dicek compiler. Di Go, `cfg.DB.URL` adalah field bertipe yang dicek saat compile: salah nama field, build gagal. Autocomplete editor pun langsung tahu field apa saja yang tersedia.</p></Box>
+
+<Def term="startup validation"><p>Memeriksa config sebelum server menerima request, sehingga error fatal seperti `DB_URL` kosong atau `JWT_SECRET` terlalu pendek terlihat saat start, bukan baru meledak saat customer pertama melakukan checkout.</p></Def>
+
+</Section>
+
+<Section num="04" id="per-environment" title="Local, Staging, dan Production" sub="Nilai yang sama strukturnya, beda isinya per environment">
+
+<p class="lead">Inti dari config per-environment bukan kode yang berbeda, melainkan nilai yang berbeda untuk struktur yang sama. `APP_ENV` menjadi penanda yang menentukan beberapa keputusan kecil, seperti apakah `.env` perlu dibaca dan apakah `sslmode` database boleh `disable`.</p>
+
+Tiga environment yang dipakai proyek skincare punya peran berbeda. Local adalah laptop developer dengan PostgreSQL Docker dan key sandbox. Staging adalah salinan production yang dipakai QA, dengan database terpisah dan key sandbox. Production adalah yang melayani customer sungguhan, dengan secret asli yang hanya hidup di secret manager AWS.
+
+<div class="tbl-wrap">
+<table>
+<tr><th>Config key</th><th>Local</th><th>Staging</th><th>Production</th></tr>
+<tr><td><code>APP_ENV</code></td><td>local</td><td>staging</td><td>production</td></tr>
+<tr><td><code>LOG_LEVEL</code></td><td>debug</td><td>info</td><td>info</td></tr>
+<tr><td><code>DB_URL</code> sslmode</td><td>disable</td><td>require</td><td>require</td></tr>
+<tr><td><code>JWT_SECRET</code></td><td>placeholder lokal</td><td>secret sandbox</td><td>secret manager AWS</td></tr>
+<tr><td><code>MIDTRANS_ENV</code></td><td>sandbox</td><td>sandbox</td><td>production</td></tr>
+<tr><td>Sumber env</td><td>file <code>.env</code></td><td>ECS task definition</td><td>ECS + Secrets Manager</td></tr>
+</table>
+</div>
+
+<Box variant="warn" icon="⚠️" label="sslmode=disable hanya untuk local"><p>`sslmode=disable` boleh untuk PostgreSQL Docker di laptop, tetapi di staging dan production wajib `require` (atau `verify-full`). Salah satu validasi yang berguna: tolak start bila `APP_ENV` adalah production tetapi `DB_URL` masih memakai `sslmode=disable`.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: APP_ENV mirip app.env Laravel dan NODE_ENV"><p>`APP_ENV` di Go memainkan peran yang sama dengan `app.env` di Laravel atau `NODE_ENV` di Node: penanda environment yang dipakai untuk keputusan kecil. Bedanya, di Go kita tidak memakainya untuk memuat file config berbeda secara ajaib. Kita hanya memakainya untuk dua hal terbatas: memutuskan apakah `.env` dibaca, dan memperketat validasi saat production.</p></Box>
+
+```mermaid
+flowchart TD
+  START["config.Load dipanggil"] --> ENV{"APP_ENV"}
+  ENV -->|local atau kosong| LOCAL["Baca .env, izinkan sslmode disable"]
+  ENV -->|staging| STG["Env dari platform, validasi standar"]
+  ENV -->|production| PROD["Env dari secret manager, validasi ketat: TLS wajib, secret kuat"]
+  LOCAL --> CFG["Config tervalidasi"]
+  STG --> CFG
+  PROD --> CFG
+```
+<p class="fig-cap"><b>Gambar 2.</b> `APP_ENV` hanya mengubah dari mana env dibaca dan seberapa ketat validasinya, bukan mengganti kode aplikasi.</p>
+
+</Section>
+
+<Section num="05" id="godotenv-local" title=".env untuk Local Development" sub="Praktis di laptop, bukan strategi production">
+
+<p class="lead">Library `github.com/joho/godotenv` populer karena bisa memuat `.env` ke environment process saat local development, sehingga developer tidak perlu mengekspor env var satu per satu.</p>
+
+[`joho/godotenv`](https://github.com/joho/godotenv) adalah port dotenv untuk Go yang membaca file `.env` lalu menaruh isinya ke environment process saat aplikasi di-bootstrap. Gunakan untuk local development, bukan sebagai cara utama membawa secret ke production. Di production, env var sudah disuntik oleh platform, jadi `.env` tidak perlu ada sama sekali.
+
+```text title=".env.example"
+APP_ENV=local
+PORT=8080
+LOG_LEVEL=debug
+
+DB_URL=postgres://skincare:skincare@localhost:5432/skincare_dev?sslmode=disable
+DB_MAX_CONNS=10
+
+JWT_SECRET=change-me-minimum-32-characters-local-only
+JWT_EXPIRY=15m
+
+AWS_REGION=ap-southeast-1
+AWS_S3_BUCKET=skincare-assets-dev
+
+MIDTRANS_ENV=sandbox
+MIDTRANS_SERVER_KEY=SB-Mid-server-change_me
+MIDTRANS_CLIENT_KEY=SB-Mid-client-change_me
+```
+
+<Box variant="warn" icon="⚠️" label="Commit .env.example, jangan commit .env"><p>`.env.example` berisi nama key dan placeholder yang aman dibaca publik, jadi ia menjadi dokumentasi hidup tentang env apa saja yang dibutuhkan aplikasi. `.env` berisi nilai lokal sungguhan dan tidak boleh masuk Git. Sekali secret production masuk Git, anggap bocor, lalu rotasi.</p></Box>
+
+```text title=".gitignore"
+.env
+.env.*
+!.env.example
+```
+
+<Steps>
+  <Step><b>Buat `.env.example`</b><p>Tulis semua key yang dibutuhkan aplikasi dengan placeholder aman, sehingga developer baru tahu apa yang harus diisi.</p></Step>
+  <Step><b>Copy ke `.env`</b><p>Developer lokal menjalankan `cp .env.example .env`, lalu mengisi nilai sesuai laptop masing-masing.</p></Step>
+  <Step><b>Load hanya saat local</b><p>`godotenv.Load()` dipanggil hanya bila `APP_ENV` belum diset atau bernilai `local`, sehingga staging dan production tidak pernah bergantung pada file `.env`.</p></Step>
+</Steps>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dotenv Node vs godotenv Go"><p>Di Node, paket `dotenv` dipanggil di paling atas (`require('dotenv').config()`) lalu kamu membaca `process.env`. `godotenv` bekerja persis sama: ia mengisi environment, lalu kamu tetap membaca lewat `os.LookupEnv`. Perbedaannya kita panggil bersyarat (`shouldLoadDotEnv`) agar production tidak ikut mencari file `.env` yang memang tidak ada.</p></Box>
+
+</Section>
+
+<Section num="06" id="secrets" title="Secrets vs Config Biasa" sub="Tidak semua config punya tingkat risiko yang sama">
+
+<p class="lead">Config perlu diklasifikasikan agar tim tahu mana yang boleh terlihat di log dan dokumentasi, dan mana yang harus dilindungi seperti kunci brankas.</p>
+
+Secret adalah nilai yang jika bocor bisa dipakai untuk mengakses sistem, menandatangani token, atau memanggil layanan berbayar atas nama kita. Config biasa (non-secret) tetap config, tetapi tidak memberi akses langsung bila terlihat. Aturan kasarnya: kalau bocornya nilai itu memaksamu rotasi atau panik, itu secret.
+
+<CardGrid cols={2}>
+  <Card><h4>Secrets</h4><p>`DB_URL` (berisi password), `JWT_SECRET`, `MIDTRANS_SERVER_KEY`, webhook signing secret, dan AWS access key. Bocor berarti rotasi.</p></Card>
+  <Card><h4>Config biasa</h4><p>`PORT`, `APP_ENV`, `LOG_LEVEL`, `AWS_REGION`, `AWS_S3_BUCKET`, `MIDTRANS_CLIENT_KEY`, base URL publik. Boleh terlihat di dokumentasi.</p></Card>
+</CardGrid>
+
+<Box variant="note" icon="🔎" label="Aturan aman logging config"><p>Boleh log bahwa config berhasil dimuat dan environment yang dipakai (`slog.Info("config loaded", "env", cfg.App.Env)`). Jangan pernah log isi `JWT_SECRET`, `MIDTRANS_SERVER_KEY`, atau connection string lengkap. Hindari juga `slog.Info("config", "cfg", cfg)` karena itu mencetak seluruh struct termasuk secret.</p></Box>
+
+Untuk production di AWS, nilai secret idealnya berasal dari AWS Secrets Manager atau SSM Parameter Store, lalu disuntik ke environment container saat task ECS dijalankan. Aplikasi tetap membacanya lewat `os.LookupEnv` yang sama, jadi kode tidak perlu tahu dari mana asal nilainya. Cara memasukkan secret ke ECS dan RDS dibahas tuntas di Roadmap 8.
+
+```mermaid
+flowchart TD
+  A["Config key"] --> B{"Bocornya memberi akses?"}
+  B -->|Ya| C["Secret"]
+  B -->|Tidak| D["Config biasa"]
+  C --> E["Jangan commit, jangan log, simpan di secret manager"]
+  D --> F["Boleh di dokumentasi, tetap jangan hard-code bila beda antar env"]
+```
+<p class="fig-cap"><b>Gambar 3.</b> Satu pertanyaan sederhana memisahkan secret dari config biasa sebelum kamu menulis loader.</p>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: JWT_SECRET sama dengan APP_KEY Laravel"><p>`JWT_SECRET` memainkan peran seperti `APP_KEY` di Laravel: kunci kriptografis yang dipakai menandatangani sesuatu yang dipercaya client. Sama seperti `APP_KEY`, ia tidak boleh di-hard-code, tidak boleh sama antar environment, dan tidak boleh dipakai nilai contoh di production. Kalau bocor, semua token yang sudah diterbitkan harus dianggap tidak aman.</p></Box>
+
+</Section>
+
+<Section num="07" id="domain-config" title="DB URL, JWT, AWS, dan Payment Gateway" sub="Empat config inti yang menentukan apakah backend skincare aman">
+
+<p class="lead">Sekarang kita perdalam empat config yang menjadi tulang punggung backend: koneksi PostgreSQL, penanda-tangan JWT, akses AWS, dan kunci payment gateway. Masing-masing punya bentuk yang khas dan validasi yang khas.</p>
+
+<h3>DB URL untuk pgxpool</h3>
+
+`DB_URL` adalah connection string PostgreSQL yang dipakai `pgxpool`. Ia secret karena berisi password. Untuk mengontrol ukuran pool secara terpisah, proyek menambahkan `DB_MAX_CONNS` sebagai angka. Validasi penting: URL harus bisa di-parse, dan saat production `sslmode` tidak boleh `disable`.
+
+```go title="internal/config/config.go (DBConfig)"
+type DBConfig struct {
+	URL      string
+	MaxConns int32
+}
+```
+
+<h3>JWT untuk auth</h3>
+
+`JWTConfig` membawa `Secret` (untuk HS256) dan `Expiry` access token. Sesuai pola auth di Roadmap 2, access token JWT berumur pendek sekitar 15 menit. `Secret` wajib minimal 32 karakter agar HMAC cukup kuat, dan `Expiry` wajib lebih besar dari nol.
+
+```go title="internal/config/config.go (JWTConfig)"
+type JWTConfig struct {
+	Secret string
+	Expiry time.Duration
+}
+```
+
+<h3>AWS untuk S3</h3>
+
+Untuk online shop skincare, AWS dipakai antara lain menyimpan foto produk di S3. Yang menarik: [AWS SDK for Go v2](https://aws.github.io/aws-sdk-go-v2/docs/configuring-sdk/) lewat `config.LoadDefaultConfig` sudah otomatis membaca `AWS_REGION`, `AWS_ACCESS_KEY_ID`, dan `AWS_SECRET_ACCESS_KEY` dari environment lewat default credential chain. Jadi kita tidak perlu menaruh access key ke dalam struct sendiri. Yang kita simpan di `AWSConfig` hanya nilai aplikasi: region (untuk ditegaskan) dan nama bucket.
+
+```go title="internal/config/config.go (AWSConfig)"
+type AWSConfig struct {
+	Region   string
+	S3Bucket string
+}
+```
+
+<Box variant="tip" icon="💡" label="Biarkan SDK membaca credential-nya sendiri"><p>Jangan membaca `AWS_SECRET_ACCESS_KEY` ke dalam struct lalu mengopernya manual. AWS SDK Go v2 sudah punya credential chain (env var, lalu IAM role saat di ECS). Di production kita justru memakai IAM role tanpa access key sama sekali. Cukup simpan region dan bucket di config, dan biarkan `config.LoadDefaultConfig(ctx)` mengurus kredensial.</p></Box>
+
+<h3>Payment gateway (Midtrans)</h3>
+
+Karena toko ini melayani pasar Indonesia, payment gateway yang realistis adalah [Midtrans](https://docs.midtrans.com/docs/access-keys). Midtrans membedakan `ServerKey` (rahasia, dipakai server untuk membuat transaksi dan verifikasi) dari `ClientKey` (boleh tampil di frontend), serta memisahkan environment `sandbox` dari `production` dengan key yang berbeda. `ServerKey` adalah secret; `ClientKey` dan `Env` adalah config biasa.
+
+```go title="internal/config/config.go (PaymentConfig)"
+type PaymentConfig struct {
+	MidtransServerKey string // secret, dipakai server side
+	MidtransClientKey string // boleh tampil di frontend
+	MidtransEnv       string // sandbox atau production
+}
+```
+
+<Box variant="warn" icon="⚠️" label="MIDTRANS_ENV harus production di production"><p>Salah satu insiden klasik: deploy ke production tetapi `MIDTRANS_ENV` masih `sandbox`, sehingga pembayaran customer tidak pernah benar-benar terjadi. Tambahkan validasi: bila `APP_ENV=production` maka `MIDTRANS_ENV` harus `production`, dan `MIDTRANS_SERVER_KEY` tidak boleh diawali `SB-` (prefix sandbox).</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: config payment di Laravel vs Go"><p>Di Laravel kamu menyimpan `MIDTRANS_SERVER_KEY` di `.env` lalu membacanya lewat `config('services.midtrans.server_key')`. Pola Go-nya sama secara konsep, tetapi nilai berakhir di `cfg.Payment.MidtransServerKey` yang bertipe `string`, dicek compiler, dan diteruskan ke `payment.NewMidtransClient(cfg.Payment)`. Tidak ada string kunci config yang bisa salah ketik diam-diam.</p></Box>
+
+</Section>
+
+<Section num="08" id="validasi-failfast" title="Validasi Fail-Fast saat Start" sub="Lebih baik gagal start dengan pesan jelas daripada jalan setengah rusak">
+
+<p class="lead">Fail-fast berarti: bila config tidak valid, aplikasi menolak start dan keluar dengan pesan jelas, alih-alih start lalu meledak nanti saat request pertama yang menyentuh nilai rusak itu.</p>
+
+Bayangkan `DB_URL` kosong tetapi server tetap start. Health check mungkin lolos, deploy terlihat sukses, lalu customer pertama yang membuka halaman katalog mendapat error 500 karena query gagal connect. Dengan fail-fast, deploy itu gagal di detik pertama dengan pesan `DB_URL is required`, sehingga masalahnya terlihat saat rilis, bukan saat customer marah.
+
+```mermaid
+sequenceDiagram
+  participant Deploy as Deploy/ECS
+  participant Main as cmd/api/main.go
+  participant Cfg as config.Load
+  Deploy->>Main: start container
+  Main->>Cfg: Load()
+  alt config tidak valid
+    Cfg-->>Main: error (mis. JWT_SECRET terlalu pendek)
+    Main->>Deploy: log.Error + os.Exit(1)
+    Note over Deploy: deploy ditandai gagal, rollback
+  else config valid
+    Cfg-->>Main: Config
+    Main->>Main: buka pool, pasang route
+    Main->>Deploy: listening :8080
+  end
+```
+<p class="fig-cap"><b>Gambar 4.</b> Fail-fast memindahkan kegagalan dari "saat customer checkout" ke "saat deploy", tempat yang jauh lebih murah untuk memperbaikinya.</p>
+
+Validasi yang baik melaporkan semua masalah sekaligus, bukan satu per satu. Kalau `DB_URL` kosong dan `JWT_SECRET` terlalu pendek, lebih baik developer melihat keduanya dalam sekali jalan. Di Go, [`errors.Join`](https://pkg.go.dev/errors#Join) (stdlib sejak Go 1.20) menggabungkan banyak error menjadi satu sehingga semua pesan tercetak bersama.
+
+```go title="internal/config/validate.go"
+package config
+
+import (
+	"errors"
+	"fmt"
+	"net/url"
+	"strconv"
+	"strings"
+)
+
+// Validate mengumpulkan semua masalah lalu menggabungkannya dengan errors.Join,
+// supaya developer melihat seluruh config yang salah dalam sekali start.
+func (c Config) Validate() error {
+	var errs []error
+
+	if c.HTTP.Port == "" {
+		errs = append(errs, errors.New("PORT is required"))
+	} else if port, err := strconv.Atoi(c.HTTP.Port); err != nil || port < 1 || port > 65535 {
+		errs = append(errs, fmt.Errorf("PORT must be a valid TCP port: %q", c.HTTP.Port))
+	}
+
+	if c.DB.URL == "" {
+		errs = append(errs, errors.New("DB_URL is required"))
+	} else if _, err := url.ParseRequestURI(c.DB.URL); err != nil {
+		errs = append(errs, fmt.Errorf("DB_URL must be a valid URL: %w", err))
+	}
+
+	if len(c.JWT.Secret) < 32 {
+		errs = append(errs, errors.New("JWT_SECRET must be at least 32 characters"))
+	}
+	if c.JWT.Expiry <= 0 {
+		errs = append(errs, errors.New("JWT_EXPIRY must be greater than zero"))
+	}
+
+	if c.AWS.Region == "" {
+		errs = append(errs, errors.New("AWS_REGION is required"))
+	}
+	if c.AWS.S3Bucket == "" {
+		errs = append(errs, errors.New("AWS_S3_BUCKET is required"))
+	}
+
+	if c.Payment.MidtransServerKey == "" {
+		errs = append(errs, errors.New("MIDTRANS_SERVER_KEY is required"))
+	}
+
+	// Validasi khusus production: ketatkan yang berbahaya bila bocor ke prod.
+	if c.App.Env == "production" {
+		if strings.Contains(c.DB.URL, "sslmode=disable") {
+			errs = append(errs, errors.New("DB_URL must not use sslmode=disable in production"))
+		}
+		if c.Payment.MidtransEnv != "production" {
+			errs = append(errs, errors.New("MIDTRANS_ENV must be production when APP_ENV=production"))
+		}
+		if strings.HasPrefix(c.Payment.MidtransServerKey, "SB-") {
+			errs = append(errs, errors.New("MIDTRANS_SERVER_KEY looks like a sandbox key in production"))
+		}
+	}
+
+	return errors.Join(errs...)
+}
+```
+
+<Box variant="tip" icon="💡" label="Kenapa errors.Join, bukan return error pertama"><p>Kalau `Validate` return di error pertama, developer memperbaiki satu, restart, lihat error berikutnya, perbaiki lagi, dan begitu seterusnya. `errors.Join(errs...)` mengembalikan `nil` bila slice kosong dan satu error gabungan bila ada isinya, sehingga semua masalah tercetak dalam sekali jalan. Lebih ramah saat menyiapkan environment baru.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari runtime error JS ke fail-fast Go"><p>Di Node, config yang salah sering baru ketahuan saat kode menyentuhnya: `undefined.connect()` meledak di tengah request. Fail-fast membalik urutannya: semua nilai diperiksa di muka, sekali, sebelum route dipasang. Ini sejalan dengan filosofi Go yang menyukai kegagalan eksplisit dan cepat ketimbang perilaku diam-diam yang menyimpan masalah untuk nanti.</p></Box>
+
+</Section>
+
+<Section num="09" id="hands-on" title="Hands-on: Loader Config Skincare API" sub="Satu file kecil yang mencegah banyak bug production">
+
+<p class="lead">Sekarang kita rangkai semuanya: `internal/config/config.go` yang membaca `.env` saat local, mengambil env var, mem-parse durasi dan angka, mengelompokkan ke sub-struct, lalu memanggil `Validate` sebelum mengembalikan `Config`.</p>
+
+```go title="internal/config/config.go"
+package config
+
+import (
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/joho/godotenv"
+)
+
+func Load() (Config, error) {
+	if shouldLoadDotEnv() {
+		// Abaikan error: .env memang tidak wajib ada (mis. saat CI atau prod).
+		_ = godotenv.Load()
+	}
+
+	jwtExpiry, err := time.ParseDuration(getEnv("JWT_EXPIRY", "15m"))
+	if err != nil {
+		return Config{}, fmt.Errorf("parse JWT_EXPIRY: %w", err)
+	}
+
+	maxConns, err := getEnvInt("DB_MAX_CONNS", 10)
+	if err != nil {
+		// getEnvInt sudah menyebut key, jadi caller cukup memberi konteks "parse env int".
+		return Config{}, fmt.Errorf("parse env int: %w", err)
+	}
+
+	cfg := Config{
+		App: AppConfig{
+			Env:      getEnv("APP_ENV", "local"),
+			LogLevel: getEnv("LOG_LEVEL", "info"),
+		},
+		HTTP: HTTPConfig{
+			Port:            getEnv("PORT", "8080"),
+			ReadTimeout:     5 * time.Second,
+			ShutdownTimeout: 10 * time.Second,
+		},
+		DB: DBConfig{
+			URL:      getEnv("DB_URL", ""),
+			MaxConns: int32(maxConns),
+		},
+		JWT: JWTConfig{
+			Secret: getEnv("JWT_SECRET", ""),
+			Expiry: jwtExpiry,
+		},
+		AWS: AWSConfig{
+			Region:   getEnv("AWS_REGION", "ap-southeast-1"),
+			S3Bucket: getEnv("AWS_S3_BUCKET", ""),
+		},
+		Payment: PaymentConfig{
+			MidtransServerKey: getEnv("MIDTRANS_SERVER_KEY", ""),
+			MidtransClientKey: getEnv("MIDTRANS_CLIENT_KEY", ""),
+			MidtransEnv:       getEnv("MIDTRANS_ENV", "sandbox"),
+		},
+	}
+
+	if err := cfg.Validate(); err != nil {
+		return Config{}, fmt.Errorf("invalid config: %w", err)
+	}
+
+	return cfg, nil
+}
+
+// shouldLoadDotEnv hanya membaca .env saat local agar prod tidak bergantung file.
+func shouldLoadDotEnv() bool {
+	appEnv, ok := os.LookupEnv("APP_ENV")
+	return !ok || appEnv == "" || appEnv == "local"
+}
+
+func getEnv(key, fallback string) string {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
+	}
+	return strings.TrimSpace(value)
+}
+
+func getEnvInt(key string, fallback int) (int, error) {
+	value, ok := os.LookupEnv(key)
+	if !ok || strings.TrimSpace(value) == "" {
+		return fallback, nil
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(value))
+	if err != nil {
+		// Sebutkan key di helper agar pesan tetap deskriptif tanpa bergantung caller.
+		return fallback, fmt.Errorf("%s: %w", key, err)
+	}
+	return n, nil
+}
+```
+
+```bash title="Terminal"
+go get github.com/joho/godotenv
+go build ./...
+go test ./internal/config/...
+```
+
+<Box variant="tip" icon="💡" label="Kenapa Load mengembalikan (Config, error)"><p>Config error adalah masalah startup, jadi `Load` mengembalikan error, bukan `panic` atau `log.Fatal` di dalam package. Dengan begitu, `main` yang memutuskan cara gagal (log lalu `os.Exit(1)`), dan tes bisa memeriksa error tanpa membunuh proses tes.</p></Box>
+
+Untuk tes, pakai `t.Setenv` agar tidak bergantung pada environment laptop. `t.Setenv` otomatis mengembalikan nilai env semula setelah tes selesai, sehingga tes tetap deterministik, termasuk saat CI/CD nanti berjalan dengan env berbeda.
+
+```go title="internal/config/config_test.go"
+package config
+
+import (
+	"strings"
+	"testing"
+)
+
+func setValidEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("APP_ENV", "local")
+	t.Setenv("PORT", "8081")
+	t.Setenv("DB_URL", "postgres://user:pass@localhost:5432/skincare_test?sslmode=disable")
+	t.Setenv("JWT_SECRET", "test-secret-minimum-32-characters-ok")
+	t.Setenv("JWT_EXPIRY", "10m")
+	t.Setenv("AWS_REGION", "ap-southeast-1")
+	t.Setenv("AWS_S3_BUCKET", "skincare-assets-test")
+	t.Setenv("MIDTRANS_SERVER_KEY", "SB-Mid-server-test")
+}
+
+func TestLoad_Success(t *testing.T) {
+	setValidEnv(t)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.HTTP.Port != "8081" {
+		t.Fatalf("Port = %q, want %q", cfg.HTTP.Port, "8081")
+	}
+	if cfg.JWT.Expiry <= 0 {
+		t.Fatalf("JWT.Expiry = %v, want > 0", cfg.JWT.Expiry)
+	}
+}
+
+func TestLoad_RejectsShortJWTSecret(t *testing.T) {
+	setValidEnv(t)
+	t.Setenv("JWT_SECRET", "too-short")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("Load() expected error for short JWT_SECRET, got nil")
+	}
+	if !strings.Contains(err.Error(), "JWT_SECRET") {
+		t.Fatalf("error = %v, want mention of JWT_SECRET", err)
+	}
+}
+
+func TestLoad_ProductionRejectsSandboxKey(t *testing.T) {
+	setValidEnv(t)
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("DB_URL", "postgres://user:pass@db:5432/skincare?sslmode=require")
+	t.Setenv("MIDTRANS_ENV", "production")
+	t.Setenv("MIDTRANS_SERVER_KEY", "SB-Mid-server-stillsandbox")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("Load() expected error for sandbox key in production, got nil")
+	}
+}
+```
+
+</Section>
+
+<Section num="10" id="integrasi" title="Integrasi ke API dan Worker" sub="Config adalah dependency, bukan global state bebas pakai">
+
+<p class="lead">Setelah `Config` valid, `cmd/api` dan `cmd/worker` meneruskan sub-config yang dibutuhkan ke package lain. Domain seperti product, cart, dan order tidak pernah tahu dari mana nilai config berasal.</p>
+
+Di modular monolith, `internal/config` berada di area shared infrastructure. Entry point membaca config sekali, lalu menyiapkan dependency (pool, JWT signer, S3 client, Midtrans client) dan menyuntikkannya ke handler. Inilah titik tempat config bertemu wiring yang sudah kamu kenal dari Repository Pattern di Roadmap 3.
+
+```go title="cmd/api/main.go"
+package main
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/kamu/skincare-backend/internal/config"
+	"github.com/kamu/skincare-backend/internal/database"
+	"github.com/kamu/skincare-backend/internal/router"
+)
+
+func main() {
+	// signal.NotifyContext membatalkan ctx saat SIGINT/SIGTERM, untuk graceful shutdown.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	cfg, err := config.Load()
+	if err != nil {
+		slog.Error("load config failed", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("config loaded", "env", cfg.App.Env, "port", cfg.HTTP.Port)
+
+	pool, err := database.NewPostgresPool(ctx, cfg.DB)
+	if err != nil {
+		slog.Error("connect database failed", "error", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	// Wiring: tiap dependency menerima sub-config yang relevan, bukan seluruh Config.
+	handler := router.New(router.Dependencies{
+		DB:      pool,
+		JWT:     cfg.JWT,
+		AWS:     cfg.AWS,
+		Payment: cfg.Payment,
+	})
+
+	// ReadTimeout dari config dipakai di sini: server tanpa timeout rawan Slowloris.
+	srv := &http.Server{
+		Addr:        ":" + cfg.HTTP.Port,
+		Handler:     handler,
+		ReadTimeout: cfg.HTTP.ReadTimeout,
+	}
+
+	// Server jalan di goroutine agar main bisa menunggu sinyal shutdown.
+	go func() {
+		slog.Info("api listening", "addr", srv.Addr, "env", cfg.App.Env)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("api stopped", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	<-ctx.Done() // tunggu SIGINT/SIGTERM
+	slog.Info("shutting down api gracefully")
+
+	// ShutdownTimeout dari config membatasi berapa lama menunggu request aktif selesai.
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		slog.Error("graceful shutdown failed", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("api stopped cleanly")
+}
+```
+
+<Box variant="note" icon="🧭" label="ReadTimeout dan ShutdownTimeout akhirnya terpakai"><p>Dua field timeout yang kita isi di `config.Load` bukan hiasan: `ReadTimeout` masuk ke `http.Server` agar koneksi yang menahan request lama (pola serangan Slowloris) tidak menggantung server, sedangkan `ShutdownTimeout` membatasi `srv.Shutdown` saat container menerima SIGTERM dari ECS. Inilah arti config fail-fast yang berlanjut sampai runtime: nilai yang disiapkan benar-benar dipakai, bukan didefinisikan lalu dilupakan.</p></Box>
+
+```go title="cmd/worker/main.go"
+package main
+
+import (
+	"context"
+	"log/slog"
+	"os"
+
+	"github.com/kamu/skincare-backend/internal/config"
+	"github.com/kamu/skincare-backend/internal/database"
+)
+
+func main() {
+	ctx := context.Background()
+
+	cfg, err := config.Load()
+	if err != nil {
+		slog.Error("load config failed", "error", err)
+		os.Exit(1)
+	}
+
+	pool, err := database.NewPostgresPool(ctx, cfg.DB)
+	if err != nil {
+		slog.Error("connect database failed", "error", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	// Worker memakai config yang sama: payment dan AWS untuk kirim notifikasi/upload.
+	slog.Info("worker started", "env", cfg.App.Env, "region", cfg.AWS.Region)
+}
+```
+
+Perhatikan `database.NewPostgresPool` menerima `cfg.DB` (struct), bukan string telanjang. Dengan begitu, ukuran pool `MaxConns` ikut terbawa rapi, dan signature constructor tidak perlu berubah saat kelak menambah parameter koneksi baru.
+
+```go title="internal/database/postgres.go"
+package database
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/kamu/skincare-backend/internal/config"
+)
+
+// NewPostgresPool menerima config.DBConfig, bukan string mentah.
+func NewPostgresPool(ctx context.Context, cfg config.DBConfig) (*pgxpool.Pool, error) {
+	poolCfg, err := pgxpool.ParseConfig(cfg.URL)
+	if err != nil {
+		return nil, fmt.Errorf("parse db url: %w", err)
+	}
+	if cfg.MaxConns > 0 {
+		poolCfg.MaxConns = cfg.MaxConns
+	}
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
+	if err != nil {
+		return nil, fmt.Errorf("create pool: %w", err)
+	}
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("ping db: %w", err)
+	}
+	return pool, nil
+}
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari singleton config ke dependency eksplisit"><p>Di Laravel kamu memanggil `config('app.key')` dari mana saja, dan itu nyaman tetapi membuat dependency tersembunyi. Di Go yang lebih mudah dites adalah meneruskan config (atau dependency yang sudah dibangun darinya) dari `main`. Saat menulis tes, kamu tinggal membuat `config.JWTConfig{...}` sendiri tanpa menyentuh environment global.</p></Box>
+
+</Section>
+
+<Section num="11" id="jebakan" title="Jebakan Umum dari JS dan PHP" sub="Masalah kecil yang sering menjadi incident besar">
+
+<p class="lead">Sebagian besar bug config bukan karena sintaks Go sulit, tetapi karena boundary config tidak disiplin. Kebiasaan dari JS dan PHP yang terbawa ke Go justru sering jadi sumber masalah.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Menyebar `os.Getenv`</h4><p>Handler, service, dan repository membaca env sendiri, sehingga perilaku sulit dites dan sulit dilacak saat satu nilai berubah.</p></Card>
+  <Card><h4>Default terlalu nyaman</h4><p>Default untuk secret membuat production bisa berjalan dengan secret lemah tanpa disadari. Secret tidak boleh punya default.</p></Card>
+  <Card><h4>Log membocorkan secret</h4><p>`slog.Info("config", "cfg", cfg)` mencetak `JWT_SECRET`, `MIDTRANS_SERVER_KEY`, dan connection string lengkap ke log.</p></Card>
+  <Card><h4>.env masuk Git</h4><p>Sekali secret masuk Git, anggap bocor: rotasi secret dan bersihkan history bila perlu. `.gitignore` saja tidak cukup bila terlanjur ter-commit.</p></Card>
+</CardGrid>
+
+<Compare aLabel="Kebiasaan JS / PHP" bLabel="Kebiasaan Go yang disarankan" aTone="red" bTone="blue">
+  <Fragment slot="a"><ul><li>Membaca `process.env` atau `env()` langsung di banyak file.</li><li>Mengandalkan framework memuat config secara otomatis.</li><li>Menganggap `.env` sebagai bagian dari aplikasi yang selalu ada.</li><li>Config salah baru ketahuan saat request menyentuhnya.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Baca env sekali dalam `config.Load()`, di boundary.</li><li>Validasi config fail-fast sebelum `http.ListenAndServe`.</li><li>Anggap `.env` hanya alat bantu local development.</li><li>Semua masalah config dilaporkan saat start lewat `errors.Join`.</li></ul></Fragment>
+</Compare>
+
+<Box variant="warn" icon="⚠️" label="Jebakan JWT_SECRET dan MIDTRANS_ENV"><p>`JWT_SECRET=secret` terlihat cukup saat demo, tetapi terlalu lemah untuk production: pakai nilai acak panjang lewat secret manager. Pasangannya yang sama berbahaya: deploy production dengan `MIDTRANS_ENV=sandbox` membuat pembayaran customer tidak pernah benar-benar diproses. Dua-duanya harus ditangkap oleh validasi production di section 08.</p></Box>
+
+<Box variant="note" icon="🧭" label="Config bukan tempat logika bisnis"><p>Config hanya membawa nilai. Keputusan seperti "berapa lama token aktif" memang berasal dari config (`JWT.Expiry`), tetapi cara memakainya tetap milik package auth. Jangan menaruh `if cfg.App.Env == "production"` bertebaran di service: pusatkan keputusan environment di config dan di `main`, lalu domain hanya menerima nilai yang sudah jadi.</p></Box>
+
+</Section>
+
+<Section num="12" id="ringkasan" title="Ringkasan & Poin Penting">
+
+<p class="lead">Manajemen konfigurasi adalah fondasi agar clean architecture tidak hanya rapi di folder, tetapi juga aman saat deploy dari local sampai production AWS.</p>
+
+<Recap title="Yang Wajib Menempel">
+  <ul><li>Environment variable adalah sumber config utama (Twelve-Factor): satu binary, banyak environment, beda nilai bukan beda kode.</li><li>`Config` struct (dikelompokkan jadi App, HTTP, DB, JWT, AWS, Payment) membuat kontrak config eksplisit, dicek compiler, dan mudah dites.</li><li>`os.LookupEnv` membedakan key kosong dari key tidak ada; baca env hanya di boundary (`config.Load`), bukan tersebar di handler dan service.</li><li>`github.com/joho/godotenv` praktis untuk local development, dipanggil bersyarat lewat `shouldLoadDotEnv`, bukan pengganti secret management production.</li><li>Secrets (`DB_URL`, `JWT_SECRET`, `MIDTRANS_SERVER_KEY`, AWS access key) tidak boleh di-commit, tidak boleh dilog, dan harus masuk lewat secret manager runtime.</li><li>Validasi fail-fast dengan `errors.Join` melaporkan semua config rusak sekaligus saat start, plus aturan ketat khusus production (TLS wajib, key sandbox ditolak).</li><li>DB URL ke pgxpool, JWT untuk auth, AWS untuk S3 (SDK membaca credential-nya sendiri), dan Midtrans untuk payment kini punya bentuk config dan validasi masing-masing.</li><li>`cmd/api` dan `cmd/worker` sama-sama memakai `config.Load()`, lalu menyuntikkan sub-config ke dependency, bukan membaca global state dari package domain.</li></ul>
+</Recap>
+
+Setelah modul ini, proyek punya jalur config yang jelas dan aman dari local sampai production. Student outcome Roadmap 4 Chapter 3 tercapai: kamu bisa mengelola DB URL, JWT, AWS, dan payment gateway dengan aman. Langkah berikutnya di Roadmap 4 membangun error handling strategy dan logging strategy di atas fondasi config ini, dan `cfg.App.LogLevel` yang sudah kita siapkan akan langsung dipakai untuk mengatur level `log/slog`.
+
+</Section>

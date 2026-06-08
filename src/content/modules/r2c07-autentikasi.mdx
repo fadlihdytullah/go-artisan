@@ -1,0 +1,849 @@
+---
+title: "Modul Alur Autentikasi: Session, JWT, dan Role - Go Artisan"
+badge: "AUTH"
+topTitle: "Alur Autentikasi: Session, JWT, dan Role"
+topSub: "Go untuk Developer JavaScript & PHP"
+summary: "Bangun alur autentikasi REST API: session vs token, struktur JWT, access dan refresh token, middleware verifikasi, current user di context, dan role-based access dengan chi."
+order: 19
+target: "Roadmap 2 · Go Web API"
+readingTime: "~75 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Autentikasi di REST API" }
+  - { num: "02", id: "session-vs-token", title: "Session vs Token" }
+  - { num: "03", id: "struktur-jwt", title: "Struktur JWT: Bukan Kotak Rahasia" }
+  - { num: "04", id: "access-refresh", title: "Access Token dan Refresh Token" }
+  - { num: "05", id: "password-hashing", title: "Menyimpan Password dengan Aman" }
+  - { num: "06", id: "membuat-jwt", title: "Membuat JWT di Go" }
+  - { num: "07", id: "verifikasi-middleware", title: "Verifikasi JWT di Middleware" }
+  - { num: "08", id: "current-user-context", title: "Current User di Context" }
+  - { num: "09", id: "role-based-access", title: "Role-based Access" }
+  - { num: "10", id: "route-auth-chi", title: "Merangkai Route Auth di chi" }
+  - { num: "11", id: "hands-on", title: "Hands-on: Login sampai Protected Route" }
+  - { num: "12", id: "jebakan-umum", title: "Jebakan Umum dari JS/PHP" }
+  - { num: "13", id: "ringkasan", title: "Ringkasan & Poin Penting" }
+footerTitle: "Modul Alur Autentikasi: Session, JWT, dan Role - Go Artisan"
+footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Endpoint, Def } from "@components";
+
+<Hero eyebrow="Roadmap 2 &middot; Web API" title="Alur Autentikasi<br /><em>Session, JWT, dan Role</em>">
+  <p>Autentikasi adalah pintu yang memutuskan siapa user ini, apa haknya, dan apakah request boleh menyentuh handler cart, checkout, atau admin product.</p>
+  <Fragment slot="meta">
+    <Chip icon="shield">Library: <b>golang-jwt/jwt v5</b></Chip>
+    <Chip icon="route">Roadmap 2</Chip>
+    <Chip icon="clock">~75 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Autentikasi di REST API" sub="Dari login sampai handler bisnis yang terlindungi">
+
+<p class="lead">Di online shop skincare, login bukan sekadar mencocokkan email dan password. Login menghasilkan identitas yang aman dipakai ulang oleh setiap request ke `/v1/cart`, `/v1/checkout`, dan `/v1/admin/products` tanpa user harus mengetik ulang kredensialnya.</p>
+
+Di Laravel klasik kamu sering mendapat session begitu saja. Browser menyimpan cookie, server menyimpan data session, lalu middleware `auth` memutuskan apakah request valid. Pengalaman itu terasa "ajaib" karena banyak hal terjadi di balik layar. Untuk REST API yang melayani React storefront, aplikasi mobile, dan worker internal, kita justru ingin yang sebaliknya: kontrak yang **eksplisit**. Client mengirim `Authorization: Bearer <token>` di setiap request yang butuh login, dan server memverifikasinya tanpa menebak.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari Laravel Sanctum/Passport ke JWT manual"><p>Laravel Sanctum menerbitkan token dan menyimpan hash-nya di tabel `personal_access_tokens`, Passport menerbitkan JWT lewat server OAuth. Keduanya menyembunyikan mekanismenya. Di Go kita merakit potongan yang sama secara terbuka: terbitkan token, verifikasi signature, taruh user di context. Setelah modul ini, "magic" Sanctum akan terasa seperti tiga fungsi kecil yang sudah kamu tulis sendiri.</p></Box>
+
+Pola yang kita pakai adalah pola standar API modern: **access token JWT berumur pendek** untuk request harian, plus **refresh token berumur panjang** untuk menukar access token baru tanpa login ulang. Inilah peta endpoint auth yang akan kita bangun, sesuai peta API kanonik proyek skincare.
+
+<Endpoint method="POST" path="/v1/auth/register" desc="Daftar customer baru, menyimpan password sebagai hash bcrypt" />
+<Endpoint method="POST" path="/v1/auth/login" desc="Login customer atau admin, mengembalikan access_token dan refresh_token" />
+<Endpoint method="POST" path="/v1/auth/refresh" desc="Menukar refresh token valid menjadi pasangan token baru (rotasi)" />
+<Endpoint method="GET" path="/v1/cart" desc="Contoh route customer yang butuh login (access token valid)" />
+<Endpoint method="POST" path="/v1/admin/products" desc="Contoh route admin yang butuh role admin" />
+
+<Box variant="note" icon="🧭" label="Di mana modul ini berdiri"><p>Modul sebelumnya sudah memberi kita router chi (r2c03), envelope response `httpx` (r2c04), middleware stack (r2c05), dan validasi input (r2c06). Auth adalah lapisan terakhir sebelum r2c08 merakit seluruh peta API. Kita memakai ulang `httpx.Error` dan `httpx.Data` apa adanya, tidak membuat format error baru.</p></Box>
+
+</Section>
+
+<Section num="02" id="session-vs-token" title="Session vs Token" sub="Dua cara menyimpan bukti login, dengan trade-off berbeda">
+
+<p class="lead">Session dan token menjawab pertanyaan yang sama: apakah request ini datang dari user yang sudah login? Bedanya ada pada di mana bukti login itu disimpan dan siapa yang memegang state.</p>
+
+<Compare aLabel="Server-rendered: session" bLabel="REST API: token" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>Server menyimpan state session, browser hanya memegang cookie berisi session id.</li><li>Setiap request perlu lookup session di store (memori, Redis, database).</li><li>Nyaman untuk monolith server-rendered dan halaman yang dirender server.</li><li>Logout instan: hapus session di server, selesai.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Client memegang token, server memverifikasi tanda tangannya tanpa lookup.</li><li>Access token JWT bersifat stateless: tidak perlu hit database tiap request.</li><li>Nyaman untuk React SPA, mobile, dan API yang dipakai banyak client.</li><li>Logout lebih rumit: token valid sampai expired kecuali kamu rancang revocation.</li></ul></Fragment>
+</Compare>
+
+<Def term="Session"><p>State login yang disimpan di server, lalu direferensikan oleh session id di cookie browser. Server memegang kebenarannya.</p></Def>
+
+<Def term="Token"><p>String bukti login yang dipegang client dan dikirim di setiap request, biasanya lewat header `Authorization`. Untuk JWT, kebenarannya dijamin oleh tanda tangan kriptografis, bukan oleh lookup server.</p></Def>
+
+Session bukan teknologi usang. Untuk admin panel server-rendered satu domain, session justru lebih sederhana dan logout-nya instan. Tetapi untuk API skincare yang dikonsumsi storefront React, aplikasi mobile, dan webhook pembayaran, token memberi kontrak yang lebih eksplisit dan tidak terikat cookie satu domain.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: httpOnly cookie vs header Authorization"><p>Di React kamu punya dua pilihan menyimpan token: di JavaScript (mudah dikirim sebagai header `Authorization`, tetapi rawan dicuri lewat XSS) atau di cookie `httpOnly` (tidak terbaca JavaScript sehingga aman dari XSS, tetapi otomatis ikut setiap request sehingga butuh proteksi CSRF). Tidak ada yang gratis. Modul ini fokus pada pola header `Authorization` Bearer yang netral terhadap platform, lalu mencatat trade-off keamanannya. Hardening cookie kita perdalam di Roadmap 7.</p></Box>
+
+<Box variant="note" icon="🔐" label="JWT stateless, tetapi tidak sepenuhnya"><p>Access token JWT memang bisa diverifikasi tanpa database. Refresh token tetap kita simpan server-side dalam bentuk hash supaya bisa dicabut saat logout, rotasi, atau saat terjadi kebocoran. Jadi sistem ini hybrid: access stateless, refresh stateful.</p></Box>
+
+</Section>
+
+<Section num="03" id="struktur-jwt" title="Struktur JWT: Bukan Kotak Rahasia" sub="Header, payload, signature, dan kenapa payload bisa dibaca siapa saja">
+
+<p class="lead">JWT terlihat seperti satu string acak panjang, padahal ia tiga bagian base64url yang dipisah titik: `header.payload.signature`. Memahami ketiganya menutup salah satu kesalahan keamanan paling umum.</p>
+
+Header menyebut algoritma signing (mis. `HS256`). Payload berisi klaim seperti user id, role, issuer, dan expiry. Signature adalah tanda tangan kriptografis yang membuktikan header dan payload tidak diubah sejak token ditandatangani server.
+
+<CardGrid cols={3}>
+  <Card><h4>Header</h4><p>Metadata token: tipe `JWT` dan algoritma signing, misalnya `{"alg":"HS256","typ":"JWT"}`.</p></Card>
+  <Card><h4>Payload</h4><p>Klaim yang bisa dibaca siapa pun: `uid`, `role`, `iss`, `exp`, `iat`. Bukan rahasia.</p></Card>
+  <Card><h4>Signature</h4><p>HMAC dari header dan payload memakai secret server. Inilah yang wajib diverifikasi sebelum token dipercaya.</p></Card>
+</CardGrid>
+
+```text title="struktur-jwt.txt"
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9   <- header  (base64url JSON)
+.
+eyJ1aWQiOjQyLCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3ODA... <- payload (base64url JSON)
+.
+SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c        <- signature (HMAC-SHA256)
+```
+
+<Box variant="warn" icon="⚠️" label="Payload JWT bisa dibaca, jangan taruh rahasia di sana"><p>Payload hanya di-encode base64url, BUKAN dienkripsi. Siapa pun yang memegang token bisa membaca isinya di `jwt.io` atau dengan satu baris decode. Jangan pernah menaruh password, nomor kartu, token pembayaran, atau alamat lengkap di payload. Aman untuk: user id, role, expiry.</p></Box>
+
+Untuk membuktikan payload memang terbuka, kita bisa menulis fungsi kecil yang mengintip payload tanpa verifikasi. Fungsi ini berguna untuk debugging atau menampilkan sisa waktu di UI, tetapi TIDAK boleh dipakai untuk otorisasi.
+
+```go title="internal/auth/peek.go"
+package auth
+
+import (
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"strings"
+)
+
+var ErrMalformedToken = errors.New("token tidak berbentuk header.payload.signature")
+
+// PeekPayload mengintip klaim TANPA memverifikasi signature.
+// Hanya untuk debugging atau tampilan. JANGAN dipakai untuk otorisasi.
+func PeekPayload(tokenString string) (map[string]any, error) {
+	parts := strings.Split(tokenString, ".")
+	if len(parts) != 3 {
+		return nil, ErrMalformedToken
+	}
+
+	raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return nil, err
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, err
+	}
+	return payload, nil
+}
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: jsonwebtoken di JS dan jwt.decode"><p>Di Node, `jwt.decode(token)` membaca payload tanpa verifikasi (seperti `PeekPayload` di atas), sedangkan `jwt.verify(token, secret)` memeriksa signature dan expiry. Pemula sering memakai `decode` lalu percaya pada `role` di dalamnya. Itu lubang keamanan: siapa pun bisa membuat payload `{"role":"admin"}`. Yang menentukan kebenaran adalah `verify`, dan itulah yang akan kita lakukan di middleware.</p></Box>
+
+</Section>
+
+<Section num="04" id="access-refresh" title="Access Token dan Refresh Token" sub="Umur pendek untuk akses, umur panjang untuk sesi, plus rotasi">
+
+<p class="lead">Pola dua token memisahkan token yang sering berkeliaran dari token yang lebih sensitif. Idenya: kalau access token bocor, kerusakannya hanya bertahan beberapa menit.</p>
+
+<Compare aLabel="Access token" bLabel="Refresh token" aTone="blue" bTone="teal">
+  <Fragment slot="a"><ul><li>Umur pendek, sekitar 15 menit.</li><li>Dikirim di header `Authorization` untuk setiap protected route.</li><li>JWT stateless: diverifikasi dari signature, tanpa hit database.</li><li>Membawa klaim minimum: `uid`, `role`, `iss`, `exp`.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Umur panjang, sekitar 168 jam (7 hari).</li><li>Dipakai HANYA di `/v1/auth/refresh`, tidak untuk request biasa.</li><li>Disimpan sebagai hash di server agar bisa dicabut dan dirotasi.</li><li>Sebaiknya string acak, bukan JWT, supaya tidak ada klaim yang bisa dibaca.</li></ul></Fragment>
+</Compare>
+
+Kenapa harus dua token? Karena ada tarik-menarik antara keamanan dan kenyamanan. Access token berumur pendek artinya jendela penyalahgunaan kecil, tetapi user tidak mau login ulang tiap 15 menit. Refresh token menjembatani: ia jarang dikirim (hanya saat access token mati), disimpan lebih hati-hati, dan bisa dicabut sewaktu-waktu.
+
+```mermaid
+sequenceDiagram
+  participant FE as React Client
+  participant API as Go API (chi)
+  participant AUTH as Auth Service
+  participant DB as Refresh Store
+  FE->>API: POST /v1/auth/login (email, password)
+  API->>AUTH: verifikasi password (bcrypt)
+  AUTH->>DB: simpan hash refresh token + exp
+  API-->>FE: 200 access_token (15m) + refresh_token (7h)
+  Note over FE,API: request harian pakai access token
+  FE->>API: GET /v1/cart (Bearer access_token)
+  API->>API: verifikasi JWT di middleware
+  API-->>FE: 200 data cart
+  Note over FE,API: access token expired
+  FE->>API: POST /v1/auth/refresh (refresh_token)
+  API->>DB: cek hash, cabut yang lama, simpan yang baru
+  API-->>FE: 200 access_token baru + refresh_token baru
+```
+
+<p class="fig-cap"><b>Gambar 1.</b> Alur login, akses route terlindungi, dan rotasi token saat access token kedaluwarsa.</p>
+
+Sebuah refresh token sehat melewati daur hidup yang jelas. Memetakannya sebagai state membantu kita memutuskan kapan token boleh dipakai dan kapan harus ditolak.
+
+```mermaid
+stateDiagram-v2
+  [*] --> Issued: login sukses, hash disimpan
+  Issued --> Active: dipakai dalam masa berlaku
+  Active --> Refreshed: /auth/refresh sukses (rotasi)
+  Refreshed --> Active: token baru jadi yang aktif
+  Active --> Expired: lewat 7 hari
+  Active --> Revoked: logout atau deteksi kebocoran
+  Refreshed --> Revoked: token lama dicabut setelah dirotasi
+  Expired --> [*]
+  Revoked --> [*]
+```
+
+<p class="fig-cap"><b>Gambar 2.</b> Daur hidup refresh token. Token lama selalu beralih ke Revoked begitu dirotasi, sehingga hanya satu token aktif per sesi.</p>
+
+<Box variant="note" icon="🔐" label="Kenapa refresh token harus dirotasi"><p>Setiap refresh sukses sebaiknya menerbitkan refresh token baru dan mencabut yang lama (rotation). Kalau suatu saat refresh token lama dipakai lagi setelah dirotasi, itu sinyal kuat token dicuri: tolak dan cabut seluruh sesi user tersebut. Inilah deteksi reuse yang membuat pencurian refresh token cepat ketahuan.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jangan simpan refresh token sebagai plaintext"><p>Refresh token disimpan sebagai hash (mis. SHA-256) di server, persis seperti password disimpan sebagai hash. Kalau database bocor, penyerang tidak langsung mendapat refresh token yang bisa dipakai. Saat verifikasi, kamu hash token dari client lalu bandingkan dengan hash tersimpan.</p></Box>
+
+</Section>
+
+<Section num="05" id="password-hashing" title="Menyimpan Password dengan Aman" sub="bcrypt dulu, sebelum token bisa diterbitkan">
+
+<p class="lead">Sebelum menerbitkan token apa pun, login harus memverifikasi password. Dan password tidak pernah disimpan sebagai teks asli, di bahasa apa pun.</p>
+
+Di Laravel, `Hash::make()` dan `Hash::check()` melakukan ini untukmu, default-nya bcrypt. Di Go kita memanggil `golang.org/x/crypto/bcrypt` secara langsung. Idenya identik: simpan hash satu arah, bandingkan saat login, jangan pernah bisa membalik hash menjadi password asli.
+
+```go title="internal/auth/password.go"
+package auth
+
+import "golang.org/x/crypto/bcrypt"
+
+// HashPassword membuat hash bcrypt dari password plaintext saat register.
+// Cost 12 menyeimbangkan keamanan dan waktu komputasi pada hardware 2026.
+func HashPassword(plain string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(plain), 12)
+	if err != nil {
+		return "", err
+	}
+	return string(hash), nil
+}
+
+// CheckPassword membandingkan password plaintext dengan hash tersimpan.
+// Mengembalikan nil bila cocok. Aman terhadap timing attack secara internal.
+func CheckPassword(hash, plain string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain))
+}
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: Hash::make / Hash::check Laravel"><p>`bcrypt.GenerateFromPassword` adalah `Hash::make`, dan `bcrypt.CompareHashAndPassword` adalah `Hash::check`. Sama seperti Laravel, salt sudah otomatis tertanam di dalam string hash, jadi kamu tidak perlu mengelola kolom salt terpisah. Hash bcrypt yang tersimpan sudah memuat algoritma, cost, dan salt sekaligus.</p></Box>
+
+<Box variant="tip" icon="💡" label="Cost 12 dan opsi argon2id"><p>Cost bcrypt menentukan berapa kali hashing diulang (2 pangkat cost). Cost 12 adalah titik aman umum di 2026: cukup lambat untuk menghambat brute force, cukup cepat untuk login normal. Untuk kebutuhan lebih kuat, `golang.org/x/crypto/argon2` (argon2id) tahan terhadap serangan GPU dan ASIC karena boros memori. Mulai dengan bcrypt cost 12, naikkan ke argon2id bila threat model menuntut.</p></Box>
+
+Saat register, kita hash password lalu simpan user. Saat login, kita ambil user, bandingkan password, baru terbitkan token. Perhatikan model `User`: field `PasswordHash` punya JSON tag minus supaya tidak pernah bocor ke response.
+
+```go title="internal/user/model.go"
+package user
+
+type User struct {
+	ID           int64  `json:"id"`
+	Email        string `json:"email"`
+	Role         string `json:"role"` // "customer" atau "admin"
+	PasswordHash string `json:"-"`    // minus: JANGAN pernah masuk JSON response
+}
+```
+
+<Box variant="warn" icon="⚠️" label="DTO response user tidak boleh memuat hash"><p>JSON tag `json:"-"` pada `PasswordHash` membuat `encoding/json` melewati field ini saat encode. Tanpa itu, satu endpoint `GET /v1/me` yang lalai bisa membocorkan hash password seluruh user. Selalu pisahkan model internal dari response DTO, dan beri tag minus pada apa pun yang sensitif.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Balas pesan login yang sama untuk email salah dan password salah"><p>Saat login gagal, balas pesan netral seperti "email atau password salah", baik karena email tidak ada maupun password tidak cocok. Membedakan keduanya membocorkan apakah sebuah email terdaftar (user enumeration). Di Go, jalankan `CheckPassword` bahkan saat user tidak ditemukan (dengan hash dummy) bila ingin menyamakan waktu respons.</p></Box>
+
+</Section>
+
+<Section num="06" id="membuat-jwt" title="Membuat JWT di Go" sub="github.com/golang-jwt/jwt/v5 dengan klaim kustom dan HS256">
+
+<p class="lead">Sekarang kita terbitkan access token. Library yang dipakai adalah `github.com/golang-jwt/jwt/v5`, standar de facto JWT di Go.</p>
+
+Mulai dari `go.mod`. Proyek skincare menargetkan Go 1.26 dan menambahkan dependency JWT. Versi disetel sesuai blok fakta proyek, bukan ditebak.
+
+```text title="go.mod"
+module github.com/kamu/skincare-backend
+
+go 1.26
+
+require (
+	github.com/go-chi/chi/v5 v5.3.0
+	github.com/go-playground/validator/v10 v10.30.3
+	github.com/golang-jwt/jwt/v5 v5.3.1
+	golang.org/x/crypto v0.42.0
+)
+```
+
+Klaim kustom kita meng-embed `jwt.RegisteredClaims` (yang membawa `exp`, `iat`, `iss`, `sub`) lalu menambahkan `uid` dan `role` khusus aplikasi. Embedding di Go membuat semua field dan method `RegisteredClaims` ikut menempel ke `Claims` tanpa menyalin ulang, mirip menambahkan trait ke sebuah class di PHP.
+
+```go title="internal/auth/token.go"
+package auth
+
+import (
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
+const (
+	accessTTL  = 15 * time.Minute       // access token ~15 menit
+	refreshTTL = 168 * time.Hour        // refresh token ~7 hari
+	issuer     = "skincare-backend"     // dicek saat verifikasi
+)
+
+var ErrInvalidToken = errors.New("token tidak valid")
+
+// Claims adalah payload JWT access token. Embed RegisteredClaims agar
+// exp, iat, iss, sub ikut, lalu tambahkan klaim aplikasi uid dan role.
+type Claims struct {
+	UserID int64  `json:"uid"`
+	Role   string `json:"role"`
+	jwt.RegisteredClaims
+}
+
+// Issuer menerbitkan access token. Secret dibaca dari env AUTH_JWT_SECRET
+// oleh pemanggil dan disuntikkan saat membuat Issuer.
+type Issuer struct {
+	secret []byte
+	now    func() time.Time
+}
+
+func NewIssuer(secret string) *Issuer {
+	return &Issuer{secret: []byte(secret), now: time.Now}
+}
+
+func (iss *Issuer) AccessToken(userID int64, role string) (string, time.Time, error) {
+	now := iss.now()
+	expiresAt := now.Add(accessTTL)
+
+	claims := Claims{
+		UserID: userID,
+		Role:   role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   fmt.Sprint(userID),
+			Issuer:    issuer,
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString(iss.secret)
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("sign access token: %w", err)
+	}
+	return signed, expiresAt, nil
+}
+```
+
+<Box variant="tip" icon="💡" label="Secret dari env, bukan dari source code"><p>Secret HS256 dibaca dari env `AUTH_JWT_SECRET` dan disuntikkan ke `NewIssuer` saat startup. Jangan pernah menulis secret literal di kode atau commit ke git. Secret harus panjang dan acak (minimal 32 byte), karena dialah satu-satunya yang menjaga agar token tidak bisa dipalsukan. Manajemen secrets yang serius (rotasi, KMS) kita perdalam di Roadmap 7.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: jwt.sign(payload, secret) di Node"><p>`jwt.NewWithClaims(method, claims).SignedString(secret)` adalah dua langkah dari `jwt.sign(payload, secret, { algorithm: 'HS256' })` di Node. Go memisahkan "rakit klaim" dari "tandatangani" supaya algoritma signing eksplisit. Memisahkan langkah ini juga yang nanti memudahkan ganti ke RS256.</p></Box>
+
+<Box variant="note" icon="🔑" label="HS256 sekarang, RS256 nanti"><p>HS256 (HMAC) memakai satu secret yang sama untuk sign dan verify, cocok saat satu layanan menerbitkan sekaligus memverifikasi token. Bila nanti banyak layanan perlu memverifikasi token tetapi hanya satu yang boleh menerbitkan, RS256 (asimetris) lebih tepat: private key untuk sign, public key untuk verify yang boleh disebar. Untuk monolith skincare saat ini, HS256 sudah cukup dan lebih sederhana.</p></Box>
+
+Refresh token tidak perlu jadi JWT. Justru lebih aman bila ia string acak tanpa klaim yang bisa dibaca, lalu disimpan sebagai hash. Berikut helper kecil untuk membuat dan menghash refresh token.
+
+```go title="internal/auth/refresh.go"
+package auth
+
+import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+)
+
+// NewRefreshToken mengembalikan token plaintext (dikirim ke client) dan
+// hash-nya (disimpan di server). Hanya hash yang menetap di database.
+func NewRefreshToken() (plain string, hash string, err error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", "", err
+	}
+	plain = base64.RawURLEncoding.EncodeToString(raw)
+	return plain, HashRefreshToken(plain), nil
+}
+
+func HashRefreshToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+```
+
+<Box variant="note" icon="📝" label="Kenapa SHA-256 cukup untuk refresh token, tapi tidak untuk password"><p>Password dibuat manusia, pendek, dan mudah ditebak, jadi butuh hash lambat seperti bcrypt untuk menghambat brute force. Refresh token sudah 32 byte acak penuh entropi, mustahil ditebak, sehingga hash cepat seperti SHA-256 cukup. Memakai bcrypt untuk refresh token hanya menambah beban tanpa manfaat keamanan berarti.</p></Box>
+
+</Section>
+
+<Section num="07" id="verifikasi-middleware" title="Verifikasi JWT di Middleware" sub="Penjaga pintu yang menolak request sebelum sampai handler bisnis">
+
+<p class="lead">Middleware auth adalah satpam di lobi. Ia membaca header `Authorization`, memverifikasi JWT (signature, method, expiry, issuer), lalu menaruh current user ke context. Handler cart dan checkout tidak perlu tahu apa pun soal parsing bearer token.</p>
+
+Verifikasi yang benar memeriksa lebih dari sekadar signature. `jwt.ParseWithClaims` menerima keyfunc tempat kita WAJIB mengecek bahwa algoritma token adalah HMAC, mencegah serangan algorithm confusion di mana penyerang mengganti `alg` menjadi `none` atau menukar HMAC dengan RSA.
+
+```go title="internal/auth/verify.go"
+package auth
+
+import (
+	"fmt"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
+func (iss *Issuer) Verify(tokenString string) (*Claims, error) {
+	claims := &Claims{}
+
+	keyfunc := func(token *jwt.Token) (any, error) {
+		// Tolak token yang bukan HMAC. Mencegah algorithm confusion
+		// (mis. penyerang mengganti alg ke "none" atau ke RSA).
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("metode signing tidak terduga: %v", token.Header["alg"])
+		}
+		return iss.secret, nil
+	}
+
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		claims,
+		keyfunc,
+		jwt.WithValidMethods([]string{"HS256"}),
+		jwt.WithIssuer(issuer),
+		jwt.WithExpirationRequired(),
+	)
+	if err != nil || !token.Valid {
+		return nil, ErrInvalidToken
+	}
+	return claims, nil
+}
+```
+
+<Box variant="warn" icon="⚠️" label="Wajib cek method HMAC di keyfunc"><p>Tanpa pengecekan `token.Method.(*jwt.SigningMethodHMAC)`, library bisa tertipu menerima token ber-`alg: none` atau token RSA yang ditandatangani dengan public key yang kamu kira rahasia. `jwt.WithValidMethods` dan cek di keyfunc adalah sabuk dan suspender: pakai keduanya. Ini bukan paranoia, ini kelas kerentanan JWT yang nyata dan terdokumentasi.</p></Box>
+
+Sekarang middleware-nya. Bentuknya `func(http.Handler) http.Handler`, sama persis seperti middleware logging dan recoverer di r2c05. Gagal verifikasi berarti `401 unauthorized` lewat `httpx.Error`, memakai envelope yang sudah kita sepakati di r2c04.
+
+```go title="internal/auth/middleware.go"
+package auth
+
+import (
+	"net/http"
+	"strings"
+
+	"github.com/kamu/skincare-backend/internal/httpx"
+)
+
+// Verifier adalah kontrak yang middleware butuhkan, bukan *Issuer konkret.
+// Accept interfaces: handler test bisa menyuntik verifier palsu.
+type Verifier interface {
+	Verify(tokenString string) (*Claims, error)
+}
+
+func Middleware(v Verifier) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			raw, ok := bearerToken(r.Header.Get("Authorization"))
+			if !ok {
+				httpx.Error(w, http.StatusUnauthorized, "unauthorized", "token akses tidak ditemukan")
+				return
+			}
+
+			claims, err := v.Verify(raw)
+			if err != nil {
+				httpx.Error(w, http.StatusUnauthorized, "unauthorized", "token akses tidak valid atau kedaluwarsa")
+				return
+			}
+
+			ctx := withClaims(r.Context(), claims)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+func bearerToken(header string) (string, bool) {
+	const prefix = "Bearer "
+	if !strings.HasPrefix(header, prefix) {
+		return "", false
+	}
+	token := strings.TrimSpace(strings.TrimPrefix(header, prefix))
+	return token, token != ""
+}
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: Express middleware vs chi middleware"><p>Di Express kamu menulis `(req, res, next) => { ...; next(); }` dan memanggil `next()` untuk melanjutkan. Di Go, `next` adalah `http.Handler`, dan kamu melanjutkan dengan `next.ServeHTTP(w, r)`. Kalau kamu TIDAK memanggilnya (karena token invalid), rantai berhenti dan handler bisnis tidak pernah jalan, persis seperti tidak memanggil `next()` di Express.</p></Box>
+
+<Box variant="tip" icon="💡" label="Middleware menerima interface, bukan struct"><p>`Middleware(v Verifier)` menerima interface kecil, bukan `*Issuer` konkret. Ini idiom Go "accept interfaces, return structs". Manfaatnya langsung terasa di Roadmap 6: saat menguji handler cart, kamu menyuntik `Verifier` palsu yang selalu mengembalikan claims tertentu, tanpa perlu menandatangani JWT sungguhan.</p></Box>
+
+</Section>
+
+<Section num="08" id="current-user-context" title="Current User di Context" sub="Mengalir dari middleware ke handler tanpa parsing ulang">
+
+<p class="lead">Setelah token valid, handler butuh cara membaca user aktif tanpa mem-parsing token lagi. Di Go, jalurnya adalah `context.Context`.</p>
+
+`context.Context` membawa data request-scoped yang mengalir bersama request. Middleware menaruh `*Claims` di context, handler membacanya kembali. Kunci context-nya bertipe unexported (`type ctxKey int`) supaya tidak bisa bertabrakan dengan key dari package lain, sebuah idiom keamanan Go yang penting.
+
+```go title="internal/auth/context.go"
+package auth
+
+import "context"
+
+// ctxKey unexported: package lain tidak bisa menulis atau membaca
+// dengan key yang sama, sehingga tidak ada tabrakan kunci context.
+type ctxKey int
+
+const claimsKey ctxKey = 0
+
+func withClaims(ctx context.Context, c *Claims) context.Context {
+	return context.WithValue(ctx, claimsKey, c)
+}
+
+// UserFrom mengambil current user dari context. Mengembalikan ok=false
+// bila request tidak melewati middleware auth.
+func UserFrom(ctx context.Context) (*Claims, bool) {
+	c, ok := ctx.Value(claimsKey).(*Claims)
+	return c, ok
+}
+```
+
+Handler `/v1/me` membaca current user dengan `auth.UserFrom`. Karena route ini sudah dilindungi middleware, `ok` selalu `true`, tetapi tetap kita cek sebagai jaring pengaman.
+
+```go title="internal/user/handler.go"
+package user
+
+import (
+	"net/http"
+
+	"github.com/kamu/skincare-backend/internal/auth"
+	"github.com/kamu/skincare-backend/internal/httpx"
+)
+
+type MeResponse struct {
+	ID    int64  `json:"id"`
+	Email string `json:"email"`
+	Role  string `json:"role"`
+}
+
+func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.UserFrom(r.Context())
+	if !ok {
+		httpx.Error(w, http.StatusUnauthorized, "unauthorized", "login diperlukan")
+		return
+	}
+
+	u, err := h.store.ByID(r.Context(), claims.UserID)
+	if err != nil {
+		httpx.Error(w, http.StatusNotFound, "not_found", "user tidak ditemukan")
+		return
+	}
+
+	httpx.Data(w, http.StatusOK, MeResponse{
+		ID:    u.ID,
+		Email: u.Email,
+		Role:  u.Role,
+	})
+}
+```
+
+<Box variant="warn" icon="⚠️" label="Context bukan tas serbaguna"><p>`context.WithValue` hanya untuk data request-scoped yang melewati boundary API: current user, request id, deadline. JANGAN menaruh dependency seperti repository, logger utama, atau konfigurasi di context. Dependency disuntikkan lewat struct handler (`h.store`), bukan diselundupkan lewat context. Ini batas yang sering dilanggar pendatang dari ekosistem yang punya service container global.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: $request->user() Laravel dan req.user Express"><p>`auth.UserFrom(ctx)` adalah versi Go dari `$request->user()` di Laravel atau `req.user` di Express. Sama-sama "siapa yang login pada request ini", hasil dari middleware yang berjalan lebih dulu. Bedanya Go memintanya eksplisit dari context, bukan mengaitkannya ke objek request secara implisit.</p></Box>
+
+</Section>
+
+<Section num="09" id="role-based-access" title="Role-based Access" sub="Autentikasi menjawab siapa, otorisasi menjawab boleh apa">
+
+<p class="lead">Autentikasi memastikan user benar adanya. Otorisasi memutuskan apa yang boleh ia lakukan. Di skincare, customer boleh checkout, hanya admin boleh membuat produk.</p>
+
+Karena role sudah ada di context (dari claims), middleware `RequireRole` cukup membaca current user dan membandingkan role-nya. Ia dipasang SETELAH middleware auth, jadi ia bisa berasumsi current user pasti ada. Gagal cocok berarti `403 forbidden`, bukan `401`.
+
+```go title="internal/auth/role.go"
+package auth
+
+import (
+	"net/http"
+
+	"github.com/kamu/skincare-backend/internal/httpx"
+)
+
+func RequireRole(role string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims, ok := UserFrom(r.Context())
+			if !ok {
+				httpx.Error(w, http.StatusUnauthorized, "unauthorized", "login diperlukan")
+				return
+			}
+			if claims.Role != role {
+				httpx.Error(w, http.StatusForbidden, "forbidden", "akses ditolak untuk role ini")
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+```
+
+<Box variant="note" icon="🧭" label="401 versus 403, jangan tertukar"><p>`401 unauthorized` berarti "aku tidak tahu siapa kamu" (token hilang, invalid, atau expired). `403 forbidden` berarti "aku tahu siapa kamu, tapi kamu tidak boleh ke sini" (role kurang). Customer yang sudah login membuka `/v1/admin/products` harus mendapat 403, bukan 401. Membedakan keduanya membantu frontend memutuskan: arahkan ke login (401) atau tampilkan pesan akses ditolak (403).</p></Box>
+
+<CardGrid cols={2}>
+  <Card><h4>Customer</h4><p>Melihat produk, mengelola cart, checkout, melihat order miliknya sendiri.</p></Card>
+  <Card><h4>Admin</h4><p>CRUD produk, mengatur stok, dan operasi katalog lintas customer.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Role di token bisa basi (stale)"><p>Kalau seorang admin diturunkan jadi customer, access token lamanya masih membawa `role: admin` sampai expired (maksimal 15 menit). Untuk sebagian besar kasus, TTL pendek sudah cukup. Untuk operasi sangat sensitif (hapus produk, ubah harga massal), pertimbangkan mengecek role terkini ke database alih-alih percaya penuh pada klaim. Ini trade-off klasik stateless: cepat tetapi sedikit basi.</p></Box>
+
+</Section>
+
+<Section num="10" id="route-auth-chi" title="Merangkai Route Auth di chi" sub="Public, customer terlindungi, dan admin dalam satu router">
+
+<p class="lead">chi membuat pemisahan route publik, route login-required, dan route admin menjadi rapi lewat `r.Group` dan `r.Use`. Inilah tempat semua potongan tadi bertemu.</p>
+
+<FileTree title="Struktur paket auth di proyek skincare" tree={`
+internal/
+  auth/
+    token.go        # Claims, Issuer, AccessToken (HS256)
+    verify.go       # ParseWithClaims + cek method HMAC + exp + issuer
+    refresh.go      # buat dan hash refresh token
+    password.go     # bcrypt hash dan compare
+    context.go      # ctxKey unexported, UserFrom
+    middleware.go   # Middleware(Verifier) bearer token
+    role.go         # RequireRole(role)
+    handler.go      # Register, Login, Refresh
+  httpx/
+    response.go     # Data, List, Error, ValidationFailed (dari r2c04)
+  user/
+    handler.go      # Me
+  router/
+    router.go       # wiring chi
+`} />
+
+Router memisahkan tiga zona. Route publik (register, login, refresh, webhook) tidak memakai middleware auth. Route customer dibungkus `r.Group` dengan `auth.Middleware`. Route admin menambah `auth.RequireRole("admin")` di atasnya.
+
+```go title="internal/router/router.go"
+package router
+
+import (
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+
+	"github.com/kamu/skincare-backend/internal/auth"
+)
+
+type Deps struct {
+	Auth     *auth.Handler
+	Verifier auth.Verifier
+	Me       http.HandlerFunc
+	Cart     http.Handler
+	Products http.Handler
+	Admin    http.Handler
+}
+
+func New(d Deps) http.Handler {
+	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
+	r.Use(middleware.Recoverer)
+
+	r.Route("/v1", func(r chi.Router) {
+		// Publik: tidak butuh login.
+		r.Post("/auth/register", d.Auth.Register)
+		r.Post("/auth/login", d.Auth.Login)
+		r.Post("/auth/refresh", d.Auth.Refresh)
+		r.Mount("/products", d.Products) // katalog publik (GET)
+
+		// Customer: butuh access token valid.
+		r.Group(func(r chi.Router) {
+			r.Use(auth.Middleware(d.Verifier))
+			r.Get("/me", d.Me)
+			r.Mount("/cart", d.Cart)
+		})
+
+		// Admin: butuh login DAN role admin.
+		r.Group(func(r chi.Router) {
+			r.Use(auth.Middleware(d.Verifier))
+			r.Use(auth.RequireRole("admin"))
+			r.Mount("/admin", d.Admin)
+		})
+	})
+
+	return r
+}
+```
+
+<Box variant="note" icon="🧩" label="Urutan middleware penting"><p>`auth.Middleware` harus berjalan SEBELUM `auth.RequireRole`, karena `RequireRole` membaca claims yang ditaruh oleh `auth.Middleware`. `r.Use` menumpuk middleware sesuai urutan pemanggilan, jadi tulis auth dulu, role kemudian. Membalik urutannya membuat `RequireRole` selalu menolak karena context masih kosong.</p></Box>
+
+Diagram berikut menelusuri satu request admin dari client sampai ditolak atau diizinkan, melewati dua lapis middleware.
+
+```mermaid
+flowchart TD
+  REQ([POST /v1/admin/products]) --> AUTH{auth.Middleware:<br/>token valid?}
+  AUTH -->|tidak| E401[/401 unauthorized/]
+  AUTH -->|ya, taruh Claims di context| ROLE{RequireRole admin:<br/>role cocok?}
+  ROLE -->|tidak| E403[/403 forbidden/]
+  ROLE -->|ya| H["Handler admin<br/>CreateProduct"]
+  H --> OK[/201 Created/]
+```
+
+<p class="fig-cap"><b>Gambar 3.</b> Request admin melewati dua gerbang. Token salah berhenti di 401, role kurang berhenti di 403, baru lolos ke handler.</p>
+
+Terakhir, handler `Login` yang merakit verifikasi password dan penerbitan token. Ia memakai `httpx.Data` untuk envelope sukses dan `httpx.Error` untuk kegagalan, konsisten dengan seluruh API.
+
+```go title="internal/auth/handler.go"
+package auth
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"github.com/kamu/skincare-backend/internal/httpx"
+)
+
+type Handler struct {
+	store UserStore
+	iss   *Issuer
+}
+
+type loginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type tokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int64  `json:"expires_in"`
+}
+
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "invalid_json", "body JSON tidak valid")
+		return
+	}
+
+	u, err := h.store.ByEmail(r.Context(), req.Email)
+	if err != nil || CheckPassword(u.PasswordHash, req.Password) != nil {
+		// Pesan sama untuk email tak ada maupun password salah.
+		httpx.Error(w, http.StatusUnauthorized, "unauthorized", "email atau password salah")
+		return
+	}
+
+	access, expiresAt, err := h.iss.AccessToken(u.ID, u.Role)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal_error", "gagal menerbitkan token")
+		return
+	}
+
+	refresh, hash, err := NewRefreshToken()
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal_error", "gagal menerbitkan token")
+		return
+	}
+	if err := h.store.SaveRefresh(r.Context(), u.ID, hash); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal_error", "gagal menyimpan sesi")
+		return
+	}
+
+	httpx.Data(w, http.StatusOK, tokenResponse{
+		AccessToken:  access,
+		RefreshToken: refresh,
+		TokenType:    "Bearer",
+		ExpiresIn:    int64(expiresAt.Sub(h.iss.now()).Seconds()),
+	})
+}
+```
+
+<Box variant="note" icon="🧩" label="Batas contoh dan langkah berikutnya"><p>`UserStore` di sini masih abstrak (in-memory pada latihan). Implementasi konkret dengan PostgreSQL dan pgx datang di Roadmap 3, lapisan service yang rapi di Roadmap 4. Handler `Refresh` mengikuti pola yang sama: cek hash refresh token, cabut yang lama, terbitkan pasangan baru. Webhook pembayaran tetap publik tetapi memverifikasi signature provider, dibahas di r2c08 dan diperketat di Roadmap 7.</p></Box>
+
+</Section>
+
+<Section num="11" id="hands-on" title="Hands-on: Login sampai Protected Route" sub="Uji alur dari sudut pandang client React">
+
+<p class="lead">Setelah route dan middleware tersambung, jalankan alur dari sisi client: pasang dependency, login, akses protected route, lalu refresh saat access token mati.</p>
+
+<Steps>
+  <Step><b>Pasang dependency</b><p>Tambahkan `golang-jwt/jwt/v5`, `golang.org/x/crypto`, dan `go-chi/chi/v5`, lalu `go mod tidy`.</p></Step>
+  <Step><b>Set secret</b><p>Export `AUTH_JWT_SECRET` dengan string acak panjang sebelum menjalankan server.</p></Step>
+  <Step><b>Login</b><p>Kirim email dan password ke `/v1/auth/login`, simpan `access_token` dan `refresh_token` sesuai strategi keamanan client.</p></Step>
+  <Step><b>Akses protected route</b><p>Sertakan header `Authorization: Bearer ACCESS_TOKEN` saat memanggil `/v1/me` atau `/v1/cart`.</p></Step>
+  <Step><b>Refresh</b><p>Saat access token expired, tukar `refresh_token` di `/v1/auth/refresh`, lalu ganti kedua token lama dengan yang baru.</p></Step>
+</Steps>
+
+```bash title="Terminal"
+go get github.com/golang-jwt/jwt/v5 golang.org/x/crypto/bcrypt github.com/go-chi/chi/v5
+go mod tidy
+export AUTH_JWT_SECRET="$(openssl rand -base64 48)"
+go run ./cmd/api
+```
+
+Login sebagai admin dan amati pasangan token di response.
+
+```bash title="Terminal"
+curl -i -X POST http://localhost:8080/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@skincare.test","password":"rahasia-kuat"}'
+```
+
+```json title="200 OK - response login"
+{
+  "data": {
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refresh_token": "q2sgD9vcmcC2k6GlzqTnxDb2iQJt4phtbP75r7bC9BI",
+    "token_type": "Bearer",
+    "expires_in": 900
+  }
+}
+```
+
+Pakai access token untuk membuka profil current user.
+
+```bash title="Terminal"
+curl -i http://localhost:8080/v1/me \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+```
+
+Buktikan role-based access: customer yang login membuka route admin harus ditolak `403 forbidden`, bukan `401`.
+
+```bash title="Terminal"
+curl -i -X POST http://localhost:8080/v1/admin/products \
+  -H 'Authorization: Bearer TOKEN_CUSTOMER' \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Serum Baru","category":"serum","price":189000,"stock":20}'
+```
+
+```json title="403 Forbidden - role kurang"
+{
+  "error": {
+    "code": "forbidden",
+    "message": "akses ditolak untuk role ini"
+  }
+}
+```
+
+<Box variant="tip" icon="💡" label="Envelope tetap konsisten"><p>Perhatikan response login dibungkus `data`, dan error dibungkus `error` dengan `code` snake_case plus `message`. Ini envelope yang sama yang dipakai produk, cart, dan order. Auth tidak memperkenalkan format baru, ia ikut kontrak `httpx` yang sudah ada sejak r2c04.</p></Box>
+
+</Section>
+
+<Section num="12" id="jebakan-umum" title="Jebakan Umum dari JS/PHP" sub="Detail kecil yang melahirkan bug auth di produksi">
+
+<p class="lead">Auth terlihat sepele saat demo, tetapi sebagian besar insiden keamanan lahir dari detail yang terlewat. Berikut yang paling sering menjerat pendatang dari Express dan Laravel.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Membaca JWT tanpa verify</h4><p>`decode` payload hanya untuk debug. Otorisasi WAJIB lewat verifikasi signature, expiry, dan issuer. Percaya pada payload mentah = lubang keamanan.</p></Card>
+  <Card><h4>Lupa cek method HMAC di keyfunc</h4><p>Tanpa cek `SigningMethodHMAC`, token ber-`alg: none` atau RSA bisa lolos. Pakai `WithValidMethods` plus cek di keyfunc.</p></Card>
+  <Card><h4>Refresh token tidak disimpan server-side</h4><p>Tanpa hash di server, logout dan pencabutan sesi jadi mustahil. Token valid selamanya sampai expired.</p></Card>
+  <Card><h4>Secret pendek atau ada di source code</h4><p>HS256 butuh secret acak panjang dari env atau secret manager, bukan string literal yang ikut ter-commit ke git.</p></Card>
+  <Card><h4>Membocorkan hash password di response</h4><p>Tanpa JSON tag `json:"-"` pada `PasswordHash`, satu endpoint lalai membocorkan hash seluruh user. Pisahkan model dari DTO.</p></Card>
+  <Card><h4>Menukar 401 dan 403</h4><p>401 untuk identitas tidak diketahui, 403 untuk role kurang. Tertukar membuat frontend salah memutuskan antara redirect login dan pesan akses ditolak.</p></Card>
+  <Card><h4>Pesan login membocorkan email terdaftar</h4><p>Balas pesan sama untuk email tak ada dan password salah, supaya penyerang tidak bisa memetakan email mana yang terdaftar.</p></Card>
+  <Card><h4>Context sebagai container dependency</h4><p>Context untuk current user dan request id, bukan tempat menyelundupkan repository, logger, atau config. Suntik dependency lewat struct.</p></Card>
+  <Card><h4>Role dipercaya selamanya</h4><p>Role di access token bisa basi sampai expired. Untuk aksi kritikal, cek role terkini ke database atau pendekkan TTL.</p></Card>
+  <Card><h4>Auth guard React dianggap pengaman</h4><p>Menyembunyikan tombol di React bukan keamanan. Keputusan akses sebenarnya ada di middleware server, bukan di client.</p></Card>
+</CardGrid>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: auth guard React vs middleware Go"><p>Di React, route guard sering hanya menyembunyikan halaman dari mata user. Siapa pun bisa membuka DevTools dan memanggil API langsung. Di Go, middleware adalah penjaga sesungguhnya karena server yang memegang keputusan. Aturan emas: validasi UI itu untuk kenyamanan, validasi server itu untuk keamanan. Keduanya perlu, tetapi hanya yang server yang melindungi.</p></Box>
+
+</Section>
+
+<Section num="13" id="ringkasan" title="Ringkasan & Poin Penting">
+
+<p class="lead">Sekarang backend skincare punya alur autentikasi lengkap: register, login, token, middleware, current user, dan role, semuanya memakai envelope dan router yang sudah ada.</p>
+
+<Recap title="Yang Wajib Menempel"><ul><li>Session menyimpan state login di server (cocok server-rendered), token menyimpan buktinya di client (cocok REST API untuk React, mobile, worker).</li><li>JWT adalah `header.payload.signature` base64url. Payload BISA dibaca siapa saja, jadi jangan taruh rahasia di sana, dan jangan percaya sebelum signature diverifikasi.</li><li>Pola dua token: access JWT berumur ~15 menit (stateless), refresh ~7 hari yang disimpan sebagai hash server-side, dirotasi tiap refresh agar bisa dicabut.</li><li>Password disimpan sebagai hash bcrypt cost 12 (`GenerateFromPassword`, `CompareHashAndPassword`), opsi lebih kuat argon2id. DTO user wajib pakai `json:"-"` pada hash.</li><li>Terbitkan token: `jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(secret))` dengan secret dari env `AUTH_JWT_SECRET`. RS256 jadi opsi saat verify dan sign perlu dipisah.</li><li>Verifikasi: `jwt.ParseWithClaims` dengan cek method HMAC di keyfunc, plus `WithValidMethods`, `WithIssuer`, dan `WithExpirationRequired`.</li><li>Current user mengalir lewat `context.Context` dengan key bertipe unexported (`ctxKey`); ambil dengan `auth.UserFrom(ctx)`.</li><li>`auth.Middleware` menghasilkan 401 unauthorized, `auth.RequireRole("admin")` menghasilkan 403 forbidden, keduanya lewat `httpx.Error`. Pasang auth dulu, role kemudian.</li></ul></Recap>
+
+Dalam proyek online shop skincare, alur ini menjadi fondasi fitur berikutnya: cart milik user yang login, checkout yang hanya boleh dilakukan customer, admin product management di balik `RequireRole`, dan webhook pembayaran publik yang memverifikasi signature provider. Di r2c08, kita merakit seluruh peta endpoint ini menjadi satu API yang utuh. Lalu di Roadmap 7, kita memperdalam sisi keamanannya: verifikasi signature webhook, manajemen secrets dan rotasi, cookie hardening, rate limit, dan proteksi endpoint produksi.
+
+</Section>

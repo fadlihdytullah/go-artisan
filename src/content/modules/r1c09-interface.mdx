@@ -1,0 +1,910 @@
+---
+title: "Modul Interface dan Desain Dependensi - Go Artisan"
+badge: "IFC"
+topTitle: "Interface dan Desain Dependensi"
+topSub: "Go untuk Developer JavaScript & PHP"
+summary: "Kuasai interface Go sebagai kontrak perilaku kecil yang dipenuhi secara implicit, lalu pakai untuk memisahkan service layer dari database lewat ProductRepository, dependency injection manual, fake repository untuk test, plus jebakan typed-nil dan type assertion."
+order: 9
+target: "Roadmap 1 · Go Programming Foundations"
+readingTime: "~70 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa Interface Mengubah Desain Backend" }
+  - { num: "02", id: "kontrak-perilaku", title: "Interface sebagai Kontrak Perilaku" }
+  - { num: "03", id: "implicit", title: "Implicit Satisfaction, Tanpa implements" }
+  - { num: "04", id: "interface-kecil", title: "Interface Kecil dan Idiom Standard Library" }
+  - { num: "05", id: "consumer-side", title: "Definisikan Interface di Sisi Pemakai" }
+  - { num: "06", id: "repository", title: "ProductRepository: Memisahkan Service dari Database" }
+  - { num: "07", id: "dependency-injection", title: "Dependency Injection Manual lewat Constructor" }
+  - { num: "08", id: "mocking", title: "Mocking dengan Fake Repository di Test" }
+  - { num: "09", id: "any-assertion", title: "any, Type Assertion, dan Type Switch" }
+  - { num: "10", id: "hands-on", title: "Hands-on: Service Tanpa Database" }
+  - { num: "11", id: "jebakan-umum", title: "Jebakan Umum dari JS dan PHP" }
+  - { num: "12", id: "ringkasan", title: "Ringkasan & Poin Penting" }
+footerTitle: "Modul Interface dan Desain Dependensi - Go Artisan"
+footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Def } from "@components";
+
+<Hero eyebrow="Roadmap 1 &middot; Fondasi" title="Interface dan <em>Desain Dependensi</em><br />Backend yang Mudah Dites">
+  <p>Interface adalah titik balik saat kode Go berubah dari sekadar program menjadi backend yang bersih: service tidak lagi tahu apakah datanya dari PostgreSQL, cache, atau peta in-memory untuk test.</p>
+  <Fragment slot="meta">
+    <Chip icon="code">Bahasa: <b>Go 1.26</b></Chip>
+    <Chip icon="clock">~70 menit baca</Chip>
+    <Chip icon="rocket">Proyek: <b>Online Shop Skincare</b></Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa Interface Mengubah Desain Backend" sub="Masalah besar backend bukan cara memanggil fungsi, tetapi cara melepas business logic dari database.">
+
+<p class="lead">Di modul struct dan method kamu sudah memodelkan `User`, `Product`, `Order`, `Payment`, dan `Inventory`. Sekarang muncul pertanyaan arsitektur pertama: bagaimana service yang menghitung order tahu produknya tanpa terikat langsung ke PostgreSQL?</p>
+
+Kalau kamu datang dari React, kamu sudah sering melepas komponen dari detail implementasi lewat props: komponen tabel tidak peduli datanya dari `fetch`, dari mock, atau dari React Query, asalkan bentuknya cocok. Kalau kamu datang dari Laravel, kamu mengenal contract, service container, dan binding interface ke concrete class. Di Go, pemisahan yang sama dibuat lebih sederhana dan eksplisit: struct service menerima interface kecil, lalu implementasi konkretnya disuntikkan dari luar.
+
+Interface membuat `product.Service` tidak peduli apakah data produk berasal dari PostgreSQL, fake repository untuk test, cache Redis, atau API internal. Service cukup tahu satu hal: ada dependency yang bisa `FindBySKU` dan `ListActive`. Inilah yang membuat unit test bisa berjalan tanpa database sama sekali, dan ini juga Student Outcome modul ini.
+
+<Def term="interface"><p>Interface di Go adalah tipe yang mendeskripsikan perilaku lewat sekumpulan method. Sebuah tipe dianggap memenuhi interface jika method set miliknya memuat semua method interface itu. Tidak ada deklarasi eksplisit, cukup kecocokan method.</p></Def>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: contract Laravel vs interface Go"><p>Di Laravel, `interface ProductRepository` lalu `bind` ke implementasi di service provider terasa familiar. Di Go idenya sama, tetapi tidak ada container ajaib: kamu sendiri yang menyusun (wire) dependency di `main.go`, dan tidak ada keyword `implements` yang harus ditulis implementasi.</p></Box>
+
+Dalam proyek online shop skincare, interface akan menjadi fondasi untuk repository (product, order, inventory), payment gateway, email sender, dan setiap komponen yang perlu diganti antara production dan test. Acuan resmi: [Effective Go tentang interface](https://go.dev/doc/effective_go#interfaces) dan [Go Specification, Interface types](https://go.dev/ref/spec#Interface_types).
+
+</Section>
+
+<Section num="02" id="kontrak-perilaku" title="Interface sebagai Kontrak Perilaku" sub="Struct menyimpan data, interface menyimpan kemampuan.">
+
+<p class="lead">Cara paling sehat membaca interface Go adalah sebagai sebuah pertanyaan: nilai ini bisa melakukan apa?</p>
+
+Di TypeScript kamu sering menulis interface untuk bentuk data, misalnya `interface ProductDTO &#123; sku: string &#125;`. Di Go, kebiasaan itu sudah terjawab oleh struct yang kamu pelajari di modul sebelumnya. Interface Go justru paling kuat saat dipakai untuk behavior, bukan sekadar bentuk field. Struct adalah jawaban untuk "data apa", interface adalah jawaban untuk "perilaku apa".
+
+```go title="internal/product/repository.go"
+package product
+
+import "context"
+
+// ProductRepository adalah kontrak perilaku, bukan bentuk data.
+// Siapa pun yang punya dua method ini bisa dipakai sebagai sumber produk.
+type ProductRepository interface {
+	FindBySKU(ctx context.Context, sku string) (*Product, error)
+	ListActive(ctx context.Context, limit int) ([]Product, error)
+}
+```
+
+Interface di atas tidak menyebut PostgreSQL, Redis, file JSON, atau peta in-memory. Ia hanya berkata: siapa pun yang punya `FindBySKU` dan `ListActive` dengan signature ini boleh dipakai sebagai `ProductRepository`. Perhatikan juga `context.Context` sebagai parameter pertama dan `(*Product, error)` sebagai return, dua kebiasaan yang sudah kamu kenal sejak modul fungsi dan error.
+
+<Compare aLabel="TypeScript: interface sering untuk shape data" bLabel="Go: interface untuk behavior" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>`interface Product &#123; id: number; name: string &#125;` mendeskripsikan bentuk object.</li><li>Kecocokan diperiksa lewat structural typing terhadap field.</li><li>Method biasanya hidup di class atau fungsi terpisah.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>`type ProductRepository interface &#123; FindBySKU(...) &#125;` mendeskripsikan kemampuan dependency.</li><li>Kecocokan diperiksa lewat method set, bukan field.</li><li>Bentuk data sudah jadi tugas struct, bukan interface.</li></ul></Fragment>
+</Compare>
+
+<Box variant="tip" icon="💡" label="Idiom Go"><p>Mulai dari concrete struct dulu. Tambahkan interface saat ada kebutuhan nyata untuk mengganti implementasi, terutama boundary database, integrasi eksternal, dan testing. Interface yang dibuat terlalu dini sering hanya menambah lapisan tanpa manfaat.</p></Box>
+
+</Section>
+
+<Section num="03" id="implicit" title="Implicit Satisfaction, Tanpa implements" sub="Compiler melihat method set, bukan deklarasi yang kamu tulis.">
+
+<p class="lead">Go tidak punya keyword `implements`. Relasi antara tipe dan interface terjadi secara implicit: kalau method-nya cocok, tipe itu otomatis memenuhi interface.</p>
+
+Di PHP, class biasanya menulis eksplisit `class EloquentProductRepository implements ProductRepository`. Di TypeScript, class bisa menulis `implements`, meski banyak kode TS juga bersandar pada structural typing. Di Go, deklarasi implementasi tidak ada sama sekali. Effective Go menyebutnya langsung: sebuah tipe memenuhi interface cukup dengan mengimplementasikan method-method interface itu.
+
+Awalnya `PostgresProductRepository` hanyalah concrete struct biasa. Ia berubah menjadi `ProductRepository` pada saat ia punya method yang cocok, tanpa baris tambahan apa pun.
+
+```go title="internal/product/repository_postgres.go"
+package product
+
+import (
+	"context"
+	"errors"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type PostgresProductRepository struct {
+	db *pgxpool.Pool
+}
+
+func NewPostgresProductRepository(db *pgxpool.Pool) *PostgresProductRepository {
+	return &PostgresProductRepository{db: db}
+}
+
+func (r *PostgresProductRepository) FindBySKU(ctx context.Context, sku string) (*Product, error) {
+	const query = `
+		select id, sku, name, category, price_rupiah, quantity, status
+		from products
+		where sku = $1
+	`
+
+	var p Product
+	err := r.db.QueryRow(ctx, query, sku).Scan(
+		&p.ID,
+		&p.SKU,
+		&p.Name,
+		&p.Category,
+		&p.PriceRupiah,
+		&p.Quantity,
+		&p.Status,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrProductNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &p, nil
+}
+
+func (r *PostgresProductRepository) ListActive(ctx context.Context, limit int) ([]Product, error) {
+	const query = `
+		select id, sku, name, category, price_rupiah, quantity, status
+		from products
+		where status = 'active'
+		order by name asc
+		limit $1
+	`
+
+	rows, err := r.db.Query(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	products := make([]Product, 0)
+	for rows.Next() {
+		var p Product
+		if err := rows.Scan(&p.ID, &p.SKU, &p.Name, &p.Category, &p.PriceRupiah, &p.Quantity, &p.Status); err != nil {
+			return nil, err
+		}
+		products = append(products, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return products, nil
+}
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: duck typing yang dicek compiler"><p>Implicit satisfaction terasa seperti duck typing JavaScript: kalau ia berperilaku seperti repository, ia repository. Bedanya, Go memeriksanya saat compile, bukan saat runtime. Kamu mendapat fleksibilitas duck typing plus keamanan static type.</p></Box>
+
+Karena tidak ada `implements`, ada satu trik penting untuk membuat hubungan ini eksplisit saat refactor: compile-time assertion. Baris ini tidak dipakai saat runtime, gunanya hanya meminta compiler memastikan `*PostgresProductRepository` benar-benar memenuhi `ProductRepository`. Kalau suatu hari signature method berubah, compile gagal lebih awal, bukan saat wiring di `main.go`.
+
+```go title="internal/product/repository_postgres.go"
+package product
+
+// Compile-time check: pastikan *PostgresProductRepository memenuhi ProductRepository.
+var _ ProductRepository = (*PostgresProductRepository)(nil)
+```
+
+<Box variant="warn" icon="⚠️" label="Pointer receiver dan method set"><p>Method di atas memakai pointer receiver `(r *PostgresProductRepository)`, jadi yang memenuhi interface adalah `*PostgresProductRepository`, bukan value-nya. Inilah lanjutan aturan method set dari modul struct: method pointer receiver hanya masuk method set pointer. Menulis `var _ ProductRepository = PostgresProductRepository&#123;&#125;` akan gagal compile.</p></Box>
+
+</Section>
+
+<Section num="04" id="interface-kecil" title="Interface Kecil dan Idiom Standard Library" sub="Semakin besar interface, semakin lemah abstraksinya.">
+
+<p class="lead">Interface Go yang baik biasanya kecil, sering bahkan hanya satu method. Ini bukan selera, ini idiom yang dibawa langsung oleh standard library.</p>
+
+Contoh paling terkenal adalah `io.Reader`. Contract-nya cuma satu method, dan karena kecil ia dipenuhi oleh sangat banyak tipe: file, koneksi network, buffer string, body HTTP request, file terkompresi, dan banyak lagi. Semua bisa diperlakukan sama sebagai "sumber byte".
+
+```go title="internal/report/export.go"
+package report
+
+import (
+	"io"
+	"strings"
+)
+
+// CountBytes menerima apa pun yang bisa dibaca: file, body request,
+// buffer string, response gzip. Ia hanya butuh perilaku "bisa dibaca".
+func CountBytes(r io.Reader) (int64, error) {
+	return io.Copy(io.Discard, r)
+}
+
+func example() (int64, error) {
+	catalog := strings.NewReader("serum-vitamin-c\nfacial-wash")
+	return CountBytes(catalog)
+}
+```
+
+Empat interface kecil ini akan terus kamu temui di sepanjang Go, jadi kenali sekarang juga.
+
+<CardGrid cols={2}>
+  <Card><h4><code>io.Reader</code></h4><p>Satu method `Read(p []byte) (int, error)`. Sumber byte apa pun, dari file sampai body HTTP.</p></Card>
+  <Card><h4><code>io.Writer</code></h4><p>Satu method `Write(p []byte) (int, error)`. Tujuan tulis apa pun, dari file sampai response writer.</p></Card>
+  <Card><h4><code>fmt.Stringer</code></h4><p>Satu method `String() string`. Bikin tipe punya representasi teks sendiri saat dicetak.</p></Card>
+  <Card><h4><code>error</code></h4><p>Satu method `Error() string`. Interface bawaan yang sudah kamu pakai sejak modul error.</p></Card>
+</CardGrid>
+
+Kita bisa menempelkan `fmt.Stringer` pada domain skincare agar `Product` punya bentuk teks yang rapi untuk log dan debugging.
+
+```go title="internal/product/stringer.go"
+package product
+
+import "fmt"
+
+// String membuat Product memenuhi fmt.Stringer, jadi fmt.Println(p)
+// dan %v otomatis memakai format ini.
+func (p Product) String() string {
+	return fmt.Sprintf("Product(%s, %s, Rp%d, qty=%d, %s)", p.SKU, p.Name, p.PriceRupiah, p.Quantity, p.Status)
+}
+```
+
+<Box variant="warn" icon="⚠️" label="Jangan mulai dari interface raksasa"><p>Interface berisi 12 method biasanya tanda boundary terlalu lebar dan fake-nya jadi melelahkan dibuat. Pecah sesuai use case, misalnya `ProductReader` (hanya `FindBySKU`) terpisah dari `ProductWriter`. Prinsip Go: semakin besar interface, semakin lemah abstraksinya.</p></Box>
+
+<Box variant="note" icon="🧱" label="Interface komposit dari interface kecil"><p>Interface besar yang sah biasanya disusun dari yang kecil, bukan ditulis gemuk dari awal. `io.ReadWriter` hanyalah `Reader` plus `Writer` yang di-embed. Pola embedding ini mirip embedded struct di modul sebelumnya, tetapi pada level perilaku.</p></Box>
+
+</Section>
+
+<Section num="05" id="consumer-side" title="Definisikan Interface di Sisi Pemakai" sub="Yang tahu kebutuhan minimum adalah pemakai, bukan implementasi.">
+
+<p class="lead">Pertanyaan yang sering membuat developer dari Laravel bingung: di package mana interface harus ditulis? Jawaban idiomatik Go: di package yang memakainya, bukan di package implementasi.</p>
+
+Di Laravel atau PHP OOP, interface sering berada di tengah hierarki: `PaymentGatewayInterface`, `BaseRepositoryInterface`, lalu implementasi untuk tiap provider, semuanya ditata mengikuti convention arsitektur. Pola itu bisa berguna, tetapi kalau dibawa mentah ke Go ia mudah menjadi terlalu abstrak dan terlalu dini. Go lebih nyaman dengan pertanyaan kecil: dependency ini perlu melakukan apa untuk use case ini?
+
+Lihat package payment. Service checkout tidak butuh seluruh detail provider pembayaran. Ia hanya butuh kemampuan untuk melakukan charge. Maka interface yang tepat kecil dan berorientasi perilaku.
+
+```go title="internal/payment/charger.go"
+package payment
+
+import "context"
+
+// Charger fokus ke satu kemampuan yang dibutuhkan checkout: melakukan charge.
+// Nama mengikuti perilaku, bukan layer.
+type Charger interface {
+	Charge(ctx context.Context, in ChargeInput) (*Payment, error)
+}
+
+type ChargeInput struct {
+	OrderID      int64
+	AmountRupiah int64
+	Provider     string
+}
+```
+
+Nama `Charger` lebih bercerita tentang perilaku daripada `PaymentGatewayInterface`. Konsekuensinya, interface ini paling cocok hidup dekat service yang memanggilnya, bukan dekat implementasi Midtrans atau Xendit-nya.
+
+<Compare aLabel="PHP/Laravel: kontrak mengikuti layer" bLabel="Go: kontrak mengikuti pemakai" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>`PaymentGatewayInterface` dibuat lebih dulu karena convention arsitektur.</li><li>Interface tinggal di folder Contracts, terpisah dari yang memakainya.</li><li>Service container yang mengikat interface ke concrete class.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Interface dibuat saat ada pemakai yang ingin lepas dari concrete dependency.</li><li>Interface tinggal di package pemakai, jadi kebutuhannya mudah dibaca.</li><li>Wiring dilakukan manual di `main.go` atau package bootstrap.</li></ul></Fragment>
+</Compare>
+
+<Box variant="analogy" icon="🔌" label="Analogi colokan listrik"><p>Jangan desain interface seperti kartu keluarga yang menuntut silsilah lengkap. Desain seperti colokan listrik: selama bentuk dan voltasenya cocok, perangkat apa pun boleh masuk. Yang menentukan bentuk colokan adalah tembok (pemakai), bukan tiap perangkat (implementasi).</p></Box>
+
+</Section>
+
+<Section num="06" id="repository" title="ProductRepository: Memisahkan Service dari Database" sub="Inti modul: service layer berdiri di atas interface, bukan di atas pgx.">
+
+<p class="lead">Sekarang kita rakit semuanya dalam struktur proyek skincare. Tujuannya persis Student Outcome: service layer terpisah penuh dari database layer lewat repository interface.</p>
+
+Di Roadmap 1 kita belum membangun API lengkap, tetapi mental model foldernya sudah bisa dibentuk. Package `internal/product` memuat model domain, interface repository, service, implementasi production, dan test.
+
+<FileTree title="Struktur package product" tree={`
+internal/
+  product/
+    product.go                # Product, ProductStatus (dari modul struct)
+    errors.go                 # ErrProductNotFound dan error domain lain
+    repository.go             # ProductRepository interface (sisi pemakai)
+    repository_postgres.go    # implementasi production dengan pgxpool
+    repository_memory.go      # implementasi in-memory untuk dev dan test
+    service.go                # business logic katalog produk
+    service_test.go           # unit test dengan fake repository
+cmd/
+  api/
+    main.go                   # composition root: wiring dependency
+go.mod                        # module github.com/kamu/skincare-backend
+`} />
+
+`Product`, `ProductStatus`, dan `IsSellable()` sudah lahir di modul struct dan method, jadi kita pakai ulang apa adanya. Yang baru di sini hanyalah error domain dan interface repository.
+
+```go title="internal/product/errors.go"
+package product
+
+import "errors"
+
+// ErrProductNotFound dipakai bersama oleh repository, service, dan test
+// agar "produk tidak ada" bisa dibedakan dari error sistem.
+var ErrProductNotFound = errors.New("product not found")
+```
+
+Interface repository tinggal dekat service yang memakainya, sesuai prinsip sisi-pemakai dari bagian sebelumnya.
+
+```go title="internal/product/repository.go"
+package product
+
+import "context"
+
+type ProductRepository interface {
+	FindBySKU(ctx context.Context, sku string) (*Product, error)
+	ListActive(ctx context.Context, limit int) ([]Product, error)
+}
+```
+
+Selain `PostgresProductRepository`, kita siapkan satu implementasi in-memory. Ia berguna untuk dev lokal tanpa database dan menjadi dasar fake di test. Karena interface kecil, implementasinya juga ringkas.
+
+```go title="internal/product/repository_memory.go"
+package product
+
+import (
+	"context"
+	"sort"
+)
+
+type InMemoryProductRepository struct {
+	bySKU map[string]Product
+}
+
+func NewInMemoryProductRepository(seed []Product) *InMemoryProductRepository {
+	bySKU := make(map[string]Product, len(seed))
+	for _, p := range seed {
+		bySKU[p.SKU] = p
+	}
+	return &InMemoryProductRepository{bySKU: bySKU}
+}
+
+func (r *InMemoryProductRepository) FindBySKU(ctx context.Context, sku string) (*Product, error) {
+	p, ok := r.bySKU[sku]
+	if !ok {
+		return nil, ErrProductNotFound
+	}
+	// Kembalikan salinan agar pemanggil tidak memutasi data internal repo.
+	return &p, nil
+}
+
+func (r *InMemoryProductRepository) ListActive(ctx context.Context, limit int) ([]Product, error) {
+	active := make([]Product, 0, len(r.bySKU))
+	for _, p := range r.bySKU {
+		if p.Status.IsSellable() {
+			active = append(active, p)
+		}
+	}
+
+	sort.Slice(active, func(i, j int) bool {
+		return active[i].Name < active[j].Name
+	})
+
+	if limit > 0 && len(active) > limit {
+		active = active[:limit]
+	}
+	return active, nil
+}
+```
+
+Dua implementasi yang berbeda, satu interface yang sama. Hubungan ini paling jelas dilihat sebagai diagram class: `Service` bergantung pada `ProductRepository`, sementara `PostgresProductRepository` dan `InMemoryProductRepository` sama-sama merealisasikannya.
+
+```mermaid
+classDiagram
+  class ProductRepository {
+    <<interface>>
+    +FindBySKU(ctx, sku) Product
+    +ListActive(ctx, limit) Product[]
+  }
+  class Service {
+    -products ProductRepository
+    +GetProductDetail(ctx, sku) ProductDetail
+    +ListCatalog(ctx, limit) Product[]
+  }
+  class PostgresProductRepository {
+    -db pgxpool.Pool
+    +FindBySKU(ctx, sku) Product
+    +ListActive(ctx, limit) Product[]
+  }
+  class InMemoryProductRepository {
+    -bySKU map
+    +FindBySKU(ctx, sku) Product
+    +ListActive(ctx, limit) Product[]
+  }
+  Service --> ProductRepository : bergantung
+  PostgresProductRepository ..|> ProductRepository : memenuhi
+  InMemoryProductRepository ..|> ProductRepository : memenuhi
+```
+
+<p class="fig-cap"><b>Gambar 1.</b> Service hanya kenal interface `ProductRepository`. Dua implementasi konkret merealisasikannya: pgx untuk production, in-memory untuk dev dan test. Tidak ada satu pun anak panah dari `Service` ke implementasi konkret.</p>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: Eloquent yang menempel vs repository yang lepas"><p>Di Laravel, `Order::with('items')->find($id)` mencampur domain dengan query database dalam satu Eloquent model. Di Go, repository memisahkannya: `order.Order` murni domain, `OrderRepository` yang menyentuh database. Pemisahan ini yang membuat service bisa dites tanpa menyalakan PostgreSQL.</p></Box>
+
+</Section>
+
+<Section num="07" id="dependency-injection" title="Dependency Injection Manual lewat Constructor" sub="Accept interfaces, return structs. Tanpa container, tanpa sihir.">
+
+<p class="lead">Go tidak butuh framework container untuk dependency injection dasar. DI di Go sangat eksplisit: constructor menerima dependency, menyimpannya di struct, lalu method memakainya.</p>
+
+Ini terasa lebih manual daripada Laravel container, tetapi justru itu kekuatannya. Tidak ada dependency yang tersembunyi di balik auto-resolve, dan kamu selalu bisa melacak dari mana sebuah implementasi datang hanya dengan membaca `main.go`.
+
+```go title="internal/product/service.go"
+package product
+
+import (
+	"context"
+	"errors"
+	"strings"
+)
+
+type Service struct {
+	products ProductRepository
+}
+
+// NewService menerima interface, mengembalikan concrete *Service.
+func NewService(products ProductRepository) *Service {
+	return &Service{products: products}
+}
+
+type ProductDetail struct {
+	SKU         string
+	Name        string
+	PriceRupiah int64
+	Sellable    bool
+}
+
+func (s *Service) GetProductDetail(ctx context.Context, sku string) (*ProductDetail, error) {
+	if strings.TrimSpace(sku) == "" {
+		return nil, errors.New("sku is required")
+	}
+
+	p, err := s.products.FindBySKU(ctx, sku)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ProductDetail{
+		SKU:         p.SKU,
+		Name:        p.Name,
+		PriceRupiah: p.PriceRupiah,
+		Sellable:    p.Status.IsSellable() && p.Quantity > 0,
+	}, nil
+}
+
+func (s *Service) ListCatalog(ctx context.Context, limit int) ([]Product, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+
+	return s.products.ListActive(ctx, limit)
+}
+```
+
+Perhatikan pola yang sangat khas Go di `NewService`: ia **menerima interface** dan **mengembalikan concrete struct**. Proverb-nya: "accept interfaces, return structs". Pemakai service tetap mendapat tipe `*Service` yang jelas dan ber-autocomplete penuh, sementara service-nya sendiri longgar terhadap sumber data.
+
+```mermaid
+flowchart LR
+  Main["main.go (composition root)"] -->|"buat pgxpool, lalu repo"| Repo["PostgresProductRepository"]
+  Repo -->|"NewService(repo)"| Svc["product.Service"]
+  Svc -->|"dipakai oleh"| Handler["HTTP Handler (Roadmap 2)"]
+  Svc -.->|"hanya tahu interface"| Iface["ProductRepository"]
+  Repo -.->|"memenuhi"| Iface
+```
+
+<p class="fig-cap"><b>Gambar 2.</b> Arah dependency. Hanya `main.go` yang memilih implementasi konkret dan menyuntikkannya. Service bergantung ke interface (garis putus), bukan ke pgx. Ganti satu baris di `main.go` dan seluruh aplikasi memakai sumber data lain.</p>
+
+Wiring nyata terjadi di composition root, biasanya `cmd/api/main.go`. Di sinilah, dan hanya di sini, koneksi database dibuat dan implementasi dipilih.
+
+```go title="cmd/api/main.go"
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kamu/skincare-backend/internal/product"
+)
+
+func main() {
+	ctx := context.Background()
+
+	db, err := pgxpool.New(ctx, "postgres://user:pass@localhost:5432/skincare?sslmode=disable")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	// Composition root: pilih implementasi, lalu suntikkan ke service.
+	productRepo := product.NewPostgresProductRepository(db)
+	productService := product.NewService(productRepo)
+
+	_ = productService // di Roadmap 2 ini dipasang ke HTTP handler chi.
+}
+```
+
+<Steps>
+  <Step><b>Definisikan boundary</b><p>Tentukan kemampuan minimum yang dibutuhkan service: `FindBySKU` dan `ListActive`. Tahan godaan menambah method "untuk jaga-jaga".</p></Step>
+  <Step><b>Terima interface di constructor</b><p>`NewService(products ProductRepository)` membuat business logic bebas dari pgx.</p></Step>
+  <Step><b>Wiring di composition root</b><p>`main.go` membuat `PostgresProductRepository`, lalu menyuntikkannya ke `NewService`.</p></Step>
+  <Step><b>Tukar implementasi saat test</b><p>Test memakai fake repository in-memory tanpa database sungguhan.</p></Step>
+</Steps>
+
+<Box variant="tip" icon="💡" label="Kenapa return struct, bukan interface?"><p>Mengembalikan `*Service` (concrete) memberi pemakai dokumentasi otomatis lewat tipe dan menghindari jebakan typed-nil yang kita bahas nanti. Mengembalikan interface dari constructor baru masuk akal kalau memang ada beberapa implementasi service yang dipilih saat runtime, dan itu jarang.</p></Box>
+
+</Section>
+
+<Section num="08" id="mocking" title="Mocking dengan Fake Repository di Test" sub="Interface kecil membuat fake manual lebih jelas daripada mocking framework.">
+
+<p class="lead">Nilai terbesar interface untuk backend muncul di sini: unit test service bisa berjalan tanpa database, tanpa koneksi, tanpa migrasi.</p>
+
+Kamu tidak butuh mocking framework dulu. Karena interface Go kecil, sebuah fake struct manual sering lebih jelas, lebih cepat, dan lebih mudah dirawat. Fake itu sekadar struct yang memenuhi interface yang sama, ditaruh di file `_test.go` agar tidak ikut ke build production.
+
+```go title="internal/product/service_test.go"
+package product
+
+import (
+	"context"
+	"errors"
+	"testing"
+)
+
+// fakeProductRepo memenuhi ProductRepository tanpa keyword apa pun.
+// Field publik membuat tiap test bisa mengatur skenario dengan mudah.
+type fakeProductRepo struct {
+	products map[string]Product
+	findErr  error
+}
+
+func (f *fakeProductRepo) FindBySKU(ctx context.Context, sku string) (*Product, error) {
+	if f.findErr != nil {
+		return nil, f.findErr
+	}
+	p, ok := f.products[sku]
+	if !ok {
+		return nil, ErrProductNotFound
+	}
+	return &p, nil
+}
+
+func (f *fakeProductRepo) ListActive(ctx context.Context, limit int) ([]Product, error) {
+	out := make([]Product, 0, len(f.products))
+	for _, p := range f.products {
+		out = append(out, p)
+		if len(out) == limit {
+			break
+		}
+	}
+	return out, nil
+}
+
+func TestServiceGetProductDetail(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeProductRepo{
+		products: map[string]Product{
+			"SKN-SERUM-NIA-30": {
+				SKU:         "SKN-SERUM-NIA-30",
+				Name:        "Niacinamide Serum 30ml",
+				PriceRupiah: 129000,
+				Quantity:    8,
+				Status:      ProductStatusActive,
+			},
+		},
+	}
+	svc := NewService(repo)
+
+	detail, err := svc.GetProductDetail(context.Background(), "SKN-SERUM-NIA-30")
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if detail.Name != "Niacinamide Serum 30ml" {
+		t.Fatalf("unexpected name: %q", detail.Name)
+	}
+	if !detail.Sellable {
+		t.Fatal("expected product to be sellable")
+	}
+}
+
+func TestServiceGetProductDetailNotFound(t *testing.T) {
+	t.Parallel()
+
+	svc := NewService(&fakeProductRepo{products: map[string]Product{}})
+
+	_, err := svc.GetProductDetail(context.Background(), "SKN-MISSING")
+	if !errors.Is(err, ErrProductNotFound) {
+		t.Fatalf("expected ErrProductNotFound, got %v", err)
+	}
+}
+
+func TestServiceGetProductDetailRepoError(t *testing.T) {
+	t.Parallel()
+
+	dbDown := errors.New("connection refused")
+	svc := NewService(&fakeProductRepo{findErr: dbDown})
+
+	_, err := svc.GetProductDetail(context.Background(), "SKN-SERUM-NIA-30")
+	if !errors.Is(err, dbDown) {
+		t.Fatalf("expected db error to propagate, got %v", err)
+	}
+}
+```
+
+Tiga test di atas menguji tiga jalur sekaligus: produk ditemukan, produk tidak ada, dan database bermasalah, semuanya tanpa menyentuh PostgreSQL. `findErr` di fake adalah seam yang memungkinkan kita mensimulasikan kegagalan database kapan saja, sesuatu yang sulit dilakukan dengan database sungguhan.
+
+```mermaid
+sequenceDiagram
+  participant T as Test
+  participant S as product.Service
+  participant F as fakeProductRepo
+  T->>S: GetProductDetail(ctx, "SKN-SERUM-NIA-30")
+  S->>F: FindBySKU(ctx, sku)
+  F-->>S: *Product, nil
+  S->>S: hitung Sellable dari Status dan Quantity
+  S-->>T: *ProductDetail, nil
+  Note over T,F: tanpa koneksi database, murni in-memory
+```
+
+<p class="fig-cap"><b>Gambar 3.</b> Alur satu unit test. Service memanggil interface, fake yang menjawab. Dalam test "RepoError", fake mengembalikan error agar kita bisa memverifikasi service meneruskannya dengan benar.</p>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari jest.fn() ke fake struct"><p>Di Jest kamu menulis `jest.fn().mockResolvedValue(...)` lalu memverifikasi pemanggilan. Di Go, fake struct kecil sering cukup dan lebih jujur: ia memenuhi interface yang sama persis dengan production, jadi kalau interface berubah, compiler langsung memaksa fake ikut diperbarui. Tidak ada mock yang basi diam-diam.</p></Box>
+
+</Section>
+
+<Section num="09" id="any-assertion" title="any, Type Assertion, dan Type Switch" sub="Saat kamu butuh mengintip tipe dinamis di balik sebuah interface.">
+
+<p class="lead">Interface menyembunyikan tipe konkret di baliknya. Kadang kamu perlu membukanya kembali, dan Go menyediakan tiga alat: `any`, type assertion, dan type switch.</p>
+
+`any` adalah alias untuk `interface{}`, interface kosong tanpa method, jadi nilai apa pun memenuhinya. Alias ini diperkenalkan di Go 1.18 dan kini menjadi cara penulisan yang dianjurkan. Pakai `any` hanya saat tipe memang benar-benar tidak diketahui, misalnya metadata bebas pada event.
+
+```go title="internal/order/event.go"
+package order
+
+// any sama dengan interface{}. Pakai untuk nilai yang tipenya
+// memang tidak diketahui sampai runtime, bukan untuk menghindari tipe.
+type DomainEvent struct {
+	Name    string
+	Payload map[string]any
+}
+```
+
+Ketika kamu pegang sebuah nilai `any` (atau interface lain) dan butuh tipe konkretnya, pakai type assertion dengan bentuk dua nilai. Bentuk dua nilai `v, ok := x.(T)` aman: kalau tipenya tidak cocok, `ok` jadi `false` dan program tidak panic.
+
+```go title="internal/order/event_handler.go"
+package order
+
+func amountFromPayload(ev DomainEvent) (int64, bool) {
+	raw, exists := ev.Payload["amount_rupiah"]
+	if !exists {
+		return 0, false
+	}
+
+	// Bentuk dua nilai: aman, tidak panic kalau tipe salah.
+	amount, ok := raw.(int64)
+	if !ok {
+		return 0, false
+	}
+	return amount, true
+}
+```
+
+<Box variant="warn" icon="⚠️" label="Bentuk satu nilai bisa panic"><p>`amount := raw.(int64)` (tanpa `ok`) akan panic kalau tipe sebenarnya bukan `int64`. Di kode service, hampir selalu pakai bentuk dua nilai. Bentuk satu nilai hanya layak saat kamu benar-benar yakin tipenya, misal tepat setelah membuatnya sendiri.</p></Box>
+
+Kalau kemungkinan tipenya banyak, type switch lebih rapi daripada deretan assertion. Ini berguna saat memetakan error infrastruktur ke error domain, melanjutkan kebiasaan `errors.Is` dari modul error.
+
+```go title="internal/payment/classify.go"
+package payment
+
+import "errors"
+
+var (
+	ErrChargeTimeout  = errors.New("charge timed out")
+	ErrChargeRejected = errors.New("charge rejected by provider")
+)
+
+// providerError adalah error konkret yang dilempar klien gateway.
+type providerError struct {
+	Code    string
+	Message string
+}
+
+func (e *providerError) Error() string { return e.Code + ": " + e.Message }
+
+// classify memakai type switch pada tipe dinamis error untuk memetakannya
+// ke error domain, lalu menyembunyikan detail provider dari service.
+func classify(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	switch e := err.(type) {
+	case *providerError:
+		if e.Code == "timeout" {
+			return ErrChargeTimeout
+		}
+		return ErrChargeRejected
+	default:
+		return err
+	}
+}
+```
+
+```go title="internal/order/describe.go"
+package order
+
+import "fmt"
+
+// describe memakai type switch pada nilai any untuk format yang aman.
+func describe(v any) string {
+	switch val := v.(type) {
+	case int64:
+		return fmt.Sprintf("Rp%d", val)
+	case string:
+		return val
+	case nil:
+		return "(kosong)"
+	default:
+		return fmt.Sprintf("%v", val)
+	}
+}
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: typeof dan instanceof yang dicek compiler"><p>Type switch terasa seperti rangkaian `typeof` dan `instanceof` di JavaScript, atau `instanceof` plus `match (true)` di PHP modern. Bedanya, di Go tiap cabang `case` memberi kamu variabel yang sudah ber-tipe konkret, jadi tidak ada cast tambahan setelahnya.</p></Box>
+
+<Box variant="note" icon="🧭" label="any bukan jalan pintas menghindari tipe"><p>Generic (sejak Go 1.18) sering jadi pilihan lebih baik daripada `any` saat kamu ingin satu fungsi bekerja untuk banyak tipe sambil menjaga keamanan tipe. Tetapi untuk modul ini, interface tetap fokus utama. Anggap `any` sebagai pintu darurat, bukan pintu depan.</p></Box>
+
+</Section>
+
+<Section num="10" id="hands-on" title="Hands-on: Service Tanpa Database" sub="Rakit repository in-memory, service, dan test, lalu rasakan tukar implementasi.">
+
+<p class="lead">Latihan ini membuktikan Student Outcome secara langsung: service layer berjalan dan teruji penuh tanpa database, lalu siap dipasangi PostgreSQL hanya dengan mengganti satu baris wiring.</p>
+
+<Steps>
+  <Step><b>Siapkan package product</b><p>Buat `repository.go` (interface), `repository_memory.go` (in-memory), `errors.go`, dan `service.go` seperti di bagian sebelumnya. Pastikan `Product` dan `ProductStatus` sudah ada dari modul struct.</p></Step>
+  <Step><b>Tulis fake dan test</b><p>Salin `service_test.go` dengan tiga skenario: ditemukan, tidak ditemukan, dan error repository.</p></Step>
+  <Step><b>Jalankan test</b><p>Jalankan `go test ./...` dan pastikan hijau, semua tanpa database.</p></Step>
+  <Step><b>Rasakan tukar implementasi</b><p>Buat `main.go` yang memakai `InMemoryProductRepository` dengan data seed, jalankan, lalu bayangkan menggantinya dengan `NewPostgresProductRepository`.</p></Step>
+</Steps>
+
+```go title="cmd/demo/main.go"
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/kamu/skincare-backend/internal/product"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Untuk demo lokal kita pakai in-memory. Untuk production, baris ini
+	// cukup diganti NewPostgresProductRepository(db). Service tidak berubah.
+	repo := product.NewInMemoryProductRepository([]product.Product{
+		{SKU: "SKN-SERUM-NIA-30", Name: "Niacinamide Serum 30ml", PriceRupiah: 129000, Quantity: 8, Status: product.ProductStatusActive},
+		{SKU: "SKN-WASH-GEN-100", Name: "Gentle Facial Wash 100ml", PriceRupiah: 89000, Quantity: 0, Status: product.ProductStatusOutOfStock},
+	})
+
+	svc := product.NewService(repo)
+
+	detail, err := svc.GetProductDetail(ctx, "SKN-SERUM-NIA-30")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%s seharga Rp%d, sellable=%t\n", detail.Name, detail.PriceRupiah, detail.Sellable)
+
+	catalog, err := svc.ListCatalog(ctx, 10)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("katalog aktif: %d produk\n", len(catalog))
+}
+```
+
+```bash title="Terminal"
+go mod init github.com/kamu/skincare-backend
+go get github.com/jackc/pgx/v5
+go test ./...
+go run ./cmd/demo
+```
+
+Module untuk latihan ini memakai Go 1.26, melanjutkan modul-modul sebelumnya.
+
+```text title="go.mod"
+module github.com/kamu/skincare-backend
+
+go 1.26
+```
+
+<Box variant="tip" icon="✅" label="Eksperimen seam"><p>Tambahkan field `findErr` ke `InMemoryProductRepository` lalu set sebuah error, jalankan `cmd/demo`, dan lihat service meneruskan kegagalan dengan jujur. Inilah kekuatan interface: kamu bisa menyuntikkan kegagalan kapan pun untuk menguji jalur error, tanpa perlu mematikan database asli.</p></Box>
+
+</Section>
+
+<Section num="11" id="jebakan-umum" title="Jebakan Umum dari JS dan PHP" sub="Sebagian bug interface lahir dari membawa kebiasaan OOP terlalu jauh.">
+
+<p class="lead">Interface membuat kode fleksibel, tetapi pemakaian yang salah arah justru membuatnya sulit dibaca atau diam-diam keliru. Berikut jebakan yang paling sering menjerat pendatang dari JS dan PHP.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Membuat interface sebelum perlu</h4><p>Kalau hanya ada satu concrete struct dan belum butuh test seam, pakai struct langsung. Interface bisa ditambahkan kapan saja tanpa mengubah pemanggil.</p></Card>
+  <Card><h4>Interface terlalu besar</h4><p>Semakin banyak method, semakin melelahkan fake-nya dan semakin rapuh boundary-nya. Pecah per kebutuhan, jangan satu interface raksasa.</p></Card>
+  <Card><h4>Interface ditaruh di package implementasi</h4><p>Idiomatik Go menaruhnya di package pemakai, karena pemakai yang tahu kebutuhan minimumnya.</p></Card>
+  <Card><h4>Constructor mengembalikan interface tanpa alasan</h4><p>`NewService` sebaiknya mengembalikan `*Service`, bukan interface, agar API tetap jelas dan terhindar dari typed-nil.</p></Card>
+</CardGrid>
+
+Jebakan paling halus dan paling berbahaya adalah typed-nil. Nilai interface punya dua bagian: tipe dinamis dan nilai dinamis. Sebuah interface dianggap `nil` hanya jika kedua bagian itu kosong. Kalau kamu memasukkan pointer `nil` yang sudah punya tipe ke dalam interface, interface itu menjadi tidak `nil`, walaupun "isinya" `nil`.
+
+```go title="internal/product/typed_nil_bug.go"
+package product
+
+import "context"
+
+// SALAH: mengembalikan interface, dan mengembalikan pointer bertipe.
+// Saat repo nil, hasilnya interface non-nil yang membungkus pointer nil.
+func loadRepoWrong(usePostgres bool) ProductRepository {
+	var repo *PostgresProductRepository // nil pointer, tetapi bertipe
+	if usePostgres {
+		repo = NewPostgresProductRepository(nil)
+	}
+	return repo // interface jadi (*PostgresProductRepository)(nil), bukan nil!
+}
+
+func brokenCheck(ctx context.Context) {
+	repo := loadRepoWrong(false)
+	if repo != nil {
+		// Cabang ini IKUT jalan, lalu panic saat method dipanggil,
+		// karena repo "kelihatan" tidak nil padahal pointernya nil.
+		_, _ = repo.FindBySKU(ctx, "any")
+	}
+}
+```
+
+```mermaid
+flowchart TD
+  P["pointer *Postgres... = nil"] -->|"dibungkus ke interface"| I["interface ProductRepository"]
+  I --> T["tipe dinamis: *PostgresProductRepository"]
+  I --> V["nilai dinamis: nil"]
+  T --> C{"interface == nil ?"}
+  V --> C
+  C -->|"tipe TIDAK kosong"| R["hasil: FALSE (interface non-nil)"]
+  R --> B["if repo != nil lolos, lalu panic saat dipanggil"]
+```
+
+<p class="fig-cap"><b>Gambar 4.</b> Anatomi typed-nil. Interface hanya `nil` bila tipe dan nilai dinamis sama-sama kosong. Pointer `nil` yang bertipe mengisi sisi tipe, sehingga interface lolos dari `!= nil` dan meledak saat method-nya dipanggil.</p>
+
+Pola aman untuk modul ini sederhana dan menutup jebakan di atas sekaligus: kembalikan concrete struct dari constructor, terima interface hanya di boundary service, dan kembalikan `nil` literal secara eksplisit saat memang tidak ada nilai.
+
+```go title="internal/product/typed_nil_fix.go"
+package product
+
+// BENAR: kembalikan concrete pointer. nil di sini benar-benar nil.
+func loadRepoRight(db pgConn) *PostgresProductRepository {
+	if db == nil {
+		return nil // concrete nil, perbandingan != nil bekerja seperti dugaan
+	}
+	return NewPostgresProductRepository(nil)
+}
+
+type pgConn interface{ ping() }
+```
+
+<Box variant="warn" icon="🚫" label="Jangan paksa setiap struct punya interface pasangan"><p>Kebiasaan dari Laravel yang membuat tiap repository punya interface lebih dulu bisa membanjiri Go dengan abstraksi kosong. Interface hanya bernilai di boundary yang punya variasi implementasi nyata atau kebutuhan test. Selebihnya, concrete struct lebih jujur dan lebih mudah dibaca.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: value receiver dan method set"><p>Kalau method repository memakai pointer receiver, hanya `*Repo` yang memenuhi interface, bukan `Repo`. Ini lanjutan langsung dari aturan method set di modul struct. Saat fake atau implementasi "tiba-tiba tidak memenuhi interface", periksa receiver-nya lebih dulu.</p></Box>
+
+</Section>
+
+<Section num="12" id="ringkasan" title="Ringkasan & Poin Penting" sub="Interface adalah bahasa desain dependensi yang akan dipakai sepanjang sisa roadmap.">
+
+<p class="lead">Setelah modul ini kamu sudah bisa memisahkan service layer dari database layer lewat repository interface, persis Student Outcome yang ditargetkan.</p>
+
+<Recap title="Yang Wajib Menempel">
+  <ul>
+    <li>Interface Go dipenuhi secara implicit lewat method set. Tidak ada keyword `implements`, compiler yang memeriksa.</li>
+    <li>Interface mendeskripsikan behavior, bukan bentuk data dan bukan hierarki class. Bentuk data sudah jadi tugas struct.</li>
+    <li>Interface kecil lebih kuat: `io.Reader`, `io.Writer`, `fmt.Stringer`, dan `error` adalah teladannya.</li>
+    <li>Definisikan interface di sisi pemakai (service), bukan di sisi implementasi.</li>
+    <li>DI di Go manual: constructor menerima interface, mengembalikan concrete struct (accept interfaces, return structs).</li>
+    <li>Repository memisahkan service dari database. Production memakai `PostgresProductRepository`, test memakai fake in-memory.</li>
+    <li>`any` adalah alias `interface{}` sejak Go 1.18. Pakai type assertion dua nilai `v, ok := x.(T)` dan type switch untuk membuka tipe dinamis dengan aman.</li>
+    <li>Waspadai typed-nil: interface yang membungkus pointer nil bertipe bukanlah `nil`.</li>
+  </ul>
+</Recap>
+
+<h3>Pemetaan ke proyek online shop skincare</h3>
+
+<CardGrid cols={2}>
+  <Card><h4>Pola repository siap pakai</h4><p>`ProductRepository` hari ini menjadi cetakan untuk `OrderRepository`, `InventoryRepository`, dan `payment.Charger` di modul-modul berikutnya.</p></Card>
+  <Card><h4>Test cepat tanpa infrastruktur</h4><p>Fake in-memory membuat logic checkout, order, dan payment bisa diuji jauh sebelum database dan payment gateway sungguhan tersambung.</p></Card>
+</CardGrid>
+
+<Box variant="bridge" icon="🌉" label="Langkah berikutnya"><p>Modul berikutnya masuk ke packages dan struktur proyek: aturan ekspor identifier, batas `internal/`, lalu bagaimana package fitur seperti `product`, `order`, dan `payment` saling bergantung tanpa import melingkar. Interface yang kamu definisikan di sisi pemakai hari ini adalah kunci agar batas package itu tetap bersih. Setelah packages, jalur berlanjut ke context, lalu concurrency, sebelum Roadmap 2 membangun Web API dengan chi di atas service yang sudah kamu rapikan ini.</p></Box>
+
+<Box variant="tip" icon="✅" label="Checkpoint sebelum lanjut"><p>Pastikan kamu bisa menjelaskan kenapa Go tidak butuh `implements`, di package mana interface repository sebaiknya hidup, kenapa constructor mengembalikan struct bukan interface, cara menulis fake repository untuk test, dan kenapa interface yang membungkus pointer nil tidak sama dengan `nil`.</p></Box>
+
+</Section>

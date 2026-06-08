@@ -169,10 +169,7 @@ target, readingTime, summaryHref, toc, footerTitle, footerSub), hanya perbarui n
 
 ### 8. Verifikasi (wajib)
 
-Jalankan `npm run build` sampai bersih (tanpa error). Periksa code block (header nama
-file + tombol salin) dan diagram Mermaid benar-benar muncul di output. Bila mengubah
-tampilan, jalankan `npm run dev` dan ambil screenshot (Playwright) untuk cek
-light/dark/sepia + mobile sebelum menyatakan selesai. Modul otomatis muncul di list
+Jalankan `npm run build` sampai bersih (tanpa error). Modul otomatis muncul di list
 kurikulum homepage dan switcher navbar lewat `getCollection`.
 
 ### 9. Setelah berhasil, hapus folder zip hasil generator (bila ada) agar tidak membingungkan.
@@ -208,5 +205,5 @@ kurikulum homepage dan switcher navbar lewat `getCollection`.
       didokumentasikan di `component-reference.txt` (sinkron dengan `index.ts`).
 - [ ] Frontmatter & TOC sinkron; `readingTime` diperbarui; field frontmatter tak ditambah.
 - [ ] Fakta diverifikasi ke sumber resmi terbaru (Go/chi/pgx/PostgreSQL/AWS).
-- [ ] `npm run build` bersih; tampilan dicek 3 tema + mobile bila relevan.
+- [ ] `npm run build` bersih.
 - [ ] Bahasa Indonesia penuh, tanpa em dash; kontrak MDX tidak dilanggar.

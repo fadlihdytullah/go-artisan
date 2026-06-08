@@ -1,0 +1,681 @@
+---
+title: "Modul Database Migration yang Aman - Go Artisan"
+badge: "DB"
+topTitle: "Database Migration yang Aman"
+topSub: "Go untuk Developer JavaScript & PHP"
+summary: "Kelola perubahan skema PostgreSQL dengan migration yang versioned, aman, dan siap production memakai golang-migrate."
+order: 24
+target: "Roadmap 3 · PostgreSQL dan pgx"
+readingTime: "~70 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa Migration Wajib?" }
+  - { num: "02", id: "mental-model", title: "Mental Model Migration" }
+  - { num: "03", id: "struktur-file", title: "Struktur File dan Versi" }
+  - { num: "04", id: "up-down", title: "Up dan Down Migration" }
+  - { num: "05", id: "golang-migrate-cli", title: "golang-migrate lewat CLI" }
+  - { num: "06", id: "embedded-migration", title: "Menjalankan Migration dari Go" }
+  - { num: "07", id: "staging-production", title: "Strategi Staging dan Production" }
+  - { num: "08", id: "expand-contract", title: "Expand-Contract: Zero Downtime" }
+  - { num: "09", id: "seed-vs-schema", title: "Seed Data vs Schema" }
+  - { num: "10", id: "hands-on", title: "Hands-on Migration Produk" }
+  - { num: "11", id: "jebakan", title: "Jebakan Umum" }
+  - { num: "12", id: "ringkasan", title: "Ringkasan & Poin Penting" }
+footerTitle: "Modul Database Migration yang Aman - Go Artisan"
+footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Def } from "@components";
+
+<Hero eyebrow="Roadmap 3 &middot; PostgreSQL dan pgx" title="Database Migration <em>yang Aman</em><br />untuk Staging dan Production">
+  <p>Migration membuat perubahan skema database bisa dilacak, diulang, di-review, dan dijalankan dengan urutan yang sama dari laptop sampai production, tanpa pernah mengedit database production dengan tangan.</p>
+  <Fragment slot="meta">
+    <Chip icon="database">Bahasa: <b>Go 1.26</b></Chip>
+    <Chip icon="package">golang-migrate <b>v4</b></Chip>
+    <Chip icon="route">Roadmap 3</Chip>
+    <Chip icon="clock">~70 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa Migration Wajib?" sub="Skema database adalah kode, dan kode butuh riwayat">
+
+<p class="lead">Di aplikasi online shop skincare, skema database tidak berhenti di hari pertama. Ia tumbuh bersama fitur katalog, varian, stok, cart, order, payment, shipment, review, dan promotion, sering kali setiap minggu.</p>
+
+Di modul R3.C3 kamu sudah merancang seluruh skema online shop sebagai blueprint: `users`, `products`, `product_variants`, `inventories`, `orders`, `order_items`, dan seterusnya. Pertanyaan modul ini berbeda: bagaimana skema itu lahir di sebuah database, lalu berubah dari waktu ke waktu, tanpa ada satu pun perintah `ALTER TABLE` yang diketik manual di server production. Itulah pekerjaan migration.
+
+Kalau kamu datang dari Laravel, migration terasa familiar karena `php artisan migrate` sudah menjadi alur standar sejak hari pertama. Kalau kamu datang dari ekosistem JavaScript, kamu mungkin pernah memakai Prisma Migrate, Knex, atau TypeORM. Di Go, hal pertama yang perlu disadari adalah: standard library tidak menyediakan migration tool bawaan. Tidak ada `go migrate`. Kita memilih tool eksplisit, dan di jalur ini kita pakai [golang-migrate/migrate](https://github.com/golang-migrate/migrate), library yang bisa dipakai sebagai CLI maupun sebagai library Go untuk membaca file migration dan menerapkannya ke database secara berurutan.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari php artisan migrate ke golang-migrate"><p>Laravel menyatukan framework, migration, dan ORM dalam satu paket: kamu menulis class PHP dengan method `up()` dan `down()`, lalu menjalankan `php artisan migrate`. Go lebih modular. Migration adalah tool terpisah yang kamu pasang sendiri, dan file migration biasanya SQL mentah, bukan kelas. Kelebihannya: kamu melihat persis DDL yang dijalankan, tanpa lapisan abstraksi yang menyembunyikan SQL sebenarnya.</p></Box>
+
+Tanpa migration, perubahan skema sering menjadi obrolan Slack: "tolong jalankan `ALTER TABLE orders ADD COLUMN idempotency_key` di production ya". Itu terlihat cepat, tetapi rapuh. Tidak ada review, tidak ada riwayat di Git, tidak ada cara membuat database staging persis sama seperti production, dan tidak ada cara tahu aplikasi versi mana butuh skema versi mana. Saat ada bug, kamu tidak bisa menjawab pertanyaan paling penting: "kolom ini ditambahkan kapan, oleh siapa, dan kenapa?"
+
+<Def term="database migration"><p>Berkas (biasanya SQL) yang menjelaskan satu langkah perubahan skema database secara terurut dan dapat diulang, misalnya membuat tabel, menambah kolom, membuat index, atau mengubah constraint. Setiap migration masuk Git, di-review, lalu dijalankan dengan urutan yang sama di semua lingkungan.</p></Def>
+
+Migration mengubah skema dari sesuatu yang dikerjakan dengan tangan menjadi kontrak yang dikelola seperti kode lain. Tiga properti inilah yang membuatnya layak menjadi disiplin wajib, bukan kemewahan.
+
+<CardGrid cols={3}>
+  <Card><h4>Versioned</h4><p>Setiap perubahan punya nomor versi terurut, misalnya `000005_add_idempotency_key_to_orders.up.sql`. Database tahu persis sudah sampai versi berapa.</p></Card>
+  <Card><h4>Repeatable</h4><p>Developer baru bisa membangun database identik dari nol dengan satu perintah, menjalankan seluruh migration dari versi 1 sampai terakhir.</p></Card>
+  <Card><h4>Reviewable</h4><p>DDL masuk pull request bersama kode Go-nya, di-review tim, bukan perintah manual yang lenyap dari riwayat begitu jendela terminal ditutup.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Migration adalah bagian dari fitur, bukan tugas DBA terpisah"><p>Satu pull request fitur idealnya membawa kode Go dan migration SQL yang kompatibel dalam satu paket. Reviewer bisa melihat handler, repository, query pgx, dan perubahan skema dalam konteks yang sama. Skema bukan urusan terpisah yang dikerjakan belakangan oleh orang lain.</p></Box>
+
+</Section>
+
+<Section num="02" id="mental-model" title="Mental Model Migration" sub="Git commit untuk struktur database">
+
+<p class="lead">Cara tercepat memahami migration adalah membandingkannya dengan Git. Migration adalah commit untuk struktur database, dan tabel pelacak versi adalah branch pointer yang menunjuk commit terakhir.</p>
+
+Di Git, kamu tidak mengedit file langsung di server lalu berharap semua developer ikut tahu. Kamu membuat commit, push, dan setiap orang menjalankan `git pull`. Di database, migration melakukan hal serupa untuk skema. Setiap file migration adalah satu commit: ia menjelaskan langkah dari skema versi lama ke skema versi baru. Database menyimpan "commit terakhir yang sudah diterapkan", dan menjalankan migration berarti menerapkan commit-commit yang belum ada di database itu.
+
+<Compare aLabel="Git untuk kode" bLabel="Migration untuk skema" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>Commit menjelaskan perubahan kode.</li><li>`HEAD` menunjuk commit terakhir.</li><li>`git pull` menerapkan commit yang belum ada.</li><li>Revert membuat commit baru yang membatalkan.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>File migration menjelaskan perubahan skema.</li><li>Tabel `schema_migrations` menyimpan versi terakhir.</li><li>`migrate up` menerapkan migration yang belum jalan.</li><li>`down` membatalkan, tetapi tidak selalu memulihkan data.</li></ul></Fragment>
+</Compare>
+
+`golang-migrate` menyimpan posisi versi skema di sebuah tabel bernama `schema_migrations`. Pada driver pgx v5, dokumentasi paket mencatat skema URL driver memakai bentuk `pgx5://user:password@host:port/dbname?query`. Tabel pelacak ini berisi nomor versi terakhir yang berhasil diterapkan, plus satu flag `dirty` yang menandai apakah migration terakhir gagal di tengah jalan. Kita akan kembali ke flag `dirty` ini di bagian jebakan, karena ia salah satu sumber kepanikan paling umum.
+
+```mermaid
+flowchart LR
+  CODE["Kode Go versi baru"] --> MIG["File migration SQL<br/>NNNNNN_name.up.sql"]
+  MIG --> TOOL["golang-migrate"]
+  TOOL --> META["schema_migrations<br/>(version, dirty)"]
+  TOOL --> DB[("PostgreSQL")]
+  DB --> APP["API skincare berjalan<br/>dengan skema terbaru"]
+```
+
+<p class="fig-cap"><b>Gambar 1.</b> Migration menghubungkan kode aplikasi, file SQL, versi skema yang tersimpan di tabel <code>schema_migrations</code>, dan database yang sebenarnya.</p>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari Prisma/Knex/TypeORM ke golang-migrate"><p>Prisma Migrate membandingkan skema deklaratif (`schema.prisma`) dengan database lalu meng-generate SQL. Knex dan TypeORM memakai file migration berisi kode JS/TS dengan fungsi `up`/`down`. golang-migrate lebih dekat ke Knex: file terpisah, arah maju dan mundur eksplisit, tetapi isinya SQL murni, bukan query builder. Tidak ada langkah "diff skema otomatis" seperti Prisma. Kamu menulis DDL sendiri, dan itu memberi kontrol penuh atas hal-hal sensitif seperti index dan lock.</p></Box>
+
+<Def term="schema_migrations"><p>Tabel kecil yang dibuat dan dikelola golang-migrate di database target. Ia menyimpan nomor versi migration terakhir yang berhasil diterapkan dan flag <code>dirty</code>. Database memakai tabel ini untuk tahu migration mana yang masih perlu dijalankan dan mana yang sudah.</p></Def>
+
+<Box variant="note" icon="📌" label="Migration bukan backup"><p>Migration mengubah struktur, backup menyimpan salinan data. Untuk production keduanya saling melengkapi, bukan menggantikan. Sebuah down migration yang berisi `DROP TABLE` tidak mengembalikan data yang sudah hilang, ia hanya membalik bentuk skema. Backup yang menyelamatkan data, bukan down migration.</p></Box>
+
+</Section>
+
+<Section num="03" id="struktur-file" title="Struktur File dan Versi" sub="Nama file menentukan urutan, jadi konvensinya harus kaku">
+
+<p class="lead">Nama file migration bukan sekadar label. Urutan nomor di depan nama file inilah yang menentukan urutan perubahan skema diterapkan. Maka konvensi penamaan harus kaku dan konsisten di seluruh repo.</p>
+
+Sesuai konvensi proyek, kita menaruh migration di folder `migrations/` pada root repo, sejajar dengan `cmd/` dan `internal/`. Lokasi yang gampang ditemukan ini memudahkan backend engineer, reviewer pull request, CI/CD, dan tool lokal seperti `make migrate-up` menemukan file yang sama.
+
+<FileTree title="Folder migration proyek skincare-backend" tree={`
+skincare-backend/
+  cmd/
+    api/
+      main.go                       # entry point HTTP API
+    migrate/
+      main.go                       # command untuk menjalankan migration
+  internal/
+    database/
+      postgres.go                   # pgxpool koneksi database
+  migrations/
+    000001_create_users.up.sql      # buat tabel users
+    000001_create_users.down.sql    # rollback tabel users
+    000002_create_catalog.up.sql    # brands, categories, products, variants
+    000002_create_catalog.down.sql  # rollback katalog
+    000003_create_inventory.up.sql  # tabel inventories
+    000003_create_inventory.down.sql
+    000004_create_orders.up.sql     # orders, order_items
+    000004_create_orders.down.sql
+    000005_add_idempotency_key_to_orders.up.sql    # ALTER tambah kolom
+    000005_add_idempotency_key_to_orders.down.sql
+  go.mod                            # module github.com/kamu/skincare-backend
+`} />
+
+Pola namanya adalah `NNNNNN_deskripsi.up.sql` dan `NNNNNN_deskripsi.down.sql`. Setiap migration adalah pasangan dua file dengan nomor dan deskripsi yang sama, beda di akhiran `.up.sql` versus `.down.sql`. Ada dua gaya penomoran yang umum, dan keduanya valid.
+
+<CardGrid cols={2}>
+  <Card><h4>Sequential (urut)</h4><p>`000001`, `000002`, `000003`. Mudah dibaca, urutan jelas dari atas ke bawah. Risikonya: dua developer bisa membuat nomor yang sama di branch berbeda, sehingga perlu koordinasi saat merge.</p></Card>
+  <Card><h4>Timestamp</h4><p>`20260608093000_...`. Hampir mustahil bentrok karena berbasis waktu pembuatan. Sedikit lebih sulit dibaca sekilas. Cocok untuk tim besar dengan banyak branch paralel.</p></Card>
+</CardGrid>
+
+Untuk materi ini kita pakai gaya sequential enam digit, yang persis dihasilkan golang-migrate dengan flag `-seq`. Enam digit memberi ruang ribuan migration tanpa pernah kehabisan nomor, dan zero-padding membuat urutan file rapi secara leksikografis di file explorer maupun di `git diff`.
+
+<Box variant="warn" icon="⚠️" label="Satu migration, satu perubahan logis"><p>Godaan terbesar pemula adalah menumpuk banyak perubahan tak berkaitan dalam satu file migration besar. Jangan. Satu migration sebaiknya satu perubahan logis (satu tabel baru, atau satu kolom baru, atau satu index). Migration kecil lebih mudah di-review, lebih mudah di-rollback satu langkah, dan kalau gagal, lebih mudah dilacak penyebabnya.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: timestamp file Laravel vs nomor urut golang-migrate"><p>Laravel memberi nama file migration dengan prefix timestamp otomatis (`2026_06_08_093000_create_orders_table.php`) supaya tidak bentrok antar developer. golang-migrate dengan `-seq` memilih nomor urut sederhana sebagai default agar mudah dibaca, tetapi kamu tetap bisa pakai timestamp jika tim besar. Idenya identik: prefix menentukan urutan eksekusi, dan urutan itu tidak boleh berubah setelah dijalankan.</p></Box>
+
+</Section>
+
+<Section num="04" id="up-down" title="Up dan Down Migration" sub="Arah maju dan arah mundur, tetapi down bukan mesin waktu">
+
+<p class="lead">Setiap migration punya dua arah: maju dan mundur. Tetapi down migration bukan mesin waktu yang sempurna, dan memperlakukannya seolah-olah begitu adalah sumber bencana production yang klasik.</p>
+
+`up` adalah perubahan yang diterapkan ketika database bergerak maju ke versi skema baru. `down` adalah perubahan untuk membatalkan migration tersebut, mengembalikan skema ke kondisi sebelum migration itu jalan. Dokumentasi golang-migrate sendiri menampilkan pola file `create_users_table.up.sql` dan `create_users_table.down.sql`, karena setiap migration memang terdiri dari pasangan up dan down.
+
+<Def term="up migration"><p>Langkah maju yang membawa skema ke versi baru, misalnya <code>CREATE TABLE products (...)</code> atau <code>ALTER TABLE orders ADD COLUMN idempotency_key text</code>.</p></Def>
+
+<Def term="down migration"><p>Langkah mundur yang membatalkan up, misalnya <code>DROP TABLE products</code> atau <code>ALTER TABLE orders DROP COLUMN idempotency_key</code>. Down membalik bentuk skema, tetapi tidak menjamin mengembalikan data yang sudah berubah atau hilang.</p></Def>
+
+Mari lihat pasangan up/down nyata untuk tabel `products` skincare. Perhatikan kita memakai konvensi kanonik proyek: primary key `bigint GENERATED ALWAYS AS IDENTITY` (bukan `serial`/`BIGSERIAL` lama), `slug` yang `UNIQUE`, dan `status text` dengan `CHECK`. Tabel `products` sendiri tidak menyimpan harga, karena harga ada di varian.
+
+```sql title="migrations/000002_create_catalog.up.sql"
+CREATE TABLE products (
+  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  brand_id    bigint NOT NULL REFERENCES brands(id) ON DELETE RESTRICT,
+  slug        text NOT NULL UNIQUE,
+  name        text NOT NULL,
+  description text NOT NULL DEFAULT '',
+  skin_types  text[] NOT NULL DEFAULT '{}',
+  concerns    text[] NOT NULL DEFAULT '{}',
+  ingredients jsonb NOT NULL DEFAULT '{}',
+  status      text NOT NULL DEFAULT 'draft'
+              CHECK (status IN ('draft', 'active', 'archived')),
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  deleted_at  timestamptz
+);
+
+CREATE INDEX products_brand_id_idx ON products (brand_id);
+CREATE INDEX products_status_idx ON products (status);
+```
+
+```sql title="migrations/000002_create_catalog.down.sql"
+DROP INDEX IF EXISTS products_status_idx;
+DROP INDEX IF EXISTS products_brand_id_idx;
+DROP TABLE IF EXISTS products;
+```
+
+Perhatikan tiga hal pada pasangan ini. Pertama, urutan `DROP` di down adalah kebalikan dari urutan `CREATE` di up. Index dibuat setelah tabel, jadi index di-drop sebelum tabel. Saat ada beberapa tabel relasional, tabel anak (yang punya foreign key) di-drop sebelum tabel induk. Kedua, down memakai `IF EXISTS` agar rollback tidak meledak hanya karena objek sudah tidak ada. Ketiga, down ini aman karena `products` tabel baru, jadi tidak ada data berharga yang hilang saat skema masih dibangun.
+
+<Box variant="warn" icon="⚠️" label="Down bukan pengganti backup"><p>Down migration bisa membalik bentuk skema, tetapi tidak selalu bisa mengembalikan data yang sudah dihapus atau diubah permanen. Kalau down menghapus kolom `phone` dari `users`, semua nomor telepon di kolom itu lenyap, dan menjalankan up lagi hanya membuat kolom kosong. Untuk data production, rollback plan yang sebenarnya adalah backup, bukan down.</p></Box>
+
+<Box variant="tip" icon="💡" label="Tetap tulis down yang jujur"><p>Walau down bukan mesin waktu, tetap tulis down yang membalik struktur sejauh mungkin. Down yang baik berguna saat development (sering bongkar-pasang skema lokal) dan saat rollback cepat di staging. Untuk migration yang benar-benar destruktif dan tak bisa dibalik, tulis komentar SQL yang jelas bahwa down hanya mengembalikan struktur, bukan data.</p></Box>
+
+```mermaid
+flowchart LR
+  V3["versi 3"]
+  V4["versi 4"]
+  V5["versi 5"]
+  V3 -->|"up (000004)"| V4
+  V4 -->|"up (000005)"| V5
+  V5 -->|"down 1"| V4
+  V4 -->|"down 1"| V3
+```
+
+<p class="fig-cap"><b>Gambar 2.</b> Up memajukan versi skema, down memundurkannya. Tabel <code>schema_migrations</code> menyimpan posisi versi saat ini di garis ini.</p>
+
+</Section>
+
+<Section num="05" id="golang-migrate-cli" title="golang-migrate lewat CLI" sub="Repeatable di local, CI/CD, dan command manual">
+
+<p class="lead">CLI golang-migrate adalah cara paling langsung menjalankan migration. Ia cocok untuk local development, dipanggil dari CI/CD, dan dipakai sebagai command manual yang tetap tercatat dan repeatable.</p>
+
+Pertama, pasang CLI-nya. Karena proyek kita memakai PostgreSQL via pgx v5, kita build dengan tag `postgres` agar driver database ikut ter-compile ke dalam binary.
+
+```bash title="Terminal"
+go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.1
+migrate -version
+```
+
+Buat pasangan file migration baru dengan `migrate create`. Flag `-seq` memberi nomor urut enam digit, `-ext sql` menentukan ekstensi, dan `-dir` menunjuk folder migration.
+
+```bash title="Terminal"
+migrate create -ext sql -dir migrations -seq create_catalog
+# membuat:
+#   migrations/000002_create_catalog.up.sql
+#   migrations/000002_create_catalog.down.sql
+```
+
+Setelah file diisi DDL, jalankan migration ke database local. Kita simpan connection string di environment variable agar credential tidak tercecer di history shell maupun di file yang masuk Git. Perhatikan scheme `pgx5://` yang dipakai driver pgx v5.
+
+```bash title="Terminal"
+export DATABASE_URL='pgx5://skincare:secret@localhost:5432/skincare?sslmode=disable'
+
+migrate -path migrations -database "$DATABASE_URL" up
+```
+
+Beberapa perintah harian yang akan sering kamu pakai.
+
+```bash title="Terminal"
+# Naik semua migration yang belum jalan
+migrate -path migrations -database "$DATABASE_URL" up
+
+# Naik N langkah saja
+migrate -path migrations -database "$DATABASE_URL" up 1
+
+# Turun 1 langkah (rollback migration terakhir)
+migrate -path migrations -database "$DATABASE_URL" down 1
+
+# Lompat ke versi tertentu (maju atau mundur)
+migrate -path migrations -database "$DATABASE_URL" goto 4
+
+# Lihat versi skema saat ini
+migrate -path migrations -database "$DATABASE_URL" version
+```
+
+<Box variant="warn" icon="⚠️" label="Jangan hardcode credential di Makefile yang masuk Git"><p>Connection string berisi password jangan ditulis langsung di file yang masuk repo. Pakai environment variable, file <code>.env</code> yang di-<code>.gitignore</code>, atau secret manager di CI/CD. Makefile boleh punya default untuk local (database lokal yang remeh), tetapi production selalu lewat secret.</p></Box>
+
+Supaya tim tidak perlu mengingat semua flag, bungkus perintah umum di Makefile. Ini juga menjadi dokumentasi hidup tentang cara menjalankan migration di proyek.
+
+```makefile title="Makefile"
+DATABASE_URL    ?= pgx5://skincare:secret@localhost:5432/skincare?sslmode=disable
+MIGRATIONS_DIR  ?= migrations
+
+migrate-create:
+	migrate create -ext sql -dir $(MIGRATIONS_DIR) -seq $(name)
+
+migrate-up:
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_URL)" up
+
+migrate-down:
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_URL)" down 1
+
+migrate-version:
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_URL)" version
+
+migrate-force:
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_URL)" force $(version)
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: php artisan migrate vs make migrate-up"><p>Di Laravel kamu hafal `php artisan migrate`, `migrate:rollback`, `migrate:fresh`, dan `migrate:status`. Padanannya di sini adalah `make migrate-up`, `make migrate-down`, dan `make migrate-version`. Perbedaan penting: tidak ada padanan aman dari <code>migrate:fresh</code> untuk production (itu drop semua tabel). Di Go kita sengaja tidak menyediakannya sebagai shortcut, supaya tidak ada yang menjalankannya ke database yang salah.</p></Box>
+
+<Box variant="tip" icon="💡" label="migrate version sebelum dan sesudah deploy"><p>Biasakan menjalankan `migrate version` sebelum dan sesudah setiap deploy. Sebelum deploy ia memberi tahu posisi awal (untuk rencana rollback), sesudah deploy ia mengonfirmasi migration benar-benar naik ke versi yang diharapkan. Angka versi ini juga bagus dicatat di log deploy.</p></Box>
+
+</Section>
+
+<Section num="06" id="embedded-migration" title="Menjalankan Migration dari Go" sub="Embed file SQL ke dalam binary dengan iofs dan go:embed">
+
+<p class="lead">CLI bagus untuk local dan CI/CD, tetapi di production banyak tim ingin migration ikut di dalam binary aplikasi, sehingga tidak perlu menyalin folder SQL ke server. Go menyediakan ini dengan rapi lewat <code>go:embed</code> dan source driver <code>iofs</code>.</p>
+
+Ada dua pola umum menjalankan migration di production, dan keduanya valid. Yang penting, jangan menjalankan migration diam-diam di setiap request atau setiap handler dipanggil.
+
+<Compare aLabel="Pola A: CLI di pipeline" bLabel="Pola B: subcommand di binary" aTone="blue" bTone="violet">
+  <Fragment slot="a"><ul><li>CI/CD menjalankan `migrate up` sebagai langkah terpisah sebelum aplikasi baru di-rollout.</li><li>Folder `migrations/` ikut ke runner, atau dipasang via image.</li><li>Mudah diberi approval dan log di pipeline.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Binary Go punya subcommand `migrate` dengan file SQL di-embed via `go:embed`.</li><li>Tidak perlu menyalin folder SQL ke server, semua ada di executable.</li><li>Dijalankan sebagai one-off task sebelum service menerima traffic.</li></ul></Fragment>
+</Compare>
+
+Pola B memakai paket `source/iofs` dari golang-migrate, yang menerima `io/fs` apa pun, termasuk `embed.FS` bawaan Go. Idenya: kita tempelkan seluruh isi folder `migrations/` ke dalam binary saat compile, lalu jalankan migration dari sana. Ini cocok untuk deploy modern (kontainer, AWS ECS, Kubernetes) yang membawa satu artefak binary.
+
+```go title="cmd/migrate/main.go"
+package main
+
+import (
+	"embed"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5" // driver pgx v5
+	"github.com/golang-migrate/migrate/v4/source/iofs"
+)
+
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
+
+func main() {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		log.Fatal("DATABASE_URL wajib diisi")
+	}
+
+	if err := runMigrations(databaseURL); err != nil {
+		log.Fatalf("migrasi gagal: %v", err)
+	}
+
+	log.Println("migrasi database selesai")
+}
+
+func runMigrations(databaseURL string) error {
+	source, err := iofs.New(migrationsFS, "migrations")
+	if err != nil {
+		return fmt.Errorf("buka source migration: %w", err)
+	}
+
+	m, err := migrate.NewWithSourceInstance("iofs", source, databaseURL)
+	if err != nil {
+		return fmt.Errorf("buat instance migrate: %w", err)
+	}
+
+	// ErrNoChange artinya database sudah versi terbaru, itu bukan error.
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return fmt.Errorf("jalankan migration: %w", err)
+	}
+
+	srcErr, dbErr := m.Close()
+	if srcErr != nil {
+		return fmt.Errorf("tutup source: %w", srcErr)
+	}
+	if dbErr != nil {
+		return fmt.Errorf("tutup koneksi database: %w", dbErr)
+	}
+	return nil
+}
+```
+
+Dua detail penting di kode itu. Pertama, `migrate.ErrNoChange` dikembalikan ketika database sudah di versi terbaru. Itu kondisi normal saat deploy yang tidak membawa migration baru, jadi kita perlakukan sebagai sukses, bukan error. Tanpa pengecekan `errors.Is` ini, setiap deploy tanpa migration baru akan dianggap gagal. Kedua, `go:embed migrations/*.sql` hanya bisa menempel file yang ada di dalam atau di bawah direktori package. Karena `cmd/migrate/main.go` ada di sub-direktori, pola embed harus relatif ke posisi file Go, jadi kita biasanya menaruh embed di package level yang melihat folder `migrations/`.
+
+<Box variant="warn" icon="⚠️" label="go:embed punya aturan path yang ketat"><p>Directive <code>//go:embed</code> tidak bisa menjangkau <code>..</code> (parent directory). File yang di-embed harus berada di pohon direktori package yang sama. Pola yang umum: taruh file <code>migrate.go</code> dengan embed-nya di root module (package <code>main</code> kecil) atau di sebuah package <code>internal/migrations</code> yang bersebelahan dengan folder SQL-nya. Kalau build error dengan pesan "pattern migrations/*.sql: no matching files found", hampir pasti posisi file Go-nya salah relatif terhadap folder migration.</p></Box>
+
+<Box variant="tip" icon="💡" label="One-off task lebih aman daripada auto-run saat start"><p>Untuk AWS ECS atau Kubernetes, migration sering dijalankan sebagai one-off task (atau init container) sebelum service baru menerima traffic. Ini mencegah banyak replica aplikasi berebut menjalankan migration yang sama saat scale-up. golang-migrate memang memakai lock di database, tetapi pola one-off task membuat alur deploy lebih mudah di-reasoning dan di-rollback.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari migrate deploy npm script ke task terpisah"><p>Di proyek Node kamu mungkin punya `"migrate": "knex migrate:latest"` di package.json yang dipanggil saat deploy. Idenya sama, hanya saja di Go kita lebih sering menjadikannya binary terpisah (`./skincare-migrate`) atau subcommand, supaya artefak yang sama bisa dijalankan di local, staging, dan production tanpa butuh Node atau toolchain tambahan di server.</p></Box>
+
+</Section>
+
+<Section num="07" id="staging-production" title="Strategi Staging dan Production" sub="Migration aman bukan cuma soal SQL benar, tapi soal urutan rollout">
+
+<p class="lead">Migration yang aman bukan hanya soal SQL yang sintaksnya benar. Ia soal urutan rollout, observability, dan asumsi bahwa production tidak pernah menjadi tempat eksperimen pertama.</p>
+
+Staging harus meniru production sebanyak mungkin: ukuran data yang mirip, index yang sama, constraint yang sama, dan idealnya volume yang cukup untuk membuat migration berat terasa beratnya. Tujuan staging bukan sekadar memastikan query sukses di tabel kosong, tetapi memastikan migration aman terhadap data nyata, lock yang mungkin terjadi, dan aplikasi versi lama yang barangkali masih berjalan selama deploy.
+
+```mermaid
+sequenceDiagram
+  participant Dev as Developer
+  participant CI as CI/CD Pipeline
+  participant Stg as Staging DB
+  participant Prod as Production DB
+  participant App as Go API
+  Dev->>CI: Pull request (kode Go + SQL migration)
+  CI->>CI: go test ./... + lint SQL
+  CI->>Stg: migrate up
+  CI->>App: deploy ke staging
+  App-->>CI: smoke test (katalog, checkout)
+  Note over CI,Prod: butuh approval manual
+  CI->>Prod: backup snapshot
+  CI->>Prod: migrate up
+  CI->>App: rollout aplikasi production
+```
+
+<p class="fig-cap"><b>Gambar 3.</b> Di CI/CD, <code>migrate up</code> dijalankan sebagai langkah eksplisit sebelum aplikasi versi baru di-rollout. Production hanya disentuh setelah staging lulus dan setelah backup diambil.</p>
+
+Inti alur ini: migration berjalan **sebelum** kode aplikasi baru dirilis, bukan sesudah. Aplikasi baru yang membutuhkan kolom baru tidak boleh menerima traffic sebelum kolom itu ada. Inilah kenapa migrate menjadi langkah terpisah di pipeline, bukan sesuatu yang terjadi di dalam aplikasi saat ia menerima request pertama.
+
+<Steps>
+  <Step><b>Local</b><p>Developer membuat migration, menjalankan `make migrate-up`, menjalankan test repository, lalu mencoba `make migrate-down` satu langkah untuk memastikan down-nya jujur.</p></Step>
+  <Step><b>Pull request</b><p>Migration di-review bersama kode Go-nya. Reviewer mengecek dampak lock, ukuran index, dan apakah perubahan kompatibel dengan aplikasi versi lama selama rolling deploy.</p></Step>
+  <Step><b>Staging</b><p>CI/CD menjalankan `migrate up` ke database staging, deploy aplikasi, lalu menjalankan smoke test endpoint penting seperti katalog produk dan checkout.</p></Step>
+  <Step><b>Production</b><p>Setelah approval, tim mengambil backup, menjalankan `migrate up` dengan observability, lalu rollout aplikasi yang kompatibel dengan skema baru.</p></Step>
+</Steps>
+
+<Box variant="warn" icon="⚠️" label="Forward-only di production"><p>Di production, anggap migration sebagai jalur satu arah: maju saja. Jangan mengandalkan `down` untuk rollback production. Kalau migration baru bermasalah, cara yang benar bukan menjalankan `down` (yang bisa menghapus data), melainkan menulis migration koreksi baru yang memperbaiki keadaan. <code>down</code> tetap dipakai di local dan staging, tetapi production diperlakukan forward-only.</p></Box>
+
+PostgreSQL mendokumentasikan `ALTER TABLE` sebagai perintah untuk mengubah definisi tabel, dan menjelaskan bahwa level lock berbeda per subform. Banyak operasi memakai lock `ACCESS EXCLUSIVE` yang memblokir baca dan tulis ke tabel selama operasi berjalan. Pada tabel kecil ini selesai dalam milidetik, tetapi pada tabel `orders` production yang berisi jutaan baris, operasi yang salah bisa membekukan checkout selama menit. Inilah alasan migration production perlu dirancang dan diuji di staging, bukan ditembak saat traffic ramai.
+
+<Box variant="tip" icon="💡" label="Kenapa migrate jalan sebelum app, bukan sesudah"><p>Bayangkan aplikasi baru butuh kolom <code>orders.idempotency_key</code>. Kalau aplikasi naik dulu lalu migration menyusul, ada jendela waktu di mana aplikasi baru memanggil kolom yang belum ada, dan checkout error. Maka urutannya selalu: migration dulu (tambah kolom), aplikasi menyusul (pakai kolom). Untuk perubahan yang menghapus, urutannya dibalik, dan itulah inti pola expand-contract di bagian berikutnya.</p></Box>
+
+</Section>
+
+<Section num="08" id="expand-contract" title="Expand-Contract: Zero Downtime" sub="Ubah skema bertahap agar aplikasi lama dan baru sama-sama aman">
+
+<p class="lead">Cara aman mengubah skema production yang sedang melayani traffic adalah expand-contract: tambah dulu, pindahkan perlahan, baru hapus belakangan di migration terpisah. Pola ini membuat aplikasi versi lama dan baru bisa hidup berdampingan selama deploy.</p>
+
+Dalam deploy modern (rolling deploy, blue-green), ada momen singkat ketika versi aplikasi lama dan baru sama-sama berjalan dan sama-sama melayani request. Kalau migration menghapus atau mengganti kolom lebih dulu, aplikasi versi lama yang masih membaca kolom itu langsung error. Expand-contract memecah perubahan berisiko menjadi beberapa langkah kecil yang masing-masing kompatibel mundur.
+
+<Def term="expand-contract"><p>Strategi mengubah skema tanpa downtime dengan empat fase: <b>expand</b> (tambah objek baru yang nullable atau tabel baru, tanpa menghapus apa pun), <b>backfill</b> (isi data baru dari data lama dengan job terkontrol), <b>migrate</b> (alihkan kode baca/tulis ke bentuk baru), dan <b>contract</b> (hapus objek lama di migration terpisah setelah tidak ada kode yang memakainya).</p></Def>
+
+Mari pakai contoh kanonik dari brief: menambahkan kolom `idempotency_key` ke tabel `orders` yang sudah berisi order production. Kolom ini wajib `UNIQUE` dan akhirnya `NOT NULL`, tetapi kita tidak bisa langsung menambah kolom `NOT NULL` ke tabel berisi data tanpa nilai default, karena baris lama tidak punya nilai untuk kolom itu.
+
+```mermaid
+flowchart TD
+  A["Expand: ADD COLUMN idempotency_key text<br/>(nullable dulu)"] --> B["Deploy app: tulis idempotency_key<br/>di setiap checkout baru"]
+  B --> C["Backfill: isi key untuk order lama<br/>(generate per baris)"]
+  C --> D["Contract bagian 1: SET NOT NULL<br/>+ tambah UNIQUE constraint"]
+  D --> E["Contract bagian 2: hapus kolom/path lama<br/>jika ada, di migration terpisah"]
+```
+
+<p class="fig-cap"><b>Gambar 4.</b> Menambah kolom wajib ke tabel berisi data dilakukan bertahap. Kolom lahir nullable, diisi backfill, baru dikunci <code>NOT NULL</code> dan <code>UNIQUE</code> setelah semua baris punya nilai.</p>
+
+Langkah pertama: tambah kolom dalam keadaan nullable. Operasi `ADD COLUMN` tanpa default yang volatile sangat cepat di PostgreSQL modern karena tidak menulis ulang seluruh tabel.
+
+```sql title="migrations/000005_add_idempotency_key_to_orders.up.sql"
+-- Fase EXPAND: kolom lahir nullable supaya baris lama tetap valid.
+ALTER TABLE orders ADD COLUMN idempotency_key text;
+```
+
+```sql title="migrations/000005_add_idempotency_key_to_orders.down.sql"
+ALTER TABLE orders DROP COLUMN IF EXISTS idempotency_key;
+```
+
+Setelah migration ini naik, deploy aplikasi versi baru yang mulai menulis `idempotency_key` di setiap checkout. Aplikasi lama yang belum tahu kolom ini tetap aman, karena kolom boleh kosong. Lalu backfill order lama. Untuk dataset kecil, satu UPDATE cukup. Untuk tabel besar, lakukan dalam batch agar tidak mengunci tabel terlalu lama.
+
+```sql title="Backfill (dijalankan terkontrol, bukan di file migration besar)"
+-- Isi key unik untuk order lama yang belum punya.
+-- Pada tabel besar, jalankan per batch dengan LIMIT + loop di luar SQL.
+UPDATE orders
+SET idempotency_key = 'legacy-' || id::text
+WHERE idempotency_key IS NULL;
+```
+
+Setelah semua baris terisi dan tidak ada lagi kode yang menulis `NULL`, barulah kunci constraint-nya di migration terpisah. Memisahkan langkah ini penting: jika digabung dengan ADD COLUMN, migration akan gagal di production karena saat itu baris lama masih `NULL`.
+
+```sql title="migrations/000006_lock_idempotency_key.up.sql"
+-- Fase CONTRACT: sekarang aman dikunci karena semua baris sudah terisi.
+ALTER TABLE orders ALTER COLUMN idempotency_key SET NOT NULL;
+ALTER TABLE orders ADD CONSTRAINT orders_idempotency_key_key UNIQUE (idempotency_key);
+```
+
+```sql title="migrations/000006_lock_idempotency_key.down.sql"
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_idempotency_key_key;
+ALTER TABLE orders ALTER COLUMN idempotency_key DROP NOT NULL;
+```
+
+<Box variant="warn" icon="⚠️" label="Jangan DROP COLUMN saat aplikasi lama masih hidup"><p>Kebalikan dari menambah, menghapus kolom juga harus contract belakangan. Kalau kamu <code>DROP COLUMN</code> di migration yang dideploy bersamaan dengan kode baru, aplikasi versi lama yang masih running (selama rolling deploy) akan crash saat menyentuh kolom itu. Urutan yang benar: rilis kode yang berhenti memakai kolom dulu, tunggu semua instance lama mati, baru migration berikutnya men-drop kolom.</p></Box>
+
+<Box variant="note" icon="📌" label="CREATE INDEX CONCURRENTLY butuh migration sendiri"><p>Untuk index pada tabel besar di production, pakai <code>CREATE INDEX CONCURRENTLY</code> agar tidak mengunci tulis selama index dibangun. Tetapi dokumentasi driver pgx v5 golang-migrate menegaskan statement seperti ini tidak boleh berada di dalam transaksi multi-statement, jadi taruh ia di file migration tersendiri yang hanya berisi satu statement itu. Jangan campur dengan DDL lain di file yang sama.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: feature flag frontend = expand-contract backend"><p>Di frontend kamu merilis UI baru di balik feature flag, membiarkan kode lama dan baru hidup bersama, lalu menghapus jalur lama setelah flag 100 persen. Expand-contract adalah versi database dari disiplin itu. Skema berubah bertahap supaya tidak pernah ada momen di mana aplikasi yang sedang berjalan menabrak bentuk skema yang sudah tidak ada.</p></Box>
+
+</Section>
+
+<Section num="09" id="seed-vs-schema" title="Seed Data vs Schema" sub="Migration untuk struktur, seed untuk data, dan keduanya beda urusan">
+
+<p class="lead">Migration mengubah struktur. Seed mengisi data. Mencampur keduanya tanpa disiplin adalah sumber kekacauan yang umum, terutama saat data contoh ikut masuk ke production.</p>
+
+Ada dua jenis data yang sering dibingungkan. Pertama, **reference data** atau data yang menjadi bagian dari kebenaran skema, misalnya daftar `categories` skincare baku (Serum, Moisturizer, Sunscreen) atau status default. Data ini boleh masuk migration karena ia memang bagian dari definisi sistem dan harus ada di semua lingkungan. Kedua, **seed data** untuk development atau demo, misalnya 50 produk contoh dengan harga acak. Data ini tidak boleh masuk migration, karena kamu tidak ingin produk dummy muncul di production.
+
+<Compare aLabel="Migration (struktur + reference data)" bLabel="Seed (data development/demo)" aTone="violet" bTone="teal">
+  <Fragment slot="a"><ul><li>DDL: CREATE/ALTER tabel, index, constraint.</li><li>Reference data yang wajib ada di semua env (kategori baku, role).</li><li>Dijalankan di local, staging, production.</li><li>Versioned, di-review, tidak boleh diedit setelah jalan.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Data contoh: produk dummy, user uji, order palsu.</li><li>Hanya untuk local dan kadang staging, tidak pernah production.</li><li>Boleh dibuat ulang kapan saja (idempotent, sering pakai TRUNCATE + INSERT).</li><li>Biasanya script terpisah (`cmd/seed`), bukan file migration.</li></ul></Fragment>
+</Compare>
+
+Reference data yang sah masuk migration ditulis idempotent dengan `ON CONFLICT DO NOTHING`, supaya menjalankan ulang tidak menggandakan baris. Contohnya kategori baku skincare.
+
+```sql title="migrations/000007_seed_categories.up.sql"
+-- Reference data: kategori baku yang harus ada di semua lingkungan.
+INSERT INTO categories (slug, name, sort_order) VALUES
+  ('serum',      'Serum',      10),
+  ('moisturizer','Moisturizer',20),
+  ('sunscreen',  'Sunscreen',  30),
+  ('cleanser',   'Cleanser',   40)
+ON CONFLICT (slug) DO NOTHING;
+```
+
+```sql title="migrations/000007_seed_categories.down.sql"
+DELETE FROM categories
+WHERE slug IN ('serum', 'moisturizer', 'sunscreen', 'cleanser');
+```
+
+Sedangkan seed development sebaiknya menjadi command Go terpisah yang hanya dijalankan di local. Ia boleh agresif (menghapus lalu mengisi ulang) karena tidak akan pernah menyentuh production.
+
+```go title="cmd/seed/main.go"
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+func main() {
+	if os.Getenv("APP_ENV") == "production" {
+		log.Fatal("seed dilarang di production")
+	}
+
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatalf("buka pool: %v", err)
+	}
+	defer pool.Close()
+
+	// Aman dijalankan ulang: bersihkan dulu, lalu isi data demo.
+	if _, err := pool.Exec(ctx, `TRUNCATE products RESTART IDENTITY CASCADE`); err != nil {
+		log.Fatalf("truncate: %v", err)
+	}
+
+	_, err = pool.Exec(ctx,
+		`INSERT INTO products (brand_id, slug, name, status)
+		 VALUES ($1, $2, $3, 'active')`,
+		1, "niacinamide-10", "Niacinamide 10% Serum")
+	if err != nil {
+		log.Fatalf("seed produk: %v", err)
+	}
+
+	log.Println("seed development selesai")
+}
+```
+
+<Box variant="warn" icon="⚠️" label="Penjaga environment di seed"><p>Perhatikan baris pertama yang menolak jalan kalau <code>APP_ENV</code> production. Seed yang memakai <code>TRUNCATE ... CASCADE</code> bisa menghapus seluruh katalog. Penjaga environment sederhana ini mencegah bencana kalau seseorang tidak sengaja menjalankan seed dengan <code>DATABASE_URL</code> production yang ter-export di shell.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: php artisan db:seed vs cmd/seed"><p>Laravel memisahkan <code>php artisan migrate</code> (struktur) dari <code>php artisan db:seed</code> (data), dan seeder hanya dipanggil di local atau testing. Go tidak punya konvensi bawaan, jadi kita buat sendiri: migration untuk struktur dan reference data, lalu binary <code>cmd/seed</code> untuk data development. Pemisahan yang sama, hanya tanpa magic framework.</p></Box>
+
+</Section>
+
+<Section num="10" id="hands-on" title="Hands-on Migration Produk" sub="Buat, jalankan, dan uji rollback migration katalog">
+
+<p class="lead">Sekarang kita praktik langsung: membuat migration katalog produk yang menjadi fondasi seluruh toko, menjalankannya ke database local, lalu menguji bahwa rollback dan re-apply berjalan mulus.</p>
+
+Kita asumsikan migration sebelumnya sudah membuat `brands` dan `categories` (bagian dari `000002_create_catalog`). Di R3.C3 skema lengkap sudah dirancang. Fokus latihan ini bukan menulis ulang semua tabel, melainkan melatih disiplin mengubah skema lewat migration: buat pasangan file, isi up dan down, jalankan, dan verifikasi rollback bisa diulang.
+
+<Steps>
+  <Step><b>Buat pasangan file</b><p>Jalankan `make migrate-create name=create_catalog` untuk menghasilkan dua file up dan down dengan nomor urut berikutnya.</p></Step>
+  <Step><b>Isi file up</b><p>Tulis DDL `CREATE TABLE products` dan `product_variants` beserta constraint, foreign key, dan index yang langsung dibutuhkan query katalog.</p></Step>
+  <Step><b>Isi file down</b><p>Tulis rollback dengan urutan kebalikan: index dulu, lalu tabel anak (`product_variants`), baru tabel induk (`products`).</p></Step>
+  <Step><b>Jalankan ke local</b><p>Gunakan `make migrate-up`, lalu cek struktur tabel dengan `psql` atau tool database favoritmu.</p></Step>
+  <Step><b>Uji rollback dan re-apply</b><p>Jalankan `make migrate-down`, pastikan tabel hilang, lalu `make migrate-up` lagi untuk membuktikan migration bisa diulang dari nol.</p></Step>
+</Steps>
+
+File up membuat `products` dan `product_variants`. Harga ada di varian (`price_rupiah bigint`), sesuai konvensi proyek: uang selalu integer rupiah, tidak pernah `float` atau `numeric`. Satu produk moisturizer bisa punya varian 30 ml dan 50 ml dengan harga berbeda, jadi harga memang milik varian, bukan produk.
+
+```sql title="migrations/000002_create_catalog.up.sql"
+CREATE TABLE products (
+  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  brand_id    bigint NOT NULL REFERENCES brands(id) ON DELETE RESTRICT,
+  slug        text NOT NULL UNIQUE,
+  name        text NOT NULL,
+  description text NOT NULL DEFAULT '',
+  skin_types  text[] NOT NULL DEFAULT '{}',
+  concerns    text[] NOT NULL DEFAULT '{}',
+  ingredients jsonb NOT NULL DEFAULT '{}',
+  status      text NOT NULL DEFAULT 'draft'
+              CHECK (status IN ('draft', 'active', 'archived')),
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  deleted_at  timestamptz
+);
+
+CREATE TABLE product_variants (
+  id           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  product_id   bigint NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  sku          text NOT NULL UNIQUE,
+  variant_name text NOT NULL,
+  size_label   text,
+  shade        text,
+  price_rupiah bigint NOT NULL CHECK (price_rupiah >= 0),
+  is_active    boolean NOT NULL DEFAULT true,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX products_brand_id_idx ON products (brand_id);
+CREATE INDEX products_status_idx ON products (status);
+CREATE INDEX product_variants_product_id_idx ON product_variants (product_id);
+CREATE INDEX product_variants_active_idx ON product_variants (is_active);
+```
+
+File down membongkar persis kebalikannya: index dulu, lalu `product_variants` (anak), baru `products` (induk). Kalau urutan dibalik, PostgreSQL menolak men-drop `products` selama `product_variants` masih punya foreign key ke sana.
+
+```sql title="migrations/000002_create_catalog.down.sql"
+DROP INDEX IF EXISTS product_variants_active_idx;
+DROP INDEX IF EXISTS product_variants_product_id_idx;
+DROP INDEX IF EXISTS products_status_idx;
+DROP INDEX IF EXISTS products_brand_id_idx;
+DROP TABLE IF EXISTS product_variants;
+DROP TABLE IF EXISTS products;
+```
+
+Jalankan dan verifikasi struktur tabelnya.
+
+```bash title="Terminal"
+make migrate-up
+make migrate-version
+psql "$DATABASE_URL" -c '\d products'
+psql "$DATABASE_URL" -c '\d product_variants'
+```
+
+Sekarang uji rollback lalu re-apply. Ini langkah yang sering dilewati pemula, padahal ia membuktikan down migration benar-benar jujur dan migration bisa dibangun ulang dari nol.
+
+```bash title="Terminal"
+# Rollback satu langkah, pastikan tabel hilang
+make migrate-down
+psql "$DATABASE_URL" -c '\d products'   # harusnya "Did not find any relation"
+
+# Naik lagi, pastikan migration repeatable
+make migrate-up
+make migrate-version
+```
+
+<Box variant="tip" icon="💡" label="Uji rollback adalah uji kualitas down"><p>Kalau <code>migrate down</code> lalu <code>migrate up</code> menghasilkan error, biasanya down-mu tidak lengkap (ada objek yang lupa di-drop) atau urutannya salah. Memutar siklus down/up di local sebelum push adalah cara murah memastikan migration tidak menyusahkan reviewer atau merusak database staging tim.</p></Box>
+
+<Box variant="note" icon="📌" label="Skema ini melayani endpoint nanti"><p>Tabel yang kamu buat di migration ini akan dilayani oleh endpoint katalog di Roadmap berikutnya, seperti `GET /v1/products` dan `GET /v1/products/{id}`. Skema yang versioned membuat endpoint itu punya fondasi data yang stabil dan dapat dibangun ulang kapan saja.</p></Box>
+
+</Section>
+
+<Section num="11" id="jebakan" title="Jebakan Umum" sub="Sebagian besar masalah migration bukan SQL rumit, tapi perubahan yang diremehkan">
+
+<p class="lead">Hampir semua insiden migration production bukan karena SQL yang rumit, melainkan karena perubahan skema dianggap terlalu ringan untuk diperlakukan serius.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Manual ALTER TABLE di production</h4><p>Masalahnya bukan cuma SQL bisa salah ketik, tetapi perubahan tidak tercatat di Git, tidak bisa diulang di staging, dan database production jadi berbeda dari yang ada di kode.</p></Card>
+  <Card><h4>Mengedit migration yang sudah jalan</h4><p>Jika migration sudah pernah diterapkan di staging atau production, jangan pernah mengedit isinya. Database tidak akan menjalankan ulang file yang versinya sudah tercatat. Buat migration baru untuk perubahan berikutnya.</p></Card>
+  <Card><h4>Down dianggap rollback production</h4><p>`DROP TABLE` dan `DROP COLUMN` menghilangkan data permanen. Rollback production yang sebenarnya adalah backup plus migration koreksi, bukan menjalankan down.</p></Card>
+  <Card><h4>ADD COLUMN NOT NULL ke tabel berisi data</h4><p>Menambah kolom `NOT NULL` tanpa default ke tabel yang sudah ada baris akan gagal. Pakai expand-contract: nullable dulu, backfill, baru kunci NOT NULL.</p></Card>
+  <Card><h4>Index besar tanpa rencana</h4><p>`CREATE INDEX` biasa mengunci tulis sampai selesai. Pada tabel besar pakai `CREATE INDEX CONCURRENTLY` di migration tersendiri, dan ukur dampaknya di staging dulu.</p></Card>
+  <Card><h4>migrate force sembarangan</h4><p>`force` hanya mengubah catatan versi, tidak memperbaiki skema. Memakainya tanpa memeriksa state database bisa membuat versi yang tercatat berbohong tentang isi database sebenarnya.</p></Card>
+</CardGrid>
+
+Mari bahas satu skenario yang pasti pernah kamu temui: migration gagal di tengah dan database masuk kondisi `dirty`. Saat sebuah migration error di tengah jalan (misalnya statement kedua gagal padahal yang pertama sudah jalan), golang-migrate menandai tabel `schema_migrations` dengan flag `dirty = true`. Selama dirty, `migrate up` berikutnya akan menolak jalan, karena tool tidak tahu seberapa jauh migration terakhir sempat berjalan.
+
+```bash title="Terminal"
+$ make migrate-up
+error: Dirty database version 5. Fix and force version.
+```
+
+Langkah yang benar bukan langsung `force` ke versi mana pun. Periksa dulu objek yang sudah terlanjur dibuat di database, putuskan kondisi yang konsisten, baru perbaiki catatan versinya.
+
+<Steps>
+  <Step><b>Periksa state nyata</b><p>Buka database, cek objek apa yang sudah terbuat oleh migration yang gagal. Apakah tabelnya ada? Apakah kolomnya sudah ditambahkan? Bandingkan dengan isi file migration.</p></Step>
+  <Step><b>Bersihkan setengah jadi</b><p>Kalau migration sempat membuat sebagian objek, drop objek setengah jadi itu secara manual agar database kembali ke kondisi seperti sebelum migration gagal.</p></Step>
+  <Step><b>Perbaiki SQL-nya</b><p>Cari kenapa statement gagal (typo, constraint bentrok, urutan salah). Perbaiki file migration jika ia belum pernah jalan di lingkungan lain.</p></Step>
+  <Step><b>Force ke versi bersih</b><p>Jalankan `migrate force <versi-baik-terakhir>` untuk menghapus flag dirty, lalu `migrate up` lagi.</p></Step>
+</Steps>
+
+<Box variant="warn" icon="⚠️" label="force mengubah catatan, bukan skema"><p><code>migrate force V</code> hanya menulis versi <code>V</code> dan mematikan flag dirty di tabel <code>schema_migrations</code>. Ia tidak menjalankan SQL apa pun. Kalau kamu force ke versi yang tidak sesuai isi database sebenarnya, catatan versi akan berbohong, dan migration berikutnya bisa mencoba membuat objek yang sudah ada atau melewati objek yang belum ada. Selalu force ke versi yang benar-benar mencerminkan state database.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dirty state mirip merge conflict"><p>Kondisi dirty itu seperti repo Git yang berhenti di tengah merge conflict. Git tidak akan melanjutkan sampai kamu menyelesaikan konflik dan menandainya resolved. golang-migrate tidak akan melanjutkan sampai kamu membersihkan database dan menandai versi bersih dengan force. Keduanya menolak menebak, dan itu fitur, bukan bug, karena menebak di database production jauh lebih mahal.</p></Box>
+
+<Box variant="tip" icon="💡" label="Cegah dirty dengan migration kecil dan teruji"><p>Cara terbaik menangani dirty state adalah menghindarinya. Migration kecil dengan satu perubahan logis lebih kecil kemungkinan gagal di tengah, dan kalaupun gagal, lebih mudah dibersihkan. Tambah uji rollback di local dan jalankan migration di staging dengan data realistis sebelum menyentuh production.</p></Box>
+
+</Section>
+
+<Section num="12" id="ringkasan" title="Ringkasan &amp; Poin Penting" sub="Skema yang versioned adalah fondasi sebelum pgx, transaksi, dan deploy">
+
+<p class="lead">Migration adalah fondasi operasional sebelum kita masuk lebih jauh ke koneksi pgx, query, transaksi, repository, dan akhirnya deploy ke AWS. Skema yang punya versi jelas membuat semua lapisan di atasnya bisa dipercaya.</p>
+
+<Recap title="Yang Wajib Menempel"><ul><li>Jangan pernah menjalankan `ALTER TABLE` manual di production. Setiap perubahan skema masuk file migration, masuk Git, dan di-review lewat pull request.</li><li>Setiap migration adalah pasangan file `up` dan `down` dengan nomor urut, misalnya `000005_add_idempotency_key_to_orders.up.sql` dan `.down.sql`. Up memajukan skema, down memundurkannya.</li><li>golang-migrate menyimpan versi di tabel `schema_migrations` dan menandai `dirty` saat migration gagal di tengah. Untuk pgx v5 gunakan driver `github.com/golang-migrate/migrate/v4/database/pgx/v5` dengan URL scheme `pgx5://`.</li><li>Embed file SQL ke binary dengan `go:embed` plus source driver `iofs`, lalu jalankan sebagai one-off task sebelum aplikasi baru menerima traffic. Perlakukan `migrate.ErrNoChange` sebagai sukses.</li><li>Migrate jalan sebelum aplikasi baru dirilis, dan production diperlakukan forward-only. Rollback sebenarnya adalah backup plus migration koreksi, bukan down.</li><li>Untuk perubahan berisiko di tabel berisi data, pakai expand-contract: tambah kolom nullable, backfill, kunci NOT NULL/UNIQUE di migration terpisah, baru contract objek lama belakangan.</li><li>Pisahkan struktur dari data: DDL dan reference data baku boleh masuk migration (idempotent dengan `ON CONFLICT`), tetapi seed development tinggal di `cmd/seed` dan tidak pernah menyentuh production.</li><li>Jangan pernah mengedit migration yang sudah jalan, dan jangan `force` tanpa memeriksa state database lebih dulu.</li></ul></Recap>
+
+Di proyek online shop skincare, migration menjadi rel kereta untuk semua skema yang kita rancang di R3.C3: `users`, `addresses`, `brands`, `categories`, `products`, `product_variants`, `inventories`, `carts`, `cart_items`, `orders`, `order_items`, `payments`, `shipments`, `reviews`, dan `promotions`. Setiap tabel itu lahir dari file migration yang bisa dibangun ulang dari nol, dijalankan dengan urutan sama di laptop, staging, dan production.
+
+Langkah berikutnya di Roadmap 3 adalah menghubungkan Go ke PostgreSQL memakai `pgxpool`. Migration memastikan database siap dan punya bentuk yang benar, sedangkan pgx memastikan aplikasi bisa membaca dan menulis data ke skema itu dengan benar. Dua hal ini saling melengkapi: tanpa migration, pgx tidak punya tabel yang stabil untuk diandalkan, dan tanpa pgx, migration hanya menyiapkan rumah yang belum ditinggali.
+
+<Box variant="tip" icon="🚀" label="Langkah berikutnya"><p>Sebelum lanjut, pastikan kamu bisa membangun database skincare dari nol dengan satu perintah `make migrate-up`, lalu membongkarnya kembali dengan rollback. Kemampuan membangun ulang skema dari kode adalah tanda fondasi data proyekmu sudah sehat dan siap menerima koneksi pgx di modul berikutnya.</p></Box>
+
+</Section>

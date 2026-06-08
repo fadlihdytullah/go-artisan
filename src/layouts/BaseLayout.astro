@@ -43,6 +43,73 @@ const { title, nav, footer } = Astro.props;
       } catch (e) {}
     })();
   </script>
+  <script is:inline>
+    // Simpan progres belajar per browser agar homepage dan halaman modul bisa sinkron.
+    (function () {
+      var KEY = 'go-artisan-progress-v1';
+
+      function readState() {
+        try {
+          var raw = localStorage.getItem(KEY);
+          if (!raw) return { completed: {}, lastVisited: null, updatedAt: null };
+          var parsed = JSON.parse(raw);
+          return {
+            completed: parsed && typeof parsed.completed === 'object' && parsed.completed ? parsed.completed : {},
+            lastVisited: parsed && typeof parsed.lastVisited === 'string' ? parsed.lastVisited : null,
+            updatedAt: parsed && typeof parsed.updatedAt === 'string' ? parsed.updatedAt : null,
+          };
+        } catch (e) {
+          return { completed: {}, lastVisited: null, updatedAt: null };
+        }
+      }
+
+      function writeState(state) {
+        state.updatedAt = new Date().toISOString();
+        try {
+          localStorage.setItem(KEY, JSON.stringify(state));
+        } catch (e) {}
+        window.dispatchEvent(new CustomEvent('module-progress:change', { detail: state }));
+        return state;
+      }
+
+      window.moduleProgress = {
+        getState: function () {
+          return readState();
+        },
+        isCompleted: function (moduleId) {
+          var state = readState();
+          return !!state.completed[moduleId];
+        },
+        setCompleted: function (moduleId, value) {
+          var state = readState();
+          if (value) state.completed[moduleId] = true;
+          else delete state.completed[moduleId];
+          return writeState(state);
+        },
+        setLastVisited: function (moduleId) {
+          var state = readState();
+          state.lastVisited = moduleId;
+          return writeState(state);
+        },
+        getCompletedCount: function (moduleIds) {
+          var state = readState();
+          return moduleIds.filter(function (moduleId) {
+            return !!state.completed[moduleId];
+          }).length;
+        },
+        getNextModuleId: function (moduleIds) {
+          var state = readState();
+          for (var i = 0; i < moduleIds.length; i++) {
+            if (!state.completed[moduleIds[i]]) return moduleIds[i];
+          }
+          if (state.lastVisited && moduleIds.indexOf(state.lastVisited) !== -1) {
+            return state.lastVisited;
+          }
+          return moduleIds[0] || null;
+        },
+      };
+    })();
+  </script>
 </head>
 <body>
   <Navbar {...nav} />

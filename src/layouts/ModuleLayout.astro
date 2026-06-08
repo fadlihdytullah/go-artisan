@@ -13,6 +13,7 @@ export interface PagerLink {
   badge: string;
 }
 interface Props {
+  moduleId: string;
   title: string;
   badge: string;
   topTitle: string;
@@ -25,6 +26,7 @@ interface Props {
   next?: PagerLink | null;
 }
 const {
+  moduleId,
   title,
   badge,
   topTitle,
@@ -63,9 +65,34 @@ const {
       ))}
     </nav>
 
-    <main>
+    <main data-module-root data-module-id={moduleId}>
       <a class="mod-back" href="/"><Icon name="arrow-left" size={16} />Semua modul</a>
+      <div class="module-actions module-actions-top">
+        <button
+          type="button"
+          class="module-complete-btn"
+          data-complete-toggle
+          data-module-id={moduleId}
+          aria-pressed="false"
+        >
+          <span class="module-complete-btn-text">Mark as completed</span>
+        </button>
+        <p class="module-complete-note" data-complete-note>Progress disimpan lokal di browser ini.</p>
+      </div>
       <slot />
+
+      <div class="module-actions module-actions-bottom">
+        <button
+          type="button"
+          class="module-complete-btn"
+          data-complete-toggle
+          data-module-id={moduleId}
+          aria-pressed="false"
+        >
+          <span class="module-complete-btn-text">Mark as completed</span>
+        </button>
+        <p class="module-complete-note" data-complete-note>Progress disimpan lokal di browser ini.</p>
+      </div>
 
       {(prev || next) && (
         <nav class="mod-pager" aria-label="Navigasi modul">
@@ -188,6 +215,46 @@ const {
           }).catch(function () {});
         });
       });
+    })();
+  </script>
+
+  <script is:inline>
+    // Toggle progres selesai untuk modul saat ini.
+    (function () {
+      var api = window.moduleProgress;
+      var root = document.querySelector('[data-module-root]');
+      var moduleId = root ? root.getAttribute('data-module-id') : '';
+      var buttons = Array.prototype.slice.call(document.querySelectorAll('[data-complete-toggle]'));
+      var notes = Array.prototype.slice.call(document.querySelectorAll('[data-complete-note]'));
+      if (!api || !moduleId || !buttons.length) return;
+
+      function sync() {
+        var done = api.isCompleted(moduleId);
+        buttons.forEach(function (btn) {
+          var label = btn.querySelector('.module-complete-btn-text');
+          btn.setAttribute('aria-pressed', done ? 'true' : 'false');
+          btn.classList.toggle('is-complete', done);
+          if (label) label.textContent = done ? 'Mark as incomplete' : 'Mark as completed';
+        });
+        notes.forEach(function (note) {
+          note.textContent = done
+            ? 'Modul ini ditandai selesai di browser ini. Kamu bisa klik lagi untuk membatalkan.'
+            : 'Progress disimpan lokal di browser ini.';
+        });
+      }
+
+      api.setLastVisited(moduleId);
+      sync();
+
+      buttons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          api.setCompleted(moduleId, !api.isCompleted(moduleId));
+          api.setLastVisited(moduleId);
+          sync();
+        });
+      });
+
+      window.addEventListener('module-progress:change', sync);
     })();
   </script>
 </BaseLayout>

@@ -13,9 +13,10 @@ const totalMinutes = mods.reduce((sum, m) => {
   return sum + (match ? Number(match[0]) : 0);
 }, 0);
 const totalHours = Math.max(1, Math.round(totalMinutes / 60));
+const moduleIds = mods.map((mod) => mod.id);
 ---
 <BaseLayout title="Go Artisan — Belajar Go Backend untuk Developer" nav={{ variant: 'home' }}>
-  <main class="home">
+  <main class="home" data-home-progress data-module-ids={JSON.stringify(moduleIds)}>
     <section class="home-hero">
       <p class="home-kicker"><span class="dot" aria-hidden="true"></span>Go backend untuk developer JavaScript &amp; PHP</p>
       <h1 class="home-title">Belajar Go dengan <em>Bekal</em> yang Sudah Kamu Punya</h1>
@@ -32,6 +33,18 @@ const totalHours = Math.max(1, Math.round(totalMinutes / 60));
         <span><b>1</b> proyek nyata end-to-end</span>
         <span><b>Gratis</b>, tanpa login</span>
       </p>
+
+      <div class="home-actions">
+        <a
+          class="home-cta"
+          href={`/modul/${mods[0]?.id ?? ''}`}
+          data-continue-link
+        >
+          <span data-continue-label>Mulai belajar</span>
+          <Icon name="arrow-right" size={17} />
+        </a>
+        <p class="home-progress-copy" data-progress-copy>Progress lokal akan tersimpan di browser ini.</p>
+      </div>
     </section>
 
     <section class="home-modules">
@@ -42,13 +55,17 @@ const totalHours = Math.max(1, Math.round(totalMinutes / 60));
 
       <ol class="curr">
         {mods.map((mod, i) => (
-          <li class="curr-item" style={`--i:${i}`}>
-            <a href={`/modul/${mod.id}`}>
-              <span class="curr-index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+          <li class="curr-item" style={`--i:${i}`} data-module-item data-module-id={mod.id}>
+            <a href={`/modul/${mod.id}`} data-module-link>
+              <span class="curr-index" aria-hidden="true">
+                <span class="curr-index-num">{String(i + 1).padStart(2, '0')}</span>
+                <span class="curr-index-check">✓</span>
+              </span>
               <span class="curr-title-row">
                 <span class="curr-title">{mod.data.topTitle}</span>
                 <span class="curr-badge" aria-hidden="true">{mod.data.badge}</span>
                 {mod.data.order === 1 && <span class="curr-flag">Mulai di sini</span>}
+                <span class="curr-state" data-module-state hidden>Belum mulai</span>
               </span>
               <span class="curr-sum-row">
                 <span class="curr-sum">{mod.data.summary}</span>
@@ -67,4 +84,64 @@ const totalHours = Math.max(1, Math.round(totalMinutes / 60));
       </ol>
     </section>
   </main>
+
+  <script is:inline>
+    // Homepage membaca progres lokal untuk CTA "Continue learning" dan status tiap modul.
+    (function () {
+      var api = window.moduleProgress;
+      var root = document.querySelector('[data-home-progress]');
+      var moduleIds = [];
+      var continueLink = document.querySelector('[data-continue-link]');
+      var continueLabel = document.querySelector('[data-continue-label]');
+      var progressCopy = document.querySelector('[data-progress-copy]');
+      try {
+        moduleIds = root ? JSON.parse(root.getAttribute('data-module-ids') || '[]') : [];
+      } catch (e) {
+        moduleIds = [];
+      }
+      if (!api || !continueLink || !continueLabel || !progressCopy || !moduleIds.length) return;
+
+      function sync() {
+        var state = api.getState();
+        var completedCount = api.getCompletedCount(moduleIds);
+        var nextId = api.getNextModuleId(moduleIds);
+        var allDone = completedCount === moduleIds.length;
+
+        continueLink.setAttribute('href', '/modul/' + nextId);
+        continueLabel.textContent = allDone ? 'Review belajar' : completedCount > 0 ? 'Continue learning' : 'Mulai belajar';
+        progressCopy.textContent = allDone
+          ? 'Semua modul sudah ditandai selesai di browser ini. Kamu bisa review kapan saja.'
+          : completedCount > 0
+            ? completedCount + ' dari ' + moduleIds.length + ' modul sudah selesai. Lanjutkan dari modul berikutnya.'
+            : 'Belum ada progres tersimpan. Mulai dari modul pertama atau lompat ke topik yang kamu butuhkan.';
+
+        document.querySelectorAll('[data-module-item]').forEach(function (item) {
+          var moduleId = item.getAttribute('data-module-id');
+          var stateTag = item.querySelector('[data-module-state]');
+          var link = item.querySelector('[data-module-link]');
+          if (!moduleId || !stateTag || !link) return;
+
+          var isCompleted = !!state.completed[moduleId];
+          var isNext = !isCompleted && moduleId === nextId && !allDone;
+
+          item.classList.toggle('is-complete', isCompleted);
+          item.classList.toggle('is-next', isNext);
+
+          if (isCompleted) {
+            stateTag.hidden = false;
+            stateTag.textContent = 'Selesai';
+          } else if (isNext) {
+            stateTag.hidden = false;
+            stateTag.textContent = 'Lanjut di sini';
+          } else {
+            stateTag.hidden = true;
+            stateTag.textContent = 'Belum mulai';
+          }
+        });
+      }
+
+      sync();
+      window.addEventListener('module-progress:change', sync);
+    })();
+  </script>
 </BaseLayout>

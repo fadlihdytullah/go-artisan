@@ -97,6 +97,10 @@ const { title, nav, footer } = Astro.props;
             return !!state.completed[moduleId];
           }).length;
         },
+        getCompletionRatio: function (moduleIds) {
+          if (!moduleIds || !moduleIds.length) return 0;
+          return this.getCompletedCount(moduleIds) / moduleIds.length;
+        },
         getNextModuleId: function (moduleIds) {
           var state = readState();
           for (var i = 0; i < moduleIds.length; i++) {
@@ -169,6 +173,77 @@ const { title, nav, footer } = Astro.props;
       document.querySelectorAll('[data-font="dec"]').forEach(function (b) {
         b.addEventListener('click', function () { setScale(scale - STEP); });
       });
+    })();
+  </script>
+  <script is:inline>
+    // Sinkronkan semua bilah progres belajar dari state lokal yang sama.
+    (function () {
+      var api = window.moduleProgress;
+      var blocks = Array.prototype.slice.call(document.querySelectorAll('[data-learning-progress]'));
+      if (!api || !blocks.length) return;
+
+      function parseIds(node) {
+        try {
+          return JSON.parse(node.getAttribute('data-module-ids') || '[]');
+        } catch (e) {
+          return [];
+        }
+      }
+
+      function syncBlock(block) {
+        var moduleIds = parseIds(block);
+        if (!moduleIds.length) return;
+
+        var completedCount = api.getCompletedCount(moduleIds);
+        var totalCount = moduleIds.length;
+        var ratio = api.getCompletionRatio(moduleIds);
+        var percent = Math.round(ratio * 100);
+        var nextId = api.getNextModuleId(moduleIds);
+        var currentModuleId = block.getAttribute('data-current-module-id') || '';
+        var currentModuleIndex = Number(block.getAttribute('data-current-module-index') || '0');
+        var currentDone = currentModuleId ? api.isCompleted(currentModuleId) : false;
+        var copy = block.querySelector('[data-learning-progress-copy]');
+        var value = block.querySelector('[data-learning-progress-value]');
+        var count = block.querySelector('[data-learning-progress-count]');
+        var fill = block.querySelector('[data-learning-progress-fill]');
+        var meter = block.querySelector('[data-learning-progress-meter]');
+
+        if (value) value.textContent = percent + '%';
+        if (count) count.textContent = completedCount + '/' + totalCount + ' modul selesai';
+        if (fill) fill.style.transform = 'scaleX(' + ratio.toFixed(4) + ')';
+        if (meter) {
+          meter.setAttribute('aria-valuenow', String(completedCount));
+          meter.setAttribute('aria-valuetext', completedCount + ' dari ' + totalCount + ' modul selesai');
+        }
+
+        if (!copy) return;
+        if (completedCount === totalCount) {
+          copy.textContent = 'Semua modul sudah selesai di browser ini. Kamu bisa review kapan saja dari roadmap atau switcher modul.';
+          return;
+        }
+        if (currentModuleId) {
+          if (currentDone) {
+            copy.textContent = 'Modul ini sudah selesai. Lanjutkan ke modul berikutnya atau review bagian yang masih ingin diperdalam.';
+          } else if (completedCount > 0) {
+            copy.textContent = 'Kamu sedang di modul ' + currentModuleIndex + '. Setelah selesai, tandai modul ini agar progres kursus tetap rapi.';
+          } else {
+            copy.textContent = 'Ini modul awal perjalananmu. Tandai selesai saat kamu menuntaskan materi agar roadmap berikutnya terbuka lebih jelas.';
+          }
+          return;
+        }
+        if (completedCount > 0) {
+          copy.textContent = completedCount + ' dari ' + totalCount + ' modul sudah selesai. Lanjutkan dari ' + nextId + ' atau lompat ke topik yang sedang kamu butuhkan.';
+        } else {
+          copy.textContent = 'Belum ada progres tersimpan. Mulai dari modul pertama atau masuk ke topik yang paling relevan untuk kerja backend-mu sekarang.';
+        }
+      }
+
+      function syncAll() {
+        blocks.forEach(syncBlock);
+      }
+
+      syncAll();
+      window.addEventListener('module-progress:change', syncAll);
     })();
   </script>
 </body>

@@ -108,7 +108,37 @@ const roadmaps = Array.from(roadmapMap.values()).sort((a, b) => a.num - b.num);
             <a class="home-secondary-link" href="#kurikulum">Lihat peta roadmap</a>
           </div>
 
-          <p class="home-progress-copy" data-progress-copy>Progress lokal akan tersimpan di browser ini.</p>
+          <section
+            class="learning-progress-panel learning-progress-panel-home"
+            data-learning-progress
+            data-module-ids={JSON.stringify(moduleIds)}
+            aria-label="Progress belajar"
+          >
+            <div class="learning-progress-head">
+              <div>
+                <p class="learning-progress-kicker">Progress belajar</p>
+                <p class="learning-progress-context">Tersimpan lokal di browser ini</p>
+              </div>
+              <p class="learning-progress-stats">
+                <span data-learning-progress-value>0%</span>
+                <span data-learning-progress-count>0/{moduleIds.length} modul selesai</span>
+              </p>
+            </div>
+            <div
+              class="learning-progress-meter"
+              data-learning-progress-meter
+              role="progressbar"
+              aria-label="Progress kursus"
+              aria-valuemin="0"
+              aria-valuemax={moduleIds.length}
+              aria-valuenow="0"
+            >
+              <span class="learning-progress-fill" data-learning-progress-fill></span>
+            </div>
+            <p class="learning-progress-copy" data-learning-progress-copy>
+              Belum ada progres tersimpan. Mulai dari modul pertama atau masuk ke topik yang paling relevan untuk kerja backend-mu sekarang.
+            </p>
+          </section>
         </div>
 
         <div class="home-code" aria-hidden="true">
@@ -189,13 +219,12 @@ const roadmaps = Array.from(roadmapMap.values()).sort((a, b) => a.num - b.num);
       var moduleIds = [];
       var continueLink = document.querySelector('[data-continue-link]');
       var continueLabel = document.querySelector('[data-continue-label]');
-      var progressCopy = document.querySelector('[data-progress-copy]');
       try {
         moduleIds = root ? JSON.parse(root.getAttribute('data-module-ids') || '[]') : [];
       } catch (e) {
         moduleIds = [];
       }
-      if (!api || !continueLink || !continueLabel || !progressCopy || !moduleIds.length) return;
+      if (!api || !continueLink || !continueLabel || !moduleIds.length) return;
 
       function sync() {
         var state = api.getState();
@@ -205,11 +234,6 @@ const roadmaps = Array.from(roadmapMap.values()).sort((a, b) => a.num - b.num);
 
         continueLink.setAttribute('href', '/modul/' + nextId);
         continueLabel.textContent = allDone ? 'Review belajar' : completedCount > 0 ? 'Continue learning' : 'Mulai belajar';
-        progressCopy.textContent = allDone
-          ? 'Semua modul sudah ditandai selesai di browser ini. Kamu bisa review kapan saja.'
-          : completedCount > 0
-            ? completedCount + ' dari ' + moduleIds.length + ' modul sudah selesai. Lanjutkan dari modul berikutnya.'
-            : 'Belum ada progres tersimpan. Mulai dari modul pertama atau lompat ke topik yang kamu butuhkan.';
 
         document.querySelectorAll('[data-module-item]').forEach(function (item) {
           var moduleId = item.getAttribute('data-module-id');

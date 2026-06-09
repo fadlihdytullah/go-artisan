@@ -15,17 +15,23 @@ export async function getStaticPaths() {
         mod,
         prev: toLink(mods[i - 1]),
         next: toLink(mods[i + 1]),
+        moduleIndex: i + 1,
+        totalModules: mods.length,
+        moduleIds: mods.map((item) => item.id),
       },
     };
   });
 }
 
-const { mod, prev, next } = Astro.props;
+const { mod, prev, next, moduleIndex, totalModules, moduleIds } = Astro.props;
 const { Content } = await render(mod);
 const d = mod.data;
 ---
 <ModuleLayout
   moduleId={mod.id}
+  moduleIndex={moduleIndex}
+  totalModules={totalModules}
+  moduleIds={moduleIds}
   title={d.title}
   badge={d.badge}
   topTitle={d.topTitle}

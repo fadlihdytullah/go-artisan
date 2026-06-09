@@ -14,6 +14,9 @@ export interface PagerLink {
 }
 interface Props {
   moduleId: string;
+  moduleIndex: number;
+  totalModules: number;
+  moduleIds: string[];
   title: string;
   badge: string;
   topTitle: string;
@@ -27,6 +30,9 @@ interface Props {
 }
 const {
   moduleId,
+  moduleIndex,
+  totalModules,
+  moduleIds,
   title,
   badge,
   topTitle,
@@ -67,6 +73,39 @@ const {
 
     <main data-module-root data-module-id={moduleId}>
       <a class="mod-back" href="/"><Icon name="arrow-left" size={16} />Semua modul</a>
+      <section
+        class="learning-progress-panel learning-progress-panel-module"
+        data-learning-progress
+        data-module-ids={JSON.stringify(moduleIds)}
+        data-current-module-id={moduleId}
+        data-current-module-index={moduleIndex}
+        aria-label="Progress belajar"
+      >
+        <div class="learning-progress-head">
+          <div>
+            <p class="learning-progress-kicker">Progress belajar</p>
+            <p class="learning-progress-context">Modul {moduleIndex} dari {totalModules}</p>
+          </div>
+          <p class="learning-progress-stats">
+            <span data-learning-progress-value>0%</span>
+            <span data-learning-progress-count>0/{totalModules} modul selesai</span>
+          </p>
+        </div>
+        <div
+          class="learning-progress-meter"
+          data-learning-progress-meter
+          role="progressbar"
+          aria-label="Progress kursus"
+          aria-valuemin="0"
+          aria-valuemax={totalModules}
+          aria-valuenow="0"
+        >
+          <span class="learning-progress-fill" data-learning-progress-fill></span>
+        </div>
+        <p class="learning-progress-copy" data-learning-progress-copy>
+          Setelah selesai, tandai modul ini agar progres kursus tetap rapi.
+        </p>
+      </section>
       <div class="module-actions module-actions-top">
         <button
           type="button"

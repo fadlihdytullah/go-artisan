@@ -1976,6 +1976,7 @@ nav.toc a.active {
   .curr-item > a:hover .curr-go { transform: none; }
   .mod-back:hover svg { transform: none; }
   .reading-progress-bar { transition: none; }
+  .learning-progress-fill { transition: none; }
   .nav-switch-menu { transition: none; }
 }
 
@@ -2782,6 +2783,103 @@ pre.astro-code > code {
   line-height: 1.5;
 }
 
+.learning-progress-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, var(--blue-mid));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--paper) 88%, var(--blue-soft)), var(--paper));
+  box-shadow: var(--shadow);
+}
+
+.learning-progress-panel-home {
+  max-width: 36rem;
+}
+
+.learning-progress-panel-module {
+  max-width: 920px;
+  margin: 18px 0 6px;
+}
+
+.learning-progress-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 20px;
+}
+
+.learning-progress-kicker,
+.learning-progress-context,
+.learning-progress-stats,
+.learning-progress-copy {
+  margin: 0;
+}
+
+.learning-progress-kicker {
+  color: var(--blue);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.learning-progress-context {
+  margin-top: 5px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.learning-progress-stats {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  text-align: right;
+}
+
+.learning-progress-stats [data-learning-progress-value] {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.learning-progress-stats [data-learning-progress-count] {
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.learning-progress-meter {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--paper) 42%, var(--blue-soft));
+}
+
+.learning-progress-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left;
+  background:
+    linear-gradient(90deg, var(--blue), color-mix(in srgb, var(--blue) 70%, var(--teal)));
+  transition: transform .32s var(--ease-spring);
+}
+
+.learning-progress-copy {
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
 .curr-index-check { display: none; }
 
 .curr-item.is-complete .curr-index {
@@ -2884,5 +2982,15 @@ pre.astro-code > code {
   .home-actions { align-items: stretch; flex-direction: column; }
   .home-cta { width: 100%; justify-content: center; }
   .home-secondary-link { text-align: center; }
+  .learning-progress-panel {
+    padding: 14px;
+  }
+  .learning-progress-head {
+    display: grid;
+  }
+  .learning-progress-stats {
+    justify-items: start;
+    text-align: left;
+  }
   .module-actions { align-items: flex-start; }
 }

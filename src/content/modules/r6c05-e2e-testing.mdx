@@ -1,0 +1,784 @@
+---
+title: "Modul End-to-End API Testing - Go Artisan"
+badge: "E2E"
+topTitle: "End-to-End API Testing"
+topSub: "Go untuk Developer JavaScript & PHP"
+summary: "Belajar menguji checkout flow sebagai black box, dari HTTP request sampai perubahan state di PostgreSQL, termasuk idempotensi webhook dan skenario gagal."
+order: 53
+target: "Roadmap 6 · Testing Go Backend Applications"
+readingTime: "~70 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa E2E Test?" }
+  - { num: "02", id: "mental-model", title: "Mental Model Black Box" }
+  - { num: "03", id: "setup-e2e", title: "Setup Test Database dan App Factory" }
+  - { num: "04", id: "server-dan-client", title: "Server Test dan HTTP Client" }
+  - { num: "05", id: "customer-journey", title: "Customer Journey: Register sampai Checkout" }
+  - { num: "06", id: "payment-webhook", title: "Simulasi Payment Webhook" }
+  - { num: "07", id: "idempotensi-dan-gagal", title: "Idempotensi dan Skenario Gagal" }
+  - { num: "08", id: "state-akhir", title: "Verifikasi State Akhir dan Teardown" }
+  - { num: "09", id: "hands-on", title: "Hands-on: Menjalankan E2E Test" }
+  - { num: "10", id: "jebakan-umum", title: "Jebakan Umum" }
+  - { num: "11", id: "ringkasan", title: "Ringkasan & Poin Penting" }
+footerTitle: "Modul End-to-End API Testing - Go Artisan"
+footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Endpoint, Def } from "@components";
+
+<Hero eyebrow="Roadmap 6 &middot; Testing Go Backend Applications" title="End-to-End <em>API Testing</em><br />Checkout Flow Nyata">
+  <p>Di modul ini kita menguji backend skincare sebagai black box, dari request HTTP sampai data berubah di PostgreSQL.</p>
+  <Fragment slot="meta">
+    <Chip icon="code">Bahasa: <b>Go 1.26</b></Chip>
+    <Chip icon="route">Flow: <b>register &rarr; webhook</b></Chip>
+    <Chip icon="clock">~70 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa E2E Test?">
+
+<p class="lead">Unit test memberi sinyal cepat, integration test memvalidasi SQL, sedangkan end-to-end test memastikan semua wiring benar ketika sistem dipakai seperti aplikasi nyata.</p>
+
+Di React atau Next.js, kamu mungkin terbiasa dengan Playwright atau Cypress untuk menguji alur pengguna dari klik sampai UI berubah. Di Laravel, kamu mungkin mengenal feature test yang memanggil endpoint dan mengassert database. Di Go, idenya sama, tetapi alatnya sangat dekat dengan standard library, yaitu `net/http`, `net/http/httptest`, dan client HTTP biasa.
+
+<Def term="End-to-end API test"><p>Test yang memperlakukan aplikasi sebagai black box: test mengirim HTTP request ke server test, server menjalankan router, middleware, handler, service, repository, lalu test memeriksa response dan state database nyata.</p></Def>
+
+E2E test tidak menggantikan unit test. Ia mahal, lebih lambat, dan lebih rentan flake. Tetapi untuk checkout flow, payment webhook, autentikasi, dan inventory, E2E test adalah sabuk pengaman terakhir sebelum staging. Tempatnya di puncak test pyramid: paling sedikit jumlahnya, paling tinggi nilainya per test.
+
+```mermaid
+flowchart TD
+  E["E2E API test (sedikit, mahal, confidence sistem)"]
+  I["Integration test pgx (sedang)"]
+  S["Service test dengan fake repo (banyak)"]
+  U["Unit test pure logic (paling banyak, paling cepat)"]
+  E --> I --> S --> U
+```
+
+<p class="fig-cap"><b>Gambar 1.</b> Test pyramid untuk backend skincare. Modul ini mengisi puncaknya, melengkapi unit, service, dan integration test dari modul R6 sebelumnya.</p>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari Supertest dan feature test Laravel ke E2E Go"><p>Di Node, `supertest(app)` membungkus app Express lalu memanggil endpoint tanpa membuka port nyata, mirip cara `httptest.NewServer` membungkus router Go. Di Laravel, feature test menyediakan `postJson` plus `assertDatabaseHas`. Di Go kita menulis helper kecil sendiri, tetapi tetap memakai HTTP asli dan database nyata agar perilakunya dekat dengan production.</p></Box>
+
+</Section>
+
+<Section num="02" id="mental-model" title="Mental Model Black Box">
+
+<p class="lead">Black box berarti test tidak memanggil service atau repository langsung, test hanya tahu URL, payload, header, status code, response body, dan database akhir.</p>
+
+Target modul ini adalah checkout flow online shop skincare: user register, login, melihat produk, memasukkan variant ke cart, checkout, lalu menerima notifikasi pembayaran dari gateway palsu. Setelah webhook diproses, test memverifikasi order berubah menjadi `paid` dan stok variant berkurang.
+
+```mermaid
+flowchart TD
+  T["Go test"] --> S["httptest.NewServer router"]
+  S --> API["HTTP API black box"]
+  API --> MW["Middleware auth, logging, recovery"]
+  MW --> H["Handler"]
+  H --> SV["Service"]
+  SV --> RP["Repository pgx"]
+  RP --> DB[("PostgreSQL test database")]
+  T --> C["server.Client()"]
+  C -->|"register, login, cart, checkout, webhook"| S
+  T -->|"assert final state"| DB
+```
+
+<p class="fig-cap"><b>Gambar 2.</b> E2E test hanya berinteraksi dari tepi sistem, tetapi tetap boleh membaca database untuk memverifikasi state akhir.</p>
+
+<Compare aLabel="Handler test" bLabel="End-to-end API test" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>Memanggil handler langsung dengan `httptest.NewRecorder` dan request palsu.</li><li>Cepat, cocok untuk status code, response JSON, dan error mapping.</li><li>Biasanya memakai mock service agar tidak menyentuh database.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Menyalakan server test dengan router penuh dan memanggil URL sungguhan.</li><li>Lebih lambat, tetapi memvalidasi route, middleware, auth, JSON, service, repository, dan migration.</li><li>Memakai database PostgreSQL nyata yang terpisah dari development dan production.</li></ul></Fragment>
+</Compare>
+
+<CardGrid cols={3}>
+  <Card><h4>Confidence tinggi</h4><p>Flow checkout divalidasi sebagai satu perjalanan, bukan potongan kecil yang diasumsikan tersambung.</p></Card>
+  <Card><h4>Bug wiring ketahuan</h4><p>Route salah, middleware lupa dipasang, header signature keliru, atau migration belum lengkap akan muncul.</p></Card>
+  <Card><h4>Biaya lebih mahal</h4><p>Karena menyentuh server dan database nyata, jumlah E2E test harus selektif dan fokus pada flow kritis.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Prioritaskan flow bernilai bisnis tinggi"><p>Untuk proyek skincare, E2E test pertama yang layak dibuat adalah checkout dan payment webhook, karena bug di sana bisa membuat order ganda, stok salah, atau pembayaran tidak tercatat.</p></Box>
+
+</Section>
+
+<Section num="03" id="setup-e2e" title="Setup Test Database dan App Factory">
+
+<p class="lead">E2E test harus memakai database nyata yang terpisah, biasanya lewat `TEST_DB_URL`, bukan database local harian dan tentu bukan production.</p>
+
+Di modul R6.C4 kita sudah membahas integration test repository dengan PostgreSQL nyata. Untuk E2E, prinsipnya sama, tetapi scope lebih besar. Test akan menjalankan migration, seed data minimal, menyalakan aplikasi, melakukan request HTTP, lalu membersihkan data setelah selesai.
+
+<Def term="TEST_DB_URL"><p>Environment variable yang menunjuk ke PostgreSQL khusus test, misalnya `postgres://postgres:postgres@localhost:5433/skincare_test?sslmode=disable`.</p></Def>
+
+<FileTree title="Struktur file E2E test" tree={`
+cmd/
+  api/
+    main.go                    # entry point production
+internal/
+  app/
+    app.go                     # factory untuk router dan dependency
+  product/
+  cart/
+  order/
+  payment/
+  migrations/
+    migrate.go                 # runner migration internal
+internal/e2e/
+  e2e_test.go                  # test checkout flow sebagai black box
+compose.test.yml               # PostgreSQL khusus test
+`} />
+
+Agar E2E test mudah dibuat, aplikasi sebaiknya punya app factory. Entry point production membaca konfigurasi dari environment, tetapi test bisa membuat aplikasi dengan konfigurasi test.
+
+```go title="internal/app/app.go"
+package app
+
+import (
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type Config struct {
+	DB                   *pgxpool.Pool
+	JWTSecret            string
+	PaymentWebhookSecret string
+}
+
+type App struct {
+	router http.Handler
+}
+
+func New(cfg Config) (*App, error) {
+	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
+	r.Use(middleware.Recoverer)
+
+	// Di proyek nyata, wiring semua repository, service, handler, dan middleware di sini.
+	// registerAuthRoutes(r, cfg)
+	// registerProductRoutes(r, cfg)
+	// registerCartRoutes(r, cfg)
+	// registerOrderRoutes(r, cfg)
+	// registerPaymentWebhookRoutes(r, cfg)
+
+	return &App{router: r}, nil
+}
+
+func (a *App) Router() http.Handler {
+	return a.router
+}
+```
+
+<Box variant="warn" icon="⚠️" label="Jangan import cmd/api/main.go dari test"><p>`main.go` sebaiknya tipis. Kalau test harus import `main`, berarti wiring aplikasi belum dipisahkan dari proses boot production.</p></Box>
+
+</Section>
+
+<Section num="04" id="server-dan-client" title="Server Test dan HTTP Client">
+
+<p class="lead">`httptest.NewServer(router)` membuat server HTTP test dari `http.Handler`, lalu test memanggil endpoint lewat URL yang dikembalikan.</p>
+
+Poin pentingnya: kamu tidak perlu memilih port manual, tidak perlu `go func` sendiri, dan tidak perlu menjalankan binary production. `httptest.NewServer` memulai server test pada port acak yang kosong, menyediakan `server.URL`, dan harus ditutup dengan `server.Close` atau `t.Cleanup(server.Close)`. Untuk client, pakai `server.Client()`, bukan `http.DefaultClient` global. Client itu sudah dikonfigurasi untuk server test dan tidak mencemari state global antar test.
+
+```go title="internal/e2e/server_test.go"
+package e2e_test
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/kamu/skincare-backend/internal/app"
+)
+
+func newTestServer(t *testing.T, application *app.App) (*httptest.Server, *http.Client) {
+	t.Helper()
+
+	server := httptest.NewServer(application.Router())
+	t.Cleanup(server.Close)
+
+	// server.Client() mengembalikan *http.Client yang sudah cocok dengan server test ini,
+	// lebih aman daripada http.DefaultClient yang dibagi seluruh proses.
+	return server, server.Client()
+}
+```
+
+<Box variant="note" icon="📝" label="server.Client() di Go 1.26"><p>Sejak Go 1.26, client dari `server.Client()` juga merutekan request ke `example.com` dan subdomainnya ke server test. Untuk E2E HTTP biasa ini tidak terasa, tetapi memakai client bawaan server tetap praktik yang lebih bersih daripada `http.DefaultClient`.</p></Box>
+
+<Endpoint method="POST" path="/v1/auth/register" desc="Mendaftarkan customer baru untuk test flow" />
+<Endpoint method="POST" path="/v1/auth/login" desc="Mengambil access token agar request berikutnya memakai auth sungguhan" />
+<Endpoint method="GET" path="/v1/products" desc="Browse produk dari database test" />
+<Endpoint method="POST" path="/v1/cart/items" desc="Menambahkan product variant ke cart aktif" />
+<Endpoint method="POST" path="/v1/orders" desc="Checkout cart menjadi order pending payment" />
+<Endpoint method="POST" path="/v1/webhooks/payment" desc="Simulasi callback gateway yang mengubah order menjadi paid" />
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari fetch di frontend ke http.Client"><p>Di React, kamu memanggil API dengan `fetch`. Di E2E Go, `client.Do(req)` memainkan peran serupa, tetapi berjalan di proses test dan memanggil server test lokal.</p></Box>
+
+</Section>
+
+<Section num="05" id="customer-journey" title="Customer Journey: Register sampai Checkout">
+
+<p class="lead">E2E test sebaiknya membaca seperti user story, bukan seperti kumpulan assertion acak.</p>
+
+Kita akan membuat satu test utama bernama `TestCheckoutFlowEndToEnd`. Test ini sengaja panjang karena merepresentasikan flow bisnis. Detail kecil seperti helper HTTP dan helper DB dipindah ke fungsi kecil agar skenario tetap mudah dibaca.
+
+```go title="internal/e2e/e2e_test.go"
+package e2e_test
+
+import (
+	"bytes"
+	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kamu/skincare-backend/internal/app"
+	"github.com/kamu/skincare-backend/internal/migrations"
+)
+
+const (
+	jwtSecret            = "test-jwt-secret"
+	paymentWebhookSecret = "test-payment-secret"
+)
+
+func TestCheckoutFlowEndToEnd(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skip e2e test in short mode")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	dbURL := os.Getenv("TEST_DB_URL")
+	if dbURL == "" {
+		t.Skip("set TEST_DB_URL to run e2e tests")
+	}
+
+	pool, err := pgxpool.New(ctx, dbURL)
+	mustNoErr(t, err)
+	t.Cleanup(pool.Close)
+
+	mustNoErr(t, migrations.Up(ctx, dbURL))
+	clearTestData(t, ctx, pool)
+	t.Cleanup(func() {
+		clearTestData(t, context.Background(), pool)
+	})
+
+	productID, variantID := seedProduct(t, ctx, pool)
+
+	application, err := app.New(app.Config{
+		DB:                   pool,
+		JWTSecret:            jwtSecret,
+		PaymentWebhookSecret: paymentWebhookSecret,
+	})
+	mustNoErr(t, err)
+
+	server := httptest.NewServer(application.Router())
+	t.Cleanup(server.Close)
+
+	client := server.Client()
+	baseURL := server.URL
+
+	customerEmail := fmt.Sprintf("customer-%d@example.test", time.Now().UnixNano())
+
+	var registerResp struct {
+		ID string `json:"id"`
+	}
+	postJSON(t, client, baseURL+"/v1/auth/register", nil, map[string]any{
+		"name":     "Nadia Customer",
+		"email":    customerEmail,
+		"password": "secret-12345",
+	}, http.StatusCreated, &registerResp)
+	if registerResp.ID == "" {
+		t.Fatal("expected registered customer id")
+	}
+
+	var loginResp struct {
+		AccessToken string `json:"access_token"`
+	}
+	postJSON(t, client, baseURL+"/v1/auth/login", nil, map[string]any{
+		"email":    customerEmail,
+		"password": "secret-12345",
+	}, http.StatusOK, &loginResp)
+	if loginResp.AccessToken == "" {
+		t.Fatal("expected access token")
+	}
+
+	authHeader := map[string]string{
+		"Authorization": "Bearer " + loginResp.AccessToken,
+	}
+
+	var productsResp struct {
+		Data []struct {
+			ID       int64  `json:"id"`
+			Name     string `json:"name"`
+			Variants []struct {
+				ID          int64 `json:"id"`
+				PriceRupiah int64 `json:"price_rupiah"`
+			} `json:"variants"`
+		} `json:"data"`
+	}
+	getJSON(t, client, baseURL+"/v1/products?sort=newest&page=1&per_page=10", nil, http.StatusOK, &productsResp)
+	if len(productsResp.Data) == 0 {
+		t.Fatal("expected seeded product in product list")
+	}
+	if productsResp.Data[0].ID != productID {
+		t.Fatalf("expected product id %d, got %d", productID, productsResp.Data[0].ID)
+	}
+
+	postJSON(t, client, baseURL+"/v1/cart/items", authHeader, map[string]any{
+		"product_variant_id": variantID,
+		"quantity":           2,
+	}, http.StatusCreated, nil)
+
+	var checkoutResp struct {
+		OrderID    string `json:"order_id"`
+		PaymentRef string `json:"payment_ref"`
+	}
+	postJSON(t, client, baseURL+"/v1/orders", authHeader, map[string]any{
+		"shipping_address_id": "addr-test-001",
+		"courier":             "jne",
+		"shipping_cost":       18000,
+	}, http.StatusCreated, &checkoutResp)
+	if checkoutResp.OrderID == "" {
+		t.Fatal("expected order id")
+	}
+	if checkoutResp.PaymentRef == "" {
+		t.Fatal("expected payment reference")
+	}
+
+	payload := paymentWebhookPayload(t, checkoutResp.OrderID, checkoutResp.PaymentRef)
+	postSignedWebhook(t, client, baseURL+"/v1/webhooks/payment", payload)
+
+	assertOrderPaidAndStockReduced(t, ctx, pool, checkoutResp.OrderID, variantID)
+}
+```
+
+
+
+Helper HTTP kecil di bawah ini membuat test tetap enak dibaca tanpa membawa library assertion eksternal.
+
+```go title="internal/e2e/e2e_test.go"
+func postJSON(t *testing.T, client *http.Client, url string, headers map[string]string, payload any, wantStatus int, out any) {
+	t.Helper()
+
+	body, err := json.Marshal(payload)
+	mustNoErr(t, err)
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+	mustNoErr(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	doJSON(t, client, req, wantStatus, out)
+}
+
+func getJSON(t *testing.T, client *http.Client, url string, headers map[string]string, wantStatus int, out any) {
+	t.Helper()
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	mustNoErr(t, err)
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	doJSON(t, client, req, wantStatus, out)
+}
+
+func doJSON(t *testing.T, client *http.Client, req *http.Request, wantStatus int, out any) {
+	t.Helper()
+
+	resp, err := client.Do(req)
+	mustNoErr(t, err)
+	defer resp.Body.Close()
+
+	if resp.StatusCode != wantStatus {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected status %d, got %d: %s", wantStatus, resp.StatusCode, string(body))
+	}
+
+	if out == nil {
+		return
+	}
+
+	mustNoErr(t, json.NewDecoder(resp.Body).Decode(out))
+}
+
+func assertStatus(t *testing.T, resp *http.Response, wantStatus int) {
+	t.Helper()
+
+	if resp.StatusCode == wantStatus {
+		return
+	}
+
+	body, _ := io.ReadAll(resp.Body)
+	t.Fatalf("expected status %d, got %d: %s", wantStatus, resp.StatusCode, string(body))
+}
+
+func mustNoErr(t *testing.T, err error) {
+	t.Helper()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+```
+
+<Box variant="note" icon="📝" label="Kenapa test ini tidak pakai mock?"><p>Karena tujuan E2E test adalah menguji wiring nyata. Mock tetap penting di service test, tetapi di sini kita sengaja melewati HTTP, middleware, handler, service, repository, dan PostgreSQL.</p></Box>
+
+</Section>
+
+<Section num="06" id="payment-webhook" title="Simulasi Payment Webhook">
+
+<p class="lead">Webhook harus diuji sebagai request HTTP biasa, lengkap dengan raw payload dan signature, karena bug kecil di canonical string atau header sering baru terlihat di jalur ini.</p>
+
+Untuk production, payment gateway seperti Midtrans, Xendit, atau provider lain akan mengirim event ke endpoint webhook. Di test, kita membuat payload deterministik, menandatanganinya dengan secret test, lalu mengirim `POST /v1/webhooks/payment`.
+
+```go title="internal/e2e/e2e_test.go"
+func paymentWebhookPayload(t *testing.T, orderID string, paymentRef string) []byte {
+	t.Helper()
+
+	payload := map[string]any{
+		"event_id":       "evt_test_paid_001",
+		"transaction_id": paymentRef,
+		"order_id":       orderID,
+		"status":         "paid",
+		"paid_at":        "2026-06-06T10:00:00Z",
+	}
+
+	body, err := json.Marshal(payload)
+	mustNoErr(t, err)
+	return body
+}
+
+func postSignedWebhook(t *testing.T, client *http.Client, url string, body []byte) {
+	t.Helper()
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+	mustNoErr(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Payment-Signature", signHMAC(paymentWebhookSecret, body))
+
+	resp, err := client.Do(req)
+	mustNoErr(t, err)
+	defer resp.Body.Close()
+
+	assertStatus(t, resp, http.StatusOK)
+}
+
+func signHMAC(secret string, body []byte) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write(body)
+	return hex.EncodeToString(mac.Sum(nil))
+}
+```
+
+<Box variant="warn" icon="⚠️" label="Signature harus dihitung dari raw body"><p>Jangan decode JSON lalu encode ulang untuk verifikasi signature. Urutan field dan whitespace bisa berubah, sehingga signature valid dari gateway bisa dianggap salah.</p></Box>
+
+```mermaid
+sequenceDiagram
+  participant Test as E2E Test
+  participant API as Go API
+  participant Pay as Payment Handler
+  participant DB as PostgreSQL
+  Test->>API: POST /v1/orders dengan token customer
+  API->>DB: insert order pending_payment, reserve stock
+  API-->>Test: 201 Created, order_id, payment_ref
+  Test->>API: POST /v1/webhooks/payment dengan signature
+  API->>Pay: verify HMAC dari raw body
+  Pay->>DB: idempotency check transaction_id
+  Pay->>DB: update order paid, reserved_stock turun, sold_stock naik
+  API-->>Test: 200 OK
+  Test->>DB: assert order paid dan stok benar
+```
+
+<p class="fig-cap"><b>Gambar 3.</b> E2E checkout flow memverifikasi bahwa checkout dan webhook menyambung sebagai satu transaksi bisnis.</p>
+
+</Section>
+
+<Section num="07" id="idempotensi-dan-gagal" title="Idempotensi dan Skenario Gagal">
+
+<p class="lead">Happy path tidak cukup. Webhook nyata bisa terkirim dua kali, dan pembayaran bisa ditolak, jadi E2E test harus membuktikan sistem berperilaku benar di dua kasus itu.</p>
+
+Payment gateway mengirim webhook lewat jaringan publik dengan retry. Kalau response `200 OK` dari API kita tertunda atau timeout, gateway akan mengirim event yang sama lagi. Maka handler webhook wajib idempotent: memproses `event_id` atau `transaction_id` yang sama dua kali tidak boleh menggandakan efeknya, misalnya `sold_stock` bertambah dua kali atau saldo terhitung dobel.
+
+<Def term="Idempotensi"><p>Sifat operasi yang menghasilkan state akhir sama walau dijalankan satu kali atau berkali-kali dengan input identik. Untuk webhook, biasanya dijaga dengan menyimpan id event yang sudah diproses dan melewati duplikatnya.</p></Def>
+
+```mermaid
+sequenceDiagram
+  participant Pay as Payment Gateway
+  participant API as Go API
+  participant DB as PostgreSQL
+  Pay->>API: webhook paid (event_id evt_1)
+  API->>DB: insert payment_events evt_1, update order paid
+  API-->>Pay: 200 OK
+  Note over Pay,API: response timeout, gateway retry
+  Pay->>API: webhook paid (event_id evt_1) lagi
+  API->>DB: event_id evt_1 sudah ada, skip efek
+  API-->>Pay: 200 OK (tanpa efek ganda)
+```
+
+<p class="fig-cap"><b>Gambar 4.</b> Webhook duplikat tetap dibalas 200 OK, tetapi efek bisnisnya hanya dijalankan sekali berkat dedup pada event_id.</p>
+
+Test idempotensi cukup mengirim payload yang sama dua kali, lalu memastikan stok hanya berubah satu kali. Karena payload identik, signature pun identik, jadi kita memakai helper `postSignedWebhook` yang sama.
+
+```go title="internal/e2e/e2e_test.go"
+func TestWebhookIsIdempotent(t *testing.T) {
+	if testing.Short() || os.Getenv("TEST_DB_URL") == "" {
+		t.Skip("set TEST_DB_URL to run e2e tests")
+	}
+
+	env := setupEnv(t)
+	orderID, paymentRef, variantID := env.placeOrder(t, 2)
+
+	payload := paymentWebhookPayload(t, orderID, paymentRef)
+
+	// Kirim webhook paid yang sama dua kali, meniru retry gateway.
+	postSignedWebhook(t, env.client, env.baseURL+"/v1/webhooks/payment", payload)
+	postSignedWebhook(t, env.client, env.baseURL+"/v1/webhooks/payment", payload)
+
+	// Walau diproses dua kali, sold_stock harus tetap 2, bukan 4.
+	assertOrderPaidAndStockReduced(t, env.ctx, env.pool, orderID, variantID)
+}
+```
+
+<Box variant="warn" icon="⚠️" label="Idempotensi diuji lewat state, bukan status code"><p>Kedua request biasanya sama sama membalas `200 OK`, jadi status code tidak membedakan apa apa. Bukti idempotensi ada di database: `sold_stock` tetap 2 dan `reserved_stock` tetap 0 setelah dua kali kirim.</p></Box>
+
+Skenario gagal sama pentingnya. Kalau signature tidak cocok, atau gateway melaporkan status `denied`, order tidak boleh berubah menjadi `paid`. Test ini menjaga agar bug verifikasi atau mapping status tidak diam diam meloloskan pembayaran palsu.
+
+```go title="internal/e2e/e2e_test.go"
+func TestWebhookInvalidSignatureKeepsOrderPending(t *testing.T) {
+	if testing.Short() || os.Getenv("TEST_DB_URL") == "" {
+		t.Skip("set TEST_DB_URL to run e2e tests")
+	}
+
+	env := setupEnv(t)
+	orderID, paymentRef, _ := env.placeOrder(t, 1)
+
+	body := paymentWebhookPayload(t, orderID, paymentRef)
+
+	req, err := http.NewRequest(http.MethodPost, env.baseURL+"/v1/webhooks/payment", bytes.NewReader(body))
+	mustNoErr(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	// Signature sengaja dihitung dengan secret yang salah.
+	req.Header.Set("X-Payment-Signature", signHMAC("secret-salah", body))
+
+	resp, err := env.client.Do(req)
+	mustNoErr(t, err)
+	defer resp.Body.Close()
+
+	// API menolak signature palsu, order tetap pending.
+	assertStatus(t, resp, http.StatusUnauthorized)
+	assertOrderStatus(t, env.ctx, env.pool, orderID, "pending_payment")
+}
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari mock payment di Jest ke webhook nyata"><p>Di test JS, godaan umum adalah mem-mock fungsi verifikasi signature lalu memanggil service langsung. E2E Go sengaja melewati jalur HTTP penuh dengan signature asli, sehingga bug di header, di canonical body, atau di pemetaan status `denied` benar benar ketahuan.</p></Box>
+
+Helper `assertOrderStatus` di bawah ini menjadi versi lebih kecil dari assertion state akhir, dipakai ketika kita hanya peduli pada status order.
+
+```go title="internal/e2e/e2e_test.go"
+func assertOrderStatus(t *testing.T, ctx context.Context, pool *pgxpool.Pool, orderID string, want string) {
+	t.Helper()
+
+	var status string
+	err := pool.QueryRow(ctx, `SELECT status FROM orders WHERE id = $1`, orderID).Scan(&status)
+	mustNoErr(t, err)
+
+	if status != want {
+		t.Fatalf("expected order status %q, got %q", want, status)
+	}
+}
+```
+
+<Box variant="note" icon="📝" label="setupEnv dan placeOrder adalah helper suite"><p>Agar tiga test (happy path, idempotensi, gagal) tidak menyalin boilerplate, ekstrak `setupEnv` (pool, migration, seed, server) dan `placeOrder` (register, login, add to cart, checkout) menjadi helper yang mengembalikan id order, payment_ref, dan variant. Isi keduanya adalah potongan dari `TestCheckoutFlowEndToEnd` di Bagian 05.</p></Box>
+
+</Section>
+
+<Section num="08" id="state-akhir" title="Verifikasi State Akhir dan Teardown">
+
+<p class="lead">Response sukses belum cukup. Untuk flow bisnis, test harus memeriksa state akhir yang benar di database.</p>
+
+Checkout berhasil berarti order dibuat. Webhook paid berhasil berarti order menjadi `paid`, payment event tercatat, `reserved_stock` turun, dan `sold_stock` naik. Kalau proyekmu memakai model stok `available_stock`, `reserved_stock`, dan `sold_stock`, assertion harus membaca angka final yang sesuai dengan aturan inventory.
+
+```go title="internal/e2e/e2e_test.go"
+func assertOrderPaidAndStockReduced(t *testing.T, ctx context.Context, pool *pgxpool.Pool, orderID string, variantID int64) {
+	t.Helper()
+
+	var orderStatus string
+	var availableStock int
+	var reservedStock int
+	var soldStock int
+
+	err := pool.QueryRow(ctx, `
+		SELECT o.status, pv.available_stock, pv.reserved_stock, pv.sold_stock
+		FROM orders o
+		JOIN order_items oi ON oi.order_id = o.id
+		JOIN product_variants pv ON pv.id = oi.product_variant_id
+		WHERE o.id = $1 AND pv.id = $2
+	`, orderID, variantID).Scan(&orderStatus, &availableStock, &reservedStock, &soldStock)
+	mustNoErr(t, err)
+
+	if orderStatus != "paid" {
+		t.Fatalf("expected order status paid, got %q", orderStatus)
+	}
+	if availableStock != 8 {
+		t.Fatalf("expected available stock 8, got %d", availableStock)
+	}
+	if reservedStock != 0 {
+		t.Fatalf("expected reserved stock 0 after paid webhook, got %d", reservedStock)
+	}
+	if soldStock != 2 {
+		t.Fatalf("expected sold stock 2, got %d", soldStock)
+	}
+}
+
+func clearTestData(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+	t.Helper()
+
+	_, err := pool.Exec(ctx, `
+		TRUNCATE TABLE
+			payment_events,
+			payments,
+			order_items,
+			orders,
+			cart_items,
+			carts,
+			product_variants,
+			products,
+			categories,
+			brands,
+			users
+		RESTART IDENTITY CASCADE
+	`)
+	mustNoErr(t, err)
+}
+
+func seedProduct(t *testing.T, ctx context.Context, pool *pgxpool.Pool) (int64, int64) {
+	t.Helper()
+
+	var brandID int64
+	err := pool.QueryRow(ctx, `
+		INSERT INTO brands (name, slug)
+		VALUES ($1, $2)
+		RETURNING id
+	`, "Somethinc", "somethinc").Scan(&brandID)
+	mustNoErr(t, err)
+
+	var categoryID int64
+	err = pool.QueryRow(ctx, `
+		INSERT INTO categories (name, slug)
+		VALUES ($1, $2)
+		RETURNING id
+	`, "Serum", "serum").Scan(&categoryID)
+	mustNoErr(t, err)
+
+	var productID int64
+	err = pool.QueryRow(ctx, `
+		INSERT INTO products (brand_id, category_id, name, slug, description, status, bpom_number)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id
+	`, brandID, categoryID, "Niacinamide Barrier Serum", "niacinamide-barrier-serum", "Serum ringan untuk skin barrier.", "active", "NA18230123456").Scan(&productID)
+	mustNoErr(t, err)
+
+	var variantID int64
+	err = pool.QueryRow(ctx, `
+		INSERT INTO product_variants (product_id, sku, name, price_rupiah, available_stock, reserved_stock, sold_stock, safety_stock)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id
+	`, productID, "SMT-SER-NIA-20ML", "20 ml", 99000, 10, 0, 0, 0).Scan(&variantID)
+	mustNoErr(t, err)
+
+	return productID, variantID
+}
+```
+
+<Box variant="tip" icon="💡" label="Teardown eksplisit lebih realistis untuk E2E"><p>Transaction rollback per test sulit dipakai untuk E2E black box karena request HTTP membuka transaksi internalnya sendiri. Untuk E2E, gunakan database test terpisah dan bersihkan data dengan strategi teardown yang jelas.</p></Box>
+
+</Section>
+
+<Section num="09" id="hands-on" title="Hands-on: Menjalankan E2E Test">
+
+<p class="lead">Jalankan PostgreSQL test, export `TEST_DB_URL`, lalu jalankan E2E test secara eksplisit agar tidak memperlambat siklus unit test harian.</p>
+
+```yaml title="compose.test.yml"
+services:
+  postgres-test:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: skincare_test
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d skincare_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+```
+
+```bash title="Terminal"
+docker compose -f compose.test.yml up -d
+export TEST_DB_URL='postgres://postgres:postgres@localhost:5433/skincare_test?sslmode=disable'
+go test ./internal/e2e -run TestCheckoutFlowEndToEnd -count=1 -v
+```
+
+Kalau kamu ingin memisahkan test cepat dan test lambat di CI, gunakan tag build khusus.
+
+```go title="internal/e2e/e2e_test.go"
+//go:build e2e
+```
+
+```bash title="Terminal"
+go test ./... -short
+go test -tags=e2e ./internal/e2e -count=1 -v
+```
+
+<Steps>
+  <Step><b>Buat database test yang disposable</b><p>Jangan memakai database development harian, karena teardown E2E bisa menghapus data.</p></Step>
+  <Step><b>Jalankan migration dari kode yang sama</b><p>CI dan local harus memakai migration runner yang sama agar schema drift cepat ketahuan.</p></Step>
+  <Step><b>Seed data minimum</b><p>Masukkan hanya brand, category, product, variant, dan stok yang dibutuhkan checkout flow.</p></Step>
+  <Step><b>Panggil endpoint sebagai user</b><p>Jangan bypass auth langsung ke service, karena E2E harus membuktikan middleware auth juga benar.</p></Step>
+  <Step><b>Assert response dan database</b><p>Status code membuktikan API menjawab, query database membuktikan state bisnis berubah dengan benar.</p></Step>
+</Steps>
+
+</Section>
+
+<Section num="10" id="jebakan-umum" title="Jebakan Umum">
+
+<p class="lead">Mayoritas masalah E2E test bukan karena Go sulit, tetapi karena test terlalu bergantung pada state eksternal, waktu, dan urutan eksekusi.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Menggunakan database development</h4><p>Ini berbahaya karena teardown bisa menghapus data kerja. Selalu pakai `TEST_DB_URL` dan database khusus test.</p></Card>
+  <Card><h4>Memilih port manual</h4><p>Port manual mudah bentrok di laptop dan CI. Pakai `httptest.NewServer` agar Go memilih port kosong.</p></Card>
+  <Card><h4>Test saling bergantung</h4><p>Test A membuat user untuk Test B. Ini membuat hasil test tergantung urutan. Seed data di tiap test atau setup suite dengan jelas.</p></Card>
+  <Card><h4>Parallel tanpa isolasi data</h4><p>`t.Parallel` bisa membuat checkout saling berebut stok yang sama. Untuk E2E, paralelkan hanya jika data dan database schema benar-benar terisolasi.</p></Card>
+  <Card><h4>Webhook tidak idempotent</h4><p>Gateway bisa mengirim event yang sama lebih dari sekali. Seperti di Bagian 07, kirim webhook dua kali lalu pastikan `sold_stock` tidak berkurang dua kali.</p></Card>
+  <Card><h4>Mengassert detail yang tidak stabil</h4><p>Hindari assertion pada timestamp exact atau urutan data tanpa `ORDER BY`. Assert state bisnis yang penting.</p></Card>
+</CardGrid>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari PHPUnit in-memory ke PostgreSQL nyata"><p>Di PHP, banyak project memakai SQLite in-memory untuk test cepat. Untuk backend Go dengan pgx dan PostgreSQL, lebih aman menguji flow kritis memakai PostgreSQL nyata karena tipe data, constraint, locking, dan SQL behavior bisa berbeda.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jangan E2E semua hal"><p>Validasi format email, kalkulasi voucher, dan mapping error kecil lebih cocok di unit atau handler test. E2E cukup untuk jalur bisnis paling berisiko.</p></Box>
+
+</Section>
+
+<Section num="11" id="ringkasan" title="Ringkasan &amp; Poin Penting">
+
+<Recap title="Yang Wajib Menempel">
+  <ul><li>E2E API test memperlakukan backend sebagai black box, test masuk lewat HTTP dan memverifikasi state akhir.</li><li>`httptest.NewServer(router)` menyalakan server test dari `http.Handler`, lalu test memanggil `server.URL` dengan `server.Client()`.</li><li>Gunakan PostgreSQL nyata lewat `TEST_DB_URL`, jalankan migration, seed data minimum, lalu teardown data setelah test.</li><li>Checkout flow yang layak diuji end-to-end adalah register, login, browse products, add to cart, checkout, payment webhook, dan assertion order paid plus stok benar.</li><li>Signature webhook dihitung dengan HMAC-SHA256 dari raw body, bukan dari JSON yang sudah di-decode dan di-encode ulang.</li><li>Uji idempotensi dengan mengirim webhook identik dua kali dan membuktikan efeknya hanya sekali; uji jalur gagal (signature invalid atau status denied) agar order tetap pending.</li><li>Untuk E2E black box, teardown eksplisit biasanya lebih cocok daripada rollback transaksi test, karena tiap request membuka transaksi internal sendiri.</li></ul>
+</Recap>
+
+Di proyek online shop skincare, modul ini menutup lapisan testing paling luar. Sekarang kita sudah punya unit test untuk pure logic, handler test untuk HTTP behavior, service test dengan fake repository, integration test untuk pgx repository, dan E2E test untuk checkout flow.
+
+Langkah berikutnya di Roadmap 7 adalah security dan authentication production safety. E2E test dari modul ini akan menjadi fondasi untuk menguji JWT, refresh token, password hashing, middleware role, dan signature webhook dengan skenario yang lebih dekat ke production.
+
+</Section>

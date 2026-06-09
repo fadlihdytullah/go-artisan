@@ -1,0 +1,655 @@
+---
+title: "Modul Integration Testing dengan Database PostgreSQL Nyata - Go Artisan"
+badge: "TST"
+topTitle: "Integration Testing dengan Database PostgreSQL Nyata"
+topSub: "Go untuk Developer JavaScript & PHP"
+summary: "Pelajari cara menguji repository pgx dengan PostgreSQL sungguhan, migration test, seed data, rollback transaksi per test, dan verifikasi pelanggaran constraint."
+order: 52
+target: "Roadmap 6 · Testing Go Backend Applications"
+readingTime: "~64 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa Integration Test Repository?" }
+  - { num: "02", id: "batasan", title: "Unit Test vs Integration Test" }
+  - { num: "03", id: "test-db-url", title: "Test Database Terpisah" }
+  - { num: "04", id: "migration-setup", title: "Migration di Test Setup" }
+  - { num: "05", id: "rollback-per-test", title: "Transaction Rollback per Test" }
+  - { num: "06", id: "seed-data", title: "Seed Data Minimal" }
+  - { num: "07", id: "query-nyata", title: "Testing SQL Query Nyata" }
+  - { num: "08", id: "constraint", title: "Menguji Pelanggaran Constraint" }
+  - { num: "09", id: "docker-compose-ci", title: "Docker Compose untuk PostgreSQL di CI" }
+  - { num: "10", id: "hands-on", title: "Hands-on Repository Product" }
+  - { num: "11", id: "jebakan", title: "Jebakan Umum" }
+  - { num: "12", id: "ringkasan", title: "Ringkasan & Poin Penting" }
+footerTitle: "Modul Integration Testing dengan Database PostgreSQL Nyata - Go Artisan"
+footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Def } from "@components";
+
+<Hero eyebrow="Roadmap 6 &middot; Testing Go Backend" title="Integration Testing dengan <em>PostgreSQL Nyata</em><br />untuk Repository pgx">
+  <p>Repository yang lolos unit test belum tentu benar saat bertemu SQL, tipe PostgreSQL, index, constraint, dan transaksi nyata.</p>
+  <Fragment slot="meta">
+    <Chip icon="database">Bahasa: <b>Go 1.26</b></Chip>
+    <Chip icon="clock">~60 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa Integration Test Repository?">
+
+<p class="lead">Di modul sebelumnya, kita menguji service dengan fake repository. Sekarang kita membalik fokus, repository harus dibuktikan benar saat bicara dengan PostgreSQL sungguhan.</p>
+
+Di React, kamu mungkin punya unit test untuk component dan integration test untuk alur yang melibatkan state, router, atau API. Di Laravel, kamu mungkin pernah menjalankan feature test yang benar-benar menyentuh database test. Di Go, pola yang kita pakai lebih eksplisit: repository menerima dependency database, test membuka transaksi, seed data dibuat sendiri, lalu transaksi di-rollback agar database tetap bersih.
+
+<Def term="integration testing"><p>Integration testing adalah test yang memverifikasi kerja beberapa komponen bersama, misalnya kode repository Go, driver pgx, SQL, constraint PostgreSQL, dan data test.</p></Def>
+
+<Def term="test database"><p>Test database adalah database terpisah dari local development dan production, biasanya dikontrol lewat `TEST_DB_URL` agar test tidak pernah menyentuh data asli.</p></Def>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari fake dependency ke database nyata"><p>Fake repository bagus untuk business logic, tetapi tidak bisa menangkap typo nama kolom, scan type yang salah, constraint unik, atau bug query `ILIKE` di PostgreSQL.</p></Box>
+
+```mermaid
+flowchart LR
+  T["go test"] --> H["test helper"]
+  H --> TX["BEGIN transaction"]
+  TX --> S["seed data minimal"]
+  S --> R["repository pgx"]
+  R --> DB[("PostgreSQL test")]
+  DB --> A["assert hasil"]
+  A --> RB["ROLLBACK"]
+```
+
+<p class="fig-cap"><b>Gambar 1.</b> Pola integration test repository, data dibuat di awal test dan dibersihkan dengan rollback.</p>
+
+Materi ini mengikuti praktik resmi yang relevan: package [`testing`](https://pkg.go.dev/testing), driver [`github.com/jackc/pgx/v5`](https://pkg.go.dev/github.com/jackc/pgx/v5), pool [`pgxpool`](https://pkg.go.dev/github.com/jackc/pgx/v5/pgxpool), transaksi PostgreSQL di [dokumentasi PostgreSQL](https://www.postgresql.org/docs/current/tutorial-transactions.html), dan healthcheck Docker Compose di [Docker Docs](https://docs.docker.com/compose/how-tos/startup-order/).
+
+</Section>
+
+<Section num="02" id="batasan" title="Unit Test vs Integration Test">
+
+<p class="lead">Sebelum menulis kode, kita perlu jelas dulu test mana yang cepat, mana yang realistis, dan mana yang memang sengaja menyentuh infrastruktur.</p>
+
+Unit test service di Roadmap 6 Chapter 3 memakai fake repository agar business logic checkout bisa diuji tanpa database. Integration test repository berbeda: ia sengaja memakai database nyata agar SQL dan mapping data benar-benar terverifikasi.
+
+<Compare aLabel="JS / PHP: in-memory atau SQLite test" bLabel="Go + pgx: PostgreSQL test database" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>Di beberapa stack, test sering diarahkan ke SQLite atau database in-memory agar cepat.</li><li>Masalahnya, behavior SQL, tipe data, constraint, locking, dan function database bisa berbeda dari PostgreSQL.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Untuk repository pgx, test terbaik biasanya memakai PostgreSQL sungguhan yang terpisah dari database development.</li><li>Test sedikit lebih berat, tetapi bug yang ditangkap jauh lebih dekat dengan production.</li></ul></Fragment>
+</Compare>
+
+<CardGrid cols={3}>
+  <Card><h4>Unit test</h4><p>Tanpa database, cepat, cocok untuk pure function dan service dengan fake dependency.</p></Card>
+  <Card><h4>Handler test</h4><p>Tanpa server sungguhan, memakai `httptest` untuk cek HTTP behavior.</p></Card>
+  <Card><h4>Integration test</h4><p>Memakai PostgreSQL sungguhan untuk cek repository, SQL, constraint, dan transaksi.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Prinsip pemisahan"><p>Jangan menguji semua hal lewat integration test. Pakai integration test untuk boundary yang memang rawan beda antara kode dan infrastruktur.</p></Box>
+
+</Section>
+
+<Section num="03" id="test-db-url" title="Test Database Terpisah">
+
+<p class="lead">Integration test wajib punya database sendiri. Jangan pernah menjalankan test repository ke database development, staging, apalagi production.</p>
+
+Di proyek skincare, kita pakai env var `TEST_DB_URL` agar test eksplisit memilih database target. Ini mirip `.env.testing` di Laravel, tetapi Go tidak punya magic config bawaan. Kode test membaca env var secara eksplisit.
+
+<FileTree title="File terkait integration test" tree={`
+cmd/
+  api/
+    main.go                    # entry point API, tidak dipakai langsung di repository test
+internal/
+  product/
+    repository.go              # repository pgx yang diuji
+    repository_integration_test.go # test repository dengan PostgreSQL nyata
+  db/
+    migrations/                # migrasi production yang juga bisa dipakai test
+docker-compose.test.yaml       # PostgreSQL untuk local test dan CI
+go.mod
+`} />
+
+```bash title="Terminal"
+export TEST_DB_URL="postgres://skincare:secret@localhost:5433/skincare_test?sslmode=disable"
+go test -tags=integration ./internal/product -run Integration -count=1
+```
+
+<Box variant="warn" icon="⚠️" label="Jangan hardcode URL database"><p>Hardcode connection string membuat test mudah salah target. `TEST_DB_URL` membuat risiko itu terlihat sejak awal.</p></Box>
+
+Di jalur Go Artisan, repo menargetkan Go 1.26. Bila `go mod init` menghasilkan deklarasi versi lebih rendah sesuai default toolchain, set target proyek secara eksplisit.
+
+```bash title="Terminal"
+go get go@1.26
+```
+
+</Section>
+
+<Section num="04" id="migration-setup" title="Migration di Test Setup">
+
+<p class="lead">Integration test yang benar tidak membuat skema asal-asalan. Ia menjalankan skema yang sama dengan aplikasi, atau minimal subset yang setara untuk repository yang diuji.</p>
+
+Pada proyek nyata, migrasi biasanya ada di `internal/db/migrations` atau `db/migrations`, lalu dijalankan oleh tool migration di pipeline. Untuk modul ini, contoh dibuat ringan agar fokus tetap pada pola test: `TestMain` membuat pool, menjalankan migration idempotent, lalu test berjalan.
+
+Perhatikan baris pertama file: `//go:build integration`. Build tag ini memberi tahu toolchain Go bahwa file hanya ikut dikompilasi saat kita memanggil `go test -tags=integration`. Tanpa flag itu, file test ini tidak ikut compile, jadi `go test ./...` biasa (yang dijalankan developer setiap menit) tetap cepat dan tidak butuh PostgreSQL. Ini padanan dari memberi tag `@group integration` di PHPUnit atau memisahkan `*.integration.test.ts` di Jest, bedanya di Go pemisahan terjadi saat kompilasi, bukan saat runtime.
+
+<Box variant="warn" icon="⚠️" label="Baris build tag wajib di atas dan diikuti baris kosong"><p>`//go:build integration` harus berada di baris paling atas file, sebelum `package`, dan diikuti satu baris kosong. Bila menempel langsung dengan `package`, Go menganggapnya komentar biasa dan tag tidak aktif.</p></Box>
+
+```go title="internal/product/repository_integration_test.go"
+//go:build integration
+
+package product_test
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"testing"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kamu/skincare-backend/internal/product"
+)
+
+var testPool *pgxpool.Pool
+
+func TestMain(m *testing.M) {
+	ctx := context.Background()
+	dbURL := os.Getenv("TEST_DB_URL")
+	if dbURL == "" {
+		fmt.Fprintln(os.Stderr, "TEST_DB_URL is required")
+		os.Exit(1)
+	}
+
+	pool, err := pgxpool.New(ctx, dbURL)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "connect test database: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := runMigrations(ctx, pool); err != nil {
+		fmt.Fprintf(os.Stderr, "run migrations: %v\n", err)
+		pool.Close()
+		os.Exit(1)
+	}
+
+	testPool = pool
+	code := m.Run()
+	pool.Close()
+	os.Exit(code)
+}
+
+func runMigrations(ctx context.Context, pool *pgxpool.Pool) error {
+	_, err := pool.Exec(ctx, `
+create table if not exists brands (
+  id bigserial primary key,
+  name text not null unique
+);
+
+create table if not exists products (
+  id bigserial primary key,
+  brand_id bigint not null references brands(id),
+  name text not null,
+  slug text not null unique,
+  price_rupiah bigint not null check (price_rupiah > 0),
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_products_brand_id on products(brand_id);
+create index if not exists idx_products_active_created_at on products(is_active, created_at desc);
+`)
+	if err != nil {
+		return fmt.Errorf("execute product test migrations: %w", err)
+	}
+	return nil
+}
+```
+
+<Box variant="note" icon="📝" label="Catatan migration"><p>Untuk proyek production, lebih baik test memanggil runner migration yang sama dengan aplikasi agar skema test tidak menyimpang dari skema asli.</p></Box>
+
+</Section>
+
+<Section num="05" id="rollback-per-test" title="Transaction Rollback per Test">
+
+<p class="lead">Setiap test membuka transaksi sendiri, melakukan seed dan query di dalam transaksi itu, lalu rollback otomatis saat test selesai.</p>
+
+PostgreSQL memakai transaksi untuk mengelompokkan perubahan data. Bila transaksi di-rollback, perubahan di dalamnya dibatalkan. Ini cocok untuk test karena kita ingin seed data tersedia selama test, tetapi hilang setelah test selesai. Padanan terdekatnya di Laravel adalah trait `RefreshDatabase` yang membungkus tiap test dalam transaksi lalu rollback, hanya saja di sini kita merakitnya sendiri secara eksplisit dengan `t.Cleanup`.
+
+```mermaid
+sequenceDiagram
+  participant T as go test (satu test)
+  participant P as pgxpool.Pool
+  participant TX as pgx.Tx
+  participant DB as PostgreSQL
+  T->>P: Begin(ctx)
+  P->>DB: BEGIN
+  P-->>T: tx
+  T->>TX: seed brand & product
+  TX->>DB: INSERT (belum commit)
+  T->>TX: repo.GetProductByID via tx
+  TX->>DB: SELECT (melihat seed)
+  DB-->>T: assert hasil
+  Note over T,DB: test selesai, t.Cleanup berjalan
+  T->>TX: Rollback(ctx)
+  TX->>DB: ROLLBACK (database kembali bersih)
+```
+
+<p class="fig-cap"><b>Gambar 2.</b> Lifecycle satu integration test, semua tulisan terjadi di dalam satu transaksi dan dibatalkan saat test usai sehingga test berikutnya mulai dari keadaan bersih.</p>
+
+```go title="internal/product/repository_integration_test.go"
+func withTestTx(t *testing.T, ctx context.Context) pgx.Tx {
+	t.Helper()
+
+	tx, err := testPool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin test transaction: %v", err)
+	}
+
+	t.Cleanup(func() {
+		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			t.Fatalf("rollback test transaction: %v", err)
+		}
+	})
+
+	return tx
+}
+```
+
+<Steps>
+  <Step><b>Begin</b><p>Test membuka transaksi lewat `testPool.Begin(ctx)`.</p></Step>
+  <Step><b>Seed</b><p>Data test dibuat memakai `tx`, bukan `pool`, agar semua perubahan masuk transaksi yang sama.</p></Step>
+  <Step><b>Exercise</b><p>Repository juga menerima `tx`, sehingga query yang diuji melihat seed data tadi.</p></Step>
+  <Step><b>Rollback</b><p>`t.Cleanup` menjalankan rollback walaupun test gagal di tengah.</p></Step>
+</Steps>
+
+<Box variant="warn" icon="⚠️" label="Pool dan tx tidak boleh tercampur"><p>Kalau seed memakai `tx` tetapi repository memakai `pool`, query repository tidak selalu melihat data seed yang belum commit.</p></Box>
+
+</Section>
+
+<Section num="06" id="seed-data" title="Seed Data Minimal">
+
+<p class="lead">Seed data untuk integration test harus kecil, eksplisit, dan dekat dengan skenario bisnis yang diuji.</p>
+
+Jangan mengimpor dump database besar hanya untuk mengecek `GetProductByID`. Cukup insert brand dan produk yang dibutuhkan test. Ini membuat test mudah dibaca dan tidak rapuh saat dataset lain berubah.
+
+```go title="internal/product/repository_integration_test.go"
+func seedBrand(t *testing.T, ctx context.Context, tx pgx.Tx, name string) int64 {
+	t.Helper()
+
+	var id int64
+	err := tx.QueryRow(ctx, `insert into brands (name) values ($1) returning id`, name).Scan(&id)
+	if err != nil {
+		t.Fatalf("seed brand: %v", err)
+	}
+	return id
+}
+
+func seedProduct(t *testing.T, ctx context.Context, tx pgx.Tx, brandID int64, name string, slug string, active bool) int64 {
+	t.Helper()
+
+	var id int64
+	err := tx.QueryRow(ctx, `
+insert into products (brand_id, name, slug, price_rupiah, is_active)
+values ($1, $2, $3, $4, $5)
+returning id
+`, brandID, name, slug, int64(89000), active).Scan(&id)
+	if err != nil {
+		t.Fatalf("seed product: %v", err)
+	}
+	return id
+}
+```
+
+<Box variant="tip" icon="💡" label="Seed yang baik"><p>Seed hanya data yang dibutuhkan assertion. Bila test membaca satu produk, jangan seed sepuluh kategori, lima user, dan dua order.</p></Box>
+
+</Section>
+
+<Section num="07" id="query-nyata" title="Testing SQL Query Nyata">
+
+<p class="lead">Agar repository bisa diuji dengan `pool` saat aplikasi berjalan dan `tx` saat test, buat kontrak kecil untuk operasi query yang dipakai.</p>
+
+Pola ini menjaga repository tetap sederhana. `pgxpool.Pool` dan `pgx.Tx` punya method yang mirip untuk `Exec`, `Query`, dan `QueryRow`, jadi kita definisikan interface kecil milik package repository. Ini juga selaras dengan idiom Go: accept interfaces, return structs.
+
+```go title="internal/product/repository.go"
+package product
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+)
+
+var ErrProductNotFound = errors.New("product not found")
+
+type Product struct {
+	ID          int64
+	BrandID     int64
+	Name        string
+	Slug        string
+	PriceRupiah int64
+	IsActive    bool
+}
+
+type ProductFilter struct {
+	Search  string
+	BrandID int64
+	Limit   int32
+	Offset  int32
+}
+
+type DBTX interface {
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+type Repository struct {
+	db DBTX
+}
+
+func NewRepository(db DBTX) *Repository {
+	return &Repository{db: db}
+}
+
+func (r *Repository) GetProductByID(ctx context.Context, id int64) (Product, error) {
+	const q = `
+select id, brand_id, name, slug, price_rupiah, is_active
+from products
+where id = $1 and is_active = true
+`
+
+	var p Product
+	err := r.db.QueryRow(ctx, q, id).Scan(&p.ID, &p.BrandID, &p.Name, &p.Slug, &p.PriceRupiah, &p.IsActive)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Product{}, ErrProductNotFound
+	}
+	if err != nil {
+		return Product{}, fmt.Errorf("get product by id: %w", err)
+	}
+	return p, nil
+}
+
+func (r *Repository) ListProducts(ctx context.Context, filter ProductFilter) ([]Product, error) {
+	limit := filter.Limit
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+
+	const q = `
+select id, brand_id, name, slug, price_rupiah, is_active
+from products
+where is_active = true
+  and ($1::bigint = 0 or brand_id = $1)
+  and ($2::text = '' or name ilike '%' || $2 || '%')
+order by id asc
+limit $3 offset $4
+`
+
+	rows, err := r.db.Query(ctx, q, filter.BrandID, filter.Search, limit, filter.Offset)
+	if err != nil {
+		return nil, fmt.Errorf("list products: %w", err)
+	}
+	defer rows.Close()
+
+	products := make([]Product, 0)
+	for rows.Next() {
+		var p Product
+		if err := rows.Scan(&p.ID, &p.BrandID, &p.Name, &p.Slug, &p.PriceRupiah, &p.IsActive); err != nil {
+			return nil, fmt.Errorf("scan product: %w", err)
+		}
+		products = append(products, p)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate products: %w", err)
+	}
+	return products, nil
+}
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: mirip dependency injection, tapi lebih kecil"><p>Di Laravel, repository bisa menerima connection dari container. Di Go, kita cukup menerima interface kecil yang memang dipakai repository.</p></Box>
+
+</Section>
+
+<Section num="08" id="constraint" title="Menguji Pelanggaran Constraint">
+
+<p class="lead">Inilah keunggulan utama integration test: ia membuktikan constraint database benar-benar menolak data buruk, dan kode Go menerima error pgx yang tepat untuk menanganinya.</p>
+
+Constraint adalah jaring pengaman terakhir kita: `unique` mencegah slug ganda, `foreign key` mencegah produk menunjuk brand yang tidak ada, dan `check (price_rupiah > 0)` mencegah harga nol atau negatif. Fake repository tidak punya satu pun aturan ini, jadi hanya PostgreSQL nyata yang bisa membuktikan jaring itu menutup. Yang sama pentingnya: kita perlu memastikan kode Go bisa membedakan jenis pelanggaran agar handler bisa membalas dengan status yang benar (misalnya 409 Conflict untuk slug duplikat, bukan 500).
+
+Saat constraint dilanggar, pgx mengembalikan `*pgconn.PgError`. Field `Code` berisi SQLSTATE lima karakter dari PostgreSQL, dan inilah cara idiomatik untuk mengklasifikasikan error, bukan dengan mencocokkan teks pesan yang bisa berubah antar versi.
+
+<Compare aLabel="PHP / Laravel: tangkap QueryException" bLabel="Go + pgx: errors.As ke *pgconn.PgError" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>Di Laravel kamu sering menangkap `QueryException` lalu mengintip `$e->errorInfo[1]` atau membaca substring pesan SQL.</li><li>Mencocokkan string pesan rapuh karena teksnya bisa berubah dan bergantung locale.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Di Go, `errors.As` membongkar error chain sampai menemukan `*pgconn.PgError`.</li><li>Setelah dapat, `pgErr.Code` memberi SQLSTATE yang stabil: `23505` unique, `23503` foreign key, `23514` check.</li></ul></Fragment>
+</Compare>
+
+```text title="SQLSTATE constraint yang sering ditemui"
+23505  unique_violation       -> slug atau nama brand ganda
+23503  foreign_key_violation  -> brand_id menunjuk brand yang tidak ada
+23514  check_violation        -> price_rupiah <= 0
+```
+
+```go title="internal/product/repository_integration_test.go"
+func TestIntegrationProductRepository_DuplicateSlugViolatesUnique(t *testing.T) {
+	ctx := context.Background()
+	tx := withTestTx(t, ctx)
+
+	brandID := seedBrand(t, ctx, tx, "Wardah")
+	seedProduct(t, ctx, tx, brandID, "Wardah Hydrating Toner 100ml", "wardah-hydrating-toner-100ml", true)
+
+	_, err := tx.Exec(ctx, `
+insert into products (brand_id, name, slug, price_rupiah, is_active)
+values ($1, $2, $3, $4, $5)
+`, brandID, "Duplikat Toner", "wardah-hydrating-toner-100ml", int64(75000), true)
+
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		t.Fatalf("expected *pgconn.PgError, got %v", err)
+	}
+	if pgErr.Code != "23505" {
+		t.Fatalf("expected unique_violation 23505, got %s", pgErr.Code)
+	}
+}
+
+func TestIntegrationProductRepository_MissingBrandViolatesForeignKey(t *testing.T) {
+	ctx := context.Background()
+	tx := withTestTx(t, ctx)
+
+	_, err := tx.Exec(ctx, `
+insert into products (brand_id, name, slug, price_rupiah, is_active)
+values ($1, $2, $3, $4, $5)
+`, int64(999999), "Produk Tanpa Brand", "produk-tanpa-brand", int64(50000), true)
+
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		t.Fatalf("expected *pgconn.PgError, got %v", err)
+	}
+	if pgErr.Code != "23503" {
+		t.Fatalf("expected foreign_key_violation 23503, got %s", pgErr.Code)
+	}
+}
+
+func TestIntegrationProductRepository_ZeroPriceViolatesCheck(t *testing.T) {
+	ctx := context.Background()
+	tx := withTestTx(t, ctx)
+
+	brandID := seedBrand(t, ctx, tx, "Somethinc")
+
+	_, err := tx.Exec(ctx, `
+insert into products (brand_id, name, slug, price_rupiah, is_active)
+values ($1, $2, $3, $4, $5)
+`, brandID, "Produk Gratis", "produk-gratis", int64(0), true)
+
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		t.Fatalf("expected *pgconn.PgError, got %v", err)
+	}
+	if pgErr.Code != "23514" {
+		t.Fatalf("expected check_violation 23514, got %s", pgErr.Code)
+	}
+}
+```
+
+<Box variant="warn" icon="⚠️" label="Pelanggaran constraint membatalkan transaksi"><p>Setelah satu statement gagal karena constraint, PostgreSQL menandai transaksi sebagai aborted. Statement berikutnya di `tx` yang sama akan ditolak sampai rollback. Karena tiap test punya transaksi sendiri lewat `withTestTx`, ini aman: cukup uji satu pelanggaran per test.</p></Box>
+
+<Box variant="tip" icon="💡" label="Manfaatkan ini di repository sungguhan"><p>Di kode produksi, `GetProductByID` boleh membungkus `pgErr.Code == "23505"` menjadi error domain seperti `ErrSlugTaken`, sehingga handler HTTP bisa membalas 409 tanpa membocorkan detail SQL.</p></Box>
+
+</Section>
+
+<Section num="09" id="docker-compose-ci" title="Docker Compose untuk PostgreSQL di CI">
+
+<p class="lead">CI membutuhkan PostgreSQL yang bisa dibuat ulang dari nol. Docker Compose adalah cara ringan untuk menyediakan service database test.</p>
+
+Docker Compose mendukung `healthcheck`, dan dokumentasi Docker memakai `pg_isready` untuk menunggu PostgreSQL siap. Ini penting karena test Go bisa gagal bukan karena kode salah, tetapi karena database belum siap menerima koneksi.
+
+```yaml title="docker-compose.test.yaml"
+services:
+  postgres_test:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: skincare_test
+      POSTGRES_USER: skincare
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skincare -d skincare_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+```
+
+```yaml title=".github/workflows/integration-test.yaml"
+name: integration-test
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+
+      - name: Start PostgreSQL
+        run: docker compose -f docker-compose.test.yaml up -d
+
+      - name: Run integration tests
+        env:
+          TEST_DB_URL: postgres://skincare:secret@localhost:5433/skincare_test?sslmode=disable
+        run: go test -tags=integration ./... -run Integration -count=1
+
+      - name: Stop PostgreSQL
+        if: always()
+        run: docker compose -f docker-compose.test.yaml down -v
+```
+
+<Box variant="note" icon="📝" label="Kenapa `-count=1`"><p>`go test` punya cache. Untuk integration test yang bergantung state eksternal, `-count=1` membuat test benar-benar dijalankan ulang.</p></Box>
+
+</Section>
+
+<Section num="10" id="hands-on" title="Hands-on Repository Product">
+
+<p class="lead">Sekarang kita uji dua query nyata: `GetProductByID` dan `ListProducts` dengan filter brand plus keyword.</p>
+
+Test pertama membuktikan repository bisa mengambil produk aktif berdasarkan ID. Test kedua membuktikan filter brand dan pencarian nama benar-benar bekerja di PostgreSQL, termasuk operator `ILIKE`.
+
+```go title="internal/product/repository_integration_test.go"
+func TestIntegrationProductRepository_GetProductByID(t *testing.T) {
+	ctx := context.Background()
+	tx := withTestTx(t, ctx)
+
+	brandID := seedBrand(t, ctx, tx, "Wardah")
+	productID := seedProduct(t, ctx, tx, brandID, "Wardah Hydrating Toner 100ml", "wardah-hydrating-toner-100ml", true)
+
+	repo := product.NewRepository(tx)
+	got, err := repo.GetProductByID(ctx, productID)
+	if err != nil {
+		t.Fatalf("GetProductByID returned error: %v", err)
+	}
+
+	if got.ID != productID {
+		t.Fatalf("expected product id %d, got %d", productID, got.ID)
+	}
+	if got.Name != "Wardah Hydrating Toner 100ml" {
+		t.Fatalf("expected Wardah Hydrating Toner 100ml, got %s", got.Name)
+	}
+}
+
+func TestIntegrationProductRepository_ListProducts_FilterByBrandAndSearch(t *testing.T) {
+	ctx := context.Background()
+	tx := withTestTx(t, ctx)
+
+	wardahID := seedBrand(t, ctx, tx, "Wardah")
+	somethincID := seedBrand(t, ctx, tx, "Somethinc")
+
+	seedProduct(t, ctx, tx, wardahID, "Wardah Hydrating Toner 100ml", "wardah-hydrating-toner-100ml", true)
+	seedProduct(t, ctx, tx, wardahID, "Wardah Gentle Cleanser 60ml", "wardah-gentle-cleanser-60ml", true)
+	seedProduct(t, ctx, tx, somethincID, "Somethinc Glow Toner 100ml", "somethinc-glow-toner-100ml", true)
+
+	repo := product.NewRepository(tx)
+	got, err := repo.ListProducts(ctx, product.ProductFilter{
+		BrandID: wardahID,
+		Search:  "toner",
+		Limit:   10,
+	})
+	if err != nil {
+		t.Fatalf("ListProducts returned error: %v", err)
+	}
+
+	if len(got) != 1 {
+		t.Fatalf("expected 1 product, got %d", len(got))
+	}
+	if got[0].Name != "Wardah Hydrating Toner 100ml" {
+		t.Fatalf("expected Wardah toner, got %s", got[0].Name)
+	}
+}
+```
+
+```bash title="Terminal"
+docker compose -f docker-compose.test.yaml up -d
+export TEST_DB_URL="postgres://skincare:secret@localhost:5433/skincare_test?sslmode=disable"
+go test -tags=integration ./internal/product -run Integration -count=1
+docker compose -f docker-compose.test.yaml down -v
+```
+
+<Box variant="tip" icon="💡" label="Nama test yang mudah difilter"><p>Prefix `TestIntegration` memudahkan kita menjalankan hanya integration test dengan `-run Integration`.</p></Box>
+
+</Section>
+
+<Section num="11" id="jebakan" title="Jebakan Umum">
+
+<p class="lead">Integration test sering gagal bukan karena PostgreSQL sulit, tetapi karena boundary antar test tidak dijaga dengan disiplin.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Seed terlalu besar</h4><p>Dataset besar membuat test lambat dan assertion sulit dibaca. Seed data minimal per skenario.</p></Card>
+  <Card><h4>Rollback lupa</h4><p>Tanpa rollback, test berikutnya bisa gagal karena data sisa, slug unik, atau sequence yang tidak diantisipasi.</p></Card>
+  <Card><h4>Pool dan tx tercampur</h4><p>Seed memakai transaksi, tetapi repository memakai pool. Akibatnya query tidak melihat data seed yang belum commit.</p></Card>
+  <Card><h4>Test menyentuh DB salah</h4><p>`TEST_DB_URL` kosong atau salah target bisa membuat data development rusak. Fail fast bila env var tidak ada.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Jangan pakai production credential di CI"><p>CI harus memakai database sementara dengan user dan password khusus test. Secret production tidak boleh tersedia di job test.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: beda dari PHPUnit dengan in-memory database"><p>PHPUnit sering terasa praktis dengan SQLite in-memory, tetapi repository pgx sebaiknya diuji dengan PostgreSQL nyata karena behavior SQL dan tipe data harus sama dengan production.</p></Box>
+
+</Section>
+
+<Section num="12" id="ringkasan" title="Ringkasan & Poin Penting">
+
+<p class="lead">Integration test repository memastikan kode Go, pgx, SQL, transaksi, dan PostgreSQL bekerja sebagai satu sistem kecil yang realistis.</p>
+
+<Recap title="Yang Wajib Menempel">
+  <ul><li>Repository test berbeda dari service test. Service boleh memakai fake repository, repository perlu PostgreSQL nyata.</li><li>Build tag `//go:build integration` memisahkan integration test dari test cepat, jadi `go test ./...` biasa tetap ringan.</li><li>`TEST_DB_URL` membuat target database test eksplisit dan mengurangi risiko salah koneksi.</li><li>`TestMain` cocok untuk setup pool dan migration sekali sebelum test berjalan.</li><li>Rollback per test membuat seed data aman, tidak bocor ke test lain, dan tidak meninggalkan side effect.</li><li>Repository sebaiknya menerima interface kecil `DBTX` agar bisa memakai `pgxpool.Pool` di aplikasi dan `pgx.Tx` di test.</li><li>Pelanggaran constraint dideteksi lewat `errors.As` ke `*pgconn.PgError` dan SQLSTATE (`23505`, `23503`, `23514`), bukan dengan mencocokkan teks pesan.</li><li>Docker Compose menyediakan PostgreSQL test yang konsisten untuk local dan CI.</li></ul>
+</Recap>
+
+Di proyek online shop skincare, pola ini akan dipakai untuk menguji repository katalog produk, cart, checkout, inventory, payment log, voucher, dan order lifecycle. Setelah ini, kita bisa naik ke test yang lebih besar: end-to-end test API yang menjalankan handler, service, repository, dan database dalam satu alur request.
+
+</Section>

@@ -3,7 +3,6 @@ import { getCollection } from 'astro:content';
 import { readdir, readFile } from 'node:fs/promises';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Icon from '../components/Icon.astro';
-import goLogo from '../../logo.png';
 
 const mods = (await getCollection('modules')).sort(
   (a, b) => a.data.order - b.data.order
@@ -31,8 +30,6 @@ const roadmapDocs = (
 ).sort((a, b) => a.num - b.num);
 const totalRoadmaps = roadmapDocs.length;
 const totalChapters = roadmapDocs.reduce((sum, roadmap) => sum + roadmap.chapterCount, 0);
-const heroRoadmaps = roadmapDocs.slice(0, 4);
-const remainingRoadmaps = Math.max(0, totalRoadmaps - heroRoadmaps.length);
 
 // Estimasi total waktu baca: jumlahkan angka pertama tiap readingTime ("~45 menit").
 const totalMinutes = mods.reduce((sum, m) => {
@@ -41,6 +38,27 @@ const totalMinutes = mods.reduce((sum, m) => {
 }, 0);
 const totalHours = Math.max(1, Math.round(totalMinutes / 60));
 const moduleIds = mods.map((mod) => mod.id);
+
+// Cuplikan Go untuk visual hero — idiomatik & relevan dengan kurikulum (chi router).
+// Di-render via set:html agar kurung kurawal tidak bentrok dengan ekspresi Astro.
+const heroCode = [
+  '<span class="k">package</span> main',
+  '',
+  '<span class="k">import</span> (',
+  '\t<span class="s">"net/http"</span>',
+  '',
+  '\t<span class="s">"github.com/go-chi/chi/v5"</span>',
+  ')',
+  '',
+  '<span class="k">func</span> <span class="f">main</span>() {',
+  '\tr := chi.<span class="f">NewRouter</span>()',
+  '',
+  '\t<span class="c">// daftar produk skincare</span>',
+  '\tr.<span class="f">Get</span>(<span class="s">"/produk"</span>, listProduk)',
+  '',
+  '\thttp.<span class="f">ListenAndServe</span>(<span class="s">":8080"</span>, r)',
+  '}',
+].join('\n');
 
 // Map id → global index untuk animasi stagger yang konsisten
 const globalIndexMap = new Map(mods.map((m, i) => [m.id, i]));
@@ -65,67 +83,42 @@ const roadmaps = Array.from(roadmapMap.values()).sort((a, b) => a.num - b.num);
     <section class="home-hero">
       <div class="home-hero-grid">
         <div class="home-hero-copy">
-          <div class="home-kicker-row">
-            <p class="home-kicker"><span class="dot" aria-hidden="true"></span>Go backend untuk developer JavaScript &amp; PHP</p>
-            <p class="home-kicker home-kicker-alt">{totalRoadmaps} roadmap, {totalChapters} chapter</p>
-          </div>
+          <p class="home-eyebrow"><span class="dot" aria-hidden="true"></span>Go backend untuk developer JavaScript &amp; PHP</p>
 
           <h1 class="home-title">Belajar Go backend tanpa mulai dari nol</h1>
+
           <p class="home-lede">
-            Go Artisan menjembatani <b>React/JavaScript</b> dan <b>Laravel/PHP</b>
-            ke cara kerja Go yang lebih lugas. Kurikulumnya dibagi ke <b>{totalRoadmaps} roadmap</b> dan
-            <b> {totalChapters} chapter</b>, sambil membangun backend <b>online shop skincare</b>
-            dari HTTP API, PostgreSQL, dan arsitektur modular sampai deploy ke AWS.
+            Jembatan dari <b>React/JavaScript</b> dan <b>Laravel/PHP</b> ke cara kerja Go yang
+            lebih lugas — sambil membangun satu backend <b>online shop skincare</b> dari HTTP API,
+            PostgreSQL, dan arsitektur modular sampai deploy ke AWS.
           </p>
 
-          <p class="home-facts">
-            <span><b>{totalRoadmaps}</b> roadmap terarah</span>
-            <span><b>{totalChapters}</b> chapter bertahap</span>
-            <span><b>~{totalHours} jam</b> materi</span>
-            <span><b>1</b> proyek nyata end-to-end</span>
-          </p>
+          <dl class="home-stats">
+            <div><dt>{totalRoadmaps}</dt><dd>roadmap</dd></div>
+            <div><dt>{totalChapters}</dt><dd>chapter</dd></div>
+            <div><dt>~{totalHours}<span class="unit">j</span></dt><dd>materi</dd></div>
+            <div><dt>1</dt><dd>proyek nyata</dd></div>
+          </dl>
 
           <div class="home-actions">
-            <a
-              class="home-cta"
-              href={`/modul/${mods[0]?.id ?? ''}`}
-              data-continue-link
-            >
+            <a class="home-cta" href={`/modul/${mods[0]?.id ?? ''}`} data-continue-link>
               <span data-continue-label>Mulai belajar</span>
               <Icon name="arrow-right" size={17} />
             </a>
             <a class="home-secondary-link" href="#kurikulum">Lihat peta roadmap</a>
-            <p class="home-progress-copy" data-progress-copy>Progress lokal akan tersimpan di browser ini.</p>
           </div>
+
+          <p class="home-progress-copy" data-progress-copy>Progress lokal akan tersimpan di browser ini.</p>
         </div>
 
-        <aside class="home-hero-rail" aria-label="Ringkasan roadmap">
-          <div class="home-hero-brand">
-            <img src={goLogo.src} alt="Logo Go Artisan" class="home-hero-logo" />
-            <p>
-              Setiap roadmap mengantar satu lompatan yang jelas, dari fondasi Go
-              sampai backend yang siap diuji, diamankan, dan dideploy.
-            </p>
+        <div class="home-code" aria-hidden="true">
+          <div class="home-code-bar">
+            <span class="home-code-dots"><i></i><i></i><i></i></span>
+            <span class="home-code-file">main.go</span>
+            <span class="home-code-tag">Go + chi</span>
           </div>
-
-          <ol class="home-roadmap-list">
-            {heroRoadmaps.map((roadmap) => (
-              <li>
-                <span class="home-roadmap-num">R{roadmap.num}</span>
-                <span class="home-roadmap-copy">
-                  <b>{roadmap.title}</b>
-                  <span>{roadmap.chapterCount} chapter</span>
-                </span>
-              </li>
-            ))}
-          </ol>
-
-          <p class="home-roadmap-tail">
-            {remainingRoadmaps > 0
-              ? `${remainingRoadmaps} roadmap berikutnya ada di kurikulum lengkap di bawah.`
-              : 'Seluruh roadmap sudah tampil di hero ini.'}
-          </p>
-        </aside>
+          <pre class="home-code-body"><code set:html={heroCode}></code></pre>
+        </div>
       </div>
     </section>
 
@@ -136,19 +129,28 @@ const roadmaps = Array.from(roadmapMap.values()).sort((a, b) => a.num - b.num);
       </div>
 
       {roadmaps.map((roadmap) => (
-        <div class="curr-roadmap">
-          <div class="curr-roadmap-head">
+        <details
+          class="curr-roadmap"
+          id={`roadmap-${roadmap.num}`}
+          open={roadmap.num === 1}
+          data-roadmap-group={roadmap.num}
+        >
+          <summary class="curr-roadmap-head">
             <span class="curr-roadmap-label">Roadmap {roadmap.num}</span>
             <span class="curr-roadmap-name">{roadmap.name}</span>
-            <span class="curr-roadmap-count">{roadmap.modules.length} modul</span>
-          </div>
+            <span class="curr-roadmap-count">
+              <span class="curr-roadmap-progress" data-roadmap-progress hidden></span>
+              <span class="curr-roadmap-total">{roadmap.modules.length} modul</span>
+            </span>
+            <span class="curr-roadmap-chevron" aria-hidden="true"><Icon name="chevron-down" size={18} /></span>
+          </summary>
           <ol class="curr">
-            {roadmap.modules.map((mod) => {
+            {roadmap.modules.map((mod, localIdx) => {
               const gi = globalIndexMap.get(mod.id) ?? 0;
               const chMatch = mod.id.match(/c(\d+)/);
               const chNum = chMatch ? parseInt(chMatch[1]) : gi + 1;
               return (
-                <li class="curr-item" style={`--i:${gi}`} data-module-item data-module-id={mod.id}>
+                <li class="curr-item" style={`--i:${localIdx}`} data-module-item data-module-id={mod.id}>
                   <a href={`/modul/${mod.id}`} data-module-link>
                     <span class="curr-index" aria-hidden="true">
                       <span class="curr-index-num">{String(chNum).padStart(2, '0')}</span>
@@ -174,7 +176,7 @@ const roadmaps = Array.from(roadmapMap.values()).sort((a, b) => a.num - b.num);
               );
             })}
           </ol>
-        </div>
+        </details>
       ))}
     </section>
   </main>
@@ -232,9 +234,53 @@ const roadmaps = Array.from(roadmapMap.values()).sort((a, b) => a.num - b.num);
             stateTag.textContent = 'Belum mulai';
           }
         });
+
+        // Ringkasan progres per roadmap di header accordion (mis. "3/12 selesai").
+        document.querySelectorAll('[data-roadmap-group]').forEach(function (group) {
+          var items = group.querySelectorAll('[data-module-item]');
+          var progressTag = group.querySelector('[data-roadmap-progress]');
+          if (!progressTag || !items.length) return;
+          var done = 0;
+          items.forEach(function (item) {
+            if (state.completed[item.getAttribute('data-module-id')]) done++;
+          });
+          group.classList.toggle('is-complete', done === items.length);
+          if (done > 0) {
+            progressTag.hidden = false;
+            progressTag.textContent = done === items.length
+              ? '✓ selesai'
+              : done + '/' + items.length + ' selesai';
+          } else {
+            progressTag.hidden = true;
+            progressTag.textContent = '';
+          }
+        });
+
+        return nextId;
       }
 
-      sync();
+      // Buka accordion roadmap yang memuat sebuah modul (mis. modul "lanjut").
+      function openRoadmapOf(moduleId) {
+        if (!moduleId) return;
+        var item = document.querySelector('[data-module-item][data-module-id="' + moduleId + '"]');
+        var group = item && item.closest('[data-roadmap-group]');
+        if (group && !group.open) group.open = true;
+      }
+
+      var nextId = sync();
+
+      // Untuk pengunjung yang sudah punya progres, buka roadmap tempat mereka
+      // berhenti (selain Roadmap 1 yang sudah terbuka by default).
+      if (api.getCompletedCount(moduleIds) > 0) openRoadmapOf(nextId);
+
+      // Link roadmap di hero membuka accordion targetnya lalu menggulir ke sana.
+      document.querySelectorAll('[data-roadmap-jump]').forEach(function (link) {
+        link.addEventListener('click', function () {
+          var target = document.getElementById('roadmap-' + link.getAttribute('data-roadmap-jump'));
+          if (target && !target.open) target.open = true;
+        });
+      });
+
       window.addEventListener('module-progress:change', sync);
     })();
   </script>

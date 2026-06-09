@@ -1455,45 +1455,28 @@ nav.toc a .num { color: var(--ink-soft); }
 
 .home-hero-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(276px, .72fr);
-  gap: clamp(24px, 3.5vw, 46px);
-  align-items: start;
+  grid-template-columns: minmax(0, 1.14fr) minmax(316px, .82fr);
+  gap: clamp(28px, 4vw, 56px);
+  align-items: center;
 }
 
 .home-hero-copy {
   min-width: 0;
 }
 
-.home-kicker-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.home-kicker {
+/* Eyebrow tunggal, borderless — tenang, tidak berteriak. */
+.home-eyebrow {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  margin: 0;
-  padding: 7px 15px 7px 12px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--paper);
+  gap: 9px;
+  margin: 0 0 22px;
   color: var(--blue);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
-  letter-spacing: .03em;
-  box-shadow: var(--shadow);
+  letter-spacing: .02em;
   animation: rise .6s var(--ease-spring) backwards;
 }
-
-.home-kicker-alt {
-  color: var(--ink);
-  background: color-mix(in srgb, var(--blue-soft) 58%, var(--paper));
-}
-
-.home-kicker .dot {
+.home-eyebrow .dot {
   width: 7px;
   height: 7px;
   flex: none;
@@ -1502,145 +1485,121 @@ nav.toc a .num { color: var(--ink-soft); }
 }
 
 .home-title {
-  max-width: 11ch;
-  margin: 0 0 18px;
-  font-size: clamp(42px, 6.5vw, 72px);
+  max-width: 15ch;
+  margin: 0 0 22px;
+  font-size: clamp(38px, 5.2vw, 60px);
   font-weight: 800;
-  line-height: .98;
+  line-height: 1.04;
   letter-spacing: -0.03em;
   animation: rise .6s var(--ease-spring) .05s backwards;
 }
 
 .home-lede {
-  max-width: 56ch;
-  margin: 0 0 26px;
+  max-width: 50ch;
+  margin: 0 0 30px;
   color: var(--ink-soft);
-  font-size: clamp(17px, 2.1vw, 20px);
-  line-height: 1.6;
+  font-size: clamp(16px, 1.9vw, 19px);
+  line-height: 1.62;
   animation: rise .6s var(--ease-spring) .1s backwards;
 }
-.home-lede b { color: var(--ink); font-weight: 700; }
+.home-lede b { color: var(--ink); font-weight: 650; }
 
-/* Fakta ringkas, satu baris tenang. Bukan kartu hero-metric, tanpa side-stripe,
-   tanpa glass. Angka tetap mudah dipindai tanpa berteriak. */
-.home-facts {
+/* Strip statistik — angka besar, label kecil, dipisah hairline. Tidak wrap kacau. */
+.home-stats {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: 15px;
-  line-height: 1.5;
+  margin: 0 0 32px;
   animation: rise .6s var(--ease-spring) .16s backwards;
 }
-.home-facts span {
-  white-space: nowrap;
+.home-stats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 2px 22px;
+  border-left: 1px solid var(--line);
 }
-.home-facts span + span::before {
-  content: "·";
-  margin: 0 14px;
-  color: var(--ink-muted);
-}
-.home-facts b {
+.home-stats > div:first-child { padding-left: 0; border-left: 0; }
+.home-stats dt {
+  font-size: 27px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
   color: var(--ink);
-  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-
-.home-hero-rail {
-  position: relative;
-  display: grid;
-  gap: 16px;
-  padding: clamp(16px, 2.3vw, 22px);
-  border: 1px solid color-mix(in srgb, var(--blue) 14%, var(--line));
-  background: color-mix(in srgb, var(--paper) 88%, var(--blue-soft));
-  animation: rise .6s var(--ease-spring) .18s backwards;
-}
-
-.home-hero-brand {
-  display: grid;
-  gap: 12px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid color-mix(in srgb, var(--blue) 12%, var(--line));
-}
-
-.home-hero-logo {
-  width: min(180px, 56%);
-  height: auto;
-}
-
-.home-hero-brand p {
+.home-stats dt .unit { font-size: 16px; font-weight: 700; color: var(--ink-soft); }
+.home-stats dd {
   margin: 0;
-  color: var(--ink-soft);
-  font-size: 14px;
-  line-height: 1.65;
-}
-
-.home-roadmap-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 8px;
-}
-
-.home-roadmap-list li {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  gap: 10px;
-  align-items: start;
-}
-
-.home-roadmap-num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 28px;
-  padding: 5px 7px;
-  background: var(--paper);
-  color: var(--blue);
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: .06em;
-}
-
-.home-roadmap-copy {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-  padding-top: 3px;
-}
-
-.home-roadmap-copy b {
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-.home-roadmap-copy span {
+  font-size: 12.5px;
   color: var(--ink-muted);
-  font-size: 12px;
-  line-height: 1.4;
 }
 
-.home-roadmap-tail {
-  margin: 0;
-  padding-top: 2px;
-  color: var(--ink-soft);
-  font-size: 13px;
-  line-height: 1.55;
+/* ── Kartu kode: fokus visual hero. Flat, gelap, sudut tajam. ─────────── */
+.home-code {
+  align-self: center;
+  border: 1px solid rgba(255, 255, 255, .1);
+  background: #0f1830;
+  overflow: hidden;
+  animation: rise .6s var(--ease-spring) .2s backwards;
 }
+.home-code-bar {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 15px;
+  background: #16213d;
+  border-bottom: 1px solid rgba(255, 255, 255, .07);
+}
+.home-code-dots { display: inline-flex; gap: 6px; }
+.home-code-dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .15);
+}
+.home-code-file {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgba(255, 255, 255, .58);
+}
+.home-code-tag {
+  margin-left: auto;
+  padding: 2px 9px;
+  border: 1px solid color-mix(in srgb, var(--blue-bright) 42%, transparent);
+  color: var(--blue-bright);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+.home-code-body {
+  margin: 0;
+  padding: 20px 22px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  line-height: 1.72;
+  tab-size: 2;
+  color: #c3d0e6;
+}
+.home-code-body code {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+.home-code-body .k { color: var(--blue-bright); }
+.home-code-body .s { color: #9ad99c; }
+.home-code-body .f { color: #e0a96d; }
+.home-code-body .c { color: #6b7a90; font-style: italic; }
 
 @media (max-width: 920px) {
   .home-hero-grid {
     grid-template-columns: 1fr;
+    align-items: start;
   }
-
-  .home-hero-rail {
-    max-width: 720px;
-  }
+  .home-code { max-width: 560px; }
 }
 
 /* ── Homepage: module collection ─────────────────────────────────────── */
@@ -1668,18 +1627,38 @@ nav.toc a .num { color: var(--ink-soft); }
   color: var(--ink-muted);
 }
 
-/* Roadmap group — pembungkus per roadmap di halaman kurikulum */
-.curr-roadmap + .curr-roadmap { margin-top: 28px; }
+/* Roadmap group — accordion per roadmap di halaman kurikulum.
+   Memakai <details>/<summary> bawaan: keyboard-accessible & jalan tanpa JS.
+   Hanya Roadmap 1 terbuka by default; sisanya menutup agar kurikulum ringkas. */
+.curr-roadmap {
+  border: 1px solid var(--line);
+  scroll-margin-top: 84px;
+}
+.curr-roadmap + .curr-roadmap { margin-top: 14px; }
+
 .curr-roadmap-head {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 14px;
-  border: 1px solid var(--line);
-  border-bottom: 0;
+  padding: 12px 14px;
   background: var(--paper-soft);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  transition: background-color .16s ease;
 }
+.curr-roadmap-head::-webkit-details-marker { display: none; }
+.curr-roadmap-head:hover { background: var(--blue-soft); }
+.curr-roadmap-head:focus-visible {
+  outline: 2px solid var(--blue-bright);
+  outline-offset: -2px;
+}
+.curr-roadmap[open] > .curr-roadmap-head {
+  border-bottom: 1px solid var(--line);
+}
+
 .curr-roadmap-label {
+  flex: none;
   font-family: var(--font-mono);
   font-size: 10.5px;
   font-weight: 700;
@@ -1693,12 +1672,44 @@ nav.toc a .num { color: var(--ink-soft); }
   color: var(--ink);
 }
 .curr-roadmap-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
   margin-left: auto;
   font-family: var(--font-mono);
   font-size: 11.5px;
   color: var(--ink-muted);
 }
+.curr-roadmap-progress {
+  color: var(--blue);
+  font-weight: 700;
+}
+.curr-roadmap.is-complete .curr-roadmap-progress { color: var(--green); }
+
+.curr-roadmap-chevron {
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--ink-muted);
+  transition: transform .24s var(--ease-spring), color .16s ease;
+}
+.curr-roadmap[open] > .curr-roadmap-head .curr-roadmap-chevron {
+  transform: rotate(180deg);
+  color: var(--blue);
+}
+.curr-roadmap-head:hover .curr-roadmap-chevron { color: var(--blue); }
+
 [data-theme="dark"] .curr-roadmap-head { background: rgba(255,255,255,.03); }
+[data-theme="dark"] .curr-roadmap-head:hover { background: rgba(255,255,255,.06); }
+
+/* Reveal lembut saat accordion dibuka — list & item ikut animasi rise. */
+.curr-roadmap[open] > .curr {
+  animation: roadmapReveal .26s var(--ease-spring) both;
+}
+@keyframes roadmapReveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 /* Kurikulum sebagai daftar vertikal yang ringkas (bukan card grid). Tiap baris
    tetap memuat ringkasan; nomor urut menandai posisi di kurikulum (urutan punya
@@ -1953,7 +1964,8 @@ nav.toc a.active {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-kicker, .home-title, .home-lede, .home-facts, .home-hero-rail, .home-actions, .curr-item { animation: none; }
+  .home-eyebrow, .home-title, .home-lede, .home-stats, .home-code, .home-actions, .curr-item { animation: none; }
+  .curr-roadmap[open] > .curr { animation: none; }
   .pager-card:hover, .card:hover { transform: none; }
   .home-cta:hover { transform: none; }
   .curr-item > a:hover .curr-go { transform: none; }
@@ -2596,8 +2608,8 @@ pre.astro-code > code {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 14px 18px;
-  margin-top: 28px;
+  gap: 14px 22px;
+  margin-top: 0;
   animation: rise .6s var(--ease-spring) .22s backwards;
 }
 
@@ -2635,9 +2647,9 @@ pre.astro-code > code {
 }
 
 .home-progress-copy {
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: 14px;
+  margin: 16px 0 0;
+  color: var(--ink-muted);
+  font-size: 13.5px;
   line-height: 1.5;
 }
 
@@ -2732,29 +2744,16 @@ pre.astro-code > code {
 @media (max-width: 600px) {
   .home-hero-grid { grid-template-columns: 1fr; }
   .home-title {
-    max-width: 12ch;
+    max-width: 14ch;
     font-size: clamp(38px, 12vw, 58px);
   }
-  .home-facts {
-    gap: 8px 16px;
+  .home-stats > div {
+    padding: 2px 16px;
   }
-  .home-facts span {
-    white-space: normal;
-  }
-  .home-facts span + span::before {
-    display: none;
-  }
-  .home-hero-rail {
-    padding: 18px;
-  }
-  .home-roadmap-list li {
-    grid-template-columns: 38px minmax(0, 1fr);
-    gap: 10px;
-  }
-  .home-roadmap-tail {
-    font-size: 12.5px;
-  }
-  .home-actions { align-items: flex-start; }
+  .home-stats dt { font-size: 24px; }
+  .home-code-body { font-size: 12.5px; padding: 18px; }
+  .home-actions { align-items: stretch; flex-direction: column; }
   .home-cta { width: 100%; justify-content: center; }
+  .home-secondary-link { text-align: center; }
   .module-actions { align-items: flex-start; }
 }

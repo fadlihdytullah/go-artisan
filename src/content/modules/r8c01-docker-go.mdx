@@ -1,0 +1,585 @@
+---
+title: "Modul Containerize Go API dengan Docker - Go Artisan"
+badge: "DKR"
+topTitle: "Containerize Go API dengan Docker"
+topSub: "Go untuk Developer JavaScript & PHP"
+summary: "Bungkus Go API dan worker skincare menjadi Docker image kecil, statis, dan aman yang siap masuk CI/CD lalu di-deploy ke AWS."
+order: 59
+target: "Roadmap 8 · Docker, CI/CD, dan AWS Deployment"
+readingTime: "~65 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa Docker untuk Go API?" }
+  - { num: "02", id: "mental-model", title: "Mental Model: Image, Layer, dan Container" }
+  - { num: "03", id: "struktur-proyek", title: "Struktur Proyek dan Entrypoint Multi-perintah" }
+  - { num: "04", id: "multi-stage", title: "Dockerfile Multi-stage untuk Go" }
+  - { num: "05", id: "cache-layer", title: "Cache Layer dan BuildKit Cache Mount" }
+  - { num: "06", id: "base-image", title: "Base Image Final: scratch, distroless, Alpine" }
+  - { num: "07", id: "non-root-healthcheck", title: "Non-root, EXPOSE, dan Healthcheck" }
+  - { num: "08", id: "env-runtime", title: "Environment Variables saat Runtime" }
+  - { num: "09", id: "worker-image", title: "Menjalankan Worker dalam Container" }
+  - { num: "10", id: "hands-on", title: "Hands-on: Build, Run, dan Inspeksi Image" }
+  - { num: "11", id: "jebakan", title: "Jebakan Umum dari JS/PHP ke Go Container" }
+  - { num: "12", id: "ringkasan", title: "Ringkasan & Poin Penting" }
+footerTitle: "Modul Containerize Go API dengan Docker - Go Artisan"
+footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Endpoint, Def } from "@components";
+
+<Hero eyebrow="Roadmap 8 &middot; Docker, CI/CD, dan AWS" title="Containerize Go API<br /><em>dengan Docker</em>">
+  <p>Modul ini mengubah Go API dan worker online shop skincare menjadi image kecil, statis, dan aman yang siap masuk pipeline deployment.</p>
+  <Fragment slot="meta">
+    <Chip icon="package">Roadmap 8 &middot; Chapter 1</Chip>
+    <Chip icon="code">Bahasa: <b>Go 1.26</b></Chip>
+    <Chip icon="clock">~65 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa Docker untuk Go API?" sub="Dari binary lokal menuju artefak deployment yang konsisten">
+
+<p class="lead">Di React kamu mengirim bundle statis ke CDN. Di Laravel kamu mengirim source code plus PHP-FPM, Composer, extension, dan web server. Di Go, kita mengirim satu binary statis di dalam container ukuran beberapa megabita.</p>
+
+Go meng-compile ke binary native tanpa runtime eksternal. Itu membuat Dockerfile Go jauh lebih ringkas daripada setup PHP-FPM atau Node, karena container final tidak perlu membawa compiler Go, source code, package manager, atau toolchain build. Untuk backend skincare, image inilah yang nanti dipakai CI untuk testing, dipush ke registry, dijalankan di staging, lalu dipromosikan ke AWS ECS Fargate tanpa rebuild.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari PHP-FPM dan node_modules ke satu binary"><p>Image PHP-FPM resmi sekitar 100+ MB karena harus membawa runtime PHP, extension, dan proses FPM. Image Node bisa 150 sampai 1000 MB karena butuh runtime Node plus node_modules. Image Go bisa ~2 sampai 10 MB karena cuma berisi satu binary plus base image tipis.</p></Box>
+
+Docker dipakai bukan karena Go tidak bisa dijalankan langsung, tapi karena deployment butuh artefak yang konsisten dan portabel. Image yang sama bisa dites di laptop, dijalankan di CI, dipush ke ECR, lalu dipakai ECS. Yang berubah antar environment hanya environment variable, bukan binary-nya.
+
+<CardGrid cols={3}>
+  <Card><h4>Konsisten</h4><p>Binary, CA certificate, timezone, dan entrypoint dibungkus dalam satu image yang immutable dan ber-digest.</p></Card>
+  <Card><h4>Kecil</h4><p>Multi-stage build membuang compiler dan module cache, sehingga image final hanya membawa yang dibutuhkan runtime.</p></Card>
+  <Card><h4>Aman</h4><p>Final image bisa berjalan sebagai user non-root tanpa shell, sehingga permukaan serangan jauh lebih kecil.</p></Card>
+</CardGrid>
+
+<Box variant="note" icon="🧾" label="Versi yang dipakai modul ini"><p>Per Juni 2026 kita pakai Go 1.26 (image resmi `golang:1.26`), base final `gcr.io/distroless/static-debian13:nonroot`, dan BuildKit modern lewat baris `# syntax=docker/dockerfile:1`.</p></Box>
+
+</Section>
+
+<Section num="02" id="mental-model" title="Mental Model: Image, Layer, dan Container" sub="Image adalah template berlapis, container adalah proses yang berjalan">
+
+<p class="lead">Kalau kamu terbiasa dengan frontend build, image mirip artefak hasil build, dan container adalah artefak itu saat dijalankan sebagai proses sistem operasi.</p>
+
+<Def term="Docker image"><p>Template immutable berisi filesystem berlapis, binary, dan metadata cara menjalankan aplikasi. Image diidentifikasi oleh tag (mis. `skincare-api:1.4.0`) dan digest SHA256 yang unik.</p></Def>
+
+<Def term="layer"><p>Satu lapisan filesystem yang dihasilkan oleh satu instruksi Dockerfile (mis. `COPY`, `RUN`). Layer di-cache dan bisa dipakai ulang antar build selama instruksi dan input-nya tidak berubah.</p></Def>
+
+<Def term="container"><p>Instance runtime dari image. Di modul ini, container menjalankan proses `/app` yang listen ke port 8080. Saat container mati, perubahan filesystem-nya hilang kecuali ditulis ke volume.</p></Def>
+
+Bagi developer JS/PHP, perbedaan terbesar ada di image final. Image Node dan PHP biasanya identik antara build-time dan runtime: interpreter yang dipakai untuk menjalankan kode tetap harus ada di production. Go memutus rantai itu. Build butuh compiler 800+ MB, tapi production hanya butuh hasilnya, satu binary.
+
+<Compare aLabel="JS / PHP: runtime ikut ke production" bLabel="Go: hanya binary ke production" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>Node butuh runtime Node plus node_modules di image final.</li><li>PHP butuh PHP-FPM, extension, dan sering web server terpisah.</li><li>Dependency di-install saat build dan tetap ada saat run.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Go meng-compile ke satu binary statis Linux.</li><li>Image final cukup binary plus CA certificate dan timezone.</li><li>Tidak ada install dependency saat container start.</li></ul></Fragment>
+</Compare>
+
+```mermaid
+flowchart LR
+  subgraph BUILD["Build-time (dibuang)"]
+    SRC["Source code Go"] --> TOOL["golang:1.26 (~800 MB)"]
+    TOOL --> COMP["go build"]
+  end
+  COMP --> BIN["binary /app"]
+  subgraph FINAL["Image final (~2 MB)"]
+    BIN --> BASE["distroless/static + binary"]
+  end
+  BASE --> RUN["docker run -> container proses /app"]
+```
+
+<p class="fig-cap"><b>Gambar 1.</b> Multi-stage memisahkan dapur build (besar, berisi toolchain) dari ruang makan production (kecil, hanya binary). Stage builder dibuang dari image final.</p>
+
+<Box variant="tip" icon="💡" label="Image sekali, container banyak"><p>Satu image bisa menjalankan banyak container sekaligus. Untuk skincare, image yang sama bisa jalan sebagai container `api` (listen HTTP) dan container `worker` (konsumsi antrian), hanya beda argumen entrypoint.</p></Box>
+
+</Section>
+
+<Section num="03" id="struktur-proyek" title="Struktur Proyek dan Entrypoint Multi-perintah" sub="Satu binary, beberapa subperintah: serve, worker, migrate, healthcheck">
+
+<p class="lead">Dockerfile yang baik dimulai dari struktur proyek yang stabil. Sebelum menulis Dockerfile, kita tata dulu agar satu binary bisa menjadi API maupun worker.</p>
+
+<FileTree title="Struktur minimum untuk build image API dan worker" tree={`
+cmd/
+  app/
+    main.go              # entry point: dispatch subperintah
+internal/
+  config/
+    config.go            # baca env runtime
+  product/
+    handler.go
+    service.go
+  order/
+    handler.go
+    service.go
+  worker/
+    consumer.go          # konsumsi antrian payment / email
+go.mod
+go.sum
+Dockerfile
+.dockerignore
+`} />
+
+Daripada membuat dua binary terpisah (`cmd/api` dan `cmd/worker`) yang masing-masing butuh image, kita pakai satu binary dengan subperintah. Pola ini umum di Go dan membuat image final tunggal yang bisa dipakai ulang. Argumen pertama menentukan mode.
+
+```go title="cmd/app/main.go"
+package main
+
+import (
+	"context"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+)
+
+func main() {
+	cmd := "serve"
+	if len(os.Args) > 1 {
+		cmd = os.Args[1]
+	}
+
+	switch cmd {
+	case "serve":
+		runServer()
+	case "worker":
+		runWorker()
+	case "healthcheck":
+		runHealthcheck()
+	default:
+		slog.Error("perintah tidak dikenal", slog.String("cmd", cmd))
+		os.Exit(2)
+	}
+}
+
+func runServer() {
+	addr := getenv("HTTP_ADDR", ":8080")
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	// Graceful shutdown saat container menerima SIGTERM dari Docker / ECS.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		slog.Info("skincare API listening", slog.String("addr", addr))
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("server stopped", slog.Any("error", err))
+			os.Exit(1)
+		}
+	}()
+
+	<-ctx.Done()
+	slog.Info("shutting down, draining connections")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		slog.Error("graceful shutdown failed", slog.Any("error", err))
+	}
+}
+
+func getenv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari php artisan dan npm scripts ke subperintah"><p>Di Laravel kamu jalankan `php artisan serve` dan `php artisan queue:work` dari satu codebase. Di Node kamu pakai `npm run start` vs `npm run worker`. Di Go, satu binary `app serve` vs `app worker` memberi efek serupa, tapi tanpa runtime terpisah karena keduanya sudah ter-compile ke binary yang sama.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Wajib graceful shutdown"><p>Docker dan ECS mengirim `SIGTERM` lalu menunggu sebelum `SIGKILL`. Tanpa `signal.NotifyContext` dan `server.Shutdown`, request checkout yang sedang jalan bisa terputus saat deploy. Tangani sinyal sejak awal, bukan saat sudah di production.</p></Box>
+
+</Section>
+
+<Section num="04" id="multi-stage" title="Dockerfile Multi-stage untuk Go" sub="Build dengan golang:1.26, jalankan dengan image final yang kecil">
+
+<p class="lead">Multi-stage build adalah Dockerfile dengan lebih dari satu `FROM`. Stage builder boleh besar (berisi compiler), tapi yang masuk image final hanya binary yang kita salin secara eksplisit.</p>
+
+```dockerfile title="Dockerfile"
+# syntax=docker/dockerfile:1
+FROM golang:1.26 AS builder
+WORKDIR /src
+
+# Layer dependency lebih dulu agar cache efektif (lihat Section 05).
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+COPY . .
+ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -trimpath -ldflags="-s -w" -o /app ./cmd/app
+
+FROM gcr.io/distroless/static-debian13:nonroot
+COPY --from=builder /app /app
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["/app"]
+CMD ["serve"]
+```
+
+Baris paling penting adalah `COPY --from=builder /app /app`. Instruksi itu mengambil satu artefak dari stage builder, lalu meninggalkan source code, module cache, compiler Go, dan package manager di belakang. Stage builder tidak pernah masuk ke image final.
+
+Setiap flag build punya alasan, bukan ritual salin-tempel:
+
+<CardGrid cols={2}>
+  <Card><h4>CGO_ENABLED=0</h4><p>Matikan cgo agar binary jadi statis murni, tidak butuh glibc atau musl. Wajib supaya bisa jalan di `scratch` dan `distroless/static`.</p></Card>
+  <Card><h4>GOOS=linux GOARCH=amd64</h4><p>Target OS dan arsitektur container. Penting saat build dari macOS atau Windows agar binary cocok dengan kernel Linux di server.</p></Card>
+  <Card><h4>-ldflags="-s -w"</h4><p>`-s` buang symbol table, `-w` buang DWARF debug info. Memangkas ukuran binary sekitar 25 sampai 30 persen. Konsekuensi: tidak bisa pakai debugger di binary itu.</p></Card>
+  <Card><h4>-trimpath</h4><p>Hilangkan path absolut mesin build dari binary, sehingga build lebih reproducible dan struktur direktori tidak bocor.</p></Card>
+</CardGrid>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari composer install --no-dev ke multi-stage"><p>Di PHP kamu memisahkan dev dependency dengan `composer install --no-dev`. Di Go container, padanan kelasnya adalah multi-stage: stage builder memuat seluruh toolchain, lalu image final hanya menerima hasil `go build`. Bukan sekadar membuang dev dependency, tapi membuang seluruh runtime build.</p></Box>
+
+<Box variant="note" icon="🧾" label="ENTRYPOINT vs CMD"><p>`ENTRYPOINT ["/app"]` adalah perintah utama yang selalu jalan. `CMD ["serve"]` adalah argumen default yang bisa di-override. Jadi `docker run img` menjalankan `app serve`, sedangkan `docker run img worker` menjalankan `app worker`. Selalu pakai exec form (`["..."]`) agar binary jadi PID 1 dan menerima SIGTERM langsung.</p></Box>
+
+</Section>
+
+<Section num="05" id="cache-layer" title="Cache Layer dan BuildKit Cache Mount" sub="Build ulang harus cepat saat hanya kode yang berubah">
+
+<p class="lead">Urutan `COPY` di Dockerfile menentukan apakah build berikutnya memakai cache atau mengunduh dependency lagi. Ini perbedaan antara rebuild 1 detik dan 40 detik.</p>
+
+Docker menyimpan cache per instruksi (per layer). Dependency Go berubah lebih jarang daripada file handler atau service. Karena itu `go.mod` dan `go.sum` disalin lebih dulu, lalu `go mod download` dijalankan sebelum source code lain masuk. Selama kedua file itu tidak berubah, layer download dipakai ulang.
+
+```dockerfile title="Potongan Dockerfile: urutan layer yang benar"
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app ./cmd/app
+```
+
+```mermaid
+flowchart TD
+  A["Ubah internal/order/service.go"] --> B{"go.mod / go.sum berubah?"}
+  B -->|Tidak| C["Layer go mod download REUSE"]
+  C --> D["Hanya COPY . . dan go build jalan ulang"]
+  B -->|Ya| E["Layer go mod download INVALID"]
+  E --> F["Download dependency ulang, lalu build"]
+```
+
+<p class="fig-cap"><b>Gambar 2.</b> Perubahan kode biasa tidak membatalkan cache download selama go.mod dan go.sum stabil. Hanya menambah dependency yang memicu download ulang.</p>
+
+<Box variant="warn" icon="⚠️" label="Jebakan: COPY . . terlalu awal"><p>Kalau `COPY . .` ditaruh sebelum `go mod download`, satu perubahan kecil di file handler membatalkan cache dan memicu download semua module lagi. Selalu salin manifest dulu, baru source code.</p></Box>
+
+Layer cache punya batas: ia hilang kalau `go.mod` berubah. BuildKit cache mount lebih kuat karena persist lintas build dan tahan terhadap perubahan `go.mod`. Cache mount tidak ikut ke image final, hanya hidup saat build.
+
+```dockerfile title="Potongan Dockerfile: BuildKit cache mount"
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -trimpath -ldflags="-s -w" -o /app ./cmd/app
+```
+
+<Box variant="tip" icon="💡" label="Dua cache yang berbeda"><p>`/go/pkg/mod` adalah cache module download (GOMODCACHE). `/root/.cache/go-build` adalah cache hasil kompilasi (GOCACHE), sehingga rebuild hanya meng-compile paket yang berubah. Keduanya butuh BuildKit aktif dan baris `# syntax=docker/dockerfile:1`.</p></Box>
+
+Terakhir, batasi build context dengan `.dockerignore`. File yang tidak relevan tidak perlu dikirim ke daemon, dan ini juga mencegah `.env` ikut ter-copy saat `COPY . .`.
+
+```text title=".dockerignore"
+.git
+.gitignore
+*.md
+Dockerfile*
+compose*.yaml
+.dockerignore
+bin/
+dist/
+tmp/
+*.test
+*.out
+coverage.*
+.env
+.env.*
+*.log
+.idea/
+.vscode/
+```
+
+</Section>
+
+<Section num="06" id="base-image" title="Base Image Final: scratch, distroless, Alpine" sub="Pilih base sesuai kebutuhan debug, certificate, dan timezone">
+
+<p class="lead">Setelah binary jadi, pertanyaan berikutnya: di atas apa ia berjalan? Tiga pilihan umum punya trade-off antara ukuran, keamanan, dan kemudahan debug.</p>
+
+<Compare aLabel="scratch (kosong total)" bLabel="distroless/static (rekomendasi)" aTone="blue" bTone="teal">
+  <Fragment slot="a"><ul><li>Ukuran nyaris 0, hanya binary.</li><li>Tidak ada shell, CA cert, timezone, atau user.</li><li>Kamu harus salin CA dan tzdata manual.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Sekitar 2 MB plus binary.</li><li>Sudah bawa ca-certificates, tzdata, /etc/passwd, dan user nonroot (UID 65532).</li><li>Tetap tanpa shell dan tanpa package manager.</li></ul></Fragment>
+</Compare>
+
+Untuk Go API skincare yang memanggil HTTPS keluar (payment gateway, S3, SMTP), CA certificate wajib ada. Tanpa root CA, request HTTPS gagal dengan error `x509: certificate signed by unknown authority`. Distroless `static` sudah membawanya, jadi ia adalah default yang dianjurkan.
+
+<Def term="ca-certificates"><p>Kumpulan root certificate yang dipakai client TLS untuk memverifikasi server HTTPS. Dibutuhkan kalau aplikasi memanggil API pihak ketiga lewat HTTPS. `scratch` tidak punya ini.</p></Def>
+
+<Def term="tzdata"><p>Database timezone yang dibutuhkan kalau kode memakai `time.LoadLocation("Asia/Jakarta")`. Distroless `static` sudah bawa. Alternatif: `import _ "time/tzdata"` agar timezone di-embed ke binary, sehingga base image bebas.</p></Def>
+
+Kalau kamu memilih `scratch` (ukuran paling kecil), salin certificate dan timezone manual dari stage builder:
+
+```dockerfile title="Potongan Dockerfile: scratch dengan CA dan timezone"
+FROM scratch
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=builder /app /app
+USER 65532:65532
+EXPOSE 8080
+ENTRYPOINT ["/app"]
+CMD ["serve"]
+```
+
+Alpine adalah pilihan ketiga, dipakai saat tim masih butuh shell untuk investigasi di staging, atau saat aplikasi butuh cgo dengan musl. Harganya: permukaan serangan lebih besar dan kadang ada edge case resolusi DNS musl.
+
+```dockerfile title="Potongan Dockerfile: Alpine sebagai kompromi debug"
+FROM alpine:3.23
+RUN apk add --no-cache ca-certificates tzdata \
+    && addgroup -S app && adduser -S -G app app
+COPY --from=builder /app /usr/local/bin/app
+USER app
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/app"]
+CMD ["serve"]
+```
+
+<Box variant="tip" icon="💡" label="Aturan praktis pemilihan base"><p>Default ke `distroless/static` (aman, kecil, lengkap). Pakai `scratch` kalau mengejar image terkecil dan siap salin CA dan tzdata sendiri. Pakai Alpine hanya kalau kamu sungguh butuh shell untuk debug atau butuh cgo.</p></Box>
+
+</Section>
+
+<Section num="07" id="non-root-healthcheck" title="Non-root, EXPOSE, dan Healthcheck" sub="Hardening minimum dan cara container melaporkan kesehatannya">
+
+<p class="lead">Image yang kecil belum tentu aman. Tiga instruksi berikut menentukan apakah container kamu siap production atau menjadi liability.</p>
+
+<Def term="USER nonroot"><p>Menjalankan proses sebagai user non-root. Distroless `:nonroot` memberi UID/GID 65532. Kalau container jebol lewat bug, attacker tidak langsung dapat root. Untuk scratch atau alpine, pakai `USER 65532:65532` atau buat user sendiri.</p></Def>
+
+<Box variant="warn" icon="🔒" label="Jangan default root"><p>Root di container memang bukan root penuh di host, tapi tetap memperbesar dampak kalau ada bug file write, RCE, atau rantai escape. Banyak organisasi menolak image yang jalan sebagai root di gate keamanan CI.</p></Box>
+
+`EXPOSE 8080` hanya metadata dan dokumentasi, ia tidak benar-benar membuka port. Publikasi nyata dilakukan lewat `-p 8080:8080` di `docker run` atau `ports:` di Compose. Jangan mengandalkan `EXPOSE` untuk membuka akses.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: EXPOSE bukan app.listen(port)"><p>Di Express kamu menulis `app.listen(8080)` dan port benar-benar terbuka. `EXPOSE` di Dockerfile tidak seperti itu, ia hanya catatan niat. Yang sungguh membuka port adalah binding `-p` saat run. Binary Go tetap perlu listen ke `:8080` di kodenya.</p></Box>
+
+Untuk healthcheck, ingat bahwa distroless dan scratch tidak punya shell atau `curl`. Maka healthcheck harus berupa subperintah di binary Go itu sendiri, bukan `curl`.
+
+```go title="cmd/app/main.go (subperintah healthcheck)"
+func runHealthcheck() {
+	addr := getenv("HTTP_ADDR", ":8080")
+	url := "http://127.0.0.1" + addr + "/health"
+
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		slog.Error("healthcheck gagal", slog.Any("error", err))
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		slog.Error("healthcheck status bukan 200", slog.Int("status", resp.StatusCode))
+		os.Exit(1)
+	}
+	os.Exit(0)
+}
+```
+
+```dockerfile title="Potongan Dockerfile: HEALTHCHECK lewat binary sendiri"
+HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
+    CMD ["/app", "healthcheck"]
+```
+
+<Box variant="note" icon="🧾" label="Healthcheck sering lebih praktis di orchestrator"><p>Di Compose dan ECS, healthcheck sering didefinisikan di level orchestrator, bukan di Dockerfile, agar lebih mudah diatur per environment. Subperintah `healthcheck` di binary tetap berguna karena bisa dipanggil dari kedua tempat tanpa butuh curl.</p></Box>
+
+</Section>
+
+<Section num="08" id="env-runtime" title="Environment Variables saat Runtime" sub="Image jangan membawa secret, container menerima konfigurasi">
+
+<p class="lead">Prinsip 12-factor: config hidup di environment, bukan di kode atau image. Satu image yang sama dipromosikan dari dev ke staging ke production tanpa rebuild, yang berubah hanya env-nya.</p>
+
+Dockerfile tidak boleh berisi `DATABASE_URL`, `JWT_SECRET`, `PAYMENT_SERVER_KEY`, atau credential AWS. Nilai yang ter-bake lewat `ENV` di Dockerfile tertulis permanen di layer image dan terlihat di `docker history`. `ENV` hanya untuk nilai default non-sensitif seperti `ENV PORT=8080`.
+
+<Compare aLabel="ENV di Dockerfile" bLabel="-e / --env-file saat run" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>Ter-bake ke image, terlihat di docker history.</li><li>Hanya untuk default non-sensitif (PORT, GIN_MODE).</li><li>Jangan untuk secret apa pun.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Disuntik per container saat runtime.</li><li>File env tetap di luar image.</li><li>Cocok untuk config per-environment dan secret.</li></ul></Fragment>
+</Compare>
+
+```bash title="Terminal"
+# Override per variabel saat runtime
+docker run --rm -p 8080:8080 \
+  -e APP_ENV=local \
+  -e HTTP_ADDR=:8080 \
+  -e DATABASE_URL="postgres://postgres:postgres@host.docker.internal:5432/skincare?sslmode=disable" \
+  skincare-api serve
+```
+
+```bash title="Terminal"
+# Muat banyak variabel dari file yang diabaikan git
+docker run --rm -p 8080:8080 --env-file .env.local skincare-api serve
+```
+
+```text title=".env.local"
+APP_ENV=local
+HTTP_ADDR=:8080
+DATABASE_URL=postgres://postgres:postgres@host.docker.internal:5432/skincare?sslmode=disable
+JWT_SECRET=local-only-change-me
+PAYMENT_SERVER_KEY=local-midtrans-key
+```
+
+<Box variant="warn" icon="⚠️" label="Secret saat build pun jangan pakai ARG"><p>Kalau saat build kamu butuh token (mis. akses private repo), jangan pakai `ARG` atau `ENV` karena keduanya bocor di `docker history`. Pakai BuildKit secret: `RUN --mount=type=secret,id=...`. Saat runtime, secret datang dari secret manager atau orchestrator, bukan dari image.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari .env Laravel ke env container"><p>Di Laravel `.env` dibaca otomatis oleh framework. Di Go container, file `.env` bukan dibaca aplikasi tapi disuntik Docker lewat `--env-file`, lalu kode membaca via `os.Getenv`. Di production AWS, `.env` digantikan oleh Secrets Manager yang nilainya dipetakan ke environment task.</p></Box>
+
+</Section>
+
+<Section num="09" id="worker-image" title="Menjalankan Worker dalam Container" sub="Image yang sama, entrypoint berbeda, tanpa port HTTP">
+
+<p class="lead">Worker skincare (pengirim email, pemroses webhook payment, sinkronisasi inventory) berjalan dari image yang sama persis dengan API. Yang berbeda hanya argumen yang diberikan ke entrypoint.</p>
+
+Karena `main.go` sudah men-dispatch subperintah, kita tidak butuh Dockerfile kedua. `docker run skincare-api worker` menimpa `CMD ["serve"]` default dan menjalankan `app worker`. Worker tidak membuka port HTTP, jadi tidak perlu `-p`.
+
+```go title="cmd/app/main.go (subperintah worker)"
+func runWorker() {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	slog.Info("skincare worker started")
+	// consumer.Run memblokir sampai ctx dibatalkan (SIGTERM saat deploy).
+	if err := worker.Run(ctx); err != nil {
+		slog.Error("worker stopped", slog.Any("error", err))
+		os.Exit(1)
+	}
+	slog.Info("worker drained, exiting")
+}
+```
+
+```bash title="Terminal"
+# Container API: listen HTTP di 8080
+docker run --rm -p 8080:8080 --env-file .env.local skincare-api serve
+
+# Container worker: tanpa port, hanya konsumsi antrian
+docker run --rm --env-file .env.local skincare-api worker
+```
+
+```mermaid
+flowchart LR
+  IMG["Image skincare-api (1 binary)"] --> API["container: app serve"]
+  IMG --> WRK["container: app worker"]
+  API -->|HTTP :8080| LB["Load Balancer / ALB"]
+  WRK -->|poll| Q[("Antrian: SQS / Redis")]
+  Q -->|payment & email event| WRK
+  API --> DB[("PostgreSQL")]
+  WRK --> DB
+```
+
+<p class="fig-cap"><b>Gambar 3.</b> Satu image melahirkan dua tipe container. API melayani request HTTP, worker mengonsumsi antrian. Keduanya berbagi binary, config, dan akses database yang sama.</p>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari queue:work ke container worker"><p>Di Laravel kamu menjalankan `php artisan queue:work` sebagai proses terpisah dari web. Polanya identik di sini: container `serve` untuk request sinkron, container `worker` untuk pekerjaan asinkron. Bedanya, di Go keduanya satu binary statis, sehingga deploy worker tidak perlu image atau runtime tambahan.</p></Box>
+
+<Box variant="tip" icon="✅" label="Worker juga butuh graceful shutdown"><p>Saat ECS scale-in atau deploy, worker menerima SIGTERM. `signal.NotifyContext` membuat `consumer.Run` berhenti mengambil pesan baru dan menyelesaikan pesan yang sedang diproses, mencegah job payment terpotong di tengah.</p></Box>
+
+</Section>
+
+<Section num="10" id="hands-on" title="Hands-on: Build, Run, dan Inspeksi Image" sub="Bangun image lokal, jalankan API dan worker, lalu ukur hasilnya">
+
+<p class="lead">Sekarang kita jalankan flow minimum yang menjadi dasar pipeline CI/CD di chapter berikutnya: build, run, cek health, inspeksi ukuran, dan verifikasi non-root.</p>
+
+<Steps>
+  <Step><b>Pastikan module memakai Go 1.26</b><p>`go.mod` adalah sumber versi module Go untuk proyek skincare.</p></Step>
+  <Step><b>Build image dengan BuildKit</b><p>`docker build` membaca Dockerfile dan menghasilkan image bernama `skincare-api`.</p></Step>
+  <Step><b>Run container API</b><p>`docker run` menjalankan container, memetakan port 8080 host ke 8080 container.</p></Step>
+  <Step><b>Cek endpoint dan ukuran</b><p>`curl /health` memverifikasi proses jalan, `docker image ls` memverifikasi image kecil.</p></Step>
+</Steps>
+
+```text title="go.mod"
+module github.com/kamu/skincare-backend
+
+go 1.26
+```
+
+```bash title="Terminal"
+# BuildKit aktif default di Docker modern; bisa dipaksa via env.
+DOCKER_BUILDKIT=1 docker build -t skincare-api:dev .
+
+# Lihat ukuran image final (harapannya hanya beberapa MB).
+docker image ls skincare-api
+
+# Jalankan API.
+docker run --rm -p 8080:8080 --env-file .env.local skincare-api:dev serve
+```
+
+Di terminal lain, cek health endpoint dan endpoint domain yang nantinya ikut berjalan dalam container yang sama.
+
+```bash title="Terminal"
+curl -i http://localhost:8080/health
+```
+
+<Endpoint method="GET" path="/health" desc="Healthcheck ringan, dipakai Docker, ECS, dan ALB target group" />
+<Endpoint method="GET" path="/v1/products" desc="Katalog produk skincare dengan filter dan paginasi" />
+<Endpoint method="POST" path="/v1/checkout" desc="Ubah keranjang jadi order dalam satu transaksi" />
+
+Verifikasi bahwa container benar-benar berjalan sebagai non-root dengan menjalankan subperintah yang mencetak UID, atau dengan mengintip metadata image.
+
+```bash title="Terminal"
+# Inspeksi user default image (harus 65532 / nonroot, bukan root).
+docker inspect skincare-api:dev --format '{{.Config.User}}'
+
+# Jalankan worker dari image yang sama, tanpa port.
+docker run --rm --env-file .env.local skincare-api:dev worker
+```
+
+<Box variant="tip" icon="✅" label="Checklist sebelum push ke registry"><p>Image build dari clean checkout, server listen ke `:8080`, secret masuk via env, container jalan sebagai non-root, healthcheck hijau, dan ukuran image dalam hitungan megabita bukan ratusan megabita.</p></Box>
+
+Output `/health` yang diharapkan adalah `200 ok`. Untuk skincare, endpoint berikutnya (cart, checkout, auth, webhook payment, admin) ikut berjalan dalam container yang sama. Container tidak mengubah desain domain, ia hanya membungkus proses agar siap dikirim ke CI lalu ke AWS.
+
+</Section>
+
+<Section num="11" id="jebakan" title="Jebakan Umum dari JS/PHP ke Go Container" sub="Kebanyakan bug container Go datang dari asumsi runtime Node atau PHP">
+
+<p class="lead">Sebagian besar masalah container Go bukan berasal dari bahasa Go, tapi dari kebiasaan runtime yang terbawa dari Node, React, atau PHP.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Menjalankan dari image golang</h4><p>Image `golang:1.26` (~800 MB) cocok untuk build, bukan final. Final image tidak perlu compiler. Tanpa multi-stage, image kamu membengkak dan tidak aman.</p></Card>
+  <Card><h4>Listen ke localhost</h4><p>Di dalam container pakai `:8080`, bukan `localhost:8080`. `localhost` mengacu ke container itu sendiri, sehingga port mapping host terlihat tidak bekerja.</p></Card>
+  <Card><h4>Secret ter-bake di Dockerfile</h4><p>`ENV JWT_SECRET=...` menempel permanen di layer dan terlihat di `docker history`. Secret harus masuk saat runtime.</p></Card>
+  <Card><h4>Lupa CA certificate</h4><p>`scratch` kosong. Request HTTPS ke payment gateway, S3, atau SMTP gagal dengan `x509: certificate signed by unknown authority`.</p></Card>
+  <Card><h4>Lupa .dockerignore</h4><p>Build context membengkak, cache mudah invalid, dan `.env` atau file lokal berisiko ikut masuk image.</p></Card>
+  <Card><h4>Root user di final image</h4><p>Tanpa `USER nonroot`, container jalan sebagai root dan ditolak di banyak gate keamanan CI.</p></Card>
+  <Card><h4>Lupa graceful shutdown</h4><p>Tanpa menangani SIGTERM, deploy memutus request checkout dan job worker di tengah jalan.</p></Card>
+  <Card><h4>Shell form ENTRYPOINT</h4><p>`ENTRYPOINT /app` (shell form) membuat binary bukan PID 1, sehingga sinyal SIGTERM tidak sampai. Selalu pakai exec form `["/app"]`.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="GOARCH salah saat build dari Apple Silicon"><p>Build di Mac M-series default `arm64`. Kalau target ECS pakai `amd64`, image akan gagal jalan atau lambat lewat emulasi. Set `GOARCH=amd64` (atau build multi-arch) agar binary cocok dengan platform deploy.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari node_modules ke binary statis"><p>Di Node kamu sering debug error "module not found" di container karena `node_modules` tidak ikut atau beda arsitektur. Di Go, dependency sudah ter-compile ke dalam binary, jadi kelas masalah itu hilang. Yang tersisa hanya memastikan CA, timezone, GOARCH, dan user benar.</p></Box>
+
+</Section>
+
+<Section num="12" id="ringkasan" title="Ringkasan & Poin Penting">
+
+<p class="lead">Docker bukan tujuan akhir. Docker adalah format pengiriman API dan worker yang membuat testing, CI/CD, dan deploy AWS menjadi konsisten dan dapat diulang.</p>
+
+<Recap title="Yang Wajib Menempel">
+  <ul>
+    <li>Pakai multi-stage build: `golang:1.26` untuk build, `gcr.io/distroless/static-debian13:nonroot` untuk final.</li>
+    <li>Salin `go.mod` dan `go.sum` lebih dulu, jalankan `go mod download`, baru `COPY . .` agar cache layer efektif.</li>
+    <li>Tambah BuildKit cache mount (`/go/pkg/mod` dan `/root/.cache/go-build`) untuk rebuild cepat lintas build.</li>
+    <li>Set `CGO_ENABLED=0 GOOS=linux GOARCH=amd64` dan flag `-trimpath -ldflags="-s -w"` untuk binary statis dan kecil.</li>
+    <li>Jalankan container sebagai non-root (`USER nonroot` atau `65532:65532`), pakai exec form ENTRYPOINT agar PID 1 menerima SIGTERM.</li>
+    <li>Pastikan CA certificate dan timezone tersedia; distroless sudah bawa, scratch harus salin manual.</li>
+    <li>Masukkan konfigurasi lewat `-e` atau `--env-file` saat runtime, jangan bake secret ke image.</li>
+    <li>Satu image, dua container: `app serve` untuk API, `app worker` untuk antrian, lewat ENTRYPOINT plus CMD.</li>
+  </ul>
+</Recap>
+
+Untuk proyek skincare, image ini akan membawa API katalog, cart, checkout, auth, webhook payment, dan admin route, plus worker untuk email dan pemrosesan payment, ke pipeline deployment. Container tidak mengubah desain domain yang sudah kamu bangun di Roadmap 1 sampai 7, ia hanya membungkusnya menjadi artefak yang siap dikirim.
+
+Langkah berikutnya di Roadmap 8 (Chapter 2) adalah menggabungkan container API dan worker dengan PostgreSQL dan Redis memakai Docker Compose. Di sana kita mensimulasikan environment production kecil: service saling kenal lewat nama host, `depends_on` dengan `condition: service_healthy`, named volume untuk data Postgres, dan env yang lebih terstruktur. Setelah itu, Chapter 3 mengangkat image yang sama ini ke CI pipeline (lint, test, build, push), sebelum akhirnya di-deploy ke ECS Fargate.
+
+</Section>

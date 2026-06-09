@@ -1,0 +1,844 @@
+---
+title: "Modul S3 dan CloudFront untuk Gambar Produk - Go Artisan"
+badge: "CDN"
+topTitle: "S3 dan CloudFront untuk Gambar Produk"
+topSub: "Go untuk Developer JavaScript & PHP"
+summary: "Bangun alur upload gambar produk yang aman, ringan untuk API, dan cepat diakses lewat CDN privat."
+order: 66
+target: "Roadmap 8 · Docker, CI/CD, dan AWS Deployment"
+readingTime: "~70 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa Gambar Tidak Masuk Database" }
+  - { num: "02", id: "pembagian-data", title: "Pembagian Data: Metadata di Postgres, Byte di S3" }
+  - { num: "03", id: "arsitektur", title: "Arsitektur Upload dan Serve" }
+  - { num: "04", id: "s3-bucket", title: "S3 Bucket, Object Key, dan Block Public Access" }
+  - { num: "05", id: "presigned-url", title: "Pre-signed Upload URL dari Go API" }
+  - { num: "06", id: "metadata-commit", title: "Commit Metadata Setelah Upload" }
+  - { num: "07", id: "cloudfront-oac", title: "CloudFront dan Origin Access Control" }
+  - { num: "08", id: "iam-task-role", title: "IAM Task Role ECS yang Minimum" }
+  - { num: "09", id: "hands-on", title: "Hands-on: Integrasi ke Proyek Skincare" }
+  - { num: "10", id: "cache-invalidation", title: "Cache, Invalidation, dan Cache-Busting" }
+  - { num: "11", id: "jebakan", title: "Jebakan Umum" }
+  - { num: "12", id: "ringkasan", title: "Ringkasan & Poin Penting" }
+footerTitle: "Modul S3 dan CloudFront untuk Gambar Produk - Go Artisan"
+footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Endpoint, Def } from "@components";
+
+<Hero eyebrow="Roadmap 8 &middot; AWS Deployment" title="S3 dan CloudFront untuk<br /><em>Gambar Produk</em>">
+  <p>Pindahkan byte gambar keluar dari API dan database, lalu sajikan lewat CDN privat yang cepat dan aman.</p>
+  <Fragment slot="meta">
+    <Chip icon="code">Bahasa: <b>Go 1.26</b></Chip>
+    <Chip icon="server">AWS S3 &amp; CloudFront</Chip>
+    <Chip icon="clock">~70 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa Gambar Tidak Masuk Database" sub="Di React, upload terasa seperti mengirim File. Di backend production, keputusan utamanya adalah ke mana byte itu pergi.">
+
+<p class="lead">Database PostgreSQL hebat untuk data relasional: nama produk, harga, stok, status. Ia buruk untuk menyimpan byte gambar.</p>
+
+Di katalog skincare, satu foto produk `.webp` bisa 200 KB sampai beberapa MB, jauh lebih besar daripada baris metadata produknya. Kalau kamu menyimpan blob biner di Postgres, setiap backup membengkak, setiap `SELECT *` berisiko menyeret byte gambar, dan replikasi jadi berat. Object storage seperti [Amazon S3](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html) dirancang khusus untuk file besar, dan CDN seperti [Amazon CloudFront](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html) dirancang untuk menyajikannya cepat ke seluruh dunia.
+
+<Def term="object storage"><p>Penyimpanan yang menampung file sebagai object di dalam bucket, masing-masing punya key unik (mis. `products/uuid/main.webp`), metadata, dan permission terpisah dari database aplikasi.</p></Def>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari Storage::put() Laravel ke upload langsung"><p>Di Laravel kamu mungkin memanggil `Storage::put()` dari controller, jadi file fisik melewati PHP. Di desain ini controller Go tidak menyentuh byte gambar sama sekali, ia hanya menerbitkan izin sementara agar browser upload langsung ke S3.</p></Box>
+
+<Compare aLabel="JS / Laravel: upload lewat server" bLabel="Go production: upload langsung ke S3" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>Frontend kirim file ke API, API baca file ke memori, lalu API simpan file.</li><li>Sederhana, tetapi API jadi bottleneck bandwidth dan boros memori saat file besar.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>API hanya menerbitkan pre-signed URL, browser PUT file langsung ke S3.</li><li>API tetap memegang otorisasi dan metadata, tetapi tidak pernah buffer byte gambar.</li></ul></Fragment>
+</Compare>
+
+Pembagian tanggung jawab inilah inti modul: Go API mengatur siapa boleh upload, product ID mana yang valid, dan object key apa yang sah. S3 menyimpan byte. CloudFront menyajikan dengan latency rendah. Tiap pihak melakukan satu hal yang ia paling jago.
+
+</Section>
+
+<Section num="02" id="pembagian-data" title="Pembagian Data: Metadata di Postgres, Byte di S3" sub="Postgres menyimpan referensi, S3 menyimpan isi. Keduanya saling rujuk lewat object key.">
+
+<p class="lead">Aturan tunggal yang menyederhanakan semua keputusan berikutnya: metadata di PostgreSQL, file fisik di S3, jangan pernah blob biner di Postgres.</p>
+
+Tabel `product_images` cukup menyimpan kolom kecil yang murah di-query: `id`, `product_id`, `s3_key`, `content_type`, `size_bytes`, `cdn_url`, dan `created_at`. Byte aslinya hidup di S3 di bawah key yang sama dengan `s3_key`. Frontend tidak perlu tahu nama bucket atau region, ia hanya menerima `cdn_url` dan me-render-nya.
+
+```mermaid
+erDiagram
+  PRODUCTS ||--o{ PRODUCT_IMAGES : "punya"
+  PRODUCTS {
+    uuid id PK
+    text name
+    bigint price_rupiah
+  }
+  PRODUCT_IMAGES {
+    bigserial id PK
+    uuid product_id FK
+    text s3_key
+    text content_type
+    bigint size_bytes
+    text cdn_url
+    timestamptz created_at
+  }
+```
+
+<p class="fig-cap"><b>Gambar 1.</b> Satu produk punya banyak gambar. Baris hanya memegang referensi (s3_key, cdn_url), bukan byte.</p>
+
+<Box variant="note" icon="📝" label="Kenapa simpan size_bytes dan content_type"><p>Keduanya berguna untuk audit, validasi pasca-upload, dan menyetel header `Content-Type` yang benar saat CloudFront menyajikan gambar. Mengisinya dari hasil `HeadObject` membuat metadata kamu tepercaya, bukan menebak.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: kolom path di Laravel vs s3_key"><p>Di Laravel kamu mungkin menyimpan kolom `image_path` relatif ke disk. Di sini `s3_key` adalah konsep yang sama, tetapi ia menunjuk ke object di S3, dan `cdn_url` adalah URL publik final yang dirender frontend. Pisahkan keduanya: `s3_key` untuk operasi backend, `cdn_url` untuk konsumsi frontend.</p></Box>
+
+</Section>
+
+<Section num="03" id="arsitektur" title="Arsitektur Upload dan Serve" sub="Ada dua alur berbeda: admin upload gambar, customer membaca gambar. Keduanya tidak melewati jalur yang sama.">
+
+<p class="lead">Pisahkan dua alur sejak awal. Alur tulis (upload) butuh otorisasi admin dan pre-signed URL. Alur baca (serve) cukup CDN publik di depan bucket privat.</p>
+
+```mermaid
+sequenceDiagram
+  participant Admin as Admin Frontend
+  participant API as Go API (ECS)
+  participant S3 as S3 (private)
+  participant DB as PostgreSQL
+  participant CF as CloudFront
+  participant User as Customer Browser
+
+  Admin->>API: POST /v1/admin/products/:id/images/upload-url
+  API->>API: Validasi admin, productID, filename, content type
+  API-->>Admin: pre-signed PUT URL + s3_key + cdn_url
+  Admin->>S3: PUT byte gambar langsung ke S3
+  Admin->>API: POST /v1/admin/products/:id/images (commit metadata)
+  API->>S3: HeadObject (konfirmasi object ada)
+  API->>DB: INSERT product_images (s3_key, cdn_url, size, type)
+  User->>CF: GET https://cdn.../products/:id/main.webp
+  CF->>S3: Fetch via OAC bila cache miss
+  CF-->>User: Image dari edge cache
+```
+
+<p class="fig-cap"><b>Gambar 2.</b> API hanya mengatur izin dan metadata. Byte bergerak browser ke S3 (upload) dan S3 ke edge ke browser (serve), tidak pernah lewat API.</p>
+
+<CardGrid cols={3}>
+  <Card><h4>API tetap kecil</h4><p>Request upload besar tidak melewati container API, jadi CPU dan memori ECS stabil walau banyak gambar diunggah.</p></Card>
+  <Card><h4>Bucket tetap privat</h4><p>Object S3 tidak pernah dibuka publik. Customer membaca gambar hanya lewat CloudFront.</p></Card>
+  <Card><h4>URL stabil</h4><p>Database menyimpan `cdn_url`, bukan URL S3 internal atau pre-signed URL yang berumur pendek.</p></Card>
+</CardGrid>
+
+<Endpoint method="POST" path="/v1/admin/products/:productID/images/upload-url" desc="Terbitkan pre-signed upload URL untuk admin" />
+<Endpoint method="POST" path="/v1/admin/products/:productID/images" desc="Commit metadata gambar setelah upload sukses" />
+<Endpoint method="GET" path="/v1/products" desc="Customer menerima cdn_url dari CDN di response produk" />
+
+<Box variant="warn" icon="⚠️" label="Dua endpoint, bukan satu"><p>Godaan umum adalah membuat satu endpoint yang menerima file lalu mengurus semuanya. Itu mengembalikan API ke posisi bottleneck. Pertahankan dua langkah: terbitkan izin, lalu catat metadata setelah upload selesai.</p></Box>
+
+</Section>
+
+<Section num="04" id="s3-bucket" title="S3 Bucket, Object Key, dan Block Public Access" sub="Bucket adalah container, object key adalah path. Bucket baru default privat, dan biarkan begitu.">
+
+<p class="lead">S3 punya namespace datar. Yang kamu sebut folder sebenarnya hanyalah prefix di dalam object key.</p>
+
+Bucket adalah container dengan nama unik global. Object key adalah identifier object di dalam bucket, misalnya `products/2f2c7b2a/main.webp`. Tidak ada folder fisik, prefix `products/` hanya konvensi penamaan yang membuat key mudah diberi IAM policy dan mudah dianalisis. Untuk proyek skincare, pakai pola `products/<product-id>/<filename>`.
+
+```text title="Konvensi object key"
+products/2f2c7b2a/main.webp
+products/2f2c7b2a/gallery-01.webp
+products/2f2c7b2a/gallery-02.webp
+```
+
+<Def term="Block Public Access"><p>Setelan bucket yang memblokir akses publik. Untuk bucket baru, AWS mengaktifkannya secara default dan menyetel Object Ownership ke Bucket owner enforced (ACL nonaktif). Bucket bersifat privat sejak lahir.</p></Def>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: public/ di Laravel vs bucket privat S3"><p>Di Laravel folder `public/` memang dibuat untuk diakses langsung. Di S3 production, kebalikannya: bucket gambar tetap privat, dan akses publik hanya datang lewat CloudFront. Jangan membuka bucket publik hanya supaya gambar tampil di website.</p></Box>
+
+<CardGrid cols={2}>
+  <Card><h4>Bucket privat</h4><p>Block Public Access tetap ON. Mencegah akses langsung ke origin dan menjaga seluruh kontrol akses di CloudFront.</p></Card>
+  <Card><h4>Prefix products/</h4><p>Memudahkan IAM policy yang dibatasi ke satu prefix dan analisis lewat S3 Inventory.</p></Card>
+  <Card><h4>Filename disanitasi</h4><p>Mencegah path traversal, karakter aneh, dan object key yang sulit di-cache CDN.</p></Card>
+  <Card><h4>Ekstensi whitelist</h4><p>Membatasi upload ke format gambar yang memang didukung frontend (jpg, png, webp).</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Jangan percaya filename dari browser"><p>Nama seperti `../../secret.png` harus berubah jadi nama aman atau ditolak. Object key adalah bagian dari boundary keamanan, bukan sekadar label tampilan.</p></Box>
+
+</Section>
+
+<Section num="05" id="presigned-url" title="Pre-signed Upload URL dari Go API" sub="URL sementara bertanda tangan IAM milik API, berisi izin terbatas untuk satu operasi ke satu key.">
+
+<p class="lead">Pre-signed URL bukan permission permanen. Ia URL berumur pendek yang ditandatangani credential API, mengizinkan satu PUT ke satu object key, lalu kedaluwarsa.</p>
+
+API membuat URL untuk `PutObject` ke key tertentu dengan masa berlaku pendek (misalnya 5 menit). Browser lalu melakukan `PUT` langsung ke URL itu, dengan header `Content-Type` yang sama persis seperti saat URL dibuat. Tanpa kredensial AWS apa pun di sisi klien.
+
+<Box variant="note" icon="📝" label="SDK aws-sdk-go-v2"><p>Client biasa dibuat dengan `s3.NewFromConfig(cfg)`. Untuk presign, bungkus dengan `s3.NewPresignClient(client)`, lalu panggil `PresignPutObject`. Hasilnya `*v4.PresignedHTTPRequest` dengan field `URL`, `Method`, dan `SignedHeader`.</p></Box>
+
+```go title="internal/productimage/signer.go"
+package productimage
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"mime"
+	"path"
+	"strings"
+	"time"
+	"unicode"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+)
+
+var ErrInvalidImage = errors.New("invalid product image")
+
+type Signer struct {
+	bucket     string
+	cdnBaseURL string
+	presigner  *s3.PresignClient
+}
+
+func NewSigner(cfg aws.Config, bucket, cdnBaseURL string) *Signer {
+	client := s3.NewFromConfig(cfg)
+
+	return &Signer{
+		bucket:     bucket,
+		cdnBaseURL: strings.TrimRight(cdnBaseURL, "/"),
+		presigner:  s3.NewPresignClient(client),
+	}
+}
+
+type CreateUploadURLInput struct {
+	ProductID   string
+	Filename    string
+	ContentType string
+}
+
+type UploadURL struct {
+	Method      string            `json:"method"`
+	UploadURL   string            `json:"upload_url"`
+	Headers     map[string]string `json:"headers"`
+	S3Key       string            `json:"s3_key"`
+	CDNURL      string            `json:"cdn_url"`
+	ContentType string            `json:"content_type"`
+	ExpiresIn   int               `json:"expires_in"`
+}
+
+func (s *Signer) CreateUploadURL(ctx context.Context, in CreateUploadURLInput) (UploadURL, error) {
+	productID, err := safeSegment(in.ProductID)
+	if err != nil {
+		return UploadURL{}, err
+	}
+
+	filename, err := safeFilename(in.Filename)
+	if err != nil {
+		return UploadURL{}, err
+	}
+
+	if !allowedImageContentType(in.ContentType) {
+		return UploadURL{}, ErrInvalidImage
+	}
+
+	s3Key := fmt.Sprintf("products/%s/%s", productID, filename)
+	expires := 5 * time.Minute
+
+	request, err := s.presigner.PresignPutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(s.bucket),
+		Key:         aws.String(s3Key),
+		ContentType: aws.String(in.ContentType),
+	}, s3.WithPresignExpires(expires))
+	if err != nil {
+		return UploadURL{}, fmt.Errorf("presign put object: %w", err)
+	}
+
+	return UploadURL{
+		Method:      request.Method,
+		UploadURL:   request.URL,
+		Headers:     map[string]string{"Content-Type": in.ContentType},
+		S3Key:       s3Key,
+		CDNURL:      s.cdnBaseURL + "/" + s3Key,
+		ContentType: in.ContentType,
+		ExpiresIn:   int(expires.Seconds()),
+	}, nil
+}
+
+func safeSegment(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" || strings.ContainsAny(value, `/\`) {
+		return "", ErrInvalidImage
+	}
+	return value, nil
+}
+
+func safeFilename(filename string) (string, error) {
+	filename = strings.ReplaceAll(filename, `\`, "/")
+	base := path.Base(filename)
+	if base == "." || base == "/" || base == "" {
+		return "", ErrInvalidImage
+	}
+
+	ext := strings.ToLower(path.Ext(base))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
+		return "", ErrInvalidImage
+	}
+
+	stem := strings.TrimSuffix(base, path.Ext(base))
+	var b strings.Builder
+	for _, r := range stem {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			b.WriteRune(unicode.ToLower(r))
+		case r == '-' || r == '_':
+			b.WriteRune(r)
+		case unicode.IsSpace(r):
+			b.WriteByte('-')
+		}
+	}
+
+	if b.Len() == 0 {
+		return "", ErrInvalidImage
+	}
+
+	return b.String() + ext, nil
+}
+
+func allowedImageContentType(contentType string) bool {
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return false
+	}
+
+	switch mediaType {
+	case "image/jpeg", "image/png", "image/webp":
+		return true
+	default:
+		return false
+	}
+}
+```
+
+Kode ini menjaga tiga boundary. Pertama, `productID` tidak boleh menjadi path bebas (`safeSegment` menolak garis miring). Kedua, filename dibersihkan agar object key konsisten dan tidak bisa keluar dari prefix. Ketiga, content type dibatasi agar endpoint ini tidak berubah jadi pintu upload file arbitrer.
+
+<Box variant="warn" icon="⚠️" label="Content-Type harus konsisten saat PUT"><p>Header `Content-Type` saat browser melakukan PUT wajib sama persis dengan yang ikut ditandatangani saat presign. Beda sedikit dan S3 menolak dengan `SignatureDoesNotMatch`. Kirim balik `headers` ke frontend dan pakai apa adanya.</p></Box>
+
+```go title="internal/productimage/handler.go"
+package productimage
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+)
+
+type PresignHandler struct {
+	signer *Signer
+}
+
+func NewPresignHandler(signer *Signer) *PresignHandler {
+	return &PresignHandler{signer: signer}
+}
+
+func (h *PresignHandler) Create(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Filename    string `json:"filename"`
+		ContentType string `json:"content_type"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json body", http.StatusBadRequest)
+		return
+	}
+
+	productID := chi.URLParam(r, "productID")
+	result, err := h.signer.CreateUploadURL(r.Context(), CreateUploadURLInput{
+		ProductID:   productID,
+		Filename:    req.Filename,
+		ContentType: req.ContentType,
+	})
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, ErrInvalidImage) {
+			status = http.StatusBadRequest
+		}
+		http.Error(w, http.StatusText(status), status)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(result)
+}
+
+type CommitHandler struct {
+	committer *Committer
+}
+
+func NewCommitHandler(committer *Committer) *CommitHandler {
+	return &CommitHandler{committer: committer}
+}
+
+func (h *CommitHandler) Create(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		S3Key     string `json:"s3_key"`
+		AltText   string `json:"alt_text"`
+		SortOrder int    `json:"sort_order"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json body", http.StatusBadRequest)
+		return
+	}
+
+	productID := chi.URLParam(r, "productID")
+	img, err := h.committer.Commit(r.Context(), productID, req.S3Key, req.AltText, req.SortOrder)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, ErrInvalidImage) {
+			status = http.StatusBadRequest
+		}
+		http.Error(w, http.StatusText(status), status)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(img)
+}
+```
+
+```bash title="Terminal"
+curl -X POST http://localhost:8080/v1/admin/products/2f2c7b2a/images/upload-url \
+  -H 'Authorization: Bearer ADMIN_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{"filename":"Wardah Brightening Toner.webp","content_type":"image/webp"}'
+```
+
+```bash title="Terminal"
+curl -X PUT 'https://bucket.s3.ap-southeast-1.amazonaws.com/products/2f2c7b2a/wardah-brightening-toner.webp?X-Amz-Signature=...' \
+  -H 'Content-Type: image/webp' \
+  --data-binary '@wardah-brightening-toner.webp'
+```
+
+<Box variant="tip" icon="💡" label="Kenapa API tidak menerima file"><p>Tugas API adalah otorisasi dan metadata, bukan transfer byte. S3 memang dibuat untuk menerima object besar dengan throughput tinggi. Biarkan ia melakukan bagiannya.</p></Box>
+
+</Section>
+
+<Section num="06" id="metadata-commit" title="Commit Metadata Setelah Upload" sub="Upload sukses ke S3 tidak otomatis tercatat di database. Langkah kedua menutup loop ini.">
+
+<p class="lead">Setelah browser selesai PUT ke S3, ada satu langkah lagi: frontend memanggil API untuk mencatat metadata. Di sinilah baris `product_images` lahir.</p>
+
+API tidak boleh percaya begitu saja bahwa upload benar terjadi. Sebelum menulis baris, panggil `HeadObject` untuk memastikan object benar ada di key yang diklaim, sekaligus mengambil `ContentLength` dan `ContentType` yang sebenarnya. Ini mengubah metadata dari "kata frontend" menjadi "fakta dari S3".
+
+```mermaid
+flowchart LR
+  A["Frontend selesai PUT ke S3"] --> B["POST /images (s3_key)"]
+  B --> C["API HeadObject(s3_key)"]
+  C -->|object ada| D["INSERT product_images"]
+  C -->|NotFound| E["400 upload belum selesai"]
+  D --> F["201 + cdn_url"]
+```
+
+<p class="fig-cap"><b>Gambar 3.</b> HeadObject sebagai gerbang verifikasi sebelum metadata di-commit ke Postgres.</p>
+
+```go title="internal/productimage/commit.go"
+package productimage
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+)
+
+type Committer struct {
+	bucket     string
+	cdnBaseURL string
+	s3Client   *s3.Client
+	repo       *Repository
+}
+
+func NewCommitter(cfg aws.Config, bucket, cdnBaseURL string, repo *Repository) *Committer {
+	return &Committer{
+		bucket:     bucket,
+		cdnBaseURL: strings.TrimRight(cdnBaseURL, "/"),
+		s3Client:   s3.NewFromConfig(cfg),
+		repo:       repo,
+	}
+}
+
+func (c *Committer) Commit(ctx context.Context, productID, s3Key, altText string, sortOrder int) (Image, error) {
+	head, err := c.s3Client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(c.bucket),
+		Key:    aws.String(s3Key),
+	})
+	if err != nil {
+		var notFound *types.NotFound
+		if errors.As(err, &notFound) {
+			return Image{}, ErrInvalidImage
+		}
+		return Image{}, fmt.Errorf("head object: %w", err)
+	}
+
+	img := Image{
+		ProductID:   productID,
+		S3Key:       s3Key,
+		CDNURL:      c.cdnBaseURL + "/" + s3Key,
+		ContentType: aws.ToString(head.ContentType),
+		SizeBytes:   aws.ToInt64(head.ContentLength),
+		AltText:     altText,
+		SortOrder:   sortOrder,
+	}
+
+	if err := c.repo.Insert(ctx, &img); err != nil {
+		return Image{}, fmt.Errorf("insert product image: %w", err)
+	}
+
+	return img, nil
+}
+```
+
+<Box variant="warn" icon="⚠️" label="Tanpa HeadObject, metadata bisa berbohong"><p>Frontend yang nakal atau bug bisa memanggil commit tanpa benar-benar upload. Tanpa verifikasi, kamu menyimpan baris yang menunjuk ke object yang tidak ada, dan customer melihat gambar rusak. `HeadObject` menutup celah ini dengan murah.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari validasi request Laravel ke verifikasi sumber"><p>Di Laravel kamu memvalidasi input request dengan FormRequest. Di sini validasi tidak cukup di level request, karena sumber kebenaran ada di S3. Pola "verify against the source" ini khas integrasi cloud: jangan percaya klaim, tanyakan ke sistem yang memegang fakta.</p></Box>
+
+</Section>
+
+<Section num="07" id="cloudfront-oac" title="CloudFront dan Origin Access Control" sub="CloudFront jadi domain publik untuk gambar. OAC membuat bucket tetap privat sambil tetap bisa dibaca CDN.">
+
+<p class="lead">S3 menyimpan object. CloudFront membuatnya cepat dari edge location yang dekat dengan customer, tanpa pernah membuka bucket ke publik.</p>
+
+CloudFront distribution menjadi origin tunggal yang menghadap viewer, misalnya `https://cdn.tokoskincare.com/products/2f2c7b2a/main.webp`. Origin-nya adalah bucket S3 privat. Yang menjembatani keduanya secara aman adalah Origin Access Control.
+
+<Def term="Origin Access Control"><p>OAC adalah mekanisme CloudFront untuk mengakses origin S3 dengan menandatangani request (SigV4) atas namanya. OAC menggantikan OAI legacy dan mendukung semua region serta SSE-KMS. Dengan OAC, viewer hanya bisa membaca object lewat distribution yang kamu tentukan.</p></Def>
+
+```mermaid
+flowchart LR
+  User["Customer Browser"] -->|HTTPS GET cdn_url| CF["CloudFront Distribution"]
+  CF -->|cache hit| User
+  CF -->|cache miss, OAC SigV4| S3[("S3 bucket privat")]
+  S3 -->|s3:GetObject via bucket policy| CF
+  Direct["Akses langsung ke URL S3"] -.->|403 AccessDenied| S3
+```
+
+<p class="fig-cap"><b>Gambar 4.</b> Hanya CloudFront yang bisa membaca bucket. Akses langsung ke URL S3 ditolak karena Block Public Access tetap ON.</p>
+
+Bucket policy memberi izin baca ke service principal `cloudfront.amazonaws.com`, dibatasi `Condition` `AWS:SourceArn` ke ARN distribution tertentu. Dengan begitu, bukan hanya CloudFront secara umum yang boleh, tetapi distribution kamu yang spesifik.
+
+```json title="infra/s3/cloudfront-oac-bucket-policy.json"
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowCloudFrontServicePrincipalReadOnly",
+      "Effect": "Allow",
+      "Principal": { "Service": "cloudfront.amazonaws.com" },
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::skincare-product-images-prod/products/*",
+      "Condition": {
+        "StringEquals": {
+          "AWS:SourceArn": "arn:aws:cloudfront::123456789012:distribution/E123EXAMPLE"
+        }
+      }
+    }
+  ]
+}
+```
+
+<Steps>
+  <Step><b>Buat bucket privat</b><p>Aktifkan Block Public Access dan biarkan Object Ownership di Bucket owner enforced.</p></Step>
+  <Step><b>Buat distribution</b><p>Pakai bucket S3 sebagai origin, buat OAC, dan pilih Sign requests (always) agar CloudFront ke S3 selalu HTTPS plus SigV4.</p></Step>
+  <Step><b>Pasang bucket policy</b><p>Beri izin `s3:GetObject` ke service principal CloudFront, dibatasi SourceArn ke distribution kamu.</p></Step>
+  <Step><b>Pasang HTTPS dan domain</b><p>Set viewer protocol policy ke Redirect HTTP to HTTPS. Untuk domain kustom `cdn.tokoskincare.com`, siapkan sertifikat ACM di region us-east-1.</p></Step>
+  <Step><b>Simpan cdn_url</b><p>API menyimpan `https://<domain>/<s3_key>` di database, bukan URL S3 maupun pre-signed URL.</p></Step>
+</Steps>
+
+<Box variant="warn" icon="⚠️" label="Sertifikat ACM untuk CloudFront wajib us-east-1"><p>Custom domain CloudFront hanya menerima sertifikat ACM dari region us-east-1, berapa pun region bucket kamu. Membuat sertifikat di region lain akan membuatnya tidak muncul saat memilih alternate domain name.</p></Box>
+
+</Section>
+
+<Section num="08" id="iam-task-role" title="IAM Task Role ECS yang Minimum" sub="Container API memakai task role untuk memanggil AWS API, bukan access key di environment variable.">
+
+<p class="lead">Di local kamu mungkin pakai profil AWS. Di ECS production, jangan inject access key statis. Beri task role dengan izin sekecil mungkin.</p>
+
+ECS punya dua role yang sering tertukar. Task execution role dipakai agent ECS untuk menarik image dan mengirim log ke CloudWatch. Task role dipakai aplikasi Go di dalam container untuk akses layanan AWS seperti S3. Presign dan HeadObject memakai task role.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari AWS_ACCESS_KEY di .env ke IAM role"><p>Di Laravel kamu mungkin menaruh `AWS_ACCESS_KEY_ID` di `.env`. Di ECS, hapus kebiasaan itu. `config.LoadDefaultConfig` otomatis mengambil credential sementara dari task role lewat metadata endpoint, tanpa secret statis yang bisa bocor di git.</p></Box>
+
+```json title="infra/iam/product-images-task-role-policy.json"
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowProductImageObjectAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject"
+      ],
+      "Resource": "arn:aws:s3:::skincare-product-images-prod/products/*"
+    }
+  ]
+}
+```
+
+Policy ini sengaja tidak memberi `s3:DeleteObject`, `s3:ListBucket`, atau akses ke bucket lain. Penghapusan gambar lebih baik jadi operasi admin terpisah dengan policy lebih ketat dan audit log, sehingga credential API yang bocor tidak bisa menghapus seluruh katalog.
+
+<Box variant="warn" icon="⚠️" label="Jangan campur task role dan execution role"><p>Kalau aplikasi Go gagal presign atau HeadObject dengan `AccessDenied`, cek task role. Kalau ECS gagal pull image atau kirim log, cek task execution role. Dua kegagalan ini berbeda akar dan berbeda tempat memperbaikinya.</p></Box>
+
+<Box variant="note" icon="📝" label="HeadObject butuh GetObject"><p>`HeadObject` di SDK menggunakan izin `s3:GetObject`, bukan izin terpisah. Policy minimal `PutObject` plus `GetObject` di atas sudah cukup untuk presign upload sekaligus verifikasi commit.</p></Box>
+
+</Section>
+
+<Section num="09" id="hands-on" title="Hands-on: Integrasi ke Proyek Skincare" sub="Letakkan modul gambar sebagai package kecil di sekitar domain product, bukan util global tanpa batas.">
+
+<p class="lead">Sekarang kita rakit semuanya: migration, repository, signer, committer, dan wiring route admin di belakang JWT.</p>
+
+<FileTree title="Struktur file yang ditambahkan" tree={`
+cmd/
+  api/
+    main.go                         # wiring route dan dependency AWS SDK
+internal/
+  productimage/
+    signer.go                       # presign PutObject URL
+    commit.go                       # HeadObject lalu simpan metadata
+    handler.go                      # endpoint admin presign + commit
+    repository.go                   # akses tabel product_images
+    model.go                        # struct Image
+  product/
+    handler.go                      # response product membawa cdn_url
+db/
+  migrations/
+    000021_create_product_images.sql
+infra/
+  iam/
+    product-images-task-role-policy.json
+  s3/
+    cloudfront-oac-bucket-policy.json
+`} />
+
+```sql title="db/migrations/000021_create_product_images.sql"
+CREATE TABLE product_images (
+    id           BIGSERIAL PRIMARY KEY,
+    product_id   UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    s3_key       TEXT NOT NULL,
+    content_type TEXT NOT NULL,
+    size_bytes   BIGINT NOT NULL,
+    cdn_url      TEXT NOT NULL,
+    alt_text     TEXT NOT NULL DEFAULT '',
+    sort_order   INT NOT NULL DEFAULT 0,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (product_id, s3_key)
+);
+
+CREATE INDEX idx_product_images_product_sort
+ON product_images (product_id, sort_order, id);
+```
+
+```go title="internal/productimage/model.go"
+package productimage
+
+type Image struct {
+	ID          int64  `json:"id"`
+	ProductID   string `json:"product_id"`
+	S3Key       string `json:"s3_key"`
+	ContentType string `json:"content_type"`
+	SizeBytes   int64  `json:"size_bytes"`
+	CDNURL      string `json:"cdn_url"`
+	AltText     string `json:"alt_text"`
+	SortOrder   int    `json:"sort_order"`
+}
+```
+
+```go title="internal/productimage/repository.go"
+package productimage
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type Repository struct {
+	db *pgxpool.Pool
+}
+
+func NewRepository(db *pgxpool.Pool) *Repository {
+	return &Repository{db: db}
+}
+
+func (r *Repository) Insert(ctx context.Context, img *Image) error {
+	const query = `
+INSERT INTO product_images
+  (product_id, s3_key, content_type, size_bytes, cdn_url, alt_text, sort_order)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id
+`
+
+	err := r.db.QueryRow(ctx, query,
+		img.ProductID, img.S3Key, img.ContentType, img.SizeBytes,
+		img.CDNURL, img.AltText, img.SortOrder,
+	).Scan(&img.ID)
+	if err != nil {
+		return fmt.Errorf("insert product image: %w", err)
+	}
+
+	return nil
+}
+
+func (r *Repository) ListByProduct(ctx context.Context, productID string) ([]Image, error) {
+	const query = `
+SELECT id, product_id, s3_key, content_type, size_bytes, cdn_url, alt_text, sort_order
+FROM product_images
+WHERE product_id = $1
+ORDER BY sort_order, id
+`
+
+	rows, err := r.db.Query(ctx, query, productID)
+	if err != nil {
+		return nil, fmt.Errorf("list product images: %w", err)
+	}
+	defer rows.Close()
+
+	var images []Image
+	for rows.Next() {
+		var img Image
+		if err := rows.Scan(
+			&img.ID, &img.ProductID, &img.S3Key, &img.ContentType,
+			&img.SizeBytes, &img.CDNURL, &img.AltText, &img.SortOrder,
+		); err != nil {
+			return nil, fmt.Errorf("scan product image: %w", err)
+		}
+		images = append(images, img)
+	}
+
+	return images, rows.Err()
+}
+```
+
+```go title="cmd/api/main.go"
+package main
+
+import (
+	"context"
+	"log"
+	"net/http"
+	"os"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/kamu/skincare-backend/internal/productimage"
+)
+
+func main() {
+	ctx := context.Background()
+
+	awsConfig, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		log.Fatalf("load aws config: %v", err)
+	}
+
+	bucket := os.Getenv("PRODUCT_IMAGE_BUCKET")
+	cdnBaseURL := os.Getenv("PRODUCT_IMAGE_CDN_BASE_URL")
+	if bucket == "" || cdnBaseURL == "" {
+		log.Fatal("PRODUCT_IMAGE_BUCKET and PRODUCT_IMAGE_CDN_BASE_URL are required")
+	}
+
+	pool, err := pgxpool.New(ctx, os.Getenv("DB_URL"))
+	if err != nil {
+		log.Fatalf("connect db: %v", err)
+	}
+	defer pool.Close()
+
+	repo := productimage.NewRepository(pool)
+	signer := productimage.NewSigner(awsConfig, bucket, cdnBaseURL)
+	committer := productimage.NewCommitter(awsConfig, bucket, cdnBaseURL, repo)
+	imgHandler := productimage.NewPresignHandler(signer)
+	commitHandler := productimage.NewCommitHandler(committer)
+
+	r := chi.NewRouter()
+	r.Route("/v1/admin", func(r chi.Router) {
+		// r.Use(authAdmin) // JWT + role admin sebelum endpoint gambar.
+		r.Post("/products/{productID}/images/upload-url", imgHandler.Create)
+		r.Post("/products/{productID}/images", commitHandler.Create)
+	})
+
+	log.Println("api listening on :8080")
+	if err := http.ListenAndServe(":8080", r); err != nil {
+		log.Fatal(err)
+	}
+}
+```
+
+```bash title="Terminal"
+export PRODUCT_IMAGE_BUCKET=skincare-product-images-dev
+export PRODUCT_IMAGE_CDN_BASE_URL=https://d111111abcdef8.cloudfront.net
+export AWS_REGION=ap-southeast-1
+export DB_URL='postgres://app:secret@localhost:5432/skincare?sslmode=disable'
+
+go run ./cmd/api
+```
+
+<Steps>
+  <Step><b>Buat bucket privat</b><p>Nama unik global, mis. `skincare-product-images-dev-<accountid>`. Block Public Access ON.</p></Step>
+  <Step><b>Deploy CloudFront</b><p>Pasang bucket privat sebagai origin, buat OAC, dan terapkan bucket policy SourceArn.</p></Step>
+  <Step><b>Pasang IAM policy</b><p>Attach policy S3 minimal ke ECS task role API, bukan ke user pribadi atau access key statis.</p></Step>
+  <Step><b>Lindungi route admin</b><p>Endpoint presign dan commit harus di belakang middleware JWT dengan role admin.</p></Step>
+  <Step><b>Jalankan alur penuh</b><p>Presign, PUT ke S3, commit metadata, lalu cek `cdn_url` benar tampil lewat CloudFront.</p></Step>
+</Steps>
+
+<Box variant="analogy" icon="🧴" label="Analogi toko skincare"><p>API seperti kasir yang memberi nomor loker upload dan mencatat barang masuk. S3 adalah gudang file. CloudFront adalah etalase cepat yang dilihat customer di depan toko.</p></Box>
+
+</Section>
+
+<Section num="10" id="cache-invalidation" title="Cache, Invalidation, dan Cache-Busting" sub="Gambar produk sangat cacheable. Masalahnya muncul saat gambar di key yang sama berubah.">
+
+<p class="lead">CloudFront menyimpan salinan di edge sesuai TTL. Itu bagus untuk gambar yang jarang berubah, tetapi menjebak saat admin mengganti foto produk di key yang sama.</p>
+
+Gambar produk punya cacheability tinggi, jadi set TTL panjang. Saat admin mengganti `main.webp` dengan foto baru di key yang sama, edge cache masih menyajikan foto lama sampai TTL habis. Ada dua cara menanganinya, dan keduanya punya tempat berbeda.
+
+<Compare aLabel="Invalidation" bLabel="Cache-busting (key baru)" aTone="red" bTone="violet">
+  <Fragment slot="a"><ul><li>Buat invalidation `/products/123/*` untuk menghapus salinan edge.</li><li>Berguna sesekali, tetapi ada kuota gratis terbatas dan biaya bila sering.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Upload ke key baru, mis. `main-v2.webp`, lalu update `cdn_url` di DB.</li><li>URL lama tetap valid, URL baru langsung fresh tanpa menyentuh cache lama.</li></ul></Fragment>
+</Compare>
+
+<Box variant="tip" icon="💡" label="Default ke cache-busting"><p>Untuk file yang berubah, lebih murah dan lebih aman memakai key baru daripada invalidasi terus-menerus. Simpan versi di nama key atau tambahkan hash konten, lalu cukup ubah `cdn_url` di baris metadata.</p></Box>
+
+```text title="Pola cache-busting per versi"
+products/2f2c7b2a/main-1718000000.webp   # versi awal
+products/2f2c7b2a/main-1718600000.webp   # foto diganti, key baru, cdn_url baru
+```
+
+<Box variant="note" icon="📝" label="Resizing dan thumbnail"><p>Untuk beberapa ukuran (thumbnail, detail), mulai dari proses async yang membuat varian saat upload, masing-masing di key sendiri. Untuk kebutuhan lanjut pertimbangkan CloudFront Functions atau Lambda@Edge, tetapi jangan tambahkan kompleksitas ini sebelum bisnis benar-benar memintanya.</p></Box>
+
+</Section>
+
+<Section num="11" id="jebakan" title="Jebakan Umum" sub="Sebagian besar bug upload gambar bukan dari AWS yang rumit, tetapi dari boundary yang terlalu longgar.">
+
+<p class="lead">Pola yang sama berulang di tim yang baru pindah ke object storage. Kenali enam jebakan ini sebelum mereka menggigit di production.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Menyimpan file di database</h4><p>Postgres membengkak, backup makin berat, dan query katalog tanpa sengaja menyeret byte gambar.</p></Card>
+  <Card><h4>Bucket publik tanpa CDN</h4><p>Cepat untuk demo, buruk untuk production karena akses origin sulit dikontrol dan performa global tidak stabil.</p></Card>
+  <Card><h4>Menyimpan pre-signed URL</h4><p>URL ini berumur pendek dan berisi signature, jadi jangan pernah disimpan sebagai `cdn_url`.</p></Card>
+  <Card><h4>Content-Type tidak konsisten</h4><p>Header saat PUT harus sama persis dengan yang ditandatangani saat presign, atau S3 menolak.</p></Card>
+  <Card><h4>Filename mentah dari user</h4><p>Nama file bisa membawa path, spasi aneh, unicode tak terduga, atau ekstensi palsu.</p></Card>
+  <Card><h4>IAM terlalu luas</h4><p>Izin `s3:*` di semua bucket memperbesar blast radius saat credential bocor.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Upload sukses belum berarti gambar valid"><p>S3 menerima object apa pun sesuai request, termasuk file 0 byte atau gambar rusak. Validasi dimensi, ukuran, dan transformasi sebaiknya di pipeline lanjutan saat bisnis mulai butuh kontrol kualitas gambar. `HeadObject` saja hanya membuktikan object ada, bukan bahwa isinya gambar yang baik.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jangan jalankan invalidasi di hot path"><p>Memanggil invalidation di setiap update gambar memakan kuota dan menambah latency. Default ke key baru, dan cadangkan invalidation untuk koreksi sesekali.</p></Box>
+
+</Section>
+
+<Section num="12" id="ringkasan" title="Ringkasan & Poin Penting" sub="Backend skincare kini punya pola production untuk gambar produk tanpa membebani API dan database.">
+
+<p class="lead">Kamu sudah memisahkan tanggung jawab dengan rapi: API mengatur izin dan metadata, S3 menyimpan byte, CloudFront menyajikan cepat dari bucket yang tetap privat.</p>
+
+<Recap title="Yang Wajib Menempel">
+  <ul><li>Metadata di PostgreSQL, byte gambar di S3. Jangan pernah simpan blob biner di database.</li><li>Bucket S3 tetap privat dengan Block Public Access ON. Akses publik hanya lewat CloudFront plus OAC.</li><li>Pre-signed PutObject URL membuat browser upload langsung ke S3, jadi API tidak buffer file besar.</li><li>Setelah upload, commit metadata lewat langkah kedua, dan verifikasi dengan HeadObject sebelum menulis baris.</li><li>Simpan `cdn_url` (URL CloudFront permanen) di DB, bukan pre-signed URL atau URL S3 internal.</li><li>ECS task role cukup `s3:PutObject` plus `s3:GetObject` pada prefix `products/*`, bukan access key statis.</li><li>Untuk gambar yang berubah, pakai key baru (cache-busting), bukan invalidasi terus-menerus.</li></ul>
+</Recap>
+
+<Box variant="tip" icon="✅" label="Pemetaan ke proyek dan langkah berikutnya"><p>Modul ini melengkapi sisi media asset backend skincare. Katalog sekarang mengirim `cdn_url` yang cepat, aman, dan lepas dari filesystem container. Langkah berikutnya di Chapter 9: pasang observability CloudWatch untuk error presign, cache miss, dan akses CDN agar masalah gambar terdeteksi dini.</p></Box>
+
+</Section>

@@ -1,0 +1,592 @@
+---
+title: "Modul CI Pipeline: Cegah Code Rusak Masuk Staging - Go Artisan"
+badge: "CI"
+topTitle: "CI Pipeline"
+topSub: "Go untuk Developer JavaScript & PHP"
+summary: "Bangun pipeline GitHub Actions untuk lint, format, vet, test, race detector, build image, dan push aman ke Amazon ECR lewat OIDC."
+order: 61
+target: "Roadmap 8 · Docker, CI/CD, dan AWS Deployment"
+readingTime: "~65 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa CI Pipeline Penting" }
+  - { num: "02", id: "anatomi-actions", title: "Anatomi GitHub Actions untuk Backend Go" }
+  - { num: "03", id: "desain-pipeline", title: "Desain Pipeline Berlapis" }
+  - { num: "04", id: "quality-gate", title: "Quality Gate: Format, Vet, dan Lint" }
+  - { num: "05", id: "test-di-ci", title: "Unit Test, Integration Test, dan Race Detector" }
+  - { num: "06", id: "docker-build", title: "Build Docker Image di CI" }
+  - { num: "07", id: "push-ecr", title: "Push Image ke Amazon ECR lewat OIDC" }
+  - { num: "08", id: "workflow-lengkap", title: "Workflow GitHub Actions Lengkap" }
+  - { num: "09", id: "branch-protection", title: "Branch Protection: Menegakkan Gate" }
+  - { num: "10", id: "hands-on", title: "Hands-on: Menyalakan Pipeline" }
+  - { num: "11", id: "jebakan", title: "Jebakan Umum CI untuk Pendatang JS/PHP" }
+  - { num: "12", id: "ringkasan", title: "Ringkasan & Poin Penting" }
+footerTitle: "Modul CI Pipeline: Cegah Code Rusak Masuk Staging - Go Artisan"
+footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Endpoint, Def } from "@components";
+
+<Hero eyebrow="Roadmap 8 &middot; Docker, CI/CD, dan AWS Deployment" title="CI Pipeline<br /><em>Cegah Code Rusak Masuk Staging</em>">
+  <p>Pipeline CI menjadi pagar otomatis yang memeriksa kualitas backend skincare setiap push, sebelum image layak dikirim ke staging dan production.</p>
+  <Fragment slot="meta">
+    <Chip icon="git">GitHub Actions</Chip>
+    <Chip icon="code">Bahasa: <b>Go 1.26</b></Chip>
+    <Chip icon="clock">~65 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa CI Pipeline Penting" sub="CI adalah pagar otomatis antara kode di laptop dan environment yang dipakai bersama.">
+
+<p class="lead">Di React atau Node kamu mungkin sudah terbiasa dengan pipeline yang menjalankan `npm run lint`, `npm test`, lalu `npm run build`. Di Laravel ada `composer test`, Pint, PHPStan, dan PHPUnit. Di Go konsepnya sama, hanya tool intinya jauh lebih dekat dengan toolchain bahasa.</p>
+
+<Def term="Continuous Integration (CI)"><p>Praktik menjalankan pemeriksaan otomatis setiap ada perubahan kode (biasanya saat push atau pull request) agar bug format, lint, test, dan build gagal lebih awal, sebelum masuk branch utama dan sebelum sampai ke staging.</p></Def>
+
+Untuk backend online shop skincare, CI bukan formalitas. Bug kecil di checkout bisa membuat stok tidak berkurang. Bug kecil di webhook payment bisa membuat order tidak pernah berubah ke `paid`. Satu file yang lupa di-`gofmt` atau satu Dockerfile yang rusak bisa membuat staging gagal deploy tepat saat tim butuh demo cepat. CI menangkap semua itu di pull request, bukan di production jam dua pagi.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari `package.json` scripts ke tool Go bawaan"><p>Di Node, pipeline sering memasang dependency lalu menjalankan script di `package.json`. Di Go, pipeline biasanya langsung memanggil tool standar yang sudah ikut toolchain: `gofmt`, `go vet`, `go test`, `go build`. Tidak ada `node_modules` yang perlu di-install ulang, dan tidak ada layer framework yang menyembunyikan langkahnya.</p></Box>
+
+<Compare aLabel="JS / Laravel" bLabel="Go" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>Format dan lint bergantung pada Prettier, ESLint, Pint, atau PHPStan yang dipasang via npm/composer.</li><li>Integration test umumnya butuh service database yang disiapkan manual di workflow.</li><li>Build menghasilkan bundle JS atau artefak PHP yang masih butuh runtime saat dijalankan.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>`gofmt`, `go vet`, `go test` ikut toolchain Go, lalu `golangci-lint` menambah static analysis luas dalam satu action.</li><li>GitHub Actions menjalankan PostgreSQL sebagai service container untuk menguji repository `pgx`.</li><li>Build menghasilkan satu binary statis lalu image kecil, langsung siap dijalankan di ECS tanpa runtime tambahan.</li></ul></Fragment>
+</Compare>
+
+<Box variant="note" icon="🧭" label="Tempat modul ini di Roadmap 8"><p>Modul R8.C1 sudah membuat Dockerfile multi-stage. R8.C2 menjalankan stack lokal lewat Docker Compose. Modul ini (R8.C3) menjadi jembatan ke deploy: CI memastikan setiap commit lulus gate sebelum image-nya dipakai ECS di modul berikutnya.</p></Box>
+
+</Section>
+
+<Section num="02" id="anatomi-actions" title="Anatomi GitHub Actions untuk Backend Go" sub="Sebelum menulis pipeline, pahami dulu kosakata workflow, job, step, dan runner.">
+
+<p class="lead">GitHub Actions adalah CI bawaan GitHub. Satu file YAML di `.github/workflows/` mendeskripsikan kapan pipeline jalan dan apa yang dikerjakan. Istilahnya berlapis, jadi mari samakan dulu kosakatanya.</p>
+
+<Def term="workflow, job, step, runner"><p>Workflow adalah satu file YAML berisi pipeline. Job adalah unit kerja yang jalan di satu runner (mesin virtual bersih); job bisa paralel atau saling bergantung lewat `needs`. Step adalah satu perintah di dalam job, bisa `run:` (shell) atau `uses:` (action siap pakai). Runner adalah mesin yang menjalankan job, di sini `ubuntu-latest` yang gratis untuk repo publik.</p></Def>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari `jobs` GitLab CI / GitHub Actions Node ke Go"><p>Konsepnya identik dengan pipeline Node yang sudah kamu kenal: `on` menentukan trigger, `jobs` adalah daftar pekerjaan, `steps` adalah perintahnya. Yang berbeda hanya isinya. Alih-alih `actions/setup-node`, kamu pakai `actions/setup-go`. Alih-alih `npm ci`, kamu pakai `go mod download`. Pola mental "trigger lalu job lalu step" sama persis.</p></Box>
+
+Dua hal kecil yang sering bikin pendatang bingung. Pertama, `uses:` memanggil action yang dipublikasikan orang lain dan di-pin ke versi mayor, misalnya `actions/checkout@v4`. Kedua, setiap job mulai dari runner bersih: tidak ada file dari job sebelumnya kecuali kamu `checkout` ulang. Inilah kenapa hampir setiap job mengulang `checkout` dan `setup-go`.
+
+```yaml title="Kerangka minimal sebuah workflow"
+name: CI
+on:
+  push:
+    branches: [ main ]
+  pull_request:               # jalan di setiap PR, inilah gate-nya
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest    # runner GitHub-hosted, bersih tiap run
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+      - run: go test ./...
+```
+
+<Box variant="warn" icon="⚠️" label="Pin ke versi mayor, bukan `latest`"><p>Tulis `actions/checkout@v4`, bukan `@latest` atau tanpa tag. `@latest` tidak ada untuk action dan tag yang tidak di-pin membuat pipeline bisa berubah perilaku diam-diam saat maintainer rilis versi baru. Untuk supply-chain hardening yang lebih ketat, pin ke commit SHA.</p></Box>
+
+<Box variant="tip" icon="💡" label="Caching modul gratis lewat `setup-go`"><p>`actions/setup-go@v5` punya caching bawaan (`cache: true` aktif default). Ia menyimpan `~/go/pkg/mod` dan `~/.cache/go-build` dengan key dari `go.sum`, jadi `go mod download` cepat di run berikutnya. Tidak perlu `actions/cache` manual untuk kasus standar.</p></Box>
+
+</Section>
+
+<Section num="03" id="desain-pipeline" title="Desain Pipeline Berlapis" sub="Pisahkan pekerjaan murah, pekerjaan berat, dan pekerjaan yang menyentuh registry production.">
+
+<p class="lead">Pipeline yang baik menaruh pemeriksaan termurah paling depan. Kalau format gagal, tidak ada gunanya membakar menit runner untuk integration test dan Docker build.</p>
+
+Kita susun lima job: `lint`, `unit-test`, `integration-test`, `build-image`, dan `push-ecr`. Job lint paling murah, jadi ia gate paling depan. Test bergantung pada lint lewat `needs`. Build image hanya jalan setelah semua test lulus. Push ke ECR adalah satu-satunya job yang menyentuh AWS, dan ia hanya jalan pada push ke `main`, bukan di pull request.
+
+<FileTree title="Posisi workflow di root proyek" tree={`
+.github/
+  workflows/
+    ci.yml             # pipeline GitHub Actions
+cmd/
+  api/
+    main.go            # entry point API
+  migrate/
+    main.go            # runner migration untuk CI
+internal/
+  product/             # domain katalog
+  order/               # domain order
+  payment/             # domain payment + webhook
+Dockerfile             # multi-stage, dari modul R8.C1
+compose.yaml           # stack lokal, dari modul R8.C2
+go.mod
+go.sum
+`} />
+
+```mermaid
+flowchart TD
+  Trigger["Push ke main atau Pull Request"] --> Lint["lint: gofmt, go vet, golangci-lint"]
+  Lint --> Unit["unit-test: go test -race ./..."]
+  Lint --> Integ["integration-test: PostgreSQL service + migrate + go test"]
+  Unit --> Build["build-image: docker build (tanpa push)"]
+  Integ --> Build
+  Build --> Branch{"Event push ke main?"}
+  Branch -->|Tidak (PR)| Stop["Selesai setelah image berhasil dibuild"]
+  Branch -->|Ya| ECR["push-ecr: OIDC ke AWS, push image ber-SHA ke ECR"]
+```
+
+<p class="fig-cap"><b>Gambar 1.</b> Pipeline dibuat berlapis agar error paling murah tertangkap paling awal, dan hanya `main` yang boleh push image.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Quality gate dulu</h4><p>Format, vet, dan lint harus lulus sebelum test berjalan. Murah dan cepat, jadi paling depan.</p></Card>
+  <Card><h4>Test dipisah dua</h4><p>Unit test cepat berjalan sendiri, integration test memakai PostgreSQL service container yang lebih lambat.</p></Card>
+  <Card><h4>Build image selalu</h4><p>Dockerfile diverifikasi di setiap pull request dan push, jadi image rusak ketahuan sebelum deploy.</p></Card>
+  <Card><h4>Push image dibatasi</h4><p>Image hanya dikirim ke ECR dari push ke `main`. Pull request tidak menyentuh registry production.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Prinsip shift-left"><p>Semakin dekat sebuah job ke production, semakin ketat syaratnya. Pull request boleh build image untuk membuktikan Dockerfile sehat, tetapi tidak boleh push image. Tujuannya menggeser deteksi regresi ke kiri (ke PR), bukan ke production.</p></Box>
+
+</Section>
+
+<Section num="04" id="quality-gate" title="Quality Gate: Format, Vet, dan Lint" sub="Pemeriksaan cepat yang menjaga standar kode sebelum test yang lebih mahal jalan.">
+
+<p class="lead">Quality gate adalah lapisan paling murah dan paling cepat gagal. Ia menangkap masalah gaya dan bug semantik yang lolos dari compiler.</p>
+
+`gofmt` memastikan format semua file Go konsisten. Di CI kita memakai `gofmt -l .`, bukan `gofmt -w .`. Flag `-l` hanya menampilkan daftar file yang belum terformat ke stdout tanpa mengubah apa pun, sehingga deterministik dan fail-fast. Idiom CI-nya: ambil output `gofmt -l .`, kalau tidak kosong berarti ada file belum rapi, lalu `exit 1`.
+
+`go vet` mencari konstruksi mencurigakan yang lolos compiler, misalnya format `Printf` yang tidak cocok dengan argumen, atau lock yang ter-copy by value. Ia bukan bukti formal program benar, tetapi murah dan menangkap kelas bug yang nyata.
+
+`golangci-lint` adalah meta-linter yang menjalankan banyak linter sekaligus (`errcheck`, `staticcheck`, `ineffassign`, dan lainnya) dalam satu action. Per versi terbaru, golangci-lint berada di seri v2 dan action-nya `golangci/golangci-lint-action@v9`. Sejak v4, action ini mewajibkan `setup-go` dipasang lebih dulu.
+
+```bash title="Terminal"
+gofmt -l .
+go vet ./...
+golangci-lint run ./...
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari Prettier `--check` & ESLint ke gofmt & golangci-lint"><p>Di Node, kamu menjalankan `prettier --check` di CI (bukan `--write`) agar pipeline gagal saat format menyimpang, bukan diam-diam memperbaikinya. `gofmt -l .` adalah padanan persisnya: melaporkan, tidak mengubah. Lalu `golangci-lint` memainkan peran ESLint plus PHPStan, satu meta-linter untuk banyak aturan.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jangan auto-format di runner"><p>Hindari `gofmt -w .` atau `go fmt ./...` di CI. Keduanya memodifikasi file dan exit dengan kode 0, sehingga pipeline lulus padahal repository sebenarnya belum rapi. CI harus melaporkan, bukan menambal diam-diam. Perbaikan format adalah tugas commit developer.</p></Box>
+
+<Def term="fail fast"><p>Strategi menghentikan pipeline sedini mungkin saat gate awal gagal, sehingga job test, Docker build, dan push registry tidak berjalan sia-sia dan tim mendapat feedback lebih cepat.</p></Def>
+
+Di GitHub Actions, fail fast antar job dibuat dengan `needs`. Job test bergantung pada job lint, jadi kalau lint gagal job test otomatis dilewati. Ini lebih eksplisit dan lebih paralel daripada menumpuk semua langkah ke satu job panjang.
+
+```yaml title="Potongan needs antar job"
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - run: go vet ./...
+
+  unit-test:
+    needs: lint              # dilewati otomatis jika lint gagal
+    runs-on: ubuntu-latest
+    steps:
+      - run: go test -race ./...
+```
+
+<Box variant="note" icon="📝" label="golangci-lint v2 dan duplikasi gofmt"><p>Di golangci-lint v2, formatter (gofmt, gofumpt, goimports) dipindah ke section `formatters:`. Jika kamu mengaktifkan formatter di konfigurasi golangci-lint, `golangci-lint run` ikut memeriksa format, sehingga step `gofmt` manual bisa redundan. Pilih salah satu agar tidak dobel; modul ini tetap menampilkan keduanya agar tiap langkah terlihat jelas.</p></Box>
+
+</Section>
+
+<Section num="05" id="test-di-ci" title="Unit Test, Integration Test, dan Race Detector" sub="CI harus membuktikan logic benar, repository PostgreSQL benar, dan concurrency bebas dari race yang jelas.">
+
+<p class="lead">Test di laptop membuktikan kode jalan di mesinmu. Test di CI membuktikan kode jalan di mesin bersih yang reprodusibel, persis seperti staging nanti.</p>
+
+Unit test menjalankan logic murni: kalkulasi total cart, penerapan voucher, validasi stok, transisi status order. Cepat, tanpa database. Integration test menjalankan repository `pgx` terhadap PostgreSQL nyata supaya query, migration, constraint, dan transaction benar-benar teruji, bukan hanya di-mock.
+
+```bash title="Terminal"
+go test -race -count=1 ./...
+TEST_DB_URL="postgres://skincare:skincare@localhost:5432/skincare_test?sslmode=disable" \
+  go test -race -count=1 -tags=integration ./...
+```
+
+<Box variant="tip" icon="💡" label="Kenapa wajib `-race` di CI"><p>`go test -race` menyalakan race detector, satu-satunya cara andal menangkap data race pada goroutine, cache in-memory, worker, dan shared state. Ia memperlambat dan menambah pemakaian memori, jadi wajar dijalankan di CI ketimbang di setiap run lokal. Untuk backend yang mulai memakai konkurensi, ini bukan opsional.</p></Box>
+
+<Box variant="note" icon="📝" label="Kenapa `-count=1`"><p>`go test` meng-cache hasil per package. `-count=1` memaksa test benar-benar dijalankan ulang, bukan mengambil hasil cache. Penting di CI, khususnya integration test yang bergantung pada state database, agar tidak ada hasil hijau palsu dari cache.</p></Box>
+
+Untuk integration test, GitHub Actions menyediakan service container. Kita menjalankan `postgres:17` sebagai service, memberinya healthcheck `pg_isready`, lalu memetakan port `5432` ke runner. Tanpa healthcheck, test bisa mulai sebelum Postgres siap menerima koneksi dan jadi flaky. Setelah database hidup, workflow menjalankan migration dulu, baru test dengan build tag `integration`.
+
+```yaml title="Potongan job integration-test"
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: skincare
+          POSTGRES_PASSWORD: skincare
+          POSTGRES_DB: skincare_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U skincare -d skincare_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+```
+
+```mermaid
+sequenceDiagram
+  participant R as Runner (ubuntu-latest)
+  participant PG as Service postgres:17
+  participant T as go test -tags=integration
+  R->>PG: start container
+  PG-->>R: health pg_isready (retry sampai PASS)
+  R->>R: go run ./cmd/migrate up
+  R->>T: jalankan test integration
+  T->>PG: query lewat localhost:5432
+  PG-->>T: hasil (constraint, transaction teruji)
+  T-->>R: lulus atau gagal
+```
+
+<p class="fig-cap"><b>Gambar 2.</b> Service container PostgreSQL harus sehat dan ter-migrate sebelum integration test menyentuhnya.</p>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari `services` Docker di pipeline Laravel ke service container Actions"><p>Di pipeline Laravel, kamu sering mendeklarasikan service MySQL/Postgres di YAML lalu menunggunya siap. Di GitHub Actions polanya sama: blok `services:` menyalakan container, `--health-cmd` adalah penjaga kesiapannya. Bedanya halus, service ini diakses lewat `localhost:5432` karena port-nya dipublish ke runner, bukan lewat nama service seperti di Docker Compose internal network.</p></Box>
+
+<Compare aLabel="Test dengan mock saja" bLabel="Integration test dengan PostgreSQL nyata" aTone="muted" bTone="teal">
+  <Fragment slot="a"><ul><li>Cepat, cocok untuk business logic service seperti perhitungan cart dan voucher.</li><li>Tidak membuktikan SQL, index, constraint, atau transaction benar.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Lebih lambat, tetapi menangkap bug query, migration, dan deadlock yang nyata.</li><li>Lebih dekat dengan staging karena memakai engine database yang sama persis.</li></ul></Fragment>
+</Compare>
+
+<Box variant="note" icon="🧪" label="Alternatif: testcontainers-go"><p>Selain `services:`, kamu bisa men-spin container dari dalam test memakai `testcontainers-go` (Docker daemon sudah ada di `ubuntu-latest`). Lebih portabel karena identik di lokal dan CI, tetapi start-nya lebih lambat. Pilih ini saat butuh banyak dependensi (Redis, Kafka) atau isolasi per-test.</p></Box>
+
+</Section>
+
+<Section num="06" id="docker-build" title="Build Docker Image di CI" sub="CI juga harus membuktikan Dockerfile dari modul sebelumnya benar-benar bisa dibuild.">
+
+<p class="lead">Banyak tim hanya menjalankan test Go, lalu baru sadar Dockerfile rusak saat deploy. Untuk backend Go ini mudah dicegah: build image di setiap pull request dan push.</p>
+
+Job `build-image` tidak perlu push. Ia cukup membuktikan `docker build` sukses, layer cache bekerja, dan binary masuk ke final image distroless. Kita pakai `docker/setup-buildx-action@v3` untuk mengaktifkan Buildx, lalu `docker/build-push-action@v7` dengan `push: false`. Cache layer GitHub (`type=gha`) membuat build berikutnya jauh lebih cepat.
+
+<Def term="build artifact"><p>Hasil proses build yang dipakai tahap berikutnya, misalnya binary Go atau Docker image. Di modul ini artifact utama adalah image `skincare-api` yang nanti dikirim ke ECR lalu dijalankan ECS.</p></Def>
+
+```yaml title="Potongan job build-image (tanpa push)"
+  build-image:
+    runs-on: ubuntu-latest
+    needs: [ unit-test, integration-test ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: skincare-api:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari `npm run build` ke `docker build`"><p>Di React, `npm run build` membuktikan bundle bisa dibuat sebelum kamu deploy. Untuk backend Go yang akan jalan di ECS, `docker build` adalah pembuktian setara: artifact deployment (image) bisa dibuat dari source. Bedanya, hasil Go adalah satu binary statis dalam image kecil, tanpa runtime atau `node_modules` yang ikut.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jangan push image dari pull request"><p>Pull request bisa berasal dari fork atau branch luar yang tidak tepercaya. Memberinya akses push ke registry production adalah celah serius. Build image di PR boleh dan dianjurkan, tetapi push image harus dibatasi ke branch tepercaya saja (lihat job berikutnya).</p></Box>
+
+</Section>
+
+<Section num="07" id="push-ecr" title="Push Image ke Amazon ECR lewat OIDC" sub="Setelah semua gate lulus, branch main mengirim image ke registry AWS tanpa menyimpan access key.">
+
+<p class="lead">Amazon ECR adalah registry container terkelola AWS. Job `push-ecr` hanya jalan saat event `push` dan branch `main`, lalu mengunggah image ber-SHA ke sana.</p>
+
+Bagian paling penting di sini adalah cara autentikasi. Kita tidak menyimpan `AWS_ACCESS_KEY_ID` dan `AWS_SECRET_ACCESS_KEY` jangka panjang di GitHub Secrets. Sebagai gantinya, GitHub menukar JWT bawaan workflow dengan kredensial sementara dari AWS STS lewat `AssumeRoleWithWebIdentity`. Pola ini disebut OIDC.
+
+<Def term="OIDC (OpenID Connect) untuk CI ke AWS"><p>Mekanisme di mana GitHub Actions membuktikan identitasnya ke AWS dengan token JWT bertanda tangan, lalu AWS menukarnya dengan kredensial STS sementara via IAM role. Tidak ada secret key statis yang disimpan, tidak ada yang bisa bocor atau dicuri, dan kredensial otomatis kedaluwarsa.</p></Def>
+
+<Compare aLabel="Long-lived AWS access key di Secrets" bLabel="OIDC ke IAM role (AssumeRole)" aTone="red" bTone="teal">
+  <Fragment slot="a"><ul><li>Key statis tersimpan di GitHub Secrets, bisa bocor lewat log, fork, atau leak repo.</li><li>Harus dirotasi manual, dan sering dilupakan sampai jadi temuan audit.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Tidak ada key statis. AWS memberi kredensial sementara yang auto-expire tiap run.</li><li>Trust policy membatasi `sub` ke repo dan branch tertentu, scoping per-repo built-in.</li></ul></Fragment>
+</Compare>
+
+Agar OIDC bekerja, job wajib punya permission `id-token: write`. Tanpa itu, `configure-aws-credentials` tidak bisa meminta token. Di sisi AWS, trust policy IAM role membatasi `sub` ke `repo:org/repo:ref:refs/heads/main`, jadi hanya branch `main` repo ini yang boleh AssumeRole. Jangan biarkan wildcard repo.
+
+```mermaid
+sequenceDiagram
+  participant GHA as GitHub Actions (job push-ecr)
+  participant STS as AWS STS
+  participant ECR as Amazon ECR
+  GHA->>GHA: minta OIDC token (id-token: write)
+  GHA->>STS: AssumeRoleWithWebIdentity (token JWT)
+  STS-->>GHA: kredensial sementara (auto-expire)
+  GHA->>ECR: docker login (amazon-ecr-login)
+  GHA->>ECR: push skincare-api:<github.sha>
+  ECR-->>GHA: image tersimpan, traceable ke commit
+```
+
+<p class="fig-cap"><b>Gambar 3.</b> OIDC menukar JWT workflow dengan kredensial STS sementara, jadi tidak ada access key permanen yang perlu disimpan.</p>
+
+<Steps>
+  <Step><b>Buat ECR repository</b><p>Nama `skincare-api`. Aktifkan scan-on-push dan immutable tags. Repository harus ada sebelum `docker push`.</p></Step>
+  <Step><b>Buat IAM role OIDC</b><p>Trust policy mengizinkan repo GitHub ini `sts:AssumeRoleWithWebIdentity`, dengan permission minimal untuk login dan push ke repository ECR yang dituju.</p></Step>
+  <Step><b>Set repository variable</b><p>Tambahkan `AWS_ROLE_ARN` di GitHub repository variables. Ini ARN role, bukan secret credential.</p></Step>
+  <Step><b>Push ke main</b><p>Setelah lint, test, dan build lulus, `push-ecr` AssumeRole, login ECR, lalu push tag commit SHA (dan `latest` sebagai alias).</p></Step>
+</Steps>
+
+<Box variant="tip" icon="💡" label="Tag image yang sehat"><p>Pakai `${{ github.sha }}` sebagai tag utama. Commit SHA membuat setiap image unik, immutable, dan bisa dilacak balik ke commit persisnya, ideal untuk rollback presisi. Tag `latest` hanya alias praktis, jangan diandalkan sebagai sumber kebenaran deploy.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Least privilege untuk role push"><p>Role GitHub Actions tidak perlu akses semua ECR. Beri izin hanya pada repository `skincare-api` dan hanya aksi yang dibutuhkan untuk login dan push image. Trust policy juga jangan memakai wildcard repo atau wildcard branch.</p></Box>
+
+</Section>
+
+<Section num="08" id="workflow-lengkap" title="Workflow GitHub Actions Lengkap" sub="Satu file ci.yml yang siap ditaruh di root repository backend skincare.">
+
+<p class="lead">File berikut menggabungkan semua yang sudah dibahas: lint, dua jenis test, build image, dan push ECR bersyarat. Taruh di `.github/workflows/ci.yml`.</p>
+
+```yaml title=".github/workflows/ci.yml"
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.26"
+  AWS_REGION: ap-southeast-1
+  ECR_REPOSITORY: skincare-api
+
+jobs:
+  lint:
+    name: Lint, format, dan vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Cek gofmt (gagal jika ada file belum terformat)
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "::error::File berikut belum gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.1
+
+  unit-test:
+    name: Unit test dengan race detector
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Unit test
+        run: go test -race -count=1 ./...
+
+  integration-test:
+    name: Integration test dengan PostgreSQL
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: skincare
+          POSTGRES_PASSWORD: skincare
+          POSTGRES_DB: skincare_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U skincare -d skincare_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://skincare:skincare@localhost:5432/skincare_test?sslmode=disable
+      TEST_DB_URL: postgres://skincare:skincare@localhost:5432/skincare_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Jalankan migration
+        run: go run ./cmd/migrate up
+
+      - name: Integration test
+        run: go test -race -count=1 -tags=integration ./...
+
+  build-image:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    needs: [ unit-test, integration-test ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image (tanpa push)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: ${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  push-ecr:
+    name: Push image ke Amazon ECR
+    runs-on: ubuntu-latest
+    needs: build-image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login ke Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build dan push image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+```
+
+<Box variant="note" icon="📝" label="Sesuaikan command migration"><p>Step `Jalankan migration` di atas memakai `go run ./cmd/migrate up`. Kalau runner migration kamu berbeda (misalnya `golang-migrate` atau tool lain dari Roadmap 3 dan 4), ganti step ini dengan command yang sesuai proyekmu.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="`AWS_ROLE_ARN` boleh variable, bukan secret"><p>`AWS_ROLE_ARN` aman sebagai repository variable (`vars`), bukan secret, karena ia hanya ARN dan bukan credential. Keamanan akses tetap dijaga oleh trust policy dan IAM permission di sisi AWS, bukan oleh kerahasiaan ARN-nya.</p></Box>
+
+<Box variant="tip" icon="💡" label="`concurrency` mencegah run tumpang tindih"><p>Blok `concurrency` dengan `cancel-in-progress: true` membatalkan run lama saat kamu push commit baru ke branch yang sama. Hemat menit runner dan menghindari hasil CI yang basi untuk commit yang sudah ditimpa.</p></Box>
+
+</Section>
+
+<Section num="09" id="branch-protection" title="Branch Protection: Menegakkan Gate" sub="CI hanya informatif sampai branch protection memaksanya jadi syarat merge.">
+
+<p class="lead">Pipeline hijau di pull request tidak ada artinya kalau orang masih bisa merge meski CI merah. Branch protection-lah yang mengubah CI dari informasi menjadi gate yang sesungguhnya.</p>
+
+<Def term="branch protection rule"><p>Aturan pada branch (di sini `main`) yang mewajibkan kondisi tertentu terpenuhi sebelum perubahan boleh masuk, misalnya status check CI harus lulus, butuh review PR, dan larangan force-push.</p></Def>
+
+Tanpa proteksi, status check CI hanya hiasan: developer bisa merge PR yang gagal test, atau push langsung ke `main` melewati pull request sama sekali. Branch protection menutup celah itu. Yang kita wajibkan minimal: status check `lint`, `unit-test`, dan `integration-test` harus PASS; branch harus up to date; PR butuh minimal satu review; force-push dilarang.
+
+<Steps>
+  <Step><b>Wajibkan status check lulus</b><p>Aktifkan "Require status checks to pass before merging", lalu pilih job `lint`, `unit-test`, dan `integration-test` sebagai check wajib.</p></Step>
+  <Step><b>Wajibkan branch up to date</b><p>"Require branches to be up to date before merging" memastikan PR diuji terhadap `main` terbaru, bukan versi basi.</p></Step>
+  <Step><b>Wajibkan review</b><p>Minimal satu approval sebelum merge, supaya ada mata kedua selain CI.</p></Step>
+  <Step><b>Larang force-push dan direct push</b><p>Perubahan ke `main` hanya lewat PR yang lulus gate, tidak ada jalan pintas.</p></Step>
+</Steps>
+
+```mermaid
+flowchart LR
+  PR["Pull Request"] --> CI["CI: lint, test, build"]
+  CI -->|merah| Block["Merge diblokir branch protection"]
+  CI -->|hijau| Review["Review PR (min 1 approval)"]
+  Review --> Merge["Merge ke main"]
+  Merge --> Push["push-ecr: image ber-SHA ke ECR"]
+  Push --> Stg["Staging deploy SHA itu"]
+  Stg -->|verifikasi lulus| Prod["Promote SHA yang sama ke production"]
+```
+
+<p class="fig-cap"><b>Gambar 4.</b> Image identik yang sudah diuji dipromosikan dari staging ke production, jadi tidak ada drift antar environment.</p>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: mirip required reviewers di GitLab/Bitbucket"><p>Kalau di tim Laravel/Node kamu pernah memakai protected branch yang memblokir merge sampai pipeline hijau dan ada approval, ini konsep yang sama persis. Bedanya hanya nama menu di GitHub. Inti idenya tetap: `main` adalah tanah suci, hanya kode yang lulus gate yang boleh masuk.</p></Box>
+
+<Box variant="tip" icon="💡" label="Promosi SHA yang sama"><p>Image yang dipakai staging dan production sebaiknya SHA yang identik. Karena image yang sudah lulus di staging dipromosikan apa adanya, tidak ada rebuild yang bisa menimbulkan perbedaan diam-diam antara staging dan production.</p></Box>
+
+</Section>
+
+<Section num="10" id="hands-on" title="Hands-on: Menyalakan Pipeline" sub="Jalankan pipeline bertahap agar failure mudah dibaca dan diperbaiki.">
+
+<p class="lead">Target hands-on ini: dari nol sampai pull request hijau yang membuild image, lalu push ke main yang mengirim image ke ECR.</p>
+
+<Steps>
+  <Step><b>Tambahkan workflow</b><p>Buat folder `.github/workflows/`, simpan file di atas sebagai `.github/workflows/ci.yml`.</p></Step>
+  <Step><b>Pastikan build lokal lulus</b><p>Jalankan `gofmt -l .`, `go vet ./...`, `go test -race -count=1 ./...`, dan `docker build -t skincare-api .` di laptop sampai semua hijau.</p></Step>
+  <Step><b>Siapkan AWS untuk push</b><p>Buat repository ECR `skincare-api`, buat IAM role OIDC, lalu set `AWS_ROLE_ARN` di GitHub repository variables.</p></Step>
+  <Step><b>Buka pull request</b><p>PR harus menjalankan lint, unit test, integration test, dan build image, tetapi tidak push ke ECR.</p></Step>
+  <Step><b>Aktifkan branch protection</b><p>Jadikan ketiga job check wajib pada `main`, lalu wajibkan review dan branch up to date.</p></Step>
+  <Step><b>Merge ke main</b><p>Setelah PR hijau dan disetujui, merge. Push ke `main` menjalankan ulang gate lalu `push-ecr` mengirim image ke ECR.</p></Step>
+</Steps>
+
+```bash title="Terminal"
+mkdir -p .github/workflows
+cp ci.yml .github/workflows/ci.yml
+
+gofmt -l .
+go vet ./...
+go test -race -count=1 ./...
+docker build -t skincare-api .
+
+git checkout -b feature/ci-pipeline
+git add .github/workflows/ci.yml
+git commit -m "Tambah CI pipeline GitHub Actions"
+git push origin feature/ci-pipeline
+```
+
+<Box variant="tip" icon="✅" label="Latihan failure yang sehat"><p>Sengaja rusakkan format satu file (misalnya tambah indentasi aneh), push ke branch, lalu lihat CI gagal di job `lint`. Perbaiki dengan `gofmt -w .` di lokal, commit lagi, dan pastikan pipeline lanjut ke test. Mengalami kegagalan terkontrol membuat kamu paham apa yang dilaporkan gate.</p></Box>
+
+<Box variant="note" icon="🌏" label="Pemetaan endpoint yang diuji"><p>Integration test akhirnya menjaga endpoint nyata proyek skincare ini tetap benar setelah tiap perubahan.</p></Box>
+
+<Endpoint method="GET" path="/v1/products" desc="Daftar produk skincare dengan filter dan paginasi, diuji repository pgx" />
+<Endpoint method="POST" path="/v1/checkout" desc="Ubah keranjang jadi order dalam satu transaksi, diuji constraint dan stok" />
+<Endpoint method="POST" path="/v1/webhooks/payment" desc="Terima notifikasi payment gateway, diuji idempotency dan transisi status" />
+
+</Section>
+
+<Section num="11" id="jebakan" title="Jebakan Umum CI untuk Pendatang JS/PHP" sub="Sebagian besar masalah CI bukan karena Go sulit, tetapi karena batas local, runner, database, dan registry kurang jelas.">
+
+<p class="lead">Kebiasaan kecil dari stack lama sering terbawa ke pipeline Go dan menimbulkan kegagalan yang membingungkan. Berikut yang paling sering muncul.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>CI memperbaiki format sendiri</h4><p>Pakai `gofmt -l .` untuk melaporkan, bukan `gofmt -w .` yang menambal diam-diam dan membuat CI hijau palsu.</p></Card>
+  <Card><h4>Integration test tanpa migration</h4><p>PostgreSQL hidup bukan berarti schema siap. Jalankan migration sebelum test repository menyentuhnya.</p></Card>
+  <Card><h4>Semua job dipaksa paralel</h4><p>Test tidak perlu jalan kalau lint gagal. Pakai `needs` untuk fail fast yang eksplisit dan hemat menit runner.</p></Card>
+  <Card><h4>Push image dari pull request</h4><p>PR dari fork tidak boleh menyentuh registry production. Batasi push ECR ke `main` lewat `if`.</p></Card>
+  <Card><h4>Mengandalkan tag `latest` saja</h4><p>`latest` mudah ditimpa dan tidak traceable. Selalu tag image dengan commit SHA untuk audit dan rollback.</p></Card>
+  <Card><h4>`-race` dianggap selalu opsional</h4><p>Lebih lambat memang, tetapi sangat bernilai begitu service mulai memakai goroutine, worker, dan cache.</p></Card>
+  <Card><h4>Lupa `id-token: write`</h4><p>Tanpa permission ini, OIDC gagal dan `configure-aws-credentials` tidak bisa minta token STS.</p></Card>
+  <Card><h4>CI tanpa branch protection</h4><p>Pipeline hijau tidak menahan siapa pun kalau merge masih bisa dipaksakan. Protection-lah yang menegakkan gate.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Port service container vs Compose network"><p>Di runner GitHub Actions, PostgreSQL service diakses lewat `localhost:5432` karena port container dipublish ke host runner. Ini berbeda dari Docker Compose internal network (modul R8.C2) yang memakai nama service seperti `postgres:5432`. Salah pilih host adalah penyebab klasik integration test gagal koneksi di CI.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: lebih vanilla dari Laravel Sail"><p>Laravel Sail memberi banyak kenyamanan bawaan untuk database dan service. Di Go, pipeline ini lebih eksplisit: kamu sendiri yang menyatakan service database, command migration, command test, Docker build, dan push registry. Eksplisit ini terasa lebih banyak ditulis di awal, tapi membuat setiap langkah terlihat jelas dan mudah di-debug saat gagal.</p></Box>
+
+</Section>
+
+<Section num="12" id="ringkasan" title="Ringkasan & Poin Penting">
+
+<p class="lead">CI pipeline memberi backend online shop skincare pagar otomatis sebelum kode sampai ke staging dan production.</p>
+
+<Recap title="Yang Wajib Menempel"><ul><li>GitHub Actions terdiri dari workflow, job (di runner bersih, paralel atau lewat `needs`), dan step (`run:` atau `uses:`). Pin action ke versi mayor, dan biarkan `setup-go@v5` meng-cache modul.</li><li>Pipeline dibuat berlapis: `lint` paling murah jadi gate paling depan, lalu test, lalu build image, lalu push, agar error termurah tertangkap paling awal.</li><li>Quality gate memakai `gofmt -l .` (melaporkan, bukan `-w` yang menambal), `go vet ./...`, dan `golangci/golangci-lint-action@v9` (seri v2).</li><li>Unit test memakai `go test -race -count=1 ./...`; integration test memakai service container `postgres:17` dengan healthcheck `pg_isready`, lalu migration sebelum test bertag `integration`.</li><li>`docker/build-push-action@v7` membuild image di setiap PR dan push (cache `type=gha`), sehingga Dockerfile rusak ketahuan sebelum deploy.</li><li>Push ke Amazon ECR hanya pada push ke `main`, memakai OIDC (`id-token: write` + `configure-aws-credentials@v4`) bukan access key statis, dan tag image dengan `github.sha`.</li><li>Branch protection-lah yang mengubah CI dari informatif menjadi gate: status check wajib, branch up to date, review, dan larangan force-push.</li></ul></Recap>
+
+Modul ini menyatukan R8.C1 dan R8.C2 ke dalam alur kerja tim. Dockerfile sudah bisa membangun API. Docker Compose sudah menjalankan stack lokal. CI kini memastikan setiap perubahan melewati lint, test, build image, dan push registry yang aman sebelum staging menerima artifact baru.
+
+Langkah berikutnya di Roadmap 8 adalah deployment: image ber-SHA dari ECR akan dijalankan oleh ECS Fargate di balik ALB, database production pindah ke RDS PostgreSQL, secret diambil dari AWS Secrets Manager (pola yang sudah kamu siapkan di Roadmap 7), worker memproses event payment dari SQS, dan observability lewat CloudWatch menutup loop produksinya. Pipeline yang baru kamu bangun inilah yang akan memberi makan image tepercaya ke semua tahap itu.
+
+</Section>

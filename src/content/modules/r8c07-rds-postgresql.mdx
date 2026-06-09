@@ -1,0 +1,728 @@
+---
+title: "Modul PostgreSQL di AWS RDS - Go Artisan"
+badge: "RDS"
+topTitle: "PostgreSQL di AWS RDS"
+topSub: "Go untuk Developer JavaScript & PHP"
+summary: "Jalankan PostgreSQL skincare production di AWS RDS, private subnet, backup, parameter group, migration disiplin, dan pool koneksi yang aman dari ECS."
+order: 65
+target: "Roadmap 8 · Docker, CI/CD, dan AWS Deployment"
+readingTime: "~70 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa Database Production Beda Mainnya" }
+  - { num: "02", id: "rds-managed", title: "RDS PostgreSQL sebagai Managed Database" }
+  - { num: "03", id: "private-subnet", title: "Private Subnet dan Security Group" }
+  - { num: "04", id: "credentials", title: "Credential, DATABASE_URL, dan TLS" }
+  - { num: "05", id: "backup-restore", title: "Backup Otomatis, Snapshot, dan PITR" }
+  - { num: "06", id: "parameter-group", title: "Parameter Group dan Batas Koneksi" }
+  - { num: "07", id: "pool-sizing", title: "Connection Pool Sizing untuk ECS" }
+  - { num: "08", id: "migration-production", title: "Migration Strategy di Production" }
+  - { num: "09", id: "resilience", title: "Multi-AZ, Read Replica, dan Ketahanan" }
+  - { num: "10", id: "observability", title: "Monitoring, Alarm, dan Operasional" }
+  - { num: "11", id: "hands-on", title: "Hands-on: Rakit RDS untuk Skincare API" }
+  - { num: "12", id: "ringkasan", title: "Ringkasan & Poin Penting" }
+footerTitle: "Modul PostgreSQL di AWS RDS - Go Artisan"
+footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Endpoint, Def } from "@components";
+
+<Hero eyebrow="Roadmap 8 &middot; Docker, CI/CD, dan AWS" title="PostgreSQL di <em>AWS RDS</em><br />Database Production yang Aman">
+  <p>Kita pindahkan PostgreSQL skincare dari Docker lokal ke RDS yang private, dibackup, dan hanya bisa disentuh task ECS lewat security group.</p>
+  <Fragment slot="meta">
+    <Chip icon="database">Engine: <b>PostgreSQL 17</b></Chip>
+    <Chip icon="server">Runtime: <b>Go 1.26 di ECS</b></Chip>
+    <Chip icon="clock">~70 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa Database Production Beda Mainnya" sub="API boleh diganti kapan saja, tapi database adalah state bisnis yang tidak boleh hilang.">
+
+<p class="lead">Di local development, PostgreSQL terasa seperti dependency biasa di `docker compose`. Di production, ia adalah satu-satunya tempat order, stok, dan pembayaran skincare hidup.</p>
+
+Container API di ECS itu stateless: kamu boleh membunuh dan menggantinya berkali-kali tanpa kehilangan apa pun, karena seluruh state ada di database. Justru karena itu, database production diperlakukan jauh lebih hati-hati. Order yang sudah dibayar, stok serum yang baru direservasi, event webhook pembayaran, dan data customer tidak boleh hilang hanya karena deploy gagal atau satu task crash.
+
+<Def term="Amazon RDS"><p>Relational Database Service, layanan database terkelola AWS yang mengotomasi provisioning, backup, patching, dan monitoring engine relasional (PostgreSQL, MySQL, dan lainnya) tanpa kamu mengelola OS server database secara langsung.</p></Def>
+
+Modul ini tidak mengganti SQL dan pgx dari Roadmap 3. `SELECT`, transaksi, index, dan `pgxpool` tetap sama persis. Yang kita tambahkan adalah lapisan production di sekeliling database itu: jaringan private, kontrol akses, backup, batas koneksi, migration yang disiplin, dan ketahanan saat satu Availability Zone tumbang.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari `docker compose` ke VPC"><p>Di `docker compose`, API konek ke service `postgres` lewat network bridge lokal, tanpa firewall. Di AWS, koneksi yang sama dikontrol berlapis oleh VPC, subnet, route table, dan security group. Bukan PostgreSQL-nya yang berubah, melainkan jaringan di sekelilingnya.</p></Box>
+
+<CardGrid cols={3}>
+  <Card><h4>State bisnis</h4><p>Order, payment, stok, dan customer ada di PostgreSQL. Kehilangan data jauh lebih mahal daripada downtime API beberapa menit.</p></Card>
+  <Card><h4>Permukaan serangan</h4><p>Database production tidak boleh terbuka ke internet. Hanya workload internal (task ECS) yang perlu port 5432.</p></Card>
+  <Card><h4>Kapasitas koneksi</h4><p>Tiap task ECS membuka pool sendiri. Total pool lintas task yang tak dihitung bisa menabrak `max_connections` RDS.</p></Card>
+</CardGrid>
+
+Target arsitektur kita sederhana tapi tegas: API di ECS boleh bicara ke RDS, tetapi internet tidak pernah bisa menyentuh RDS.
+
+```mermaid
+flowchart LR
+  U["User / Browser"] -->|HTTPS 443| ALB["Application Load Balancer<br/>public subnet"]
+  ALB -->|HTTP app port| API["ECS Fargate API<br/>private subnet"]
+  API -->|TCP 5432| RDS[("RDS PostgreSQL<br/>private subnet")]
+  Internet["Internet 0.0.0.0/0"] -. blocked .-> RDS
+```
+
+<p class="fig-cap"><b>Gambar 1.</b> RDS hidup di private subnet tanpa IP publik. Hanya traffic dari security group ECS yang boleh masuk ke port 5432.</p>
+
+</Section>
+
+<Section num="02" id="rds-managed" title="RDS PostgreSQL sebagai Managed Database" sub="PostgreSQL yang sama, tapi operasi infrastrukturnya dipegang AWS.">
+
+<p class="lead">RDS bukan ORM, bukan dialek SQL baru, dan bukan database lain. Ia adalah PostgreSQL biasa yang servernya dikelola AWS.</p>
+
+DB instance RDS adalah satu server PostgreSQL terkelola. Bedanya dengan VPS biasa: kamu tidak punya akses SSH ke host, tidak menyentuh OS, dan tidak memasang paket. Akses hanya lewat SQL client atau driver `pgx`. Sebagai gantinya, AWS menangani patch engine, perawatan disk, snapshot, dan failover. Kamu memilih major version (misalnya PostgreSQL `17`, yang sudah GA di RDS sejak akhir 2024) dan RDS mengisi minor terbaru bila tidak kamu tentukan.
+
+<Box variant="note" icon="📝" label="Cek versi yang tersedia di region-mu"><p>Daftar major version yang aktif bergerak. Jangan menebak. Konfirmasi default dan versi tersedia di region target dengan satu perintah AWS CLI sebelum membuat instance.</p></Box>
+
+```bash title="Terminal"
+aws rds describe-db-engine-versions \
+  --engine postgres \
+  --default-only \
+  --query "DBEngineVersions[].EngineVersion" \
+  --output text
+```
+
+<Compare aLabel="Laravel di VPS / droplet" bLabel="Go API + RDS" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>PostgreSQL sering dipasang manual di droplet, satu server dengan app atau VM terpisah.</li><li>Backup, patch OS, autovacuum tuning, dan monitoring sering jadi skrip cron buatan sendiri.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>PostgreSQL berjalan sebagai DB instance RDS di dalam VPC.</li><li>API Go cukup konek lewat `DATABASE_URL`, lalu query dengan `pgxpool` seperti biasa.</li></ul></Fragment>
+</Compare>
+
+Untuk skincare shop, beban utama kita adalah OLTP: customer checkout, stok dikurangi dalam transaksi, payment event dicatat, status order berpindah, dan admin menarik laporan. Pola beban ini cocok untuk satu RDS PostgreSQL yang ditata rapi, jauh sebelum kita butuh sharding atau database eksotis.
+
+<Box variant="warn" icon="⚠️" label="Managed bukan berarti tanpa desain"><p>AWS mengurus server, bukan keputusanmu. Skema, index, query, batas transaksi, credential, akses jaringan, sizing pool, dan migration tetap 100 persen tanggung jawab tim backend. RDS hanya menghapus pekerjaan ops OS, bukan pekerjaan engineering data.</p></Box>
+
+</Section>
+
+<Section num="03" id="private-subnet" title="Private Subnet dan Security Group" sub="Aturan emas: RDS tidak punya IP publik, dan inbound 5432 hanya dari security group aplikasi.">
+
+<p class="lead">Database production tidak menerima koneksi langsung dari laptop developer. Ia hidup di private subnet dan hanya melayani workload di dalam VPC.</p>
+
+RDS ditempatkan lewat <em class="term">DB subnet group</em>, kumpulan subnet di minimal dua Availability Zone. Untuk production, semua subnet itu harus private: route table-nya tidak punya rute langsung ke Internet Gateway, sehingga instance tidak bisa dijangkau dari internet. Setel `publicly accessible` ke off, dan RDS tidak akan pernah mendapat IP publik.
+
+<Def term="DB subnet group"><p>Daftar subnet (minimal di dua AZ) tempat RDS boleh menaruh endpoint database-nya. Untuk production, isi dengan private subnet saja agar tidak ada jalur dari internet.</p></Def>
+
+Lapisan kedua adalah security group, firewall stateful per-resource. Trik produksi yang penting: inbound rule RDS jangan menunjuk CIDR `0.0.0.0/0`, melainkan menunjuk security group milik task ECS sebagai source (SG-to-SG reference). Artinya, hanya resource yang memakai SG itu yang boleh connect, dan aturannya tetap valid walau IP task berubah-ubah saat scaling.
+
+```mermaid
+flowchart TD
+  NET["Internet :443/:80"] --> ALBSG["sg-alb<br/>inbound 80/443 dari internet"]
+  ALBSG --> APISG["sg-ecs-api<br/>inbound app port HANYA dari sg-alb"]
+  APISG --> RDSSG["sg-rds-postgres<br/>inbound 5432 HANYA dari sg-ecs-api"]
+  RDSSG --> DB[("RDS PostgreSQL")]
+```
+
+<p class="fig-cap"><b>Gambar 2.</b> Pola berlapis. Tiap security group hanya menerima source dari layer di atasnya, dan RDS tidak pernah membuka 5432 ke internet maupun ke ALB.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>sg-ecs-api</h4><p>Dipasang ke ECS service API. Boleh outbound ke RDS pada port 5432.</p></Card>
+  <Card><h4>sg-rds-postgres</h4><p>Dipasang ke RDS. Inbound TCP 5432 hanya dari `sg-ecs-api` (dan opsional `sg-ecs-worker`).</p></Card>
+</CardGrid>
+
+```bash title="Terminal"
+aws ec2 authorize-security-group-ingress \
+  --group-id sg-rds-postgres \
+  --protocol tcp \
+  --port 5432 \
+  --source-group sg-ecs-api
+```
+
+Kalau worker ECS juga butuh database untuk memproses payment event, tambahkan SG worker sebagai source kedua. Yang dilarang adalah membuka CIDR internet hanya supaya migration atau debugging dari laptop terasa gampang.
+
+```bash title="Terminal"
+aws ec2 authorize-security-group-ingress \
+  --group-id sg-rds-postgres \
+  --protocol tcp \
+  --port 5432 \
+  --source-group sg-ecs-worker
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: Security Group vs firewall biasa"><p>Di VPS, kamu sering atur `ufw allow from 10.0.0.5`. Security Group lebih kuat: ia stateful (reply otomatis diizinkan, tak perlu rule outbound balasan) dan bisa menunjuk security group lain sebagai source, bukan IP. Jadi sumbernya adalah identitas (siapa task itu), bukan alamat yang bisa berubah.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jebakan: bikin RDS public demi migration"><p>Godaan terbesar adalah menjadikan RDS publicly accessible supaya `migrate up` jalan dari laptop. Jangan. Jalankan migration dari runner yang berada di dalam VPC, ECS one-off task, atau bastion yang dikontrol ketat. Public DB untuk data customer adalah audit finding yang menunggu terjadi.</p></Box>
+
+</Section>
+
+<Section num="04" id="credentials" title="Credential, DATABASE_URL, dan TLS" sub="Password DB tidak masuk image, tidak masuk git, dan koneksi production pakai TLS.">
+
+<p class="lead">Database yang private masih bocor kalau password-nya tertanam di kode atau di environment plain. Credential harus diperlakukan setara akses langsung ke data customer.</p>
+
+API Go konek ke PostgreSQL lewat satu connection string. `pgx` menerima format DSN PostgreSQL standar, jadi `DATABASE_URL` cukup untuk membawa host endpoint RDS, port, user, password, nama database, dan opsi TLS sekaligus.
+
+```bash title="format DATABASE_URL"
+postgres://skincare_app:SECRET@skincare-prod.abc123.ap-southeast-1.rds.amazonaws.com:5432/skincare?sslmode=verify-full
+```
+
+<Box variant="warn" icon="⚠️" label="sslmode bukan opsional di production"><p>RDS mendukung koneksi TLS. Pakai minimal `sslmode=require`, dan idealnya `verify-full` dengan CA bundle RDS agar terlindung dari man-in-the-middle di dalam VPC. `sslmode=disable` di production berarti password dan data lewat plaintext.</p></Box>
+
+Daripada mengarang password sendiri lalu menyimpannya di tiga tempat, biarkan RDS membuat dan mengelola password master di AWS Secrets Manager lewat flag `--manage-master-user-password`. Untuk user aplikasi sehari-hari, buat role terpisah dengan privilege secukupnya, lalu simpan `DATABASE_URL`-nya sebagai secret tersendiri.
+
+<Compare aLabel="Laravel: .env di server" bLabel="Go + ECS: secret saat runtime" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>`.env` production fisik ada di server, dibaca framework saat boot.</li><li>Rotasi password berarti mengedit file dan men-deploy ulang.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Image Docker tidak membawa `.env`. Secret di-inject saat task start.</li><li>ECS task definition memakai `secrets` dengan `valueFrom` menunjuk ARN Secrets Manager.</li></ul></Fragment>
+</Compare>
+
+Di task definition, `DATABASE_URL` masuk lewat field `secrets`, bukan `environment`. Field `environment` terlihat di `docker inspect` dan console; field `secrets` di-resolve oleh execution role saat startup dan tidak terpapar mentah.
+
+```json title="infra/ecs/api-secrets.json"
+{
+  "secrets": [
+    {
+      "name": "DATABASE_URL",
+      "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:111122223333:secret:skincare/prod/database-url-AbCdEf"
+    }
+  ]
+}
+```
+
+Di sisi Go, kode tidak peduli dari mana nilai itu datang. Ia membaca satu env var dan fail-fast bila kosong, supaya aplikasi mati di startup dengan pesan jelas, bukan crash setengah jalan saat query pertama.
+
+```go title="internal/config/database.go"
+package config
+
+import (
+	"fmt"
+	"os"
+)
+
+// DatabaseURL membaca DSN PostgreSQL dari environment dan gagal cepat bila kosong.
+func DatabaseURL() (string, error) {
+	url, ok := os.LookupEnv("DATABASE_URL")
+	if !ok || url == "" {
+		return "", fmt.Errorf("DATABASE_URL wajib diset (lewat ECS secrets di production)")
+	}
+	return url, nil
+}
+```
+
+</Section>
+
+<Section num="05" id="backup-restore" title="Backup Otomatis, Snapshot, dan PITR" sub="Backup bukan checkbox compliance, tapi fitur bisnis saat migration salah atau admin keliru update.">
+
+<p class="lead">Pertanyaan yang menentukan desain backup bukan "apakah kita punya backup", tapi "seberapa lama lalu kita bisa kembalikan data, dan secepat apa".</p>
+
+RDS menyediakan dua mekanisme yang saling melengkapi. <em class="term">Automated backups</em> berjalan harian di window yang kamu pilih, ditambah perekaman transaction log terus-menerus, sehingga kamu bisa restore ke detik mana pun di dalam window retensi. Inilah Point-in-Time Recovery (PITR). <em class="term">Snapshot manual</em> adalah backup permanen yang kamu buat sendiri dan bertahan sampai dihapus, tidak terikat retensi.
+
+<Def term="retention period"><p>Berapa hari automated backup disimpan, antara 1 sampai 35 hari. Nilai 0 mematikan automated backup (jangan di production). Window inilah rentang PITR yang tersedia.</p></Def>
+
+<Def term="PITR (Point-in-Time Recovery)"><p>Memulihkan database ke timestamp persis di dalam window retensi, bukan hanya ke titik backup harian. Berguna saat sebuah `UPDATE` atau migration merusak data pada jam tertentu.</p></Def>
+
+```mermaid
+stateDiagram-v2
+  [*] --> Sehat
+  Sehat --> Insiden: migration salah / admin keliru UPDATE
+  Insiden --> PITR: restore ke timestamp sebelum insiden
+  Insiden --> Snapshot: restore dari snapshot manual
+  PITR --> InstanceBaru: RDS buat DB instance baru
+  Snapshot --> InstanceBaru
+  InstanceBaru --> Verifikasi: cek data, lalu alihkan endpoint
+  Verifikasi --> Sehat
+```
+
+<p class="fig-cap"><b>Gambar 3.</b> Restore selalu menghasilkan DB instance baru. Kamu verifikasi dulu, baru mengalihkan aplikasi ke endpoint baru.</p>
+
+<Steps>
+  <Step><b>Pilih retention realistis</b><p>Mulai 7 hari untuk staging, 14 sampai 30 hari untuk production, seimbangkan dengan biaya storage backup.</p></Step>
+  <Step><b>Snapshot manual sebelum perubahan besar</b><p>Sebelum migration yang menyentuh banyak data, buat snapshot bernama jelas sebagai checkpoint eksplisit.</p></Step>
+  <Step><b>Latih restore secara berkala</b><p>Backup yang belum pernah di-restore hanyalah asumsi. Jadwalkan latihan restore ke environment isolasi dan catat RPO/RTO nyata.</p></Step>
+</Steps>
+
+```bash title="Terminal"
+aws rds modify-db-instance \
+  --db-instance-identifier skincare-prod-postgres \
+  --backup-retention-period 14 \
+  --preferred-backup-window "18:00-19:00" \
+  --apply-immediately
+```
+
+```bash title="Terminal"
+aws rds create-db-snapshot \
+  --db-instance-identifier skincare-prod-postgres \
+  --db-snapshot-identifier skincare-prod-before-voucher-migration-2026-06-09
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: bukan `pg_dump` cron lagi"><p>Di VPS, backup biasanya `pg_dump` lewat cron lalu rsync ke storage lain, dan kamu sendiri yang menjaga rotasinya. RDS menangani jadwal, retensi, dan transaction log untuk PITR. Kamu pindah dari mengelola skrip backup ke mengelola kebijakan retensi dan latihan restore.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jebakan: retention 0 atau backup window jam ramai"><p>Retention 0 mematikan PITR sepenuhnya. Dan jangan taruh backup window di jam checkout tersibuk, karena snapshot bisa menambah I/O. Pilih window di jam traffic rendah sesuai zona waktu pasar skincare-mu.</p></Box>
+
+</Section>
+
+<Section num="06" id="parameter-group" title="Parameter Group dan Batas Koneksi" sub="postgresql.conf versi RDS, tempat max_connections diatur, plus jebakannya.">
+
+<p class="lead">Di server biasa, kamu mengedit `postgresql.conf`. Di RDS, semua parameter engine diatur lewat <em class="term">DB parameter group</em>.</p>
+
+RDS memakai default parameter group bila kamu tidak membuat sendiri. Default cukup untuk mulai, tapi production sebaiknya pakai custom parameter group agar setiap perubahan eksplisit, bisa direview, dan bisa dilacak sebagai infrastruktur. Dua parameter yang paling sering jadi perhatian backend engineer: `max_connections` dan `shared_buffers`.
+
+<Def term="max_connections"><p>Jumlah maksimum koneksi simultan yang diterima PostgreSQL. Di RDS, default-nya mengikuti formula berbasis memori instance class, tapi bisa di-override lewat parameter group.</p></Def>
+
+<Def term="shared_buffers"><p>Memori yang dialokasikan PostgreSQL untuk cache data. Terlalu kecil bikin sering baca disk, terlalu besar menyisakan sedikit memori untuk koneksi dan operasi lain.</p></Def>
+
+Sebagian parameter bersifat <em class="term">dynamic</em> (langsung berlaku) dan sebagian <em class="term">static</em> (butuh reboot DB instance). `max_connections` termasuk yang butuh reboot, jadi rencanakan perubahannya di window maintenance, bukan di jam ramai.
+
+```bash title="Terminal"
+aws rds create-db-parameter-group \
+  --db-parameter-group-name skincare-postgres-prod \
+  --db-parameter-group-family postgres17 \
+  --description "Custom PostgreSQL parameters for skincare production"
+```
+
+```bash title="Terminal"
+aws rds modify-db-parameter-group \
+  --db-parameter-group-name skincare-postgres-prod \
+  --parameters "ParameterName=max_connections,ParameterValue=200,ApplyMethod=pending-reboot"
+```
+
+Nilai di atas hanya contoh, bukan resep universal. Sebelum menaikkan, ukur dulu beban nyata lewat metrik `DatabaseConnections` dan `FreeableMemory`. Dari dalam database, kamu bisa cek setting efektif:
+
+```sql title="ops/check-rds-settings.sql"
+SELECT name, setting, unit, boot_val, reset_val
+FROM pg_settings
+WHERE name IN ('max_connections', 'shared_buffers', 'work_mem', 'effective_cache_size')
+ORDER BY name;
+```
+
+<Box variant="warn" icon="⚠️" label="Jebakan: naikkan max_connections sebagai obat segala penyakit"><p>`max_connections` besar bukan solusi performa otomatis. Ribuan koneksi malah memperlambat database karena context switching, memori per-koneksi, dan lock contention. Akar masalah `too many connections` hampir selalu ada di sizing pool aplikasi, bukan di kekurangan slot RDS. Itu yang kita beresi di section berikutnya.</p></Box>
+
+</Section>
+
+<Section num="07" id="pool-sizing" title="Connection Pool Sizing untuk ECS" sub="pgxpool itu pool per proses, dan tiap task ECS adalah satu proses.">
+
+<p class="lead">Inti masalahnya satu kalimat: setiap ECS task menjalankan satu binary Go dengan satu `pgxpool` sendiri, jadi total koneksi = jumlah task dikali pool per task.</p>
+
+Bayangkan kamu set `MaxConns=50` lalu scale API ke 6 task. API saja sudah berpotensi membuka 300 koneksi. Tambahkan worker, satu sesi `psql` darurat, monitoring, dan autovacuum, lalu RDS dengan `max_connections=200` langsung menolak koneksi baru dengan `too many connections`. Yang patah bukan satu task, melainkan seluruh layanan.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: kenapa ini tak terasa di Node/Laravel lokal"><p>Di local, kamu sering hanya melihat satu proses app, jadi satu pool. Di Node atau Laravel pun pool disetel per proses (Prisma, Knex, PDO). Bedanya bukan bahasanya, melainkan bahwa ECS menjalankan banyak proses identik secara horizontal, dan tiap proses membawa pool penuhnya. Yang aman di satu proses lokal bisa berbahaya saat dikali jumlah task.</p></Box>
+
+Rumus awal yang aman:
+
+```text title="Aturan sizing pool"
+(MaxConns per task x jumlah task) + reserved < max_connections RDS
+
+reserved = slot cadangan untuk migration, psql darurat,
+           monitoring, replikasi, dan autovacuum.
+```
+
+Contoh sizing untuk skincare production kecil dengan `max_connections=200`:
+
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>Komponen</th><th>Jumlah task</th><th>Pool per task</th><th>Total koneksi</th></tr></thead>
+  <tbody>
+    <tr><td>API ECS</td><td>4</td><td>18</td><td>72</td></tr>
+    <tr><td>Worker ECS</td><td>2</td><td>10</td><td>20</td></tr>
+    <tr><td>Migrator (one-off)</td><td>1</td><td>4</td><td>4</td></tr>
+    <tr><td>Cadangan ops</td><td>-</td><td>-</td><td>~40</td></tr>
+    <tr><td><b>Total terpakai</b></td><td></td><td></td><td><b>~136 dari 200</b></td></tr>
+  </tbody>
+</table>
+</div>
+
+Pool dikonfigurasi sekali saat boot. `pgxpool.ParseConfig` membaca `DATABASE_URL`, lalu kita timpa batas-batasnya dari env (yang nilainya datang dari task definition). `MaxConnLifetime` penting di belakang load balancer dan di lingkungan yang sering scale: koneksi di-recycle berkala agar tidak menumpuk koneksi basi.
+
+```go title="internal/platform/postgres/pool.go"
+package postgres
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type PoolConfig struct {
+	DatabaseURL     string
+	MaxConns        int32
+	MinConns        int32
+	MaxConnLifetime time.Duration
+	MaxConnIdleTime time.Duration
+}
+
+// NewPool membangun pgxpool production dan memastikan koneksi awal sehat lewat Ping.
+func NewPool(ctx context.Context, cfg PoolConfig) (*pgxpool.Pool, error) {
+	pgxCfg, err := pgxpool.ParseConfig(cfg.DatabaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse database url: %w", err)
+	}
+
+	pgxCfg.MaxConns = cfg.MaxConns
+	pgxCfg.MinConns = cfg.MinConns
+	pgxCfg.MaxConnLifetime = cfg.MaxConnLifetime
+	pgxCfg.MaxConnIdleTime = cfg.MaxConnIdleTime
+
+	pool, err := pgxpool.NewWithConfig(ctx, pgxCfg)
+	if err != nil {
+		return nil, fmt.Errorf("create pgx pool: %w", err)
+	}
+
+	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if err := pool.Ping(pingCtx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("ping postgres: %w", err)
+	}
+
+	return pool, nil
+}
+```
+
+Nilai `MaxConns` datang dari environment, jadi kamu bisa menyetel per environment tanpa rebuild image. Default kecil yang sehat lebih baik daripada angka besar tanpa alasan.
+
+```go title="internal/config/pool.go"
+package config
+
+import (
+	"fmt"
+	"os"
+	"strconv"
+)
+
+// Int32Env membaca integer 32-bit dari env dengan fallback aman.
+func Int32Env(key string, fallback int32) (int32, error) {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return fallback, nil
+	}
+	parsed, err := strconv.ParseInt(raw, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("parse %s: %w", key, err)
+	}
+	return int32(parsed), nil
+}
+```
+
+<Box variant="tip" icon="💡" label="Best practice pool"><p>Mulai kecil, ukur, lalu naikkan. Untuk API CRUD skincare yang query-nya cepat, pool 15 sampai 20 per task biasanya lebih sehat daripada 50 yang menganggur. Pertimbangkan RDS Proxy hanya bila kamu punya banyak koneksi singkat (misalnya Lambda atau scale-out ekstrem), bukan untuk ECS long-lived dengan pgxpool yang sudah rapi.</p></Box>
+
+</Section>
+
+<Section num="08" id="migration-production" title="Migration Strategy di Production" sub="Migration jalan sekali, sebelum versi API yang butuh skema baru menerima traffic.">
+
+<p class="lead">Di Laravel, `php artisan migrate` sering jadi bagian deploy yang dijalankan otomatis. Di ECS dengan banyak task identik, otomatisasi naif itu justru berbahaya.</p>
+
+Kalau setiap task API menjalankan migration saat boot, rolling deploy yang menyalakan beberapa task sekaligus akan memicu beberapa migration paralel. Hasilnya race condition: dua task mencoba membuat tabel atau index yang sama, salah satu error, deploy gagal. Pola yang benar adalah memisahkan migration sebagai langkah deploy tersendiri, dijalankan tepat satu kali.
+
+```mermaid
+sequenceDiagram
+  participant CI as CI/CD Pipeline
+  participant ECR as ECR
+  participant MIG as Migrator (one-off task)
+  participant RDS as RDS PostgreSQL
+  participant SVC as ECS Service (API)
+  CI->>ECR: build & push image:GIT_SHA
+  CI->>MIG: RunTask migrate up
+  MIG->>RDS: terapkan migration baru
+  RDS-->>MIG: skema versi N+1
+  MIG-->>CI: exit 0 (sukses)
+  CI->>SVC: update-service (rolling deploy)
+  SVC->>RDS: API baru jalan di skema N+1
+```
+
+<p class="fig-cap"><b>Gambar 4.</b> Urutan aman: push image, jalankan migration sekali, baru rolling deploy. Bila migration gagal, service lama tetap melayani di skema lama.</p>
+
+Untuk jalur Go Artisan kita pakai `golang-migrate` karena sederhana, punya CLI, dan mendukung PostgreSQL. Setiap perubahan punya pasangan file `up` dan `down`.
+
+<FileTree title="Struktur migration skincare" tree={`
+db/
+  migrations/
+    202606090001_create_products.up.sql      # buat tabel product
+    202606090001_create_products.down.sql    # rollback tabel product
+    202606090002_create_orders.up.sql        # buat tabel order
+    202606090002_create_orders.down.sql      # rollback tabel order
+cmd/
+  api/
+    main.go                                   # entry point API
+internal/
+  platform/
+    postgres/
+      pool.go                                 # pgxpool production
+`} />
+
+Migration dijalankan dari environment yang punya akses VPC, bukan dari laptop publik (karena RDS private). Pilihan umum: ECS one-off task lewat `aws ecs run-task`, CodeBuild di dalam VPC, atau self-hosted runner di VPC. Skema deploy ringkasnya:
+
+```bash title="scripts/deploy-api.sh"
+set -euo pipefail
+
+IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/skincare-api:${GIT_SHA}"
+
+# 1. build & push image
+docker build -t "${IMAGE_URI}" .
+docker push "${IMAGE_URI}"
+
+# 2. migration SEKALI dari dalam VPC (bukan dari laptop)
+migrate -path db/migrations -database "${DATABASE_URL}" up
+
+# 3. baru rolling deploy service API
+aws ecs update-service \
+  --cluster skincare-prod \
+  --service skincare-api \
+  --force-new-deployment
+```
+
+Migration production yang aman juga harus <em class="term">backward-compatible</em>: skema baru tidak boleh mematahkan versi API lama yang masih berjalan selama rolling deploy. Karena itu perubahan destruktif dipecah jadi beberapa rilis.
+
+<Steps>
+  <Step><b>Tambah dulu, hapus belakangan</b><p>Tambah kolom nullable, deploy API yang menulis ke kolom baru, baru di rilis berikutnya pasang constraint ketat atau hapus kolom lama.</p></Step>
+  <Step><b>Index besar pakai CONCURRENTLY</b><p>`CREATE INDEX CONCURRENTLY` tidak mengunci tabel untuk write, penting agar checkout tidak ikut terkunci. Catatan: ia tidak boleh berjalan di dalam transaksi.</p></Step>
+  <Step><b>Backfill berbatch</b><p>Jangan `UPDATE` jutaan row dalam satu transaksi. Pecah per batch agar lock pendek dan WAL tidak meledak.</p></Step>
+</Steps>
+
+```sql title="db/migrations/202606090003_add_products_slug.up.sql"
+ALTER TABLE products
+  ADD COLUMN slug text;
+
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS products_slug_unique_idx
+  ON products (slug)
+  WHERE slug IS NOT NULL;
+```
+
+```sql title="db/migrations/202606090003_add_products_slug.down.sql"
+DROP INDEX CONCURRENTLY IF EXISTS products_slug_unique_idx;
+
+ALTER TABLE products
+  DROP COLUMN IF EXISTS slug;
+```
+
+<Box variant="warn" icon="⚠️" label="Jebakan: migration destruktif langsung di jam ramai"><p>Jangan langsung `DROP COLUMN`, rename kolom besar, atau backfill jutaan row di jam checkout ramai tanpa rencana lock, batch, dan rollback. Satu `ALTER TABLE` yang mengambil lock kuat bisa menahan seluruh write order sampai selesai.</p></Box>
+
+</Section>
+
+<Section num="09" id="resilience" title="Multi-AZ, Read Replica, dan Ketahanan" sub="Dua mekanisme berbeda: Multi-AZ untuk availability, read replica untuk skala baca.">
+
+<p class="lead">Orang sering mencampur dua konsep ini. Multi-AZ menjaga database tetap hidup saat satu AZ tumbang. Read replica memindahkan beban baca berat. Keduanya bukan saling pengganti.</p>
+
+<Def term="Multi-AZ"><p>RDS menjalankan standby sinkron di Availability Zone berbeda. Bila primary gagal, RDS otomatis failover ke standby dan endpoint DNS yang sama menunjuk ke instance baru. Ini soal availability dan durability, bukan menambah kapasitas baca.</p></Def>
+
+<Def term="read replica"><p>Salinan read-only dari primary, direplikasi secara asynchronous. Aplikasi mengarahkan query baca berat ke replica agar primary fokus pada transaksi tulis. Karena asynchronous, data replica bisa tertinggal beberapa detik (replication lag).</p></Def>
+
+```mermaid
+flowchart LR
+  API["ECS API"] -->|checkout, payment, update stok| Primary[("RDS Primary<br/>read/write")]
+  API -->|laporan admin, analitik katalog| Replica[("Read Replica<br/>read-only")]
+  Primary -. failover otomatis .-> Standby[("Standby Multi-AZ<br/>AZ berbeda")]
+  Primary -. async replication .-> Replica
+```
+
+<p class="fig-cap"><b>Gambar 5.</b> Standby Multi-AZ untuk failover (tidak melayani query), read replica untuk query baca yang toleran lag.</p>
+
+Untuk skincare shop, kandidat query yang aman diarahkan ke read replica adalah yang toleran terhadap lag beberapa detik:
+
+<ul><li>Dashboard admin yang menghitung penjualan harian.</li><li>Laporan produk terlaris per brand atau kategori.</li><li>Export order untuk tim finance.</li><li>Analitik pencarian dan rekomendasi sederhana.</li></ul>
+
+Yang TIDAK boleh ke replica: checkout, update stok, payment webhook, dan validasi voucher. Semua operasi yang butuh konsistensi langsung membaca primary. Pola kode yang rapi adalah memisahkan reader dan writer secara eksplisit, supaya pilihan ini terlihat di call site.
+
+```go title="internal/platform/postgres/cluster.go"
+package postgres
+
+import "github.com/jackc/pgx/v5/pgxpool"
+
+// Cluster memisahkan jalur tulis (Primary) dari jalur baca yang boleh ke Replica.
+type Cluster struct {
+	Primary *pgxpool.Pool
+	Replica *pgxpool.Pool
+}
+
+// Writer selalu mengembalikan primary untuk transaksi yang harus konsisten.
+func (c Cluster) Writer() *pgxpool.Pool {
+	return c.Primary
+}
+
+// Reader memakai replica hanya bila ada dan pemanggil eksplisit memintanya.
+func (c Cluster) Reader(preferReplica bool) *pgxpool.Pool {
+	if preferReplica && c.Replica != nil {
+		return c.Replica
+	}
+	return c.Primary
+}
+```
+
+<Box variant="warn" icon="⚠️" label="Jebakan: stale read setelah checkout"><p>Setelah customer checkout, jangan baca order terbaru dari replica untuk halaman sukses. Replica bisa lag, sehingga order yang baru dibuat seolah belum ada. Gunakan primary untuk read-after-write yang harus langsung konsisten.</p></Box>
+
+<Box variant="tip" icon="💡" label="Urutan investasi ketahanan"><p>Untuk production awal: aktifkan Multi-AZ lebih dulu (failover otomatis sering lebih penting daripada skala baca). Tambah read replica nanti, saat metrik menunjukkan primary memang jenuh oleh query baca berat, bukan oleh query lambat yang sebenarnya kurang index.</p></Box>
+
+</Section>
+
+<Section num="10" id="observability" title="Monitoring, Alarm, dan Operasional" sub="Database aman bukan hanya yang private dan dibackup, tapi yang kamu tahu kapan mulai sakit.">
+
+<p class="lead">Tanpa alarm, masalah RDS baru ketahuan saat customer gagal checkout. Dengan alarm yang benar, kamu tahu lebih dulu dan punya runbook untuk bertindak.</p>
+
+RDS mengirim metrik ke CloudWatch otomatis. Minimal yang perlu dipantau untuk skincare production: `DatabaseConnections`, `CPUUtilization`, `FreeableMemory`, `FreeStorageSpace`, `ReadLatency`, dan `WriteLatency`. Pasang alarm pada metrik yang paling cepat menjelaskan insiden, dan sambungkan ke channel incident lewat SNS.
+
+```bash title="Terminal"
+aws cloudwatch put-metric-alarm \
+  --alarm-name "skincare-prod-rds-high-connections" \
+  --namespace AWS/RDS \
+  --metric-name DatabaseConnections \
+  --dimensions Name=DBInstanceIdentifier,Value=skincare-prod-postgres \
+  --statistic Average \
+  --period 60 \
+  --evaluation-periods 5 \
+  --threshold 160 \
+  --comparison-operator GreaterThanThreshold \
+  --alarm-actions "${SNS_TOPIC_ARN}"
+```
+
+```bash title="Terminal"
+aws cloudwatch put-metric-alarm \
+  --alarm-name "skincare-prod-rds-low-storage" \
+  --namespace AWS/RDS \
+  --metric-name FreeStorageSpace \
+  --dimensions Name=DBInstanceIdentifier,Value=skincare-prod-postgres \
+  --statistic Average \
+  --period 300 \
+  --evaluation-periods 2 \
+  --threshold 10737418240 \
+  --comparison-operator LessThanThreshold \
+  --alarm-actions "${SNS_TOPIC_ARN}"
+```
+
+Di sisi aplikasi Go, log error database harus kontekstual tetapi tidak membocorkan credential. Jangan pernah mencatat `DATABASE_URL` mentah, karena ia berisi username dan password.
+
+```go title="internal/catalog/repository.go"
+package catalog
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type Repository struct {
+	pool *pgxpool.Pool
+}
+
+func NewRepository(pool *pgxpool.Pool) *Repository {
+	return &Repository{pool: pool}
+}
+
+// FindByID mengembalikan satu produk skincare; harga disimpan sebagai int64 rupiah.
+func (r *Repository) FindByID(ctx context.Context, id int64) (Product, error) {
+	const query = `
+		SELECT id, name, brand, price_rupiah
+		FROM products
+		WHERE id = $1 AND deleted_at IS NULL
+	`
+
+	var p Product
+	err := r.pool.QueryRow(ctx, query, id).
+		Scan(&p.ID, &p.Name, &p.Brand, &p.PriceRupiah)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Product{}, ErrProductNotFound
+	}
+	if err != nil {
+		// Log konteks (id), bukan DATABASE_URL atau isi row sensitif.
+		return Product{}, fmt.Errorf("find product %d: %w", id, err)
+	}
+
+	return p, nil
+}
+```
+
+Sediakan juga endpoint health yang menyentuh database, supaya ALB dan kamu sama-sama tahu pool masih bisa menjangkau RDS. Health check cukup `Ping`, jangan query berat.
+
+<Endpoint method="GET" path="/healthz" desc="Liveness ringan, tidak menyentuh database" />
+<Endpoint method="GET" path="/readyz" desc="Readiness, melakukan pool.Ping ke RDS dengan timeout pendek" />
+
+<Box variant="note" icon="📝" label="Alarm harus actionable"><p>Alarm koneksi tinggi butuh runbook: cek jumlah task ECS, cek `MaxConns` per task, cek slow query, cek worker yang macet, lalu scale atau rollback. Alarm tanpa runbook hanya menambah kebisingan, bukan keamanan.</p></Box>
+
+</Section>
+
+<Section num="11" id="hands-on" title="Hands-on: Rakit RDS untuk Skincare API" sub="Merangkai semua keputusan jadi satu konfigurasi minimal yang bisa diadaptasi.">
+
+<p class="lead">Kita asumsikan VPC, private subnet, ECS service, dan Secrets Manager sudah ada dari modul sebelumnya. Fokus di sini: subnet group, security group, DB instance, secret, dan migration.</p>
+
+<Steps>
+  <Step><b>Buat DB subnet group</b><p>Pilih private subnet di minimal dua AZ tempat RDS boleh menaruh endpoint.</p></Step>
+  <Step><b>Buat security group RDS</b><p>Inbound 5432 hanya dari `sg-ecs-api` (dan worker bila perlu), tanpa CIDR internet.</p></Step>
+  <Step><b>Buat DB instance</b><p>PostgreSQL 17, public access off, backup retention aktif, password master dikelola Secrets Manager, storage autoscaling.</p></Step>
+  <Step><b>Simpan DATABASE_URL</b><p>Simpan DSN aplikasi di Secrets Manager, lalu inject ke task definition lewat `secrets`/`valueFrom`.</p></Step>
+  <Step><b>Jalankan migration sekali</b><p>RunTask migrator dari dalam VPC sebelum rolling deploy API versi baru.</p></Step>
+</Steps>
+
+```bash title="Terminal"
+aws rds create-db-subnet-group \
+  --db-subnet-group-name skincare-private-db-subnets \
+  --db-subnet-group-description "Private subnets for skincare RDS" \
+  --subnet-ids subnet-private-a subnet-private-b
+```
+
+```bash title="Terminal"
+aws rds create-db-instance \
+  --db-instance-identifier skincare-prod-postgres \
+  --engine postgres \
+  --engine-version 17 \
+  --db-instance-class db.t4g.medium \
+  --allocated-storage 50 \
+  --max-allocated-storage 200 \
+  --db-name skincare \
+  --master-username skincare_admin \
+  --manage-master-user-password \
+  --db-subnet-group-name skincare-private-db-subnets \
+  --vpc-security-group-ids sg-rds-postgres \
+  --db-parameter-group-name skincare-postgres-prod \
+  --backup-retention-period 14 \
+  --multi-az \
+  --no-publicly-accessible
+```
+
+Task definition API hanya menerima secret, bukan menyimpan password di image. Perhatikan pemisahan `environment` (non-sensitif, boleh terlihat) dan `secrets` (di-resolve execution role saat startup).
+
+```json title="infra/ecs/task-definition-rds.json"
+{
+  "containerDefinitions": [
+    {
+      "name": "api",
+      "image": "111122223333.dkr.ecr.ap-southeast-1.amazonaws.com/skincare-api:GIT_SHA",
+      "environment": [
+        { "name": "DATABASE_MAX_CONNS", "value": "18" },
+        { "name": "DATABASE_MIN_CONNS", "value": "2" }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:111122223333:secret:skincare/prod/database-url-AbCdEf"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Setelah RDS aktif, tes koneksi dan jalankan migration dari dalam VPC, bukan dari laptop. ECS one-off task adalah cara bersih untuk itu.
+
+```bash title="Terminal"
+aws ecs run-task \
+  --cluster skincare-prod \
+  --launch-type FARGATE \
+  --task-definition skincare-migrator \
+  --network-configuration "awsvpcConfiguration={subnets=[subnet-private-a],securityGroups=[sg-ecs-worker],assignPublicIp=DISABLED}"
+```
+
+<Box variant="tip" icon="💡" label="Checklist sebelum production"><p>Public access off, Multi-AZ aktif, automated backup aktif dengan retention realistis, credential dari Secrets Manager, inbound RDS hanya dari SG aplikasi, `sslmode` minimal `require`, pool dihitung lintas task, migration sudah diuji di staging, dan alarm koneksi serta storage menyala.</p></Box>
+
+</Section>
+
+<Section num="12" id="ringkasan" title="Ringkasan & Poin Penting" sub="Memetakan RDS ke proyek skincare dan ke langkah berikutnya di Roadmap 8.">
+
+<p class="lead">RDS membuat PostgreSQL production lebih mudah dioperasikan, tetapi keamanan jaringan, sizing koneksi, dan disiplin migration tetap pekerjaan tim backend.</p>
+
+<Recap title="Yang Wajib Menempel">
+  <ul>
+    <li>RDS PostgreSQL adalah PostgreSQL biasa yang servernya dikelola AWS. SQL, transaksi, index, dan pgx tidak berubah; yang berubah hanyalah jaringan dan operasi di sekelilingnya.</li>
+    <li>RDS production untuk skincare harus di private subnet, tanpa IP publik, inbound 5432 hanya dari security group ECS (SG-to-SG, bukan CIDR internet).</li>
+    <li>Credential tidak masuk image atau git. Simpan `DATABASE_URL` di Secrets Manager, inject lewat `secrets`/`valueFrom`, dan pakai TLS (`sslmode` minimal `require`).</li>
+    <li>Automated backup memberi PITR di dalam window retensi; snapshot manual jadi checkpoint sebelum perubahan besar. Backup baru terbukti setelah pernah di-restore.</li>
+    <li>Parameter group adalah `postgresql.conf` versi RDS. Ubah `max_connections` (butuh reboot) dengan hati-hati, ukur dampaknya, dan jangan jadikan obat segala masalah koneksi.</li>
+    <li>Pool dihitung lintas task: (MaxConns x jumlah task) + cadangan harus di bawah `max_connections`. Mulai kecil (15 sampai 20 per task), ukur, lalu naikkan.</li>
+    <li>Migration jalan sekali dari dalam VPC sebelum rolling deploy, backward-compatible, dan index besar pakai `CONCURRENTLY`. Bukan side effect boot setiap task.</li>
+    <li>Multi-AZ untuk availability (failover otomatis), read replica untuk skala baca yang toleran lag. Checkout, payment, dan stok tetap membaca primary.</li>
+  </ul>
+</Recap>
+
+Setelah modul ini, backend skincare punya database production yang private, dibackup, tahan failover, dan terkoneksi aman dari ECS. Langkah berikutnya di Roadmap 8 adalah memindahkan gambar produk ke S3 plus CloudFront, supaya file fisik tidak lagi membebani database maupun API, sambil metadata-nya tetap rapi di PostgreSQL.
+
+</Section>

@@ -1,0 +1,593 @@
+---
+title: "Modul Docker Compose untuk Local Development Stack - Go Artisan"
+badge: "CMP"
+topTitle: "Docker Compose untuk Local Development Stack"
+topSub: "Go untuk Developer JavaScript & PHP"
+summary: "Jalankan API, worker, PostgreSQL, dan Redis lokal dengan satu perintah Docker Compose, persis seperti sistem production."
+order: 60
+target: "Roadmap 8 · Docker, CI/CD, dan AWS Deployment"
+readingTime: "~65 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa Docker Compose?" }
+  - { num: "02", id: "anatomi", title: "Anatomi Compose File Modern" }
+  - { num: "03", id: "posisi-file", title: "Posisi File di Root Proyek" }
+  - { num: "04", id: "model-service", title: "Model Service Lokal" }
+  - { num: "05", id: "compose-file", title: "compose.yaml Siap Pakai" }
+  - { num: "06", id: "startup-healthcheck", title: "Startup Order dan Healthcheck" }
+  - { num: "07", id: "environment-file", title: "Environment File dan Konfigurasi" }
+  - { num: "08", id: "network-port-volume", title: "Network, Port Mapping, dan Volume" }
+  - { num: "09", id: "profil-override", title: "Profil, Override, dan Hot Reload Dev" }
+  - { num: "10", id: "menjalankan-stack", title: "Menjalankan Stack Lokal" }
+  - { num: "11", id: "jebakan-umum", title: "Jebakan Umum dari JS/PHP" }
+  - { num: "12", id: "ringkasan", title: "Ringkasan & Poin Penting" }
+footerTitle: "Modul Docker Compose untuk Local Development Stack - Go Artisan"
+footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Endpoint, Def } from "@components";
+
+<Hero eyebrow="Roadmap 8 &middot; Docker, CI/CD, dan AWS Deployment" title="Docker Compose<br />untuk <em>Local Stack</em>">
+  <p>Satukan API, worker, PostgreSQL, dan Redis lokal agar backend skincare bisa dijalankan konsisten di semua laptop developer dengan satu perintah.</p>
+  <Fragment slot="meta">
+    <Chip icon="package">Compose Spec 2026</Chip>
+    <Chip icon="code">Go <b>1.26</b></Chip>
+    <Chip icon="clock">~65 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa Docker Compose?" sub="Satu file YAML menggantikan setengah halaman README berisi langkah setup manual.">
+
+<p class="lead">Di JavaScript kamu mungkin pernah pakai `npm run dev` plus sebuah database lokal yang dipasang manual. Di Laravel kamu mungkin kenal Sail. Di Go, Docker Compose memberi cara vanilla untuk menyalakan seluruh dependency lokal lewat satu file.</p>
+
+Di Chapter 1 kita sudah membungkus binary Go menjadi image yang kecil dan aman lewat multi-stage Dockerfile. Tapi sebuah image API saja belum membuat backend bisa jalan. Online shop skincare butuh PostgreSQL untuk katalog dan order, Redis untuk cache dan rate limit, serta worker yang memproses email verifikasi dan webhook payment di latar belakang. Menyalakan semua itu satu per satu dengan `docker run` panjang penuh flag adalah mimpi buruk yang berbeda di tiap laptop.
+
+Docker Compose menyelesaikan masalah ini. Satu file mendeklarasikan semua service, network, volume, port, healthcheck, dan environment sebagai satu aplikasi. Perintah `docker compose up` menyalakannya, `docker compose down` mematikannya. Hasilnya, onboarding developer baru turun dari "ikuti 20 langkah di README" menjadi "clone repo, copy `.env`, jalankan satu perintah".
+
+Ada nilai kedua yang sering terlewat: parity. Compose membuat environment lokal mirip production dalam hal yang penting (PostgreSQL betulan, bukan SQLite; Redis betulan; worker terpisah dari API). Bug yang khas production, seperti race saat reservasi stok atau koneksi pool yang habis, jadi bisa direproduksi di laptop. "Jalan di mesinku" perlahan berubah arti dari alasan untuk menyalahkan environment menjadi sinyal bahwa kode memang siap dipromosikan.
+
+<Box variant="analogy" icon="🎼" label="Analogi: partitur orkestra"><p>Docker run satu container itu seperti satu pemain musik. Compose adalah partitur yang memberi tahu semua pemain (API, worker, database, cache) kapan masuk, dengan tempo yang sama, sehingga keluar sebagai satu lagu yang utuh dan bisa diulang persis.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: mirip Laravel Sail, tetapi lebih vanilla"><p>Laravel Sail adalah pembungkus tipis di atas Compose dengan command `./vendor/bin/sail`. Di Go kita menulis `compose.yaml` langsung, tanpa framework di tengah. Lebih eksplisit, tetapi justru lebih mudah dibawa ke worker, ke CI, dan ke pola yang sama untuk staging.</p></Box>
+
+<Compare aLabel="Laravel Sail" bLabel="Docker Compose untuk Go" aTone="violet" bTone="blue">
+  <Fragment slot="a"><ul><li>Sail membungkus Compose dengan command `./vendor/bin/sail up`.</li><li>Konvensinya nyaman untuk PHP-FPM, MySQL, Redis, dan Mailpit.</li><li>Banyak keputusan sudah dibuatkan oleh preset Laravel.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Kita menulis `compose.yaml` langsung di root proyek.</li><li>Service `api` dan `worker` memakai image Go dari Dockerfile Chapter 1.</li><li>Kita menentukan sendiri readiness, env, volume, network, dan port.</li></ul></Fragment>
+</Compare>
+
+<Def term="Docker Compose"><p>Alat untuk mendefinisikan dan menjalankan beberapa container sebagai satu stack aplikasi, dijalankan lewat `docker compose up` dan dimatikan lewat `docker compose down`.</p></Def>
+
+[Docker Compose](https://docs.docker.com/compose/) mendeskripsikan stack aplikasi dalam satu konfigurasi. [Compose file reference](https://docs.docker.com/reference/compose-file/) memuat konsep services, networks, volumes, dan healthcheck yang dipakai sepanjang modul ini.
+
+</Section>
+
+<Section num="02" id="anatomi" title="Anatomi Compose File Modern" sub="Compose Spec terbaru sudah tidak memakai key version, dan nama file kanoniknya compose.yaml.">
+
+<p class="lead">Sebelum menulis file panjang, kenali dulu empat blok besar yang menyusun setiap Compose file: services, networks, volumes, dan, opsional, secrets.</p>
+
+Banyak tutorial lama mengawali Compose file dengan baris `version: "3.8"`. Itu sudah usang. Compose Spec modern (implementasi Docker Compose v2) mengabaikan key `version` dan bahkan memberi peringatan jika kamu menuliskannya. Nama file yang dianjurkan sekarang adalah `compose.yaml` (bukan `docker-compose.yml`), meski nama lama tetap dikenali demi kompatibilitas. Sepanjang modul ini kita pakai `compose.yaml`.
+
+<Box variant="warn" icon="⚠️" label="Hapus baris version dari tutorial lama"><p>Jika kamu menyalin file lama yang diawali `version: "3"` atau `version: "3.8"`, hapus baris itu. Compose v2 modern menganggapnya deprecated dan akan mencetak warning di setiap perintah `up`.</p></Box>
+
+Struktur kanonik sebuah Compose file modern hanya butuh top-level key berikut. `name` memberi nama proyek (prefix untuk container, network, dan volume). `services` adalah inti: tiap entri menjadi satu container. `volumes` mendeklarasikan named volume agar data persist. `networks` mendeklarasikan jaringan internal antar service.
+
+```yaml title="compose.yaml (kerangka)"
+name: skincare-backend
+
+services:
+  api: { }        # container Go HTTP API
+  worker: { }     # container Go worker
+  postgres: { }   # database
+  redis: { }      # cache dan queue ringan
+
+volumes:
+  pgdata: { }     # data PostgreSQL persist
+
+networks:
+  default: { }    # otomatis dibuat; service saling resolve lewat nama
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari package.json scripts ke Compose"><p>Di Node, `package.json` punya blok `scripts` yang memetakan nama ke perintah. Compose file mirip itu untuk infrastruktur: tiap key di `services` adalah "nama" yang memetakan ke sebuah container utuh, lengkap dengan image, port, dan dependensinya. Bedanya, Compose juga mengurus jaringan dan storage di antara mereka.</p></Box>
+
+Di dalam satu service, ada sekumpulan key yang akan sering kamu pakai. Mengenalinya sekarang membuat file panjang di Section 05 mudah dibaca.
+
+<CardGrid cols={2}>
+  <Card><h4>build vs image</h4><p>`build` membangun image dari Dockerfile lokal. `image` memberi nama hasil build, atau menarik image jadi dari registry (mis. `postgres:17`).</p></Card>
+  <Card><h4>command</h4><p>Menimpa argumen default image. Untuk image kita, `["/app", "serve"]` menjadikan satu image jalan sebagai API atau worker.</p></Card>
+  <Card><h4>ports vs expose</h4><p>`ports` mem-publish ke host (`HOST:CONTAINER`). `expose` hanya dokumentasi internal, tidak membuka ke host.</p></Card>
+  <Card><h4>depends_on</h4><p>Mengatur urutan start, dan dengan `condition` bisa menunggu service lain sehat lebih dulu.</p></Card>
+  <Card><h4>env_file vs environment</h4><p>`env_file` memuat banyak variabel dari file. `environment` menetapkan atau menimpa variabel per service.</p></Card>
+  <Card><h4>restart</h4><p>Kebijakan restart container: `no`, `on-failure`, `always`, atau `unless-stopped` yang kita pakai untuk dev.</p></Card>
+</CardGrid>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: command Compose vs ENTRYPOINT Dockerfile"><p>Dari Chapter 1, image kita punya `ENTRYPOINT ["/app"]`. Key `command` di Compose menambahkan argumen ke entrypoint itu, jadi `command: ["/app", "serve"]` praktis menjalankan `/app serve`. Inilah cara satu image yang sama bisa jadi API (`serve`) atau worker (`worker`) hanya dengan mengganti command.</p></Box>
+
+<Def term="Compose Spec"><p>Spesifikasi terbuka yang mendefinisikan format Compose file. Docker Compose v2 adalah implementasinya. Spec modern menghilangkan key `version` dan menjadikan `compose.yaml` sebagai nama file kanonik.</p></Def>
+
+</Section>
+
+<Section num="03" id="posisi-file" title="Posisi File di Root Proyek" sub="Compose file berada di root, sejajar dengan go.mod, Dockerfile, dan .env.">
+
+<p class="lead">Letakkan `compose.yaml` di root proyek agar `build.context: .` bisa melihat `go.mod`, seluruh source, dan `Dockerfile` tanpa path yang berputar.</p>
+
+Root proyek adalah konteks build paling sederhana. Saat Compose membangun image `api` dan `worker`, ia mengirim isi direktori ini (dikurangi yang ada di `.dockerignore`) sebagai build context ke Docker daemon. Karena `go.mod`, `cmd/`, dan `Dockerfile` semua ada di sini, satu `Dockerfile` cukup untuk membangun kedua binary. Berikut struktur Go Artisan saat masuk Chapter 2.
+
+<FileTree title="Posisi compose.yaml di proyek skincare" tree={`
+skincare-backend/
+  cmd/
+    api/
+      main.go              # entry point HTTP API
+    worker/
+      main.go              # entry point background worker
+  internal/
+    config/                # loader env dan validasi konfigurasi
+    product/               # domain katalog skincare
+    order/                 # domain checkout dan order
+    payment/               # domain payment dan webhook
+  migrations/              # SQL migration lokal dan CI
+  Dockerfile               # multi-stage dari Chapter 1
+  .dockerignore            # cegah .env dan .git masuk image
+  compose.yaml             # stack lokal development
+  .env                     # rahasia lokal, jangan commit
+  .env.example             # contoh env aman untuk commit
+  go.mod
+  go.sum
+`} />
+
+<Box variant="note" icon="📝" label="Satu Dockerfile, dua binary"><p>Modul ini memakai satu image dengan subcommand: `serve` untuk API dan `worker` untuk background job. Jika kamu lebih suka dua binary (`./cmd/api` dan `./cmd/worker`), build keduanya di Dockerfile dan rujuk binary yang tepat lewat `command` di tiap service.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Pastikan .dockerignore menolak .env"><p>Karena Dockerfile memakai `COPY . .`, tanpa `.dockerignore` file `.env` lokal bisa ikut ter-copy ke image. Pastikan `.env`, `.git`, dan `bin/` masuk `.dockerignore` agar build cepat dan secret tidak bocor ke layer image.</p></Box>
+
+</Section>
+
+<Section num="04" id="model-service" title="Model Service Lokal" sub="Stack lokal harus cukup mirip production agar bug transaksi dan async terlihat sejak development.">
+
+<p class="lead">Satu stack lokal sebaiknya merepresentasikan sistem production secara dekat, tetapi tetap ringan untuk laptop. Untuk skincare, empat service sudah cukup: api, worker, postgres, redis.</p>
+
+API menerima HTTP request dari frontend React. Worker memproses pekerjaan async: mengirim email verifikasi, menyinkronkan payment report, atau melepas reservasi stok yang timeout. PostgreSQL menyimpan data utama (produk, cart, order). Redis dipakai sebagai cache katalog, rate limit store, atau queue ringan, sesuai kebutuhan yang muncul di roadmap security dan scaling.
+
+```mermaid
+flowchart LR
+  FE["Frontend React"] -->|HTTP JSON :8080| API["api (Go)"]
+  API -->|SQL via pgx| PG[("postgres")]
+  API -->|cache, rate limit| RD[("redis")]
+  API -->|enqueue job| RD
+  RD -->|dequeue| WK["worker (Go)"]
+  WK -->|update status| PG
+  WK -->|kirim email, sync payment| EXT["Layanan eksternal"]
+```
+
+<p class="fig-cap"><b>Gambar 1.</b> Empat service dalam satu network Compose. API melayani request sinkron, worker mengambil job async lewat Redis.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>api</h4><p>Container Go HTTP API, membuka port `8080`, membaca `DATABASE_URL`, terhubung ke `postgres` dan `redis` lewat nama service.</p></Card>
+  <Card><h4>worker</h4><p>Container Go worker dari image yang sama, command berbeda, tidak membuka port ke host karena tidak melayani HTTP.</p></Card>
+  <Card><h4>postgres</h4><p>Database lokal dengan named volume agar data tetap ada walau container dihentikan dan dibuat ulang.</p></Card>
+  <Card><h4>redis</h4><p>Cache, rate limit store, atau queue ringan, hanya terlihat di dalam network Compose, tidak di-publish ke internet.</p></Card>
+</CardGrid>
+
+Karena `api` dan `worker` memakai image yang sama, binary Go perlu tahu peran apa yang harus dijalankan. Pola paling sederhana adalah dispatch berdasarkan argumen pertama, sehingga `command` di Compose menentukan perilaku.
+
+```go title="cmd/app/main.go"
+package main
+
+import (
+	"context"
+	"log/slog"
+	"os"
+)
+
+func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	ctx := context.Background()
+
+	cmd := "serve"
+	if len(os.Args) > 1 {
+		cmd = os.Args[1]
+	}
+
+	var err error
+	switch cmd {
+	case "serve":
+		err = runAPI(ctx, logger)
+	case "worker":
+		err = runWorker(ctx, logger)
+	case "migrate":
+		err = runMigrate(ctx, logger, os.Args[2:])
+	default:
+		logger.Error("unknown command", "cmd", cmd)
+		os.Exit(2)
+	}
+
+	if err != nil {
+		logger.Error("command failed", "cmd", cmd, "error", err)
+		os.Exit(1)
+	}
+}
+```
+
+<Def term="service"><p>Unit aplikasi di Compose yang biasanya menjadi satu container, misalnya `api`, `postgres`, atau `redis`. Satu service bisa di-scale menjadi beberapa container dengan flag `--scale`.</p></Def>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari React dev server ke backend stack"><p>Aplikasi React sering cukup dengan satu dev server plus API remote. Backend Go lokal biasanya butuh database nyata, cache, dan worker, agar bug transaksi, deadlock koneksi, dan kegagalan async job bisa terlihat di laptop, bukan baru muncul di production.</p></Box>
+
+</Section>
+
+<Section num="05" id="compose-file" title="compose.yaml Siap Pakai" sub="File baseline ini bisa ditempatkan langsung di root proyek skincare.">
+
+<p class="lead">Berikut Compose file lengkap untuk local development stack. Bacalah dari atas: dua service Go (api dan worker) dari image yang sama, lalu postgres dan redis dengan healthcheck masing-masing.</p>
+
+```yaml title="compose.yaml"
+name: skincare-backend
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: skincare-backend:dev
+    command: ["/app", "serve"]
+    env_file: .env
+    environment:
+      APP_ENV: development
+      HTTP_ADDR: ":8080"
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      REDIS_ADDR: redis:6379
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: skincare-backend:dev
+    command: ["/app", "worker"]
+    env_file: .env
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      REDIS_ADDR: redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17
+    env_file: .env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pgdata:
+  redisdata:
+```
+
+<Box variant="warn" icon="⚠️" label="command harus cocok dengan binary"><p>Contoh ini mengasumsikan ENTRYPOINT image adalah `["/app"]` (dari Dockerfile Chapter 1), dan binary mendukung subcommand `serve` serta `worker`. Jika proyekmu membangun dua binary terpisah, ubah `command` menjadi `["/app-api"]` dan `["/app-worker"]` sesuai Dockerfile.</p></Box>
+
+<Box variant="note" icon="📝" label="Tentang tag image"><p>Kita pakai `postgres:17` dan `redis:7` agar sejalan dengan target production di chapter RDS nanti. Per 2026 Postgres 18 dan Redis 8 juga sudah GA, jadi kamu boleh upgrade, tetapi pin tag mayor agar build reproducible dan tidak diam-diam berpindah versi.</p></Box>
+
+Ada satu detail penting di healthcheck postgres. Perhatikan `$${POSTGRES_USER}` dengan dua dolar. Compose melakukan interpolasi variabel pada string YAML, jadi `$VAR` akan dicoba diganti oleh Compose. Untuk meneruskan `$` apa adanya ke shell di dalam container (agar `pg_isready` membaca env var container), kita escape menjadi `$$`.
+
+<Box variant="tip" icon="💡" label="Aturan dolar ganda"><p>Di dalam string Compose, tulis `$$` setiap kali kamu ingin sebuah `$` literal diteruskan ke shell container, bukan diinterpolasi oleh Compose. Lupa ini membuat `pg_isready` mencoba user bernama kosong dan healthcheck gagal selamanya.</p></Box>
+
+</Section>
+
+<Section num="06" id="startup-healthcheck" title="Startup Order dan Healthcheck" sub="depends_on mengatur urutan, tetapi condition service_healthy yang membuat API menunggu DB benar-benar siap.">
+
+<p class="lead">Container `postgres` bisa berstatus running padahal proses database di dalamnya masih inisialisasi. Tanpa penjaga, API Go connect terlalu cepat lalu crash saat boot. Inilah masalah yang dipecahkan oleh kombinasi healthcheck dan `condition: service_healthy`.</p>
+
+`depends_on` versi sederhana hanya menunggu container target *start*, bukan *siap menerima koneksi*. Untuk database, dua hal itu berbeda jauh: Postgres butuh beberapa detik untuk inisialisasi cluster dan membuka socket. Dengan menambahkan `condition: service_healthy`, Compose menunda start `api` dan `worker` sampai healthcheck `postgres` benar-benar PASS. Healthcheck `postgres` kita memakai `pg_isready`, dan `redis` memakai `redis-cli ping`.
+
+```mermaid
+flowchart TD
+  A["docker compose up --build"] --> B["Build image skincare-backend:dev"]
+  B --> C["Start postgres"]
+  B --> D["Start redis"]
+  C --> E{"pg_isready PASS?"}
+  D --> F{"redis-cli ping PASS?"}
+  E -->|belum| C
+  F -->|belum| D
+  E -->|ya, healthy| G["Start api & worker"]
+  F -->|ya, healthy| G
+  G --> H["api buka :8080, worker konsumsi job"]
+```
+
+<p class="fig-cap"><b>Gambar 2.</b> API dan worker baru start setelah PostgreSQL dan Redis lolos healthcheck, bukan sekadar container hidup.</p>
+
+<Def term="healthcheck"><p>Perintah kecil yang dijalankan Docker secara berkala untuk menilai apakah service di dalam container benar-benar sehat, bukan hanya proses containernya hidup. Hasilnya: `healthy`, `unhealthy`, atau `starting`.</p></Def>
+
+Parameter healthcheck menentukan ketelitiannya. `interval` adalah jeda antar percobaan, `timeout` batas waktu satu percobaan, `retries` berapa kegagalan berturut sebelum dinyatakan `unhealthy`, dan `start_period` adalah masa warmup di mana kegagalan belum dihitung. Postgres kita beri `start_period: 30s` karena inisialisasi cluster pertama kali bisa lama.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: bukan sekadar wait-for-it.sh"><p>Di banyak proyek Node/PHP lama, orang menempel script `wait-for-it.sh` di entrypoint untuk menunggu database. Compose healthcheck plus `condition: service_healthy` menggantikan hack itu secara deklaratif: kriteria "siap" ditulis sekali di YAML, bukan disebar di shell script tiap service.</p></Box>
+
+<Box variant="tip" icon="💡" label="Tetap retry koneksi di aplikasi"><p>Healthcheck Compose menolong saat development, tetapi production orchestration (ECS) tetap bisa restart, network hiccup, atau failover. Jaga tetap ada retry koneksi database di aplikasi Go saat membuka `pgxpool`, jangan bergantung penuh pada urutan start.</p></Box>
+
+Untuk job sekali jalan seperti migration, ada kondisi lain yang berguna: `service_completed_successfully`. Service `api` bisa menunggu service `migrate` selesai dengan exit code 0 sebelum start, sehingga skema database selalu siap sebelum API menerima traffic. Berikut alur lengkap dari `up` sampai API siap, termasuk percobaan healthcheck yang berulang.
+
+```mermaid
+sequenceDiagram
+  participant CLI as docker compose
+  participant PG as postgres
+  participant API as api
+  CLI->>PG: start container
+  loop tiap interval sampai PASS
+    CLI->>PG: pg_isready -U ... -d ...
+    PG-->>CLI: belum siap (exit != 0)
+  end
+  PG-->>CLI: PASS (healthy)
+  CLI->>API: start container (depends_on terpenuhi)
+  API->>PG: open pgxpool, connect
+  API-->>CLI: listening :8080
+```
+
+<p class="fig-cap"><b>Gambar 3.</b> Compose mengulang pg_isready tiap interval sampai PASS, baru kemudian menyalakan api yang membuka pool ke postgres.</p>
+
+<Box variant="warn" icon="⚠️" label="Distroless tidak punya shell untuk healthcheck"><p>Image distroless final tidak punya `curl` atau `sh`, jadi healthcheck `api` tidak bisa memakai `curl localhost:8080`. Definisikan healthcheck API sebagai subcommand binary (mis. `["/app", "healthcheck"]`) atau cukup andalkan healthcheck di sisi Compose seperti contoh ini.</p></Box>
+
+</Section>
+
+<Section num="07" id="environment-file" title="Environment File dan Konfigurasi" sub=".env di Compose punya dua peran berbeda yang sering tertukar.">
+
+<p class="lead">`.env` di Compose dipakai untuk dua hal: interpolasi placeholder di YAML, dan environment yang masuk ke dalam container. Membedakan keduanya menghilangkan setengah bug config pemula.</p>
+
+Compose otomatis membaca file bernama `.env` di direktori yang sama untuk mengganti placeholder seperti `${POSTGRES_USER}` di dalam `compose.yaml`. Itu peran pertama: interpolasi. Tetapi mengganti placeholder di YAML tidak membuat variabel masuk ke proses di dalam container. Untuk itu butuh `env_file:` atau `environment:`. Di file kita, `env_file: .env` memasukkan seluruh variabel ke container, sedangkan blok `environment:` menimpa nilai yang memang harus berbeda di dalam network, seperti `DATABASE_URL` yang memakai host `postgres`, bukan `localhost`.
+
+```mermaid
+flowchart LR
+  DOTENV["File .env di root"] -->|peran 1: interpolasi| YAML["compose.yaml ${VAR}"]
+  DOTENV -->|peran 2: env_file| CTR["Env di dalam container"]
+  YAML -->|substitusi nilai| CTR
+  ENVBLOCK["blok environment:"] -->|override| CTR
+  CTR -->|os.Getenv| APP["Go: config.Load"]
+```
+
+<p class="fig-cap"><b>Gambar 4.</b> Dua peran .env. Interpolasi mengisi placeholder YAML, env_file mengisi env di dalam container, lalu Go membacanya lewat config.Load.</p>
+
+```bash title=".env.example"
+POSTGRES_USER=skincare
+POSTGRES_PASSWORD=skincare_dev_password
+POSTGRES_DB=skincare_dev
+JWT_SECRET=dev_only_change_me
+PAYMENT_KEY=dev_payment_gateway_key
+```
+
+<Compare aLabel="Dari host laptop" bLabel="Dari dalam container" aTone="muted" bTone="blue">
+  <Fragment slot="a"><ul><li>GUI database (TablePlus, DBeaver, psql) terhubung lewat `localhost:5432`.</li><li>Contoh: `postgres://skincare:skincare_dev_password@localhost:5432/skincare_dev?sslmode=disable`.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Service lain di network Compose mengakses PostgreSQL lewat hostname `postgres`.</li><li>API memakai `postgres://skincare:skincare_dev_password@postgres:5432/skincare_dev?sslmode=disable`.</li></ul></Fragment>
+</Compare>
+
+Pola ini langsung menyambung ke modul secrets di Roadmap 7. Variabel `.env` lokal akan menjadi env var yang dibaca `config.Load`, sehingga satu image yang sama bisa dipromosikan dev, staging, lalu prod tanpa rebuild. Yang berubah hanya sumber env-nya: `.env` saat lokal, Secrets Manager saat di AWS.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari env() Laravel ke env_file Compose"><p>Laravel membaca `.env` secara otomatis lewat framework. Compose tidak menyuntik env ke kode, ia menyuntik env ke container, lalu Go membacanya eksplisit di `config.Load`. Hasilnya rantai yang jelas: file `.env` jadi env var container jadi struct config yang divalidasi saat startup.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jangan commit .env"><p>Commit `.env.example`, tetapi masukkan `.env` ke `.gitignore` dan `.dockerignore`. Secret development tetap secret. Kalau `.env` pernah masuk git, rotate nilainya karena history menyimpannya permanen.</p></Box>
+
+</Section>
+
+<Section num="08" id="network-port-volume" title="Network, Port Mapping, dan Volume" sub="Compose menarik garis tegas antara koneksi internal antar service dan akses dari host laptop.">
+
+<p class="lead">Tiga konsep ini sering jadi sumber kebingungan: kapan pakai nama service, kapan pakai localhost, dan kapan data hilang. Compose punya jawaban yang konsisten untuk ketiganya.</p>
+
+Compose otomatis membuat satu network default untuk proyek. Di dalamnya, setiap service bisa memanggil service lain memakai *nama service* sebagai hostname: `api` ke `postgres:5432`, `worker` ke `redis:6379`. DNS internal Compose yang menerjemahkan nama itu ke IP container, jadi kamu tidak pernah perlu hardcode IP.
+
+Port mapping membuka pintu dari host laptop ke container. Format `ports: "8080:8080"` berarti `HOST:CONTAINER`. Hanya `api` yang perlu di-publish karena hanya itu yang dipanggil dari browser, curl, Postman, atau frontend React. Worker tidak butuh port. Postgres juga tidak wajib di-publish, kecuali kamu ingin membukanya dengan GUI database dari host.
+
+```mermaid
+flowchart TB
+  subgraph host["Host laptop"]
+    BROWSER["Browser / curl / React dev"]
+    GUI["GUI DB (opsional)"]
+  end
+  subgraph net["Network Compose: skincare-backend_default"]
+    API["api"]
+    WK["worker"]
+    PG[("postgres")]
+    RD[("redis")]
+  end
+  BROWSER -->|localhost:8080| API
+  GUI -.->|localhost:5432 jika di-publish| PG
+  API -->|postgres:5432| PG
+  API -->|redis:6379| RD
+  WK -->|redis:6379| RD
+  PG -.->|named volume pgdata| VOL[("Disk host")]
+```
+
+<p class="fig-cap"><b>Gambar 5.</b> Dari host pakai localhost dan port published, antar service pakai nama service. Data postgres tinggal di named volume.</p>
+
+<Def term="named volume"><p>Storage yang dikelola Docker dengan nama stabil, misalnya `pgdata`, sehingga data PostgreSQL tidak hilang hanya karena container dibuat ulang. Berbeda dari bind mount, lokasi fisiknya diurus Docker.</p></Def>
+
+Named volume adalah alasan data tidak hilang. Container itu ephemeral: `docker compose down` lalu `up` membuat container baru dengan filesystem kosong. Tanpa volume, data Postgres ikut lenyap. Dengan `pgdata:/var/lib/postgresql/data`, direktori data Postgres dipetakan ke volume yang dikelola Docker, hidup terpisah dari siklus container.
+
+<CardGrid cols={3}>
+  <Card><h4>Network</h4><p>Network default membuat service saling resolve lewat nama (`postgres`, `redis`), bukan IP manual yang berubah tiap restart.</p></Card>
+  <Card><h4>Port</h4><p>`8080:8080` (HOST:CONTAINER) hanya untuk development. Di production, database tidak pernah di-publish ke internet.</p></Card>
+  <Card><h4>Volume</h4><p>`pgdata` dan `redisdata` menyimpan state agar restart container tidak menghapus data lokal.</p></Card>
+</CardGrid>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: nama service mirip service discovery"><p>Jika kamu pernah memakai service discovery di Kubernetes atau pemanggilan service-to-service, nama service Compose adalah versi miniaturnya. `http://postgres:5432` di Compose seperti memanggil service lewat nama internal, bukan IP. Pola berpikir ini terbawa langsung saat nanti deploy ke ECS dengan service discovery AWS.</p></Box>
+
+Perbedaan dengan production penting untuk disadari sejak sekarang. Di Compose lokal, semua service berbagi satu network datar dan kita publish port database ke host demi kenyamanan. Di AWS nanti, API berjalan di ECS Fargate, database di RDS dalam private subnet, dan akses dibatasi security group, bukan port yang terbuka ke internet. Pola "nama service sebagai hostname" tetap relevan, tetapi siapa boleh menjangkau siapa menjadi jauh lebih ketat. Anggap Compose lokal sebagai latihan dengan pagar yang lebih longgar, dengan kebiasaan yang sudah benar.
+
+<Box variant="warn" icon="⚠️" label="localhost di dalam container bukan host laptop"><p>Dari dalam container `api`, `localhost` menunjuk ke container `api` itu sendiri, bukan ke laptopmu. Inilah kesalahan nomor satu pendatang dari Node/PHP: menulis `localhost:5432` di config padahal seharusnya `postgres:5432`.</p></Box>
+
+</Section>
+
+<Section num="09" id="profil-override" title="Profil, Override, dan Hot Reload Dev" sub="Satu base Compose bisa beradaptasi: aktifkan service opsional dengan profiles, sesuaikan dev lewat override file.">
+
+<p class="lead">Sejauh ini kita punya satu `compose.yaml`. Tetapi kebutuhan dev sering berbeda dari baseline: kadang ingin menyalakan tool tambahan, kadang ingin hot reload tanpa rebuild image setiap edit. Compose menyediakan dua mekanisme rapi untuk ini: profiles dan override file.</p>
+
+Profiles membuat sebuah service hanya menyala saat profilnya diaktifkan. Cocok untuk dependency opsional seperti Adminer (GUI database berbasis web), Mailpit (penangkap email dev), atau seed job yang tidak perlu jalan setiap kali. Service tanpa `profiles` selalu menyala; service dengan `profiles` hanya menyala saat profil dipanggil lewat `--profile`.
+
+```yaml title="compose.yaml (potongan profiles)"
+services:
+  adminer:
+    image: adminer:5
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["tools"]
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+    profiles: ["tools"]
+```
+
+```bash title="Terminal"
+docker compose up -d
+docker compose --profile tools up -d
+```
+
+<Def term="profile"><p>Penanda di service yang membuatnya hanya aktif saat profil terkait diaktifkan lewat `--profile`. Service tanpa profil selalu termasuk dalam stack default.</p></Def>
+
+Mekanisme kedua adalah override file. Compose otomatis menggabungkan `compose.yaml` dengan `compose.override.yaml` (jika ada). Pola yang sehat: `compose.yaml` berisi baseline yang dipakai semua orang dan menyerupai production, sedangkan `compose.override.yaml` berisi penyesuaian khas dev yang tidak ingin kamu bawa ke staging, seperti bind mount source untuk hot reload.
+
+```yaml title="compose.override.yaml"
+services:
+  api:
+    build:
+      target: dev            # stage builder dengan toolchain Go
+    command: ["air", "-c", ".air.toml"]
+    volumes:
+      - .:/src               # bind mount source untuk hot reload
+    environment:
+      APP_ENV: development
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: hot reload seperti nodemon / php artisan serve"><p>Di Node kamu pakai `nodemon`, di Laravel ada `php artisan serve` dengan auto-reload. Di Go padanannya adalah tool seperti `air` yang memantau file lalu rebuild dan restart binary. Override file membungkusnya rapi: produksi tetap pakai binary statis, dev pakai air dengan source di-mount.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Hot reload butuh source di image, bukan binary statis"><p>Image production kita hanya berisi binary di base distroless tanpa toolchain Go. Hot reload butuh stage dengan source dan compiler (mis. `target: dev` ke stage builder). Jangan paksa `air` jalan di image distroless final, di sana tidak ada Go.</p></Box>
+
+<CardGrid cols={2}>
+  <Card><h4>compose.yaml</h4><p>Baseline yang menyerupai production: image final, command `serve`, tanpa source mount. Aman dibawa siapa saja.</p></Card>
+  <Card><h4>compose.override.yaml</h4><p>Penyesuaian dev: hot reload, bind mount, log verbose. Otomatis tergabung saat `up`, tidak perlu flag.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Pisahkan dev dari production sejak file"><p>Menjaga `compose.yaml` semirip mungkin dengan production membuat surprise di deploy berkurang. Letakkan kenyamanan dev (hot reload, GUI tool) di override atau profiles, bukan di baseline.</p></Box>
+
+</Section>
+
+<Section num="10" id="menjalankan-stack" title="Menjalankan Stack Lokal" sub="Setelah Dockerfile Chapter 1 ada, workflow harian developer cukup beberapa perintah Compose.">
+
+<p class="lead">Inti dari Compose adalah developer experience. Sekali file siap, menyalakan seluruh backend cukup tiga atau empat perintah yang sama di setiap laptop.</p>
+
+<Steps>
+  <Step><b>Siapkan .env lokal</b><p>Salin `.env.example` menjadi `.env`, lalu isi credential development yang tidak pernah di-commit.</p></Step>
+  <Step><b>Build dan start stack</b><p>Jalankan `docker compose up --build` dari root agar image Go dibangun lalu seluruh dependency menyala dengan urutan yang benar.</p></Step>
+  <Step><b>Cek kesehatan stack</b><p>Pakai `docker compose ps` untuk melihat status healthy, dan panggil endpoint health API dari host.</p></Step>
+  <Step><b>Lihat log saat debugging</b><p>Pakai `docker compose logs -f api` untuk mengikuti log satu service secara realtime.</p></Step>
+  <Step><b>Matikan stack</b><p>Jalankan `docker compose down` untuk menghentikan container tanpa menghapus named volume.</p></Step>
+</Steps>
+
+```bash title="Terminal"
+cp .env.example .env
+docker compose up --build -d
+docker compose ps
+```
+
+```bash title="Terminal"
+curl http://localhost:8080/healthz
+docker compose logs -f api
+docker compose exec postgres pg_isready -U skincare -d skincare_dev
+```
+
+Untuk menjalankan migration sebelum API melayani traffic, jalankan sebagai perintah satu kali memakai image yang sama. Pola `run --rm` membuat container sementara yang otomatis terhapus setelah selesai.
+
+```bash title="Terminal"
+docker compose run --rm api /app migrate up
+```
+
+```bash title="Terminal"
+docker compose down
+docker compose down -v
+```
+
+<Endpoint method="GET" path="/healthz" desc="Smoke test lokal untuk memastikan container API sudah siap menerima request" />
+<Endpoint method="GET" path="/v1/products" desc="Route katalog skincare yang bisa dites setelah migration dan seed data tersedia" />
+<Endpoint method="POST" path="/v1/checkout" desc="Ubah keranjang jadi order, jalur yang melibatkan postgres dan worker" />
+
+<Box variant="warn" icon="⚠️" label="Hati-hati dengan down -v"><p>`docker compose down -v` menghapus named volume, termasuk seluruh data PostgreSQL lokal. Berguna untuk reset total ke keadaan bersih, berbahaya jika kamu masih butuh datanya. Tanpa `-v`, data aman tersimpan.</p></Box>
+
+<Box variant="tip" icon="💡" label="Rebuild hanya saat perlu"><p>`docker compose up` tanpa `--build` memakai image yang sudah ada, jauh lebih cepat. Tambahkan `--build` hanya ketika `Dockerfile`, `go.mod`, atau source code berubah dan kamu butuh image baru.</p></Box>
+
+</Section>
+
+<Section num="11" id="jebakan-umum" title="Jebakan Umum dari JS/PHP" sub="Sebagian besar bug Compose lokal bukan bug Go, tetapi salah paham soal hostname, env, readiness, dan volume.">
+
+<p class="lead">Hampir semua kegagalan stack pemula berasal dari empat salah paham yang sama. Mengenalinya sekali menghemat berjam-jam debugging.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>localhost di container</h4><p>Dari container API, `localhost` adalah container itu sendiri. Untuk database, pakai hostname `postgres`, bukan `localhost`.</p></Card>
+  <Card><h4>depends_on bukan migrasi</h4><p>Healthcheck memastikan database siap, tetapi tidak menjalankan migration. Migration perlu command tersendiri atau service dengan `service_completed_successfully`.</p></Card>
+  <Card><h4>.env tidak selalu masuk container</h4><p>`.env` otomatis dipakai untuk interpolasi YAML, tetapi container butuh `env_file` atau `environment` agar benar-benar menerima variabel.</p></Card>
+  <Card><h4>Volume menyimpan bug lama</h4><p>Skema database lama bisa tetap ada walau image berubah. Reset volume hanya saat memang ingin menghapus state lokal.</p></Card>
+  <Card><h4>Lupa $$ di healthcheck</h4><p>`$POSTGRES_USER` diinterpolasi Compose menjadi kosong. Tulis `$${POSTGRES_USER}` agar diteruskan ke shell container.</p></Card>
+  <Card><h4>Menempel version: di file</h4><p>Compose v2 modern menganggap `version` deprecated. Hapus barisnya agar tidak ada warning di tiap `up`.</p></Card>
+</CardGrid>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari PHP-FPM + Nginx ke satu binary Go"><p>Stack Laravel sering memisahkan Nginx, PHP-FPM, queue worker, scheduler, dan database menjadi banyak service. Go API umumnya satu binary HTTP, worker satu binary atau subcommand lain. Karena tidak ada runtime interpreter dan node_modules untuk dijalankan, Compose file Go jauh lebih pendek dan startup-nya nyaris instan.</p></Box>
+
+<Compare aLabel="Image Node / PHP" bLabel="Image Go" aTone="muted" bTone="violet">
+  <Fragment slot="a"><ul><li>Butuh runtime di image final (Node ~150MB+, PHP-FPM ~100MB+).</li><li>`node_modules` atau `vendor/` ikut, atau di-install saat build.</li><li>Sering perlu `tini` atau process manager agar sinyal SIGTERM tertangani.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Satu binary statis di base ~2MB (distroless), tanpa runtime.</li><li>Tidak ada `go mod download` saat runtime, semua sudah ter-compile.</li><li>Binary jadi PID 1 dan menerima SIGTERM langsung untuk graceful shutdown.</li></ul></Fragment>
+</Compare>
+
+<Box variant="tip" icon="💡" label="Rule of thumb yang menempel"><p>Di host pakai `localhost`. Antar container pakai nama service. Secret lokal simpan di `.env`. State database simpan di named volume. Empat aturan ini menutup mayoritas bug Compose pemula.</p></Box>
+
+Saat stack berperilaku aneh, beberapa perintah ini hampir selalu cukup untuk menemukan akar masalahnya tanpa menebak.
+
+```bash title="Terminal"
+docker compose config
+docker compose ps
+docker compose logs --tail=50 api
+docker compose exec api env | grep DATABASE_URL
+docker compose exec api ping -c1 postgres
+```
+
+`docker compose config` mencetak file hasil merge dan interpolasi yang sebenarnya dipakai, sehingga kamu bisa memverifikasi `${POSTGRES_USER}` benar-benar terisi. `exec api env` membuktikan variabel yang masuk ke container, dan `exec api ping postgres` membuktikan nama service teresolusi di network. Jika `ping` gagal, masalahnya jaringan; jika `env` kosong, masalahnya konfigurasi env.
+
+<Box variant="note" icon="🔎" label="config dulu sebelum menebak"><p>Sebelum mengubah YAML berdasarkan dugaan, jalankan `docker compose config`. Ia menampilkan persis bagaimana Compose menafsirkan file setelah interpolasi dan merge override, sering langsung menunjukkan placeholder yang tidak terisi.</p></Box>
+
+</Section>
+
+<Section num="12" id="ringkasan" title="Ringkasan & Poin Penting">
+
+<p class="lead">Docker Compose mengubah local development dari kumpulan setup manual yang berbeda di tiap laptop menjadi satu stack yang bisa dijalankan ulang persis sama oleh seluruh tim.</p>
+
+<Recap title="Yang Wajib Menempel">
+  <ul><li>Compose mendefinisikan `api`, `worker`, `postgres`, dan `redis` dalam satu `compose.yaml` di root proyek, tanpa key `version` yang sudah deprecated.</li><li>`depends_on` dengan `condition: service_healthy` membuat API dan worker menunggu PostgreSQL dan Redis benar-benar siap menerima koneksi, bukan sekadar hidup.</li><li>Healthcheck `pg_isready` dan `redis-cli ping` plus `start_period` yang cukup mencegah API crash saat boot karena database belum warmup.</li><li>`.env` punya dua peran: interpolasi placeholder YAML, dan, lewat `env_file`, mengisi env di dalam container yang dibaca `config.Load`.</li><li>Dari host pakai `localhost`, antar container pakai nama service (`postgres`, `redis`); `localhost` di container menunjuk ke container itu sendiri.</li><li>Named volume `pgdata` menjaga data PostgreSQL tetap ada setelah container dihentikan; `down -v` menghapusnya.</li><li>Port `8080:8080` nyaman untuk development, tetapi port database tidak pernah dibuka begitu saja ke internet di production.</li><li>`$$` meng-escape `$` agar diteruskan ke shell container, bukan diinterpolasi Compose.</li></ul>
+</Recap>
+
+Untuk proyek online shop skincare, stack ini menjadi pondasi menjalankan API katalog, checkout, payment webhook, worker email, cache Redis, dan integration test lokal dengan cara yang sama di semua mesin. Image Go yang dibangun di sini identik dengan yang akan dipromosikan ke production, sehingga "jalan di laptopku" benar-benar berarti "akan jalan di AWS".
+
+<Box variant="note" icon="🧭" label="Peta ke roadmap"><p>Chapter 1 membuat image Go yang kecil dan aman. Chapter 2 ini menjalankan image itu bersama dependency lokal. Chapter 3 membawa pola yang sama ke CI pipeline (lint, format, unit test, integration test, build, push image) agar build dan test tidak lagi bergantung pada laptop developer, lalu Chapter 4 dan seterusnya men-deploy image itu ke ECS Fargate dengan RDS PostgreSQL.</p></Box>
+
+</Section>

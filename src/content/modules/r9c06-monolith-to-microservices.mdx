@@ -1,0 +1,942 @@
+---
+title: "Modul Kapan dan Bagaimana Split ke Microservices - Go Artisan"
+badge: "MSVC"
+topTitle: "Split ke Microservices"
+topSub: "Go untuk Developer JavaScript & PHP"
+summary: "Pelajari kapan modular monolith perlu dipecah, cara memilih boundary, dan cara migrasi bertahap tanpa menghentikan bisnis."
+order: 73
+target: "Roadmap 9 · Advanced Backend Engineering for Scaling"
+readingTime: "~75 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Microservices Bukan Tujuan Awal" }
+  - { num: "02", id: "jangan-mulai-dari-microservices", title: "Kapan Tidak Pakai Microservices" }
+  - { num: "03", id: "sinyal-split", title: "Sinyal Modular Monolith Mulai Tidak Cukup" }
+  - { num: "04", id: "service-boundary", title: "Menentukan Service Boundary" }
+  - { num: "05", id: "database-ownership", title: "Database Ownership Setelah Split" }
+  - { num: "06", id: "api-contract", title: "API Contract Sebelum Dipisah" }
+  - { num: "07", id: "async-communication", title: "Async Communication antar Service" }
+  - { num: "08", id: "strangler-payment", title: "Strangler Fig: Ekstrak Payment Service" }
+  - { num: "09", id: "hands-on", title: "Hands-on: Siapkan Seam untuk Payment" }
+  - { num: "10", id: "jebakan-umum", title: "Jebakan Umum Saat Split" }
+  - { num: "11", id: "ringkasan", title: "Ringkasan & Poin Penting" }
+footerTitle: "Modul Kapan dan Bagaimana Split ke Microservices - Go Artisan"
+footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Endpoint, Def } from "@components";
+
+<Hero eyebrow="Roadmap 9 &middot; Advanced Scaling" title="Split ke <em>Microservices</em><br />Tanpa Merusak Bisnis">
+  <p>Microservices adalah keputusan organisasi dan operasional, bukan sekadar memecah folder Go menjadi banyak repository.</p>
+  <Fragment slot="meta">
+    <Chip icon="code">Bahasa: <b>Go 1.26</b></Chip>
+    <Chip icon="clock">~75 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Microservices Bukan Tujuan Awal" sub="Mulai dari modular monolith, pecah hanya ketika rasa sakitnya nyata">
+
+<p class="lead">Di React, kita tidak memecah aplikasi menjadi sepuluh package sebelum tahu state mana yang benar-benar berubah sendiri. Di backend juga begitu.</p>
+
+Pada proyek online shop skincare, modular monolith memberi kita satu deployable Go API dengan modul domain yang jelas: `product`, `cart`, `checkout`, `inventory`, `payment`, `notification`, dan `search`. Struktur ini sudah cukup kuat selama tim masih kecil, traffic masih bisa ditangani, dan perubahan antar domain masih bisa dikoordinasikan dengan cepat.
+
+<Def term="microservice"><p>Microservice adalah layanan kecil yang punya boundary bisnis jelas, dapat dideploy secara independen, dan idealnya memiliki data yang ia kuasai sendiri.</p></Def>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari folder modular ke ownership service"><p>Di Laravel, folder `app/Services/PaymentService.php` masih berjalan dalam proses aplikasi yang sama. Di microservices, payment punya runtime, deployment, observability, database, retry, dan error boundary sendiri.</p></Box>
+
+Go cocok untuk service kecil karena binary statis, startup cepat, concurrency bawaan, dan standard library HTTP yang kuat. Tetapi kemampuan Go bukan alasan otomatis untuk memecah sistem. Rilis Go 1.26 (Februari 2026) tetap menjaga Go 1 compatibility promise, jadi proyek baru cukup memakai `go 1.26` di `go.mod` sesuai dokumentasi Go terbaru. Sejak Go 1.21, baris `go` directive boleh berisi versi patch lengkap (mis. `go 1.26.0`) dan toolchain selektor sudah standar, tetapi untuk proyek skincare kita cukup `go 1.26` saja.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari MonolithFirst Martin Fowler"><p>Martin Fowler menyebut pola ini "MonolithFirst": bangun monolith dulu, pecah ketika boundary sudah terbukti stabil. Sama seperti React, kita tidak memecah komponen besar menjadi puluhan komponen kecil sebelum tahu bagian mana yang benar-benar berubah sendiri. Boundary yang dipaksakan terlalu dini hampir selalu salah.</p></Box>
+
+```text title="Sasaran modul"
+Bukan: membuat banyak service supaya terlihat enterprise.
+Ya: tahu kapan modul harus punya lifecycle, data, scaling, dan ownership sendiri.
+```
+
+```mermaid
+flowchart LR
+  A["Modular monolith rapi"] --> B{"Ada rasa sakit nyata?"}
+  B -->|Tidak| C["Tetap monolith, perkuat boundary"]
+  B -->|Ya| D["Pilih domain paling independen"]
+  D --> E["Definisikan contract"]
+  E --> F["Ekstrak bertahap"]
+  F --> G["Service mandiri dengan database sendiri"]
+```
+
+<p class="fig-cap"><b>Gambar 1.</b> Microservices adalah langkah evolusi, bukan starting template.</p>
+
+</Section>
+
+<Section num="02" id="jangan-mulai-dari-microservices" title="Kapan Tidak Pakai Microservices" sub="Microservices mahal jika masalahnya belum ada">
+
+<p class="lead">Microservices sering terlihat seperti arsitektur modern, tetapi biaya koordinasinya langsung terasa sejak service kedua lahir.</p>
+
+Jangan mulai dari microservices ketika tim masih kecil, deploy masih mudah, traffic masih bisa ditangani modular monolith, dan bottleneck utama masih berada di query, caching, indexing, atau desain transaksi. Dari modul sebelumnya, kita sudah punya pprof, Redis cache, full-text search, event-driven worker, dan strategi konsistensi inventory. Semua itu biasanya memberi dampak lebih cepat daripada split prematur.
+
+<Compare aLabel="Modular monolith" bLabel="Microservices" aTone="teal" bTone="violet">
+  <Fragment slot="a"><ul><li>Satu proses, satu deploy, transaksi database lebih sederhana.</li><li>Boundary domain tetap dijaga lewat package dan interface Go.</li><li>Cocok untuk tim kecil dan produk yang masih sering berubah.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Banyak proses, banyak deploy pipeline, observability wajib matang.</li><li>Konsistensi data lintas service harus ditangani dengan event, saga, dan idempotency.</li><li>Cocok ketika ownership, scaling, atau cadence deploy sudah berbeda.</li></ul></Fragment>
+</Compare>
+
+<Box variant="warn" icon="⚠️" label="Jangan split karena bosan dengan monolith"><p>Monolith yang berantakan kalau dipecah tanpa boundary akan menjadi distributed mess: bug yang sama, tapi sekarang tersebar di jaringan.</p></Box>
+
+<CardGrid cols={3}>
+  <Card><h4>Team kecil</h4><p>Satu sampai tiga backend engineer biasanya lebih produktif dengan modular monolith yang ketat.</p></Card>
+  <Card><h4>Traffic masih normal</h4><p>Jika bottleneck bisa diselesaikan lewat index, cache, pool tuning, dan async worker, split belum perlu.</p></Card>
+  <Card><h4>Domain masih berubah</h4><p>Boundary yang belum stabil akan membuat contract antar service sering pecah.</p></Card>
+</CardGrid>
+
+<Def term="distributed monolith"><p>Kumpulan service yang terlihat terpisah, tetapi deploy, database, dan perubahan fitur tetap saling mengunci seperti satu aplikasi besar.</p></Def>
+
+</Section>
+
+<Section num="03" id="sinyal-split" title="Sinyal Modular Monolith Mulai Tidak Cukup" sub="Pecah ketika dependency organisasi dan runtime mulai berbeda">
+
+<p class="lead">Signal split yang sehat bukan “service ini punya banyak file”, tetapi “service ini punya lifecycle bisnis dan operasional yang berbeda”.</p>
+
+Ada tiga sinyal utama: deployment frequency berbeda, scaling requirement berbeda, dan tim yang berbeda. Contohnya, `notification` berubah sering karena template email, provider WhatsApp, dan campaign. `search` butuh index khusus dan mungkin worker sinkronisasi. `payment` butuh audit, webhook idempotent, dan compliance yang lebih ketat.
+
+<CardGrid cols={3}>
+  <Card><h4>Deploy cadence berbeda</h4><p>Notification bisa deploy beberapa kali sehari, sementara checkout sebaiknya lebih konservatif karena menyentuh uang dan stok.</p></Card>
+  <Card><h4>Scaling berbeda</h4><p>Search read-heavy, worker notification bursty, checkout write-heavy dan sensitif terhadap transaksi.</p></Card>
+  <Card><h4>Ownership tim berbeda</h4><p>Ketika satu tim khusus payment bertanggung jawab penuh atas SLA, audit, dan integrasi gateway, boundary mulai masuk akal.</p></Card>
+</CardGrid>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari React component ownership"><p>Di React, komponen yang sering berubah sendiri bisa diekstrak agar ownership jelas. Di backend, ekstraksi service baru masuk akal jika tim dan operasinya juga bisa mandiri.</p></Box>
+
+```text title="Checklist sinyal split"
+[ ] Domain punya alasan deploy sendiri.
+[ ] Domain punya kebutuhan scaling sendiri.
+[ ] Domain punya owner jelas.
+[ ] Domain punya data ownership yang bisa dipisah.
+[ ] Contract input dan output sudah stabil.
+[ ] Failure domain bisa diisolasi tanpa menghentikan checkout utama.
+```
+
+Untuk online shop skincare, kandidat awal yang paling aman biasanya `notification` atau `search`, bukan `checkout` dan `inventory`. Alasannya sederhana: kegagalan email atau reindex search bisa diretry, tetapi kegagalan checkout langsung menyentuh order, payment, dan stok.
+
+</Section>
+
+<Section num="04" id="service-boundary" title="Menentukan Service Boundary" sub="Mulai dari domain yang paling independen">
+
+<p class="lead">Boundary terbaik mengikuti bahasa bisnis, bukan mengikuti tabel database atau layer teknis.</p>
+
+Service boundary adalah garis kepemilikan. Di modular monolith, garis ini tampak sebagai package dan interface. Di microservices, garis yang sama menjadi repository, pipeline, runtime, database, dashboard, alarm, dan on-call. Karena itu kandidat pertama adalah domain dengan coupling rendah dan dampak kegagalan yang bisa ditoleransi.
+
+<FileTree title="Boundary di modular monolith sebelum split" tree={`cmd/
+  api/
+    main.go                # komposisi dependency
+internal/
+  checkout/
+    service.go             # orchestrate cart, inventory, payment
+  payment/
+    service.go             # logic payment masih in-process
+    repository.go
+  notification/
+    worker.go              # kandidat split awal
+  search/
+    indexer.go             # kandidat split awal
+  inventory/
+    service.go             # high consistency, jangan buru-buru split
+go.mod
+`} />
+
+<Box variant="tip" icon="💡" label="Boundary kandidat pertama"><p>Pilih domain yang bisa gagal secara terpisah dan dipulihkan lewat retry, seperti notification atau search. Jangan mulai dari inventory kecuali tim sudah matang menangani konsistensi terdistribusi.</p></Box>
+
+```mermaid
+flowchart TD
+  A["Domain online shop skincare"] --> B["Notification"]
+  A --> C["Search"]
+  A --> D["Payment"]
+  A --> E["Inventory"]
+  A --> F["Checkout"]
+  B --> B1["Low coupling, async friendly"]
+  C --> C1["Read model, index bisa dibangun ulang"]
+  D --> D1["Audit tinggi, contract harus stabil"]
+  E --> E1["Konsistensi stok kritikal"]
+  F --> F1["Orchestrator bisnis inti"]
+```
+
+<p class="fig-cap"><b>Gambar 2.</b> Boundary yang aman dipilih dari domain yang paling independen lebih dulu.</p>
+
+<Compare aLabel="Boundary buruk" bLabel="Boundary sehat" aTone="red" bTone="teal">
+  <Fragment slot="a"><ul><li>`user-service`, `product-service`, dan `order-service` tetap menulis database yang sama.</li><li>Setiap request checkout melakukan chain HTTP panjang dan gagal jika salah satu service lambat.</li><li>Service dipisah berdasarkan layer seperti handler, service, repository.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Notification menerima event `OrderPaid` dan mengirim email tanpa memblokir checkout.</li><li>Search membangun read model sendiri dari event produk.</li><li>Payment punya contract jelas untuk intent, status, callback, dan rekonsiliasi.</li></ul></Fragment>
+</Compare>
+
+</Section>
+
+<Section num="05" id="database-ownership" title="Database Ownership Setelah Split" sub="Service boleh berbagi fakta bisnis, tetapi tidak boleh saling menulis tabel internal">
+
+<p class="lead">Perubahan terbesar dari modular monolith ke microservices bukan HTTP, melainkan kepemilikan data.</p>
+
+AWS Prescriptive Guidance dan katalog pola microservices.io (Chris Richardson) sama-sama mendokumentasikan pola Database per Service: setiap service menyimpan dan mengambil data dari data store yang ia kuasai sendiri. Data store itu tidak di-share, perubahan skema satu service tidak memengaruhi yang lain, dan data hanya bisa diakses lewat API service pemiliknya. Dalam praktik proyek skincare, ini berarti `payment_service` tidak boleh menulis tabel `orders` milik checkout secara langsung. Ia menerbitkan event, lalu order service memperbarui state order miliknya.
+
+```mermaid
+flowchart TD
+  subgraph SEBELUM["Sebelum split: satu DB"]
+    M1["checkout module"] --> SDB[("shop_db")]
+    M2["payment module"] --> SDB
+    M3["search module"] --> SDB
+    M2 -.JOIN langsung.-> M1
+  end
+  subgraph SESUDAH["Sesudah split: DB per service"]
+    O["order service"] --> ODB[("order_db")]
+    P["payment service"] --> PDB[("payment_db")]
+    P -->|PaymentSucceeded event| BUS[["event bus / SQS"]]
+    BUS --> O
+  end
+```
+
+<p class="fig-cap"><b>Gambar 3.</b> Sebelum split, modul join langsung di satu database. Sesudah split, setiap service punya database sendiri dan dihubungkan lewat event, bukan join.</p>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari Eloquent eager loading ke read model"><p>Di Laravel monolith, `Order::with('payment')` terasa natural karena semua tabel hidup di satu database, satu query SQL menggabung keduanya. Setelah split, tidak ada lagi `JOIN` lintas database. Padanannya adalah read model: order service menyimpan kolom `payment_status` miliknya sendiri, diperbarui saat menerima event `PaymentSucceeded`. Halaman checkout cukup membaca satu tabel lokal, bukan memanggil payment service setiap render.</p></Box>
+
+<h3>Konsekuensi wajib: query lintas service</h3>
+
+<p>Database per Service punya harga: begitu data terpecah, kamu tidak bisa lagi menulis satu query yang menggabung order dan payment. Halaman AWS yang sama menegaskan bahwa pola ini mewajibkan pola pelengkap untuk query lintas service. Ada dua jalur utama, dan keduanya sah tergantung kebutuhan.</p>
+
+<Compare aLabel="API composition" bLabel="CQRS / read model" aTone="blue" bTone="teal">
+  <Fragment slot="a"><ul><li>Saat butuh data gabungan, panggil beberapa service lalu gabungkan hasilnya di pemanggil (mis. BFF atau API gateway).</li><li>Selalu fresh, tidak perlu menyimpan salinan, tetapi latensi menumpuk dan ikut gagal jika satu service down.</li><li>Cocok untuk query jarang, mis. halaman detail order di admin.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Order service membangun read model sendiri (kolom `payment_status`) dari event yang masuk.</li><li>Query checkout jadi satu baca lokal cepat, tahan terhadap payment service yang sedang down, tetapi eventual (ada jeda update).</li><li>Cocok untuk query panas yang dibaca tiap checkout dan riwayat order.</li></ul></Fragment>
+</Compare>
+
+<p>Untuk skincare, status payment di halaman riwayat order dibaca sangat sering, jadi read model (CQRS ringan) lebih tepat daripada memanggil payment service setiap kali. Halaman admin yang jarang dibuka boleh memakai API composition.</p>
+
+<h3>Transactional Outbox: mengapa tabel `payment_outbox_events` ada</h3>
+
+<p>Perhatikan tabel `payment_outbox_events` di skema berikut. Ini adalah pola kanonik bernama Transactional Outbox (microservices.io), dan ia menjawab satu masalah halus yang sering luput: dual-write problem.</p>
+
+<Def term="dual-write problem"><p>Update database bisnis dan publish event ke broker adalah dua sistem berbeda. Tidak ada transaksi yang bisa membungkus keduanya secara atomik. Jika DB commit lalu publish gagal (atau sebaliknya), state DB dan event jadi tidak sinkron.</p></Def>
+
+<p>Solusinya: jangan publish langsung ke broker di dalam transaksi bisnis. Sebagai gantinya, dalam SATU transaksi database, update tabel `payments` dan INSERT baris ke `payment_outbox_events`. Keduanya commit bersama atau gagal bersama, karena berada di database yang sama. Sebuah poller terpisah lalu membaca baris outbox yang `published_at`-nya masih kosong, mempublikasikannya ke SQS, lalu menandainya terbit. Inilah jembatan ke modul event-driven (R9C04): event yang andal lahir dari outbox, bukan dari publish langsung.</p>
+
+```mermaid
+sequenceDiagram
+  participant P as Payment Service
+  participant DB as payment_db
+  participant Poll as Outbox Poller
+  participant Q as SQS
+  P->>DB: BEGIN
+  P->>DB: UPDATE payments SET status = 'succeeded'
+  P->>DB: INSERT INTO payment_outbox_events (...)
+  P->>DB: COMMIT
+  Note over P,DB: satu transaksi, atomik
+  Poll->>DB: SELECT * WHERE published_at IS NULL
+  Poll->>Q: publish PaymentSucceeded
+  Q-->>Poll: ok
+  Poll->>DB: UPDATE outbox SET published_at = now()
+```
+
+<p class="fig-cap"><b>Gambar 4.</b> Outbox membuat penulisan bisnis dan pencatatan event menjadi satu commit atomik. Publikasi ke broker dilakukan terpisah oleh poller, jadi event tidak pernah hilang meski broker sempat tak terjangkau.</p>
+
+```sql title="database ownership setelah split"
+-- order_db, dimiliki order atau checkout service
+CREATE TABLE orders (
+    id uuid PRIMARY KEY,
+    customer_id uuid NOT NULL,
+    status text NOT NULL,
+    total_amount bigint NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- payment_db, dimiliki payment service
+CREATE TABLE payments (
+    id uuid PRIMARY KEY,
+    order_id uuid NOT NULL,
+    gateway text NOT NULL,
+    gateway_reference text NOT NULL,
+    status text NOT NULL,
+    amount bigint NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Transactional Outbox di payment_db, di-INSERT dalam transaksi
+-- yang sama dengan UPDATE payments, lalu dipublish poller payment.
+CREATE TABLE payment_outbox_events (
+    id uuid PRIMARY KEY,
+    event_type text NOT NULL,
+    aggregate_id uuid NOT NULL,
+    payload jsonb NOT NULL,
+    published_at timestamptz,            -- NULL = belum dipublish
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+```
+
+Jangan salah paham: pada fase transisi, dua service kadang masih membaca database lama lewat view atau adapter. Tetapi target akhir tetap satu owner per data. Shared database mungkin dipakai sementara, namun harus dianggap jembatan migrasi, bukan arsitektur permanen.
+
+<Def term="data ownership"><p>Aturan bahwa satu service menjadi sumber kebenaran untuk data tertentu, termasuk skema, validasi, perubahan state, dan audit trail.</p></Def>
+
+<Box variant="warn" icon="⚠️" label="Jangan biarkan service lain menulis tabelmu"><p>Begitu dua service menulis tabel yang sama, deploy independen hanya ilusi. Perubahan constraint kecil bisa mematahkan service lain tanpa terlihat di compile time.</p></Box>
+
+</Section>
+
+<Section num="06" id="api-contract" title="API Contract Sebelum Dipisah" sub="Pisahkan interface dulu, network belakangan">
+
+<p class="lead">Cara paling aman untuk split di Go adalah membuat seam berbasis interface sebelum ada service baru.</p>
+
+Di Go, interface kecil membuat boundary mudah diuji. Checkout tidak perlu tahu apakah payment masih package lokal, HTTP service, atau worker async. Ia hanya tahu contract: buat payment intent, terima payment ID, dan lanjutkan state order sesuai hasil.
+
+```go title="internal/checkout/payment_contract.go"
+package checkout
+
+import (
+	"context"
+	"errors"
+	"time"
+)
+
+var ErrPaymentUnavailable = errors.New("payment unavailable")
+
+type PaymentClient interface {
+	CreatePaymentIntent(ctx context.Context, req CreatePaymentIntentRequest) (PaymentIntent, error)
+}
+
+type CreatePaymentIntentRequest struct {
+	OrderID     string
+	CustomerID  string
+	Amount      int64
+	Currency    string
+	Description string
+}
+
+type PaymentIntent struct {
+	ID          string
+	RedirectURL string
+	ExpiresAt   time.Time
+}
+```
+
+```go title="internal/checkout/service.go"
+package checkout
+
+import (
+	"context"
+	"fmt"
+)
+
+type OrderRepository interface {
+	SavePendingOrder(ctx context.Context, order Order) error
+}
+
+type Service struct {
+	orders   OrderRepository
+	payments PaymentClient
+}
+
+func NewService(orders OrderRepository, payments PaymentClient) *Service {
+	return &Service{orders: orders, payments: payments}
+}
+
+func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (CheckoutResult, error) {
+	order := NewPendingOrder(req.CustomerID, req.Items)
+
+	if err := s.orders.SavePendingOrder(ctx, order); err != nil {
+		return CheckoutResult{}, fmt.Errorf("save pending order: %w", err)
+	}
+
+	intent, err := s.payments.CreatePaymentIntent(ctx, CreatePaymentIntentRequest{
+		OrderID:     order.ID,
+		CustomerID:  order.CustomerID,
+		Amount:      order.TotalAmount,
+		Currency:    "IDR",
+		Description: "Skincare order " + order.ID,
+	})
+	if err != nil {
+		return CheckoutResult{}, fmt.Errorf("create payment intent: %w", err)
+	}
+
+	return CheckoutResult{OrderID: order.ID, PaymentURL: intent.RedirectURL}, nil
+}
+```
+
+<Endpoint method="POST" path="/internal/v1/payments/intents" desc="Contract internal untuk membuat payment intent dari order yang sudah dibuat" />
+<Endpoint method="POST" path="/v1/webhooks/payments" desc="Webhook publik dari payment gateway yang diverifikasi oleh payment service" />
+<Endpoint method="GET" path="/internal/v1/payments/{paymentID}" desc="Query status payment saat rekonsiliasi atau support case" />
+
+```json title="contract create payment intent"
+{
+  "order_id": "ord_01JZ9S8Y1J57V4VCR7R0Z2B8K3",
+  "customer_id": "cus_01JZ9S7G9MTS7SPYF9V6ZAYCH2",
+  "amount": 349000,
+  "currency": "IDR",
+  "description": "Skincare order ord_01JZ9S8Y1J57V4VCR7R0Z2B8K3"
+}
+```
+
+<Box variant="tip" icon="💡" label="Idiom Go untuk boundary"><p>Terima interface di constructor dan kembalikan struct konkret. Handler dan service mudah dites, sementara implementasi payment bisa diganti dari lokal ke HTTP tanpa mengubah checkout.</p></Box>
+
+<h3>Versioning contract: tambah, jangan ubah</h3>
+
+<p>Contract antar service akan berubah seiring waktu, dan di sinilah banyak migrasi tersandung. Aturan praktisnya: perubahan yang aman adalah aditif (additive only). Menambah field opsional, menambah endpoint, atau menambah nilai enum baru biasanya backward compatible. Mengubah tipe field, mengganti nama, atau menghapus field adalah breaking change yang akan mematahkan consumer lama.</p>
+
+<Compare aLabel="Breaking change" bLabel="Backward compatible" aTone="red" bTone="teal">
+  <Fragment slot="a"><ul><li>Mengganti `amount` dari integer menjadi objek `{ value, currency }`.</li><li>Menghapus field `redirect_url` karena dianggap usang.</li><li>Membuat field opsional menjadi wajib (required) tanpa default.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Menambah field opsional `expires_at` yang diabaikan consumer lama.</li><li>Menambah endpoint `/internal/v2/payments/intents` di samping v1.</li><li>Menjaga v1 tetap hidup sampai semua consumer pindah, baru hapus.</li></ul></Fragment>
+</Compare>
+
+<p>Untuk perubahan yang benar-benar breaking, pakai versi path eksplisit (`/internal/v1/...` lalu `/internal/v2/...`) dan jalankan keduanya berdampingan selama masa transisi. Sebelum menghapus v1, pastikan observability menunjukkan tidak ada lagi traffic yang memakainya. Pendekatan consumer-driven contract (consumer menulis ekspektasi, provider memverifikasinya di CI) membuat breaking change terdeteksi sebelum deploy, bukan saat production rusak.</p>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari OpenAPI/tRPC ke .proto"><p>Di frontend kamu sudah terbiasa contract-first: OpenAPI, GraphQL schema, atau tRPC menghasilkan typed client sehingga perubahan API ketahuan saat compile. Antar service Go, padanannya adalah gRPC dengan file `.proto` sebagai single source of truth: tipe request, response, dan service di-generate untuk server dan client. Disiplinnya sama, hanya formatnya yang beda.</p></Box>
+
+</Section>
+
+<Section num="07" id="async-communication" title="Async Communication antar Service" sub="Event untuk side effect, bukan chain HTTP panjang">
+
+<p class="lead">Microservices sehat berkomunikasi lewat event untuk side effect yang tidak perlu memblokir request utama, dan lewat panggilan sinkron hanya saat hasilnya harus diketahui sekarang juga.</p>
+
+Ada dua gaya komunikasi, dan memilih yang tepat lebih penting daripada teknologinya. Sinkron (request lalu tunggu balasan) cocok ketika pemanggil butuh hasil segera, mis. checkout butuh `payment_url` sebelum bisa menjawab pelanggan. Asinkron (kirim event, lupakan) cocok untuk side effect yang boleh selesai belakangan, mis. email, sinkronisasi search index, analytics, audit, dan shipping notification.
+
+<h3>Sinkron: gRPC vs REST</h3>
+
+<p>Untuk panggilan sinkron antar service Go, ada dua pilihan idiomatik. Modul ini memakai REST/JSON karena hanya butuh `net/http` standard library dan paling mudah didebug. Tetapi banyak tim memilih gRPC saat lalu lintas antar service tinggi. Pilih berdasarkan kebutuhan, bukan tren.</p>
+
+<Compare aLabel="REST / JSON (net/http)" bLabel="gRPC (HTTP/2 + protobuf)" aTone="blue" bTone="violet">
+  <Fragment slot="a"><ul><li>Cukup standard library, mudah dipanggil curl, mudah didebug dengan mata.</li><li>Contract longgar (JSON), mudah dipakai dari frontend dan tool eksternal.</li><li>Cocok untuk webhook publik, internal API ringan, dan tim kecil.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Contract-first lewat `.proto`, typed client dan server di-generate, payload binary lebih ringkas.</li><li>HTTP/2 multiplexing dan streaming, latensi internal lebih kecil saat traffic padat.</li><li>Cocok untuk jalur internal panas antar banyak service, bukan untuk endpoint publik browser.</li></ul></Fragment>
+</Compare>
+
+<p>AWS Prescriptive Guidance menempatkan event-driven architecture sebagai pola umum untuk konsistensi lintas microservices, sementara Amazon SQS menyediakan queue, visibility timeout, dan dead-letter queue (DLQ) untuk retry yang terkontrol. Keputusan sync atau async bisa diringkas jadi satu pertanyaan: butuh hasilnya sekarang?</p>
+
+```mermaid
+flowchart TD
+  A["Antar service perlu bicara"] --> B{"Butuh hasil segera?"}
+  B -->|Ya, hasil dipakai di response| C{"Traffic internal padat?"}
+  C -->|Ya| D["Sinkron: gRPC"]
+  C -->|Tidak| E["Sinkron: REST / JSON"]
+  B -->|Tidak, side effect eventual| F["Asinkron: event ke SQS"]
+  F --> G["Consumer idempotent + DLQ"]
+```
+
+<p class="fig-cap"><b>Gambar 5.</b> Keputusan komunikasi: sinkron saat hasil dipakai langsung, asinkron saat side effect boleh menyusul.</p>
+
+```go title="internal/platform/events/publisher.go"
+package events
+
+import (
+	"context"
+	"encoding/json"
+	"time"
+)
+
+type Publisher interface {
+	Publish(ctx context.Context, event Event) error
+}
+
+type Event struct {
+	ID            string          `json:"id"`
+	Type          string          `json:"type"`
+	AggregateID   string          `json:"aggregate_id"`
+	CorrelationID string          `json:"correlation_id"`
+	OccurredAt    time.Time       `json:"occurred_at"`
+	Payload       json.RawMessage `json:"payload"`
+}
+```
+
+```go title="internal/payment/events.go"
+package payment
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"github.com/kamu/skincare-backend/internal/platform/events"
+)
+
+type EventPublisher interface {
+	Publish(ctx context.Context, event events.Event) error
+}
+
+type PaymentSucceededPayload struct {
+	PaymentID string `json:"payment_id"`
+	OrderID   string `json:"order_id"`
+	Amount    int64  `json:"amount"`
+}
+
+// Publisher menyuntik clock dan generator ID agar event bisa dites
+// secara deterministik, konsisten dengan gaya "terima interface".
+type Publisher struct {
+	events EventPublisher
+	now    func() time.Time
+	newID  func() string
+}
+
+func NewPublisher(events EventPublisher, now func() time.Time, newID func() string) *Publisher {
+	return &Publisher{events: events, now: now, newID: newID}
+}
+
+func (p *Publisher) PublishPaymentSucceeded(ctx context.Context, payload PaymentSucceededPayload, correlationID string) error {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal payment succeeded payload: %w", err)
+	}
+
+	event := events.Event{
+		ID:            p.newID(),
+		Type:          "PaymentSucceeded",
+		AggregateID:   payload.PaymentID,
+		CorrelationID: correlationID,
+		OccurredAt:    p.now().UTC(),
+		Payload:       body,
+	}
+
+	if err := p.events.Publish(ctx, event); err != nil {
+		return fmt.Errorf("publish payment succeeded: %w", err)
+	}
+
+	return nil
+}
+```
+
+```mermaid
+sequenceDiagram
+  participant C as Customer
+  participant O as Order Service
+  participant P as Payment Service
+  participant Q as SQS
+  participant N as Notification Worker
+  participant S as Search Worker
+  C->>O: POST /v1/checkout
+  O->>P: Create payment intent
+  P-->>O: payment_url
+  O-->>C: 201 Created
+  P->>Q: PaymentSucceeded event
+  Q->>N: send receipt email
+  Q->>S: update searchable order projection
+```
+
+<p class="fig-cap"><b>Gambar 6.</b> Request checkout tetap pendek, side effect berjalan lewat event dan worker.</p>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari Laravel Queue & Events"><p>Di Laravel, `event(new OrderPaid($order))` memanggil Listener secara in-process dan sinkron secara default, sementara `dispatch(new SendReceiptJob)` melempar Job ke Redis atau SQS untuk diproses worker. Antar service, kita hanya punya jenis kedua: event domain melintasi broker. Karena itu konsep yang sudah kamu kenal dari Laravel Queue, retry, backoff, dan `ShouldBeUnique`, langsung relevan. Bedanya, di Laravel event in-process selalu jalan sekali; event terdistribusi butuh outbox saat mengirim dan idempotency saat menerima.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="At-least-once berarti handler harus idempotent"><p>Queue dapat mengirim pesan lagi jika consumer gagal menghapus pesan sebelum visibility timeout habis. Consumer event wajib aman dipanggil berulang, sama seperti Job Laravel yang bisa ter-retry.</p></Box>
+
+<h3>Idempotency store: cara konkret, bukan sekadar imbauan</h3>
+
+<p>"Handler harus idempotent" mudah diucapkan, susah dipraktikkan kalau tidak tahu caranya. Pola paling sederhana: simpan dedup key (di sini `event.ID`) di tabel khusus dengan constraint UNIQUE. Sebelum memproses, coba klaim key itu. Jika sudah ada, event sudah diproses dan kita lewati dengan aman.</p>
+
+```sql title="dedup di order_db, dimiliki order service"
+CREATE TABLE processed_events (
+    event_id uuid PRIMARY KEY,           -- = Event.ID, unik per event
+    handler text NOT NULL,
+    processed_at timestamptz NOT NULL DEFAULT now()
+);
+```
+
+```go title="internal/order/idempotency.go"
+package order
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+// ErrAlreadyProcessed dikembalikan saat event dengan ID sama sudah pernah diproses.
+var ErrAlreadyProcessed = errors.New("event already processed")
+
+// claimEvent mencoba menandai event sebagai diproses. INSERT gagal karena
+// pelanggaran UNIQUE berarti event duplikat, jadi handler boleh berhenti aman.
+func claimEvent(ctx context.Context, db *pgxpool.Pool, eventID, handler string) error {
+	_, err := db.Exec(ctx,
+		`INSERT INTO processed_events (event_id, handler) VALUES ($1, $2)`,
+		eventID, handler,
+	)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique_violation
+			return ErrAlreadyProcessed
+		}
+		return fmt.Errorf("claim event %s: %w", eventID, err)
+	}
+	return nil
+}
+
+func HandlePaymentSucceeded(ctx context.Context, db *pgxpool.Pool, ev Event) error {
+	if err := claimEvent(ctx, db, ev.ID, "order.payment_succeeded"); err != nil {
+		if errors.Is(err, ErrAlreadyProcessed) {
+			return nil // sudah pernah, abaikan tanpa error
+		}
+		return err
+	}
+	// aman: jalankan efek bisnis tepat sekali, mis. tandai order paid.
+	return markOrderPaid(ctx, db, ev.AggregateID)
+}
+```
+
+<Box variant="tip" icon="💡" label="Dedup key harus stabil per event logis"><p>Pakai ID event yang sama setiap kali pesan dikirim ulang (di sini `Event.ID`), bukan UUID acak yang dibuat per percobaan. Kunci yang berubah tiap retry membuat dedup tidak berfungsi: setiap kiriman dianggap event baru.</p></Box>
+
+</Section>
+
+<Section num="08" id="strangler-payment" title="Strangler Fig: Ekstrak Payment Service" sub="Pisahkan satu domain per waktu, bukan big bang rewrite">
+
+<p class="lead">Strangler fig pattern (istilah Martin Fowler) memindahkan fungsi lama ke service baru secara bertahap sambil aplikasi tetap melayani pelanggan, seperti pohon ara yang perlahan menyelimuti inangnya.</p>
+
+Kita akan memakai payment sebagai contoh karena ia punya boundary bisnis yang jelas, tetapi tetap perlu disiplin tinggi: uang, webhook, idempotency, dan audit. Pada fase awal, checkout tetap berada di modular monolith. Kita hanya menaruh seam interface, lalu mengarahkan implementasi payment dari package lokal ke HTTP client, kemudian memindahkan database payment, lalu memindahkan webhook. Perhatikan kolom traffic: service baru mulai dari nol persen lalu naik bertahap (canary), bukan langsung menerima seluruh beban.
+
+```mermaid
+flowchart LR
+  A["Fase 0<br/>monolith<br/>0% ke service"] --> B["Fase 1<br/>interface PaymentClient<br/>0%"]
+  B --> C["Fase 2<br/>local adapter<br/>0%"]
+  C --> D["Fase 3<br/>service di internal API<br/>5% canary"]
+  D --> E["Fase 4<br/>webhook ke service<br/>50%"]
+  E --> F["Fase 5<br/>payment_db dipindah<br/>100%"]
+  F --> G["Fase 6<br/>monolith konsumsi event<br/>100%, adapter lama dihapus"]
+```
+
+<p class="fig-cap"><b>Gambar 7.</b> Ekstraksi payment dilakukan bertahap dengan canary: porsi traffic ke service baru naik perlahan dari 5 persen ke 100 persen, sehingga masalah tertangkap saat dampaknya masih kecil.</p>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari feature flag dan % rollout di frontend"><p>Di frontend kamu sudah terbiasa melepas fitur secara bertahap: feature flag, A/B test, atau rollout 5 persen lalu 100 persen. Strangler fig adalah pola yang sama di sisi backend. `PAYMENT_MODE=local|http` adalah flag-nya, dan persentase traffic ke payment service adalah rollout-nya. Konsep canary di sini bukan hal baru, hanya pindah lapisan.</p></Box>
+
+<Steps>
+  <Step><b>Pasang seam di monolith</b><p>Buat `PaymentClient` interface di package checkout, lalu implementasikan adapter lokal yang memanggil package payment lama.</p></Step>
+  <Step><b>Stabilkan contract</b><p>Tulis request dan response JSON internal, status code, error code, idempotency key, dan correlation ID.</p></Step>
+  <Step><b>Deploy service baru tanpa traffic</b><p>Payment service berjalan di ECS sendiri, tetapi checkout belum diarahkan ke sana.</p></Step>
+  <Step><b>Canary traffic kecil</b><p>Alihkan sebagian order internal ke payment service, monitor latency, error, webhook, dan rekonsiliasi.</p></Step>
+  <Step><b>Pindahkan ownership data</b><p>Payment service mulai menulis `payment_db`, lalu menerbitkan event untuk order service.</p></Step>
+  <Step><b>Hapus kode lama</b><p>Setelah semua traffic stabil dan audit lengkap, hapus adapter lokal dan tabel lama yang sudah tidak dipakai.</p></Step>
+</Steps>
+
+```go title="internal/checkout/payment_http_client.go"
+package checkout
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+)
+
+type HTTPPaymentClient struct {
+	baseURL string
+	client  *http.Client
+}
+
+// NewHTTPPaymentClient menerima *http.Client dari luar agar satu client
+// dengan Transport yang sudah dituning bisa di-reuse lintas pemanggil.
+func NewHTTPPaymentClient(baseURL string, client *http.Client) *HTTPPaymentClient {
+	return &HTTPPaymentClient{baseURL: baseURL, client: client}
+}
+
+func (c *HTTPPaymentClient) CreatePaymentIntent(ctx context.Context, req CreatePaymentIntentRequest) (PaymentIntent, error) {
+	body, err := json.Marshal(req)
+	if err != nil {
+		return PaymentIntent{}, fmt.Errorf("marshal request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/internal/v1/payments/intents", bytes.NewReader(body))
+	if err != nil {
+		return PaymentIntent{}, fmt.Errorf("build request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	// Idempotency-Key memakai OrderID: stabil per order, sama untuk setiap
+	// retry network, jadi payment service aman mendeduplikasi.
+	httpReq.Header.Set("Idempotency-Key", req.OrderID)
+
+	resp, err := c.client.Do(httpReq)
+	if err != nil {
+		return PaymentIntent{}, fmt.Errorf("call payment service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		// Habiskan body sebelum close agar koneksi bisa di-reuse keep-alive.
+		io.Copy(io.Discard, resp.Body)
+		return PaymentIntent{}, fmt.Errorf("payment service returned status %d", resp.StatusCode)
+	}
+
+	var intent PaymentIntent
+	if err := json.NewDecoder(resp.Body).Decode(&intent); err != nil {
+		return PaymentIntent{}, fmt.Errorf("decode payment response: %w", err)
+	}
+
+	return intent, nil
+}
+```
+
+```go title="cmd/api/http_client.go"
+package main
+
+import (
+	"net"
+	"net/http"
+	"time"
+)
+
+// newServiceHTTPClient dibuat sekali saat startup dan dibagi ke semua client
+// antar service. Transport kustom mengatur pool koneksi keep-alive.
+func newServiceHTTPClient() *http.Client {
+	transport := &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 10, // default 2 terlalu kecil untuk client panas
+		IdleConnTimeout:     90 * time.Second,
+		DialContext: (&net.Dialer{
+			Timeout: 2 * time.Second,
+		}).DialContext,
+	}
+	return &http.Client{
+		Transport: transport,
+		Timeout:   3 * time.Second, // batas atas keras
+	}
+}
+```
+
+<Box variant="note" icon="📝" label="Timeout: Client.Timeout vs context deadline"><p>HTTP client antar service wajib punya batas waktu. Karena kita memakai `NewRequestWithContext`, ada dua batas yang berlaku: `Client.Timeout` sebagai pagar keras dan deadline pada `ctx` dari pemanggil. Yang lebih cepat habis yang menang. Idiom Go menghormati deadline caller, jadi untuk timeout per-request yang berbeda, set `context.WithTimeout` di pemanggil, bukan mengubah field `Client.Timeout` global.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jangan bikin *http.Client baru tiap panggilan"><p>Membuat `&http.Client{}` baru di setiap request membuang Transport beserta pool koneksi keep-alive-nya, jadi setiap panggilan membuka koneksi TCP baru. Buat satu client dengan Transport yang dituning saat startup, lalu bagikan. Default `MaxIdleConnsPerHost` hanya 2, sering terlalu kecil untuk client yang sering dipakai.</p></Box>
+
+</Section>
+
+<Section num="09" id="hands-on" title="Hands-on: Siapkan Seam untuk Payment" sub="Latihan ringan sebelum benar-benar memecah service">
+
+<p class="lead">Latihan ini belum membuat repository baru. Tujuannya menyiapkan boundary supaya migrasi berikutnya aman.</p>
+
+<FileTree title="File latihan" tree={`internal/
+  checkout/
+    service.go
+    payment_contract.go
+    payment_local_client.go
+    payment_http_client.go
+  payment/
+    service.go
+    handler.go
+    repository.go
+cmd/
+  api/
+    main.go
+`} />
+
+<Steps>
+  <Step><b>Buat contract di checkout</b><p>Tambahkan `PaymentClient` dan struct request response seperti contoh sebelumnya.</p></Step>
+  <Step><b>Buat local adapter</b><p>Adapter ini memanggil service payment lama di proses yang sama, sehingga belum ada network risk.</p></Step>
+  <Step><b>Buat HTTP adapter</b><p>Adapter HTTP mengikuti contract yang sama, sehingga checkout tidak perlu berubah saat traffic dialihkan.</p></Step>
+  <Step><b>Pilih adapter dari config</b><p>Gunakan env `PAYMENT_MODE=local` untuk dev dan `PAYMENT_MODE=http` untuk canary staging.</p></Step>
+  <Step><b>Tulis test service checkout</b><p>Mock `PaymentClient` untuk memastikan checkout tidak bergantung pada implementasi payment.</p></Step>
+</Steps>
+
+```go title="internal/checkout/payment_local_client.go"
+package checkout
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/kamu/skincare-backend/internal/payment"
+)
+
+type LocalPaymentClient struct {
+	service *payment.Service
+}
+
+func NewLocalPaymentClient(service *payment.Service) *LocalPaymentClient {
+	return &LocalPaymentClient{service: service}
+}
+
+func (c *LocalPaymentClient) CreatePaymentIntent(ctx context.Context, req CreatePaymentIntentRequest) (PaymentIntent, error) {
+	intent, err := c.service.CreateIntent(ctx, payment.CreateIntentRequest{
+		OrderID:     req.OrderID,
+		CustomerID:  req.CustomerID,
+		Amount:      req.Amount,
+		Currency:    req.Currency,
+		Description: req.Description,
+	})
+	if err != nil {
+		return PaymentIntent{}, fmt.Errorf("create local payment intent: %w", err)
+	}
+
+	return PaymentIntent{
+		ID:          intent.ID,
+		RedirectURL: intent.RedirectURL,
+		ExpiresAt:   intent.ExpiresAt,
+	}, nil
+}
+```
+
+```go title="cmd/api/main.go"
+package main
+
+import (
+	"log"
+	"net/http"
+
+	"github.com/kamu/skincare-backend/internal/checkout"
+	"github.com/kamu/skincare-backend/internal/payment"
+)
+
+// Config dibaca sekali saat startup (12-factor), bukan os.Getenv tersebar.
+type Config struct {
+	PaymentMode       string // "local" atau "http"
+	PaymentServiceURL string
+}
+
+func buildPaymentClient(cfg Config, paymentService *payment.Service, httpClient *http.Client) checkout.PaymentClient {
+	if cfg.PaymentMode == "http" {
+		return checkout.NewHTTPPaymentClient(cfg.PaymentServiceURL, httpClient)
+	}
+	return checkout.NewLocalPaymentClient(paymentService)
+}
+
+func main() {
+	cfg := loadConfig()                  // baca env sekali, validasi di sini
+	httpClient := newServiceHTTPClient() // dibagi ke semua client antar service
+
+	paymentService := payment.NewService()
+	paymentClient := buildPaymentClient(cfg, paymentService, httpClient)
+	checkoutService := checkout.NewService(newOrderRepository(), paymentClient)
+
+	_ = checkoutService
+	log.Println("api started")
+}
+```
+
+<Box variant="note" icon="📝" label="Stub dari modul sebelumnya"><p>`payment.NewService()`, `newOrderRepository()`, `loadConfig()`, dan `NewPendingOrder()` didefinisikan di modul-modul sebelumnya (domain, repository, config). Di sini kita hanya merakitnya. Kalau ingin menjalankan latihan secara terisolasi, beri stub minimal yang mengembalikan nilai dummy agar `go build` lolos sebelum mengisi logika asli.</p></Box>
+
+```go title="internal/checkout/service_test.go"
+package checkout
+
+import (
+	"context"
+	"testing"
+	"time"
+)
+
+type fakePaymentClient struct {
+	intent PaymentIntent
+	err    error
+}
+
+// Pointer receiver, konsisten dengan LocalPaymentClient dan HTTPPaymentClient.
+func (f *fakePaymentClient) CreatePaymentIntent(ctx context.Context, req CreatePaymentIntentRequest) (PaymentIntent, error) {
+	return f.intent, f.err
+}
+
+func TestCheckoutCreatesPaymentIntent(t *testing.T) {
+	payments := &fakePaymentClient{
+		intent: PaymentIntent{
+			ID:          "pay_123",
+			RedirectURL: "https://pay.example.test/redirect",
+			ExpiresAt:   time.Now().Add(30 * time.Minute),
+		},
+	}
+
+	service := NewService(&fakeOrderRepository{}, payments)
+
+	result, err := service.Checkout(context.Background(), CheckoutRequest{
+		CustomerID: "cus_123",
+		Items: []CheckoutItem{
+			{ProductID: "prd_serum", Quantity: 1},
+		},
+	})
+	if err != nil {
+		t.Fatalf("checkout failed: %v", err)
+	}
+
+	if result.PaymentURL == "" {
+		t.Fatal("expected payment URL")
+	}
+}
+```
+
+```bash title="Terminal"
+go test ./internal/checkout
+PAYMENT_MODE=local go run ./cmd/api
+PAYMENT_MODE=http PAYMENT_SERVICE_URL=http://localhost:9090 go run ./cmd/api
+```
+
+<Box variant="warn" icon="⚠️" label="Value vs pointer receiver: pilih satu gaya"><p>Datang dari JS, mudah lupa bahwa method dengan pointer receiver (`func (c *T)`) hanya memenuhi interface lewat `*T`, bukan `T`. Di modul ini semua adapter konsisten pakai pointer receiver, jadi selalu serahkan `&fakePaymentClient{}`, bukan nilainya. Mencampur value dan pointer receiver pada tipe yang sama adalah sumber bug "does not implement interface" yang membingungkan.</p></Box>
+
+<Box variant="tip" icon="💡" label="Latihan ini kecil tapi strategis"><p>Begitu seam tersedia dan test checkout tetap hijau, ekstraksi payment menjadi perubahan konfigurasi dan deployment, bukan rewrite checkout.</p></Box>
+
+</Section>
+
+<Section num="10" id="jebakan-umum" title="Jebakan Umum Saat Split" sub="Masalah microservices biasanya muncul dari boundary yang salah, bukan dari Go">
+
+<p class="lead">Microservices menambah failure mode baru: network, retry, duplikasi event, observability, dan konsistensi yang tidak instan.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Shared database permanen</h4><p>Service terlihat terpisah, tetapi migration tetap saling mengunci. Jadikan shared database hanya fase transisi.</p></Card>
+  <Card><h4>Chain HTTP terlalu panjang</h4><p>Checkout memanggil payment, lalu inventory, lalu shipping, lalu notification secara sinkron. Satu service lambat membuat semua lambat.</p></Card>
+  <Card><h4>Event tidak idempotent</h4><p>Consumer mengirim email dua kali atau mengubah stok dua kali karena menganggap event hanya datang sekali.</p></Card>
+  <Card><h4>Contract tidak versioned</h4><p>Perubahan field JSON mematahkan consumer lama. Pakai backward-compatible change dan observability sebelum menghapus field.</p></Card>
+  <Card><h4>Tidak ada correlation ID</h4><p>Satu checkout tersebar ke beberapa log service tanpa benang merah, debugging production menjadi lambat.</p></Card>
+  <Card><h4>Observability terlambat</h4><p>Service baru tanpa log JSON, metrics, tracing, DLQ alarm, dan dashboard akan sulit dioperasikan.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Distributed transaction bukan default"><p>Jangan berharap transaksi SQL lintas service seperti transaksi satu database. Untuk flow panjang, gunakan event, saga, kompensasi, dan rekonsiliasi.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari await tx.commit() ke saga"><p>Di Node dengan satu database, kamu terbiasa `await tx.commit()` membungkus banyak operasi jadi satu unit yang gagal bersama. Lintas service, tidak ada `commit` global itu: reserve stock dan charge payment terjadi di dua database berbeda. Maka rollback diganti kompensasi, yaitu aksi penyeimbang yang membatalkan langkah sebelumnya (mis. release stock setelah charge gagal). Inilah inti pola Saga.</p></Box>
+
+<h3>Saga: rollback yang dibuat manual</h3>
+
+<p>Saga (didokumentasikan AWS dan microservices.io) adalah rangkaian transaksi lokal di banyak service. Setiap langkah punya aksi kompensasi yang menjalankan kebalikannya bila ada langkah berikutnya gagal. Ada dua gaya koordinasi.</p>
+
+<Compare aLabel="Choreography" bLabel="Orchestration" aTone="teal" bTone="violet">
+  <Fragment slot="a"><ul><li>Tidak ada pusat. Tiap service bereaksi terhadap event dan memancarkan event berikutnya.</li><li>Longgar dan tahan banting, tetapi alur sulit dilihat utuh saat sistem bertambah besar.</li><li>Cocok untuk saga pendek dengan dua sampai tiga langkah.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Ada orchestrator (mis. order service) yang memerintah tiap langkah dan memicu kompensasi saat gagal.</li><li>Alur terpusat, mudah dilacak dan diaudit, tetapi orchestrator jadi titik logika penting.</li><li>Cocok untuk saga panjang yang butuh visibilitas dan kontrol.</li></ul></Fragment>
+</Compare>
+
+<p>Untuk checkout skincare, ambil flow konkret: reserve stock, lalu charge payment. Jika payment gagal atau timeout, stok yang sudah direservasi harus dilepas lagi (kompensasi), dan order ditandai canceled. Diagram state berikut menggambarkan saga orchestration sederhana ini.</p>
+
+```mermaid
+stateDiagram-v2
+  [*] --> StockReserved: reserve stock
+  StockReserved --> PaymentCharged: charge payment ok
+  StockReserved --> Compensating: payment failed / timeout
+  Compensating --> Canceled: release stock + cancel order
+  PaymentCharged --> Completed: PaymentSucceeded event
+  Completed --> [*]
+  Canceled --> [*]
+```
+
+<p class="fig-cap"><b>Gambar 8.</b> Saga order skincare: kegagalan payment memicu kompensasi (release stock) yang mengembalikan sistem ke keadaan konsisten, bukan menggantung setengah jadi.</p>
+
+```mermaid
+flowchart TD
+  A["POST /v1/checkout"] --> B["Order created"]
+  B --> C["Payment intent created"]
+  C --> D{"Payment result"}
+  D -->|Succeeded| E["PaymentSucceeded event"]
+  D -->|Failed or timeout| F["PaymentFailed event"]
+  E --> G["Order marked paid"]
+  E --> H["Receipt email queued"]
+  F --> I["Release stock, order canceled"]
+```
+
+<p class="fig-cap"><b>Gambar 9.</b> Flow lintas service membutuhkan state machine dengan jalur kompensasi, bukan transaksi tunggal yang tersembunyi.</p>
+
+<Compare aLabel="Kesalahan umum" bLabel="Versi aman" aTone="red" bTone="blue">
+  <Fragment slot="a"><ul><li>Service baru langsung membaca tabel `orders` dari database monolith.</li><li>Webhook payment memanggil order service sinkron dan gagal jika order service sedang deploy.</li><li>Event tidak punya ID unik, correlation ID, dan schema yang jelas.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Payment service punya `payment_db`, lalu publish `PaymentSucceeded`.</li><li>Order service memproses event secara idempotent dan bisa retry.</li><li>Semua event membawa ID, aggregate ID, occurred at, payload, dan correlation ID.</li></ul></Fragment>
+</Compare>
+
+</Section>
+
+<Section num="11" id="ringkasan" title="Ringkasan & Poin Penting">
+
+<p class="lead">Microservices adalah alat untuk mengelola perbedaan ownership, scaling, dan deployment, bukan hadiah akhir setelah monolith terasa tidak keren.</p>
+
+<Recap title="Yang Wajib Menempel"><ul><li>Tetap pakai modular monolith ketika tim kecil, traffic masih terkendali, dan masalah bisa selesai lewat profiling, cache, index, queue, atau tuning database (MonolithFirst).</li><li>Signal split yang sehat adalah deployment frequency berbeda, scaling requirement berbeda, dan tim yang benar-benar berbeda.</li><li>Service boundary mengikuti domain bisnis. Notification dan search biasanya lebih aman dipisah lebih dulu daripada checkout dan inventory.</li><li>Database per Service mewajibkan pola pelengkap untuk query lintas service: API composition untuk query jarang, read model (CQRS ringan) untuk query panas seperti status payment di riwayat order.</li><li>Definisikan API contract dan interface Go sebelum memindahkan runtime. Versioning aman bersifat aditif; breaking change pakai jalur /v1 ke /v2 berdampingan.</li><li>Pilih komunikasi sadar: sinkron (gRPC atau REST) saat hasil dipakai langsung, asinkron (event ke SQS) saat side effect boleh menyusul.</li><li>Transactional Outbox menyelesaikan dual-write problem: tulis bisnis dan catat event dalam satu commit, poller publish belakangan. Consumer wajib idempotent lewat dedup key yang stabil.</li><li>Saga mengganti transaksi lintas service: tiap langkah punya kompensasi (mis. release stock saat payment gagal). Strangler fig dengan canary memindahkan satu domain per waktu tanpa big bang rewrite.</li></ul></Recap>
+
+<h3>Pemetaan ke proyek skincare</h3>
+
+<ul>
+  <li>`notification` menjadi kandidat split awal karena email, WhatsApp, dan campaign bisa diretry tanpa memblokir checkout.</li>
+  <li>`search` bisa menjadi service berikutnya karena index dapat dibangun ulang dari event produk dan order.</li>
+  <li>`payment` boleh diekstrak setelah contract stabil, webhook idempotent, audit event lengkap, dan ownership data jelas.</li>
+  <li>`checkout` dan `inventory` tetap dijaga ketat karena menyentuh uang, stok, dan konsistensi order.</li>
+</ul>
+
+<h3>Langkah berikutnya</h3>
+
+Modul berikutnya di jalur advanced bisa memperdalam reliability pattern: circuit breaker, timeout budget, retry policy, idempotency store, tracing lintas service, dan saga untuk order lifecycle yang lebih panjang.
+
+<Box variant="note" icon="📚" label="Rujukan resmi dan kanonik"><p>Sumber primer pola: [Martin Fowler - MonolithFirst](https://martinfowler.com/bliki/MonolithFirst.html), [Martin Fowler - StranglerFigApplication](https://martinfowler.com/bliki/StranglerFigApplication.html), dan katalog [microservices.io: Database per Service](https://microservices.io/patterns/data/database-per-service.html), [Transactional Outbox](https://microservices.io/patterns/data/transactional-outbox.html), [Saga](https://microservices.io/patterns/data/saga.html), serta [Messaging](https://microservices.io/patterns/communication-style/messaging.html). Dokumentasi platform: [Go 1.26 release notes](https://go.dev/doc/go1.26), [Go Modules Reference](https://go.dev/ref/mod), [AWS database-per-service pattern](https://docs.aws.amazon.com/prescriptive-guidance/latest/modernization-data-persistence/database-per-service.html), [AWS saga pattern](https://docs.aws.amazon.com/prescriptive-guidance/latest/modernization-data-persistence/saga-pattern.html), [AWS microservices integration guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/modernization-integrating-microservices/introduction.html), dan [Amazon SQS visibility timeout](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html).</p></Box>
+
+</Section>

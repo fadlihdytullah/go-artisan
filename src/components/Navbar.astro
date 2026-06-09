@@ -35,6 +35,7 @@ const mods = (await getCollection('modules')).sort(
 const path = Astro.url.pathname.replace(/\/$/, '');
 const current = mods.find((m) => path === `/modul/${m.id}`) ?? null;
 const switchLabel = current ? current.data.topTitle : 'Semua modul';
+const fallbackHref = current ? `/modul/${current.id}` : '/#kurikulum';
 
 // Kelompokkan modul per roadmap untuk switcher
 type NssGroup = { num: number; name: string; modules: typeof mods };
@@ -82,23 +83,29 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
         type="button"
         class="nav-switch-btn"
         popovertarget="mod-switcher"
-        aria-haspopup="menu"
+        aria-haspopup="dialog"
+        aria-controls="mod-switcher"
+        aria-expanded="false"
         aria-label={current ? `Modul aktif: ${switchLabel}. Pindah modul` : 'Pilih modul'}
       >
         <Icon name="grid" size={16} class="nav-switch-glyph" />
         <span class="nav-switch-label">{switchLabel}</span>
         <Icon name="chevron-down" size={15} class="nav-switch-caret" />
       </button>
-      <div id="mod-switcher" popover="auto" class="nav-switch-menu" role="menu" aria-label="Daftar modul">
+      <a class="nav-switch-fallback" href={fallbackHref}>
+        <Icon name="grid" size={16} class="nav-switch-glyph" />
+        <span>{current ? 'Buka modul ini' : 'Lihat kurikulum'}</span>
+      </a>
+      <div id="mod-switcher" popover="auto" class="nav-switch-menu" aria-label="Daftar modul">
         <p class="nss-head">Pindah ke modul</p>
         {nssGroups.map((group) => (
           <>
             <p class="nss-group">R{group.num} · {group.name}</p>
+            <div class="nss-list">
             {group.modules.map((m) => (
               <a
                 href={`/modul/${m.id}`}
                 class={`nss-item${current && current.id === m.id ? ' is-current' : ''}`}
-                role="menuitem"
                 aria-current={current && current.id === m.id ? 'page' : undefined}
               >
                 <span class="nss-badge" aria-hidden="true">{m.data.badge}</span>
@@ -109,6 +116,7 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
                 {current && current.id === m.id && <span class="nss-here">Dibaca</span>}
               </a>
             ))}
+            </div>
           </>
         ))}
       </div>
@@ -139,6 +147,9 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
     var btn = document.querySelector('.nav-switch-btn');
     var menu = document.getElementById('mod-switcher');
     if (!btn || !menu || typeof menu.showPopover !== 'function') return;
+    menu.addEventListener('toggle', function () {
+      btn.setAttribute('aria-expanded', menu.matches(':popover-open') ? 'true' : 'false');
+    });
     menu.addEventListener('beforetoggle', function (e) {
       if (e.newState !== 'open') return;
       var r = btn.getBoundingClientRect();

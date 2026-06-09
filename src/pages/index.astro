@@ -1,11 +1,38 @@
 ---
 import { getCollection } from 'astro:content';
+import { readdir, readFile } from 'node:fs/promises';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Icon from '../components/Icon.astro';
+import goLogo from '../../logo.png';
 
 const mods = (await getCollection('modules')).sort(
   (a, b) => a.data.order - b.data.order
 );
+
+const roadmapDir = new URL('../../roadmap-md/', import.meta.url);
+const roadmapDocs = (
+  await Promise.all(
+    (await readdir(roadmapDir))
+      .filter((name) => name.endsWith('.md'))
+      .sort()
+      .map(async (name) => {
+        const content = await readFile(new URL(name, roadmapDir), 'utf8');
+        const titleMatch = content.match(/^#\s+Roadmap\s+\d+\s+—\s+(.+)$/m);
+        const numMatch = name.match(/^(\d+)/);
+        const chapterCount = (content.match(/^## Chapter /gm) ?? []).length;
+
+        return {
+          num: Number(numMatch?.[1] ?? 0),
+          title: titleMatch?.[1] ?? `Roadmap ${numMatch?.[1] ?? ''}`,
+          chapterCount,
+        };
+      })
+  )
+).sort((a, b) => a.num - b.num);
+const totalRoadmaps = roadmapDocs.length;
+const totalChapters = roadmapDocs.reduce((sum, roadmap) => sum + roadmap.chapterCount, 0);
+const heroRoadmaps = roadmapDocs.slice(0, 4);
+const remainingRoadmaps = Math.max(0, totalRoadmaps - heroRoadmaps.length);
 
 // Estimasi total waktu baca: jumlahkan angka pertama tiap readingTime ("~45 menit").
 const totalMinutes = mods.reduce((sum, m) => {
@@ -36,36 +63,73 @@ const roadmaps = Array.from(roadmapMap.values()).sort((a, b) => a.num - b.num);
 <BaseLayout title="Go Artisan — Belajar Go Backend untuk Developer" nav={{ variant: 'home' }}>
   <main class="home" data-home-progress data-module-ids={JSON.stringify(moduleIds)}>
     <section class="home-hero">
-      <p class="home-kicker"><span class="dot" aria-hidden="true"></span>Go backend untuk developer JavaScript &amp; PHP</p>
-      <h1 class="home-title">Belajar Go dengan <em>Bekal</em> yang Sudah Kamu Punya</h1>
-      <p class="home-lede">
-        Materi berbahasa Indonesia untuk developer berpengalaman, bukan pemula
-        ngoding. Setiap konsep Go dijembatani dari <b>React/JavaScript</b> dan
-        <b>Laravel/PHP</b> yang sudah kamu kenal, sambil membangun satu proyek nyata,
-        backend <b>online shop skincare</b> dari fondasi Go sampai deploy ke AWS.
-      </p>
+      <div class="home-hero-grid">
+        <div class="home-hero-copy">
+          <div class="home-kicker-row">
+            <p class="home-kicker"><span class="dot" aria-hidden="true"></span>Go backend untuk developer JavaScript &amp; PHP</p>
+            <p class="home-kicker home-kicker-alt">{totalRoadmaps} roadmap, {totalChapters} chapter</p>
+          </div>
 
-      <p class="home-facts">
-        <span><b>{mods.length}</b> modul terstruktur</span>
-        <span><b>~{totalHours} jam</b> materi</span>
-        <span><b>1</b> proyek nyata end-to-end</span>
-        <span><b>Gratis</b>, tanpa login</span>
-      </p>
+          <h1 class="home-title">Belajar Go backend tanpa mulai dari nol</h1>
+          <p class="home-lede">
+            Go Artisan menjembatani <b>React/JavaScript</b> dan <b>Laravel/PHP</b>
+            ke cara kerja Go yang lebih lugas. Kurikulumnya dibagi ke <b>{totalRoadmaps} roadmap</b> dan
+            <b> {totalChapters} chapter</b>, sambil membangun backend <b>online shop skincare</b>
+            dari HTTP API, PostgreSQL, dan arsitektur modular sampai deploy ke AWS.
+          </p>
 
-      <div class="home-actions">
-        <a
-          class="home-cta"
-          href={`/modul/${mods[0]?.id ?? ''}`}
-          data-continue-link
-        >
-          <span data-continue-label>Mulai belajar</span>
-          <Icon name="arrow-right" size={17} />
-        </a>
-        <p class="home-progress-copy" data-progress-copy>Progress lokal akan tersimpan di browser ini.</p>
+          <p class="home-facts">
+            <span><b>{totalRoadmaps}</b> roadmap terarah</span>
+            <span><b>{totalChapters}</b> chapter bertahap</span>
+            <span><b>~{totalHours} jam</b> materi</span>
+            <span><b>1</b> proyek nyata end-to-end</span>
+          </p>
+
+          <div class="home-actions">
+            <a
+              class="home-cta"
+              href={`/modul/${mods[0]?.id ?? ''}`}
+              data-continue-link
+            >
+              <span data-continue-label>Mulai belajar</span>
+              <Icon name="arrow-right" size={17} />
+            </a>
+            <a class="home-secondary-link" href="#kurikulum">Lihat peta roadmap</a>
+            <p class="home-progress-copy" data-progress-copy>Progress lokal akan tersimpan di browser ini.</p>
+          </div>
+        </div>
+
+        <aside class="home-hero-rail" aria-label="Ringkasan roadmap">
+          <div class="home-hero-brand">
+            <img src={goLogo.src} alt="Logo Go Artisan" class="home-hero-logo" />
+            <p>
+              Setiap roadmap mengantar satu lompatan yang jelas, dari fondasi Go
+              sampai backend yang siap diuji, diamankan, dan dideploy.
+            </p>
+          </div>
+
+          <ol class="home-roadmap-list">
+            {heroRoadmaps.map((roadmap) => (
+              <li>
+                <span class="home-roadmap-num">R{roadmap.num}</span>
+                <span class="home-roadmap-copy">
+                  <b>{roadmap.title}</b>
+                  <span>{roadmap.chapterCount} chapter</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+
+          <p class="home-roadmap-tail">
+            {remainingRoadmaps > 0
+              ? `${remainingRoadmaps} roadmap berikutnya ada di kurikulum lengkap di bawah.`
+              : 'Seluruh roadmap sudah tampil di hero ini.'}
+          </p>
+        </aside>
       </div>
     </section>
 
-    <section class="home-modules">
+    <section class="home-modules" id="kurikulum">
       <div class="home-modules-head">
         <h2>Kurikulum</h2>
         <span class="count">{mods.length} modul tersedia</span>

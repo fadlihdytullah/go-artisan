@@ -8,7 +8,7 @@ interface Props {
     | 'sun' | 'book' | 'moon'
     | 'clock' | 'target' | 'world' | 'ban' | 'gift'
     | 'code' | 'terminal' | 'database' | 'stack' | 'git' | 'package'
-    | 'bolt' | 'server' | 'shield' | 'rocket' | 'route' | 'check' | 'copy';
+    | 'bolt' | 'server' | 'shield' | 'rocket' | 'route' | 'check' | 'copy' | 'search';
   size?: number;
   class?: string;
 }
@@ -46,6 +46,7 @@ const ICONS: Record<string, string> = {
   route: '<path d="M6 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M18 5m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M6 17v-4a4 4 0 0 1 4 -4h7" /><path d="M13 8l4 1l-1 -4" />',
   check: '<path d="M5 12l5 5l10 -10" />',
   copy: '<path d="M8 8m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" /><path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2" />',
+  search: '<path d="M8.5 8.5m-5.5 0a5.5 5.5 0 1 0 11 0a5.5 5.5 0 1 0 -11 0" /><path d="M12.5 12.5l5 5" />',
 };
 const inner = ICONS[name] ?? '';
 ---

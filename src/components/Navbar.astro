@@ -36,6 +36,7 @@ const path = Astro.url.pathname.replace(/\/$/, '');
 const current = mods.find((m) => path === `/modul/${m.id}`) ?? null;
 const switchLabel = current ? current.data.topTitle : 'Semua modul';
 const fallbackHref = current ? `/modul/${current.id}` : '/#kurikulum';
+const currentRoadmapNum = current ? parseInt(current.id.match(/^r(\d+)/)?.[1] ?? '0', 10) : null;
 
 // Kelompokkan modul per roadmap untuk switcher
 type NssGroup = { num: number; name: string; modules: typeof mods };
@@ -83,10 +84,9 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
         type="button"
         class="nav-switch-btn"
         popovertarget="mod-switcher"
-        aria-haspopup="dialog"
         aria-controls="mod-switcher"
         aria-expanded="false"
-        aria-label={current ? `Modul aktif: ${switchLabel}. Pindah modul` : 'Pilih modul'}
+        aria-label={current ? `Modul aktif: ${switchLabel}. Buka navigasi modul` : 'Buka navigasi modul'}
       >
         <Icon name="grid" size={16} class="nav-switch-glyph" />
         <span class="nav-switch-label">{switchLabel}</span>
@@ -96,29 +96,72 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
         <Icon name="grid" size={16} class="nav-switch-glyph" />
         <span>{current ? 'Buka modul ini' : 'Lihat kurikulum'}</span>
       </a>
-      <div id="mod-switcher" popover="auto" class="nav-switch-menu" aria-label="Daftar modul">
-        <p class="nss-head">Pindah ke modul</p>
-        {nssGroups.map((group) => (
-          <>
-            <p class="nss-group">R{group.num} · {group.name}</p>
-            <div class="nss-list">
-            {group.modules.map((m) => (
-              <a
-                href={`/modul/${m.id}`}
-                class={`nss-item${current && current.id === m.id ? ' is-current' : ''}`}
-                aria-current={current && current.id === m.id ? 'page' : undefined}
-              >
-                <span class="nss-badge" aria-hidden="true">{m.data.badge}</span>
-                <span class="nss-body">
-                  <span class="nss-title">{m.data.topTitle}</span>
-                  <span class="nss-sub">{m.data.readingTime ? m.data.readingTime.replace(' baca', '') : ''}</span>
-                </span>
-                {current && current.id === m.id && <span class="nss-here">Dibaca</span>}
-              </a>
-            ))}
+      <div id="mod-switcher" popover="auto" class="nav-switch-menu">
+        <div class="nss-panel">
+          <div class="nss-head">
+            <div>
+              <p class="nss-kicker" id="mod-switcher-title">Pindah ke modul</p>
+              <p class="nss-meta">
+                <span>{mods.length} modul</span>
+                <span aria-hidden="true">·</span>
+                <span data-module-progress-summary>Progress tersimpan di browser ini</span>
+              </p>
             </div>
-          </>
-        ))}
+            <label class="nss-search" aria-label="Cari modul">
+              <Icon name="search" size={14} class="nss-search-icon" />
+              <input
+                type="search"
+                class="nss-search-input"
+                placeholder="Cari modul atau badge"
+                autocomplete="off"
+                spellcheck="false"
+                data-module-filter
+              />
+            </label>
+          </div>
+
+          <nav class="nss-nav" aria-labelledby="mod-switcher-title">
+            {nssGroups.map((group) => (
+              <section
+                class={`nss-group-block${currentRoadmapNum === group.num ? ' is-current-roadmap' : ''}`}
+                data-roadmap-group
+                data-roadmap-name={`R${group.num} ${group.name}`.toLowerCase()}
+              >
+                <div class="nss-group-head">
+                  <p class="nss-group">R{group.num} · {group.name}</p>
+                  <p class="nss-group-meta">
+                    <span>{group.modules.length} modul</span>
+                    <span aria-hidden="true">·</span>
+                    <span data-roadmap-progress>0 selesai</span>
+                  </p>
+                </div>
+                <div class="nss-list">
+                {group.modules.map((m) => (
+                  <a
+                    href={`/modul/${m.id}`}
+                    class={`nss-item${current && current.id === m.id ? ' is-current' : ''}`}
+                    aria-current={current && current.id === m.id ? 'page' : undefined}
+                    data-module-id={m.id}
+                    data-module-title={m.data.topTitle.toLowerCase()}
+                    data-module-badge={m.data.badge.toLowerCase()}
+                    data-search-text={`${group.name} ${m.data.badge} ${m.data.topTitle}`.toLowerCase()}
+                  >
+                    <span class="nss-badge" aria-hidden="true">{m.data.badge}</span>
+                    <span class="nss-body">
+                      <span class="nss-title">{m.data.topTitle}</span>
+                      <span class="nss-sub">{m.data.readingTime ? m.data.readingTime.replace(' baca', '') : ''}</span>
+                    </span>
+                    <span class="nss-state" data-module-state hidden>
+                      {current && current.id === m.id ? 'Aktif' : ''}
+                    </span>
+                  </a>
+                ))}
+                </div>
+              </section>
+            ))}
+            <p class="nss-empty" data-module-empty hidden>Tidak ada modul yang cocok dengan kata kunci ini.</p>
+          </nav>
+        </div>
       </div>
     </div>
 
@@ -146,19 +189,104 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
   (function () {
     var btn = document.querySelector('.nav-switch-btn');
     var menu = document.getElementById('mod-switcher');
+    var filter = menu ? menu.querySelector('[data-module-filter]') : null;
+    var summary = menu ? menu.querySelector('[data-module-progress-summary]') : null;
+    var groups = menu ? Array.prototype.slice.call(menu.querySelectorAll('[data-roadmap-group]')) : [];
+    var items = menu ? Array.prototype.slice.call(menu.querySelectorAll('[data-module-id]')) : [];
+    var empty = menu ? menu.querySelector('[data-module-empty]') : null;
     if (!btn || !menu || typeof menu.showPopover !== 'function') return;
-    menu.addEventListener('toggle', function () {
-      btn.setAttribute('aria-expanded', menu.matches(':popover-open') ? 'true' : 'false');
-    });
-    menu.addEventListener('beforetoggle', function (e) {
-      if (e.newState !== 'open') return;
+    function toList(nodes) {
+      return Array.prototype.slice.call(nodes || []);
+    }
+    function normalizeText(value) {
+      var text = String(value || '').toLocaleLowerCase('id');
+      if (typeof text.normalize === 'function') {
+        text = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      }
+      return text.trim();
+    }
+    function positionMenu() {
       var r = btn.getBoundingClientRect();
-      var w = Math.min(344, window.innerWidth - 24);
+      var w = Math.min(380, window.innerWidth - 24);
       var left = Math.min(r.left, window.innerWidth - w - 12);
       menu.style.width = w + 'px';
       menu.style.left = Math.max(12, left) + 'px';
       menu.style.top = r.bottom + 8 + 'px';
+    }
+    function syncFilter() {
+      var query = filter && 'value' in filter ? normalizeText(filter.value) : '';
+      var visibleCount = 0;
+      groups.forEach(function (group) {
+        var localVisible = 0;
+        toList(group.querySelectorAll('[data-module-id]')).forEach(function (item) {
+          var haystack = normalizeText(item.getAttribute('data-search-text') || item.textContent || '');
+          var match = !query || haystack.indexOf(query) !== -1;
+          item.style.display = match ? '' : 'none';
+          if (match) {
+            localVisible++;
+            visibleCount++;
+          }
+        });
+        group.style.display = localVisible === 0 ? 'none' : '';
+      });
+      if (empty) empty.hidden = visibleCount !== 0;
+    }
+    function syncProgress() {
+      var api = window.moduleProgress;
+      if (!api || !items.length) return;
+      var ids = items.map(function (item) { return item.getAttribute('data-module-id') || ''; }).filter(Boolean);
+      var state = api.getState();
+      var doneCount = api.getCompletedCount(ids);
+      if (summary) {
+        summary.textContent = doneCount + ' dari ' + ids.length + ' modul selesai';
+      }
+      groups.forEach(function (group) {
+        var groupIds = toList(group.querySelectorAll('[data-module-id]'))
+          .map(function (item) { return item.getAttribute('data-module-id') || ''; })
+          .filter(Boolean);
+        var count = groupIds.filter(function (id) { return !!state.completed[id]; }).length;
+        var label = group.querySelector('[data-roadmap-progress]');
+        if (label) label.textContent = count + ' selesai';
+      });
+      items.forEach(function (item) {
+        var id = item.getAttribute('data-module-id');
+        var stateTag = item.querySelector('[data-module-state]');
+        if (!id || !stateTag) return;
+        var isCurrent = item.getAttribute('aria-current') === 'page';
+        var isDone = !!state.completed[id];
+        if (isCurrent) stateTag.textContent = 'Aktif';
+        else if (isDone) stateTag.textContent = 'Selesai';
+        stateTag.hidden = !isCurrent && !isDone;
+        item.classList.toggle('is-done', isDone);
+      });
+    }
+    menu.addEventListener('toggle', function () {
+      var isOpen = menu.matches(':popover-open');
+      btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      if (isOpen) {
+        positionMenu();
+        syncProgress();
+        syncFilter();
+        if (filter && typeof filter.focus === 'function') filter.focus({ preventScroll: true });
+      }
     });
+    menu.addEventListener('beforetoggle', function (e) {
+      if (e.newState !== 'open') return;
+      positionMenu();
+    });
+    if (filter) {
+      filter.addEventListener('input', syncFilter);
+      filter.addEventListener('keyup', syncFilter);
+      filter.addEventListener('search', syncFilter);
+      filter.addEventListener('change', syncFilter);
+    }
+    window.addEventListener('module-progress:change', syncProgress);
+    window.addEventListener('resize', function () {
+      if (menu.matches(':popover-open')) positionMenu();
+    });
+    window.addEventListener('scroll', function () {
+      if (menu.matches(':popover-open')) positionMenu();
+    }, { passive: true });
   })();
 
   // Floating nav: pertegas elevasi saat halaman di-scroll (konten lewat di bawahnya).

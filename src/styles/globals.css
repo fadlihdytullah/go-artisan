@@ -72,6 +72,8 @@
   --code-bg: #0f172a;
   --shadow: none;
   --shadow-lg: none;
+  --shell-max: 1180px;
+  --shell-gutter: 28px;
   /* reading text scale — driven by the font-size switcher */
   --scale: 1;
 }
@@ -142,7 +144,10 @@ pre,
   position: sticky;
   top: 12px;
   z-index: 50;
-  width: min(1140px, calc(100% - 28px));
+  width: min(
+    calc(var(--shell-max) + (var(--shell-gutter) * 2)),
+    calc(100% - (var(--shell-gutter) * 2))
+  );
   margin: 14px auto 0;
   border-radius: 0;
   background: color-mix(in srgb, var(--paper) 90%, transparent);
@@ -218,9 +223,9 @@ pre,
 
 .wrap,
 .page-shell {
-  max-width: 1180px;
+  max-width: var(--shell-max);
   margin: 0 auto;
-  padding: 0 28px;
+  padding: 0 var(--shell-gutter);
 }
 
 .page-shell {
@@ -1432,9 +1437,9 @@ nav.toc a .num { color: var(--ink-soft); }
 /* ── Homepage: shell & hero ──────────────────────────────────────────── */
 
 .home {
-  max-width: 920px;
+  max-width: var(--shell-max);
   margin: 0 auto;
-  padding: clamp(40px, 6vw, 88px) 28px 112px;
+  padding: clamp(40px, 6vw, 88px) var(--shell-gutter) 112px;
 }
 
 .home-hero {
@@ -2039,10 +2044,12 @@ nav.toc a.active {
   position: fixed;
   inset: auto;
   margin: 0;
-  width: min(344px, calc(100vw - 24px));
-  max-height: min(70vh, 540px);
+  width: min(380px, calc(100vw - 24px));
+  max-height: min(72vh, 560px);
   overflow-y: auto;
-  padding: 8px;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding: 0;
   border: 1px solid var(--line);
   border-radius: 0;
   background: var(--paper);
@@ -2057,26 +2064,112 @@ nav.toc a.active {
   .nav-switch-menu:popover-open { opacity: 0; transform: translateY(-6px); }
 }
 
-.nss-head {
-  margin: 2px 8px 8px;
-  color: var(--ink-muted);
-  font-size: 12px;
-  font-weight: 600;
+.nss-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
 }
-.nss-list { display: grid; }
-.nss-item {
+.nss-head {
+  display: grid;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 2px 2px 8px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+.nss-kicker {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+.nss-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+  color: var(--ink-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+.nss-search {
   display: flex;
   align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 82%, var(--blue-soft));
+}
+.nss-search:focus-within {
+  border-color: color-mix(in srgb, var(--blue) 40%, var(--line));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blue) 35%, transparent);
+}
+.nss-search-icon {
+  flex: none;
+  color: var(--ink-muted);
+}
+.nss-search-input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+.nss-search-input::placeholder {
+  color: var(--ink-muted);
+}
+.nss-search-input:focus {
+  outline: none;
+}
+.nss-nav {
+  display: grid;
+  gap: 8px;
+}
+.nss-group-block {
+  display: grid;
+  gap: 6px;
+  padding-top: 2px;
+}
+.nss-group-block + .nss-group-block {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.nss-group-block.is-current-roadmap .nss-group-head {
+  background: color-mix(in srgb, var(--blue-soft) 72%, var(--paper));
+}
+.nss-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 6px;
+}
+.nss-item {
+  display: flex;
+  align-items: flex-start;
   gap: 11px;
   padding: 9px 10px;
+  border: 1px solid transparent;
   border-radius: 0;
   text-decoration: none;
   color: inherit;
-  transition: background .14s ease;
+  transition: background .14s ease, border-color .14s ease;
 }
+.nss-list { display: grid; }
 .nss-item:hover { background: var(--blue-soft); }
 .nss-item:focus-visible { outline: 2px solid var(--blue-bright); outline-offset: -2px; }
-.nss-item.is-current { background: var(--blue-soft); }
+.nss-item.is-current,
+.nss-item.is-done {
+  background: color-mix(in srgb, var(--blue-soft) 74%, var(--paper));
+}
+.nss-item.is-current {
+  border-color: color-mix(in srgb, var(--blue) 30%, transparent);
+}
 .nss-badge {
   flex: none;
   width: 30px;
@@ -2097,21 +2190,28 @@ nav.toc a.active {
   font-size: 14px;
   font-weight: 650;
   color: var(--ink);
-  white-space: nowrap;
+  line-height: 1.3;
+  text-wrap: pretty;
+  display: -webkit-box;
   overflow: hidden;
-  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 .nss-sub { font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted); }
-.nss-here {
+.nss-state {
   margin-left: auto;
   flex: none;
-  font-size: 10.5px;
+  align-self: center;
+  padding: 4px 7px;
+  border: 1px solid color-mix(in srgb, var(--blue) 28%, transparent);
+  background: color-mix(in srgb, var(--blue-soft) 70%, var(--paper));
+  font-size: 10px;
   font-weight: 700;
   color: var(--blue);
+  white-space: nowrap;
 }
 .nss-group {
-  margin: 10px 8px 3px;
-  padding: 0 2px;
+  margin: 0;
   color: var(--blue);
   font-family: var(--font-mono);
   font-size: 10.5px;
@@ -2119,16 +2219,45 @@ nav.toc a.active {
   letter-spacing: .1em;
   text-transform: uppercase;
 }
-.nss-group:not(:first-of-type) {
-  margin-top: 14px;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
+.nss-group-meta {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+.nss-empty {
+  margin: 0;
+  padding: 10px 6px 4px;
+  color: var(--ink-muted);
+  font-size: 12px;
 }
 
 @media (max-width: 560px) {
-  .nav-switch-label { display: none; }
+  .nav-switch-btn {
+    gap: 6px;
+  }
+  .nav-switch-label {
+    display: block;
+    max-width: 124px;
+  }
   .nav-switch-btn,
   .nav-switch-fallback { padding: 0 10px; }
+  .nav-switch-menu {
+    width: min(100vw - 16px, 380px);
+    max-height: min(76vh, 560px);
+  }
+  .nss-group-head {
+    display: grid;
+    gap: 2px;
+  }
+  .nss-item {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+  .nss-state {
+    margin-left: 41px;
+    justify-self: start;
+  }
 }
 
 @supports not (selector(:popover-open)) {

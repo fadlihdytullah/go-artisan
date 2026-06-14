@@ -1,5 +1,5 @@
 ---
-title: "Modul Pointer dan Dasar Memori - Go Artisan"
+title: "Modul Pointer dan Dasar Memori - Web Artisan"
 badge: "PTR"
 topTitle: "Pointer dan Dasar Memori"
 topSub: "Go untuk Developer JavaScript & PHP"
@@ -21,8 +21,8 @@ toc:
   - { num: "10", id: "hands-on", title: "Hands-on: Product Repository In-Memory" }
   - { num: "11", id: "jebakan-umum", title: "Jebakan Umum dari JS dan PHP" }
   - { num: "12", id: "ringkasan", title: "Ringkasan & Poin Penting" }
-footerTitle: "Modul Pointer dan Dasar Memori - Go Artisan"
-footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+footerTitle: "Modul Pointer dan Dasar Memori - Web Artisan"
+footerSub: "Bagian dari jalur Web Artisan, dari fondasi sampai deploy ke AWS"
 ---
 
 import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Def, Figure } from "@components";
@@ -72,7 +72,7 @@ Dalam kode backend, kamu lebih sering membaca pointer lewat tipe seperti `*Produ
 Tiga istilah ini perlu menempel sebelum lanjut.
 
 <CardGrid cols={3}>
-  <Card><h4>Value</h4><p>Data sebenarnya, misalnya `Product&#123;Name: "Serum"&#125;` di dalam variabel `product`.</p></Card>
+  <Card><h4>Value</h4><p>Data sebenarnya, misalnya `Product{Name: "Serum"}` di dalam variabel `product`.</p></Card>
   <Card><h4>Address</h4><p>Lokasi value, diambil dengan `&product`. Inilah yang disimpan oleh pointer.</p></Card>
   <Card><h4>Dereference</h4><p>Mengakses value dari pointer dengan `*p`. Untuk field struct, Go membuatnya lebih ringkas.</p></Card>
 </CardGrid>
@@ -200,7 +200,7 @@ func main() {
 
 <Box variant="tip" icon="💡" label="Idiom Go"><p>Untuk field struct, tulis `productPtr.Name`, bukan `(*productPtr).Name`, kecuali kamu sedang mengajar atau ingin menekankan proses dereference. Bentuk ringkas itulah yang akan kamu lihat di hampir semua kode produksi.</p></Box>
 
-Ada juga fungsi bawaan `new` yang mengalokasikan dan mengembalikan pointer. `new(Product)` memberi `*Product` ke struct ber-zero value. Sejak Go 1.26, `new` boleh menerima ekspresi nilai awal, misalnya `new(Product&#123;Name: "Serum"&#125;)`, sehingga lebih ringkas. Walau begitu, di kode domain kita lebih sering memakai composite literal `&Product&#123;...&#125;` karena lebih jelas membaca field yang diisi.
+Ada juga fungsi bawaan `new` yang mengalokasikan dan mengembalikan pointer. `new(Product)` memberi `*Product` ke struct ber-zero value. Sejak Go 1.26, `new` boleh menerima ekspresi nilai awal, misalnya `new(Product{Name: "Serum"})`, sehingga lebih ringkas. Walau begitu, di kode domain kita lebih sering memakai composite literal `&Product{...}` karena lebih jelas membaca field yang diisi.
 
 ```go title="cmd/playground/new_vs_literal.go"
 package main
@@ -324,7 +324,7 @@ Dengan `omitempty`, field pointer yang `nil` hilang dari JSON. Ini berbeda dari 
 
 <p class="lead">Saat repository mencari satu row, hasilnya tidak selalu ada. `*Product` memberi ruang untuk nilai yang tidak ditemukan.</p>
 
-Nanti saat masuk PostgreSQL dan pgx, pola ini sering muncul. Repository menerima `context.Context`, mencari data berdasarkan key, lalu mengembalikan pointer ke entity atau error. Untuk operasi `FindBySKU`, `Product` value saja kurang ekspresif karena zero value `Product&#123;&#125;` bisa terlihat seperti produk valid padahal sebenarnya tidak ditemukan.
+Nanti saat masuk PostgreSQL dan pgx, pola ini sering muncul. Repository menerima `context.Context`, mencari data berdasarkan key, lalu mengembalikan pointer ke entity atau error. Untuk operasi `FindBySKU`, `Product` value saja kurang ekspresif karena zero value `Product{}` bisa terlihat seperti produk valid padahal sebenarnya tidak ditemukan.
 
 ```go title="internal/product/repository.go"
 package product
@@ -437,7 +437,7 @@ flowchart TD
 
 <p class="fig-cap"><b>Gambar 5.</b> Guard clause memotong jalur menuju nil dereference. Alih-alih panic dan 500, pemanggil menerima error yang bisa dipetakan ke 404 atau 400.</p>
 
-<Box variant="bridge" icon="🌉" label="Jembatan: mirip guard di React"><p>Di React kamu sering menulis `if (!user) return null` sebelum membaca `user.name`. Di Go, pola yang sama muncul sebagai `if p == nil &#123; return ..., err &#125;` sebelum mengakses field. Refleksnya identik, hanya bentuknya yang berbeda.</p></Box>
+<Box variant="bridge" icon="🌉" label="Jembatan: mirip guard di React"><p>Di React kamu sering menulis `if (!user) return null` sebelum membaca `user.name`. Di Go, pola yang sama muncul sebagai `if p == nil { return ..., err }` sebelum mengakses field. Refleksnya identik, hanya bentuknya yang berbeda.</p></Box>
 
 <Steps>
   <Step><b>Cek pointer sebelum dipakai</b><p>Kalau parameter bertipe `*Product`, tanyakan apakah `nil` valid. Bila ya, guard di awal fungsi sebelum field diakses.</p></Step>

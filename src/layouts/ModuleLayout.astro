@@ -17,6 +17,7 @@ interface Props {
   moduleIndex: number;
   totalModules: number;
   moduleIds: string[];
+  basePath?: string; // prefix URL untuk pager & back-link (mis. "/lessons" atau "/courses")
   title: string;
   badge: string;
   topTitle: string;
@@ -33,6 +34,7 @@ const {
   moduleIndex,
   totalModules,
   moduleIds,
+  basePath = '/lessons',
   title,
   badge,
   topTitle,
@@ -72,7 +74,7 @@ const {
     </nav>
 
     <main data-module-root data-module-id={moduleId}>
-      <a class="mod-back" href="/"><Icon name="arrow-left" size={16} />Semua modul</a>
+      <a class="mod-back" href="/"><Icon name="arrow-left" size={16} />Beranda</a>
       <section
         class="learning-progress-panel learning-progress-panel-module"
         data-learning-progress
@@ -136,13 +138,13 @@ const {
       {(prev || next) && (
         <nav class="mod-pager" aria-label="Navigasi modul">
           {prev ? (
-            <a class="pager-card pager-prev" href={`/modul/${prev.id}`}>
+            <a class="pager-card pager-prev" href={`${basePath}/${prev.id}`}>
               <span class="pager-dir"><Icon name="arrow-left" size={15} />Sebelumnya</span>
               <span class="pager-name">{prev.topTitle}</span>
             </a>
           ) : <span class="pager-card pager-empty" aria-hidden="true"></span>}
           {next ? (
-            <a class="pager-card pager-next" href={`/modul/${next.id}`}>
+            <a class="pager-card pager-next" href={`${basePath}/${next.id}`}>
               <span class="pager-dir">Selanjutnya<Icon name="arrow-right" size={15} /></span>
               <span class="pager-name">{next.topTitle}</span>
             </a>

@@ -1,5 +1,5 @@
 ---
-title: "Modul Integration Testing dengan Database PostgreSQL Nyata - Go Artisan"
+title: "Modul Integration Testing dengan Database PostgreSQL Nyata - Web Artisan"
 badge: "TST"
 topTitle: "Integration Testing dengan Database PostgreSQL Nyata"
 topSub: "Go untuk Developer JavaScript & PHP"
@@ -21,8 +21,8 @@ toc:
   - { num: "10", id: "hands-on", title: "Hands-on Repository Product" }
   - { num: "11", id: "jebakan", title: "Jebakan Umum" }
   - { num: "12", id: "ringkasan", title: "Ringkasan & Poin Penting" }
-footerTitle: "Modul Integration Testing dengan Database PostgreSQL Nyata - Go Artisan"
-footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+footerTitle: "Modul Integration Testing dengan Database PostgreSQL Nyata - Web Artisan"
+footerSub: "Bagian dari jalur Web Artisan, dari fondasi sampai deploy ke AWS"
 ---
 
 import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Def } from "@components";
@@ -112,7 +112,7 @@ go test -tags=integration ./internal/product -run Integration -count=1
 
 <Box variant="warn" icon="⚠️" label="Jangan hardcode URL database"><p>Hardcode connection string membuat test mudah salah target. `TEST_DB_URL` membuat risiko itu terlihat sejak awal.</p></Box>
 
-Di jalur Go Artisan, repo menargetkan Go 1.26. Bila `go mod init` menghasilkan deklarasi versi lebih rendah sesuai default toolchain, set target proyek secara eksplisit.
+Di jalur Web Artisan, repo menargetkan Go 1.26. Bila `go mod init` menghasilkan deklarasi versi lebih rendah sesuai default toolchain, set target proyek secara eksplisit.
 
 ```bash title="Terminal"
 go get go@1.26

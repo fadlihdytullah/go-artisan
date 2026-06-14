@@ -1,4 +1,4 @@
-# Instruksi AI - Generator Modul "Go Artisan: Backend Go untuk Developer JS & PHP"
+# Instruksi AI - Generator Modul "Web Artisan: Backend Go untuk Developer JS & PHP"
 
 Dokumen ini adalah brief lengkap untuk AI yang menyusun modul belajar Go (backend)
 untuk situs statis Astro + MDX di repo ini. Materi ditujukan untuk developer
@@ -35,7 +35,7 @@ Gaya: tenang, jelas, hangat, ringkas, teknis tapi tidak sombong. Bahasa Indonesi
 penuh, tanpa em dash; pakai koma, titik, dan kurung. Jembatan dulu (dari JS/PHP),
 definisi Go menyusul, lalu contoh konkret berbasis proyek.
 
-## Sasaran: jalur Go Artisan (9 Roadmap, satu proyek)
+## Sasaran: jalur Web Artisan (9 Roadmap, satu proyek)
 
 Semua modul membangun SATU proyek nyata: backend online shop skincare, dari fondasi
 Go sampai berjalan di AWS. Selaraskan kedalaman tiap modul dengan roadmap-nya
@@ -144,7 +144,7 @@ Selain baris-path + code block, tidak ada teks penjelasan lain.
 ## Frontmatter (skema pasti, jangan tambah field)
 ```yaml
 ---
-title: "Modul Routing dengan chi - Go Artisan"   # untuk <title>
+title: "Modul Routing dengan chi - Web Artisan"   # untuk <title>
 badge: "API"                                     # 2-4 huruf, di navbar
 topTitle: "Routing dengan chi"
 topSub: "Go untuk Developer JavaScript & PHP"
@@ -156,8 +156,8 @@ summaryHref: "#ringkasan"                         # = #id section terakhir
 toc:                                              # 1 entri per <Section>, urut
   - { num: "01", id: "intro", title: "Kenapa chi?" }
   - { num: "02", id: "ringkasan", title: "Ringkasan & Poin Penting" }
-footerTitle: "Modul Routing dengan chi - Go Artisan"
-footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+footerTitle: "Modul Routing dengan chi - Web Artisan"
+footerSub: "Bagian dari jalur Web Artisan, dari fondasi sampai deploy ke AWS"
 ---
 ```
 Keras: `toc` sinkron 1:1 dengan semua `<Section num id title>` (num,id,urutan sama);

@@ -1,5 +1,5 @@
 ---
-title: "Modul Interface dan Desain Dependensi - Go Artisan"
+title: "Modul Interface dan Desain Dependensi - Web Artisan"
 badge: "IFC"
 topTitle: "Interface dan Desain Dependensi"
 topSub: "Go untuk Developer JavaScript & PHP"
@@ -21,8 +21,8 @@ toc:
   - { num: "10", id: "hands-on", title: "Hands-on: Service Tanpa Database" }
   - { num: "11", id: "jebakan-umum", title: "Jebakan Umum dari JS dan PHP" }
   - { num: "12", id: "ringkasan", title: "Ringkasan & Poin Penting" }
-footerTitle: "Modul Interface dan Desain Dependensi - Go Artisan"
-footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+footerTitle: "Modul Interface dan Desain Dependensi - Web Artisan"
+footerSub: "Bagian dari jalur Web Artisan, dari fondasi sampai deploy ke AWS"
 ---
 
 import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Def } from "@components";
@@ -56,7 +56,7 @@ Dalam proyek online shop skincare, interface akan menjadi fondasi untuk reposito
 
 <p class="lead">Cara paling sehat membaca interface Go adalah sebagai sebuah pertanyaan: nilai ini bisa melakukan apa?</p>
 
-Di TypeScript kamu sering menulis interface untuk bentuk data, misalnya `interface ProductDTO &#123; sku: string &#125;`. Di Go, kebiasaan itu sudah terjawab oleh struct yang kamu pelajari di modul sebelumnya. Interface Go justru paling kuat saat dipakai untuk behavior, bukan sekadar bentuk field. Struct adalah jawaban untuk "data apa", interface adalah jawaban untuk "perilaku apa".
+Di TypeScript kamu sering menulis interface untuk bentuk data, misalnya `interface ProductDTO { sku: string }`. Di Go, kebiasaan itu sudah terjawab oleh struct yang kamu pelajari di modul sebelumnya. Interface Go justru paling kuat saat dipakai untuk behavior, bukan sekadar bentuk field. Struct adalah jawaban untuk "data apa", interface adalah jawaban untuk "perilaku apa".
 
 ```go title="internal/product/repository.go"
 package product
@@ -74,8 +74,8 @@ type ProductRepository interface {
 Interface di atas tidak menyebut PostgreSQL, Redis, file JSON, atau peta in-memory. Ia hanya berkata: siapa pun yang punya `FindBySKU` dan `ListActive` dengan signature ini boleh dipakai sebagai `ProductRepository`. Perhatikan juga `context.Context` sebagai parameter pertama dan `(*Product, error)` sebagai return, dua kebiasaan yang sudah kamu kenal sejak modul fungsi dan error.
 
 <Compare aLabel="TypeScript: interface sering untuk shape data" bLabel="Go: interface untuk behavior" aTone="muted" bTone="violet">
-  <Fragment slot="a"><ul><li>`interface Product &#123; id: number; name: string &#125;` mendeskripsikan bentuk object.</li><li>Kecocokan diperiksa lewat structural typing terhadap field.</li><li>Method biasanya hidup di class atau fungsi terpisah.</li></ul></Fragment>
-  <Fragment slot="b"><ul><li>`type ProductRepository interface &#123; FindBySKU(...) &#125;` mendeskripsikan kemampuan dependency.</li><li>Kecocokan diperiksa lewat method set, bukan field.</li><li>Bentuk data sudah jadi tugas struct, bukan interface.</li></ul></Fragment>
+  <Fragment slot="a"><ul><li>`interface Product { id: number; name: string }` mendeskripsikan bentuk object.</li><li>Kecocokan diperiksa lewat structural typing terhadap field.</li><li>Method biasanya hidup di class atau fungsi terpisah.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>`type ProductRepository interface { FindBySKU(...) }` mendeskripsikan kemampuan dependency.</li><li>Kecocokan diperiksa lewat method set, bukan field.</li><li>Bentuk data sudah jadi tugas struct, bukan interface.</li></ul></Fragment>
 </Compare>
 
 <Box variant="tip" icon="💡" label="Idiom Go"><p>Mulai dari concrete struct dulu. Tambahkan interface saat ada kebutuhan nyata untuk mengganti implementasi, terutama boundary database, integrasi eksternal, dan testing. Interface yang dibuat terlalu dini sering hanya menambah lapisan tanpa manfaat.</p></Box>
@@ -178,7 +178,7 @@ package product
 var _ ProductRepository = (*PostgresProductRepository)(nil)
 ```
 
-<Box variant="warn" icon="⚠️" label="Pointer receiver dan method set"><p>Method di atas memakai pointer receiver `(r *PostgresProductRepository)`, jadi yang memenuhi interface adalah `*PostgresProductRepository`, bukan value-nya. Inilah lanjutan aturan method set dari modul struct: method pointer receiver hanya masuk method set pointer. Menulis `var _ ProductRepository = PostgresProductRepository&#123;&#125;` akan gagal compile.</p></Box>
+<Box variant="warn" icon="⚠️" label="Pointer receiver dan method set"><p>Method di atas memakai pointer receiver `(r *PostgresProductRepository)`, jadi yang memenuhi interface adalah `*PostgresProductRepository`, bukan value-nya. Inilah lanjutan aturan method set dari modul struct: method pointer receiver hanya masuk method set pointer. Menulis `var _ ProductRepository = PostgresProductRepository{}` akan gagal compile.</p></Box>
 
 </Section>
 

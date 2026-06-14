@@ -1,0 +1,42 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+// Indeks roadmap: jalur kurasi yang mereferensikan course.
+// Saat ini hanya satu (Backend Artisan); grid siap untuk multi-roadmap ke depan.
+const roadmaps = (await getCollection('roadmaps')).sort(
+  (a, b) => a.data.order - b.data.order
+);
+---
+<BaseLayout title="Roadmap - Web Artisan" nav={{ variant: 'home' }}>
+  <main class="roadmaps-index">
+    <header class="roadmaps-index-head">
+      <p class="roadmaps-index-eyebrow"><span class="dot" aria-hidden="true"></span>Web Artisan</p>
+      <h1 class="roadmaps-index-title">Roadmap</h1>
+      <p class="roadmaps-index-lede">
+        Roadmap adalah jalur belajar terkurasi yang merangkai beberapa course jadi satu urutan
+        jelas, dari nol sampai siap kerja. Pilih jalur, lalu ikuti course di dalamnya secara berurutan.
+      </p>
+    </header>
+
+    <div class="roadmap-grid">
+      {roadmaps.map((roadmap) => (
+        <a class="roadmap-banner" href={`/roadmaps/${roadmap.id}`}>
+          <span class="roadmap-banner-media">
+            <img
+              src={roadmap.data.cover}
+              alt={`Banner roadmap ${roadmap.data.title}`}
+              loading="lazy"
+              decoding="async"
+            />
+          </span>
+          <span class="roadmap-banner-body">
+            <span class="roadmap-banner-badge">{roadmap.data.badge}</span>
+            <span class="roadmap-banner-title">{roadmap.data.title}</span>
+            <span class="roadmap-banner-sum">{roadmap.data.summary}</span>
+          </span>
+        </a>
+      ))}
+    </div>
+  </main>
+</BaseLayout>

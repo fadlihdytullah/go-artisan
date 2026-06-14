@@ -25,6 +25,7 @@ const { title, nav, footer } = Astro.props;
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{title}</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -37,7 +38,10 @@ const { title, nav, footer } = Astro.props;
       try {
         var r = document.documentElement;
         var t = localStorage.getItem('reader-theme');
-        r.setAttribute('data-theme', t || 'light');
+        // Migrasi nilai lama: sepia→reader, dark→light, nilai asing→light.
+        if (t === 'sepia') t = 'reader';
+        if (t === 'dark' || (t !== 'light' && t !== 'reader')) t = 'light';
+        r.setAttribute('data-theme', t);
         var s = localStorage.getItem('reader-scale');
         if (s) r.style.setProperty('--scale', s);
       } catch (e) {}
@@ -129,15 +133,14 @@ const { title, nav, footer } = Astro.props;
   )}
 
   <script is:inline>
-    // Kontrol baca: siklus tema (light → sepia → dark) + ukuran font. Aktif di semua halaman.
+    // Kontrol baca: toggle tema (light ⇄ reader) + ukuran font. Aktif di semua halaman.
     (function () {
       var root = document.documentElement;
-      var THEMES = ['light', 'sepia', 'dark'];
+      var THEMES = ['light', 'reader'];
       // Tabler Icons (MIT) — bagian dalam SVG per tema baca.
       var ICON = {
         light: '<path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7" />',
-        sepia: '<path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0" /><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0" /><path d="M3 6l0 13" /><path d="M12 6l0 13" /><path d="M21 6l0 13" />',
-        dark: '<path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />',
+        reader: '<path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0" /><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0" /><path d="M3 6l0 13" /><path d="M12 6l0 13" /><path d="M21 6l0 13" />',
       };
       function iconSvg(inner) {
         return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
@@ -158,7 +161,12 @@ const { title, nav, footer } = Astro.props;
         try { localStorage.setItem('reader-scale', scale); } catch (e) {}
       }
 
-      setTheme(root.getAttribute('data-theme') || 'light');
+      // Sanitasi nilai awal (atribut/localStorage lama) sebelum init:
+      // sepia→reader, dark→light, nilai asing→light.
+      var initial = root.getAttribute('data-theme');
+      if (initial === 'sepia') initial = 'reader';
+      if (THEMES.indexOf(initial) === -1) initial = 'light';
+      setTheme(initial);
       setScale(scale);
 
       document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {

@@ -1,0 +1,27 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import CourseCard from '../../components/CourseCard.astro';
+
+// Semua course (termasuk go-luminas yang punya halaman landing khusus).
+// Diurut berdasar `order`: go-luminas (order 0) tampil pertama, lalu http/openapi/redis.
+const courses = (await getCollection('courses')).sort(
+  (a, b) => a.data.order - b.data.order
+);
+---
+<BaseLayout title="Courses - Web Artisan" nav={{ variant: 'home' }}>
+  <main class="courses-index">
+    <header class="courses-index-head">
+      <p class="courses-index-eyebrow"><span class="dot" aria-hidden="true"></span>Web Artisan</p>
+      <h1 class="courses-index-title">Courses</h1>
+      <p class="courses-index-lede">
+        Setiap course adalah satu unit topik backend yang bisa kamu ambil sesuai kebutuhan.
+        Mulai dari Go Luminas sebagai fondasi penuh, lalu perdalam HTTP, OpenAPI, dan Redis.
+      </p>
+    </header>
+
+    <div class="course-grid">
+      {courses.map((course) => <CourseCard course={course} />)}
+    </div>
+  </main>
+</BaseLayout>

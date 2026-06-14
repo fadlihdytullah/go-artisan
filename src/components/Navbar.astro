@@ -17,31 +17,70 @@ interface Props {
 }
 const {
   variant,
-  siteName = 'Go Artisan',
+  siteName = 'Web Artisan',
   summaryHref,
   fontControls = false,
   toc = false,
 } = Astro.props;
 
-// Wordmark dua-warna: kata terakhir di-aksen (mis. Go Artisan -> "Artisan" di-aksen).
+// Wordmark dua-warna: kata terakhir di-aksen (mis. Web Artisan -> "Artisan" di-aksen).
 const words = siteName.trim().split(/\s+/);
 const lead = words.slice(0, -1).join(' ');
 const tail = words[words.length - 1];
 
-// Daftar modul untuk switcher + modul aktif (dari URL).
-const mods = (await getCollection('modules')).sort(
-  (a, b) => a.data.order - b.data.order
-);
 const path = Astro.url.pathname.replace(/\/$/, '');
-const current = mods.find((m) => path === `/modul/${m.id}`) ?? null;
-const switchLabel = current ? current.data.topTitle : 'Semua modul';
-const fallbackHref = current ? `/modul/${current.id}` : '/#kurikulum';
-const currentRoadmapNum = current ? parseInt(current.id.match(/^r(\d+)/)?.[1] ?? '0', 10) : null;
+// Switcher sadar-konteks:
+//  - Konteks COURSE satu-halaman (/courses/http|openapi|redis): tampilkan courses.
+//  - Konteks LESSON (/lessons/*) DAN landing Go Luminas (/courses/go-luminas):
+//    tampilkan 73 modul (koleksi modules) dikelompokkan jadi 9 tahap/chapter,
+//    karena Go Luminas membungkus seluruh modules.
+const isCourseContext =
+  path.startsWith('/courses/') &&
+  path !== '/courses' &&
+  path !== '/courses/go-luminas';
 
-// Kelompokkan modul per roadmap untuk switcher
+// Pilih koleksi sesuai konteks. Schema keduanya sama, jadi dipakai seragam.
+// Konteks course satu-halaman EXCLUDE go-luminas (ditangani sebagai lesson/modules).
+const mods = isCourseContext
+  ? (await getCollection('courses'))
+      .filter((c) => c.id !== 'go-luminas')
+      .sort((a, b) => a.data.order - b.data.order)
+  : (await getCollection('modules')).sort((a, b) => a.data.order - b.data.order);
+
+const basePath = isCourseContext ? '/courses' : '/lessons';
+const switcherTitle = isCourseContext ? 'Pindah ke course' : 'Pindah ke modul';
+const unitLabel = isCourseContext ? 'course' : 'modul';
+
+const current = mods.find((m) => path === `${basePath}/${m.id}`) ?? null;
+const switchLabel = current
+  ? current.data.topTitle
+  : isCourseContext
+    ? 'Semua course'
+    : 'Semua modul';
+const fallbackHref = current
+  ? `${basePath}/${current.id}`
+  : isCourseContext
+    ? '/courses'
+    : '/courses/go-luminas#kurikulum';
+// Hanya relevan untuk roadmap; course id (mis. "redis-dasar") tidak cocok pola r<digit>.
+const currentRoadmapNum =
+  current && !isCourseContext
+    ? parseInt(current.id.match(/^r(\d+)/)?.[1] ?? '0', 10)
+    : null;
+
+// Kelompokkan item untuk switcher. Roadmap dikelompokkan per nomor (r1, r2, ...);
+// course tidak punya pola itu → dijadikan satu grup tunggal berlabel "Course".
 type NssGroup = { num: number; name: string; modules: typeof mods };
 const nssMap = new Map<number, NssGroup>();
 for (const mod of mods) {
+  if (isCourseContext) {
+    const COURSE_KEY = 0;
+    if (!nssMap.has(COURSE_KEY)) {
+      nssMap.set(COURSE_KEY, { num: COURSE_KEY, name: 'Course', modules: [] });
+    }
+    nssMap.get(COURSE_KEY)!.modules.push(mod);
+    continue;
+  }
   const idMatch = mod.id.match(/^r(\d+)/);
   const roadmapNum = idMatch ? parseInt(idMatch[1]) : 99;
   const targetParts = mod.data.target?.split('·') ?? [];
@@ -94,15 +133,15 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
       </button>
       <a class="nav-switch-fallback" href={fallbackHref}>
         <Icon name="grid" size={16} class="nav-switch-glyph" />
-        <span>{current ? 'Buka modul ini' : 'Lihat kurikulum'}</span>
+        <span>{current ? `Buka ${unitLabel} ini` : isCourseContext ? 'Lihat semua course' : 'Lihat kurikulum'}</span>
       </a>
       <div id="mod-switcher" popover="auto" class="nav-switch-menu">
         <div class="nss-panel">
           <div class="nss-head">
             <div>
-              <p class="nss-kicker" id="mod-switcher-title">Pindah ke modul</p>
+              <p class="nss-kicker" id="mod-switcher-title">{switcherTitle}</p>
               <p class="nss-meta">
-                <span>{mods.length} modul</span>
+                <span>{mods.length} {unitLabel}</span>
                 <span aria-hidden="true">·</span>
                 <span data-module-progress-summary>Progress tersimpan di browser ini</span>
               </p>
@@ -112,7 +151,7 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
               <input
                 type="search"
                 class="nss-search-input"
-                placeholder="Cari modul atau badge"
+                placeholder={isCourseContext ? 'Cari course atau badge' : 'Cari modul atau badge'}
                 autocomplete="off"
                 spellcheck="false"
                 data-module-filter
@@ -125,12 +164,12 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
               <section
                 class={`nss-group-block${currentRoadmapNum === group.num ? ' is-current-roadmap' : ''}`}
                 data-roadmap-group
-                data-roadmap-name={`R${group.num} ${group.name}`.toLowerCase()}
+                data-roadmap-name={(isCourseContext ? group.name : `R${group.num} ${group.name}`).toLowerCase()}
               >
                 <div class="nss-group-head">
-                  <p class="nss-group">R{group.num} · {group.name}</p>
+                  <p class="nss-group">{isCourseContext ? group.name : `R${group.num} · ${group.name}`}</p>
                   <p class="nss-group-meta">
-                    <span>{group.modules.length} modul</span>
+                    <span>{group.modules.length} {unitLabel}</span>
                     <span aria-hidden="true">·</span>
                     <span data-roadmap-progress>0 selesai</span>
                   </p>
@@ -138,7 +177,7 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
                 <div class="nss-list">
                 {group.modules.map((m) => (
                   <a
-                    href={`/modul/${m.id}`}
+                    href={`${basePath}/${m.id}`}
                     class={`nss-item${current && current.id === m.id ? ' is-current' : ''}`}
                     aria-current={current && current.id === m.id ? 'page' : undefined}
                     data-module-id={m.id}
@@ -159,13 +198,25 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
                 </div>
               </section>
             ))}
-            <p class="nss-empty" data-module-empty hidden>Tidak ada modul yang cocok dengan kata kunci ini.</p>
+            <p class="nss-empty" data-module-empty hidden>Tidak ada {unitLabel} yang cocok dengan kata kunci ini.</p>
           </nav>
         </div>
       </div>
     </div>
 
     <div class="topbar-actions">
+      <nav class="nav-primary" aria-label="Navigasi utama">
+        <a
+          class={`nav-item nav-link${path === '/roadmaps' || path.startsWith('/roadmaps/') ? ' is-active' : ''}`}
+          href="/roadmaps"
+          aria-current={path === '/roadmaps' || path.startsWith('/roadmaps/') ? 'page' : undefined}
+        >Roadmap</a>
+        <a
+          class={`nav-item nav-link${path === '/courses' || path.startsWith('/courses/') ? ' is-active' : ''}`}
+          href="/courses"
+          aria-current={path === '/courses' || path.startsWith('/courses/') ? 'page' : undefined}
+        >Courses</a>
+      </nav>
       {fontControls && (
         <div class="rc-group" role="group" aria-label="Ukuran teks">
           <button type="button" class="rc-btn" data-font="dec" aria-label="Perkecil ukuran teks">A<Icon name="minus" size={12} class="rc-ic" /></button>
@@ -173,7 +224,7 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
           <button type="button" class="rc-btn" data-font="inc" aria-label="Perbesar ukuran teks">A<Icon name="plus" size={13} class="rc-ic" /></button>
         </div>
       )}
-      <button type="button" class="rc-btn rc-theme" data-theme-toggle aria-label="Ganti tema baca">
+      <button type="button" class="rc-btn rc-theme" data-theme-toggle aria-label="Ganti mode baca (Terang / Reader)">
         <span class="ti" aria-hidden="true"><Icon name="sun" size={18} /></span>
       </button>
       {variant === 'module' && summaryHref && (

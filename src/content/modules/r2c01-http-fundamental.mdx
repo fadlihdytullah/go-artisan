@@ -1,5 +1,5 @@
 ---
-title: "Modul Fundamental HTTP - Go Artisan"
+title: "Modul Fundamental HTTP - Web Artisan"
 badge: "HTTP"
 topTitle: "Fundamental HTTP"
 topSub: "Go untuk Developer JavaScript & PHP"
@@ -21,8 +21,8 @@ toc:
   - { num: "10", id: "hands-on", title: "Hands-on Mini API dengan net/http" }
   - { num: "11", id: "jebakan-umum", title: "Jebakan Umum dari JS dan PHP" }
   - { num: "12", id: "ringkasan", title: "Ringkasan & Poin Penting" }
-footerTitle: "Modul Fundamental HTTP - Go Artisan"
-footerSub: "Bagian dari jalur Go Artisan, dari fondasi sampai deploy ke AWS"
+footerTitle: "Modul Fundamental HTTP - Web Artisan"
+footerSub: "Bagian dari jalur Web Artisan, dari fondasi sampai deploy ke AWS"
 ---
 
 import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Endpoint, Def } from "@components";
@@ -229,7 +229,7 @@ Gunakan path parameter untuk identitas resource. Gunakan query parameter untuk f
 
 <Compare aLabel="Express / React" bLabel="Go dan chi nanti" aTone="muted" bTone="violet">
   <Fragment slot="a"><ul><li>Express sering menulis `/products/:id` dan membaca `req.params.id`.</li><li>React biasanya menyusun URL dengan template string atau library router.</li></ul></Fragment>
-  <Fragment slot="b"><ul><li>chi menulis `/products/&#123;id&#125;` dan membaca dengan `chi.URLParam(r, "id")`.</li><li>`net/http` murni bisa membaca path, tetapi routing param akan lebih nyaman dengan router.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>chi menulis `/products/{id}` dan membaca dengan `chi.URLParam(r, "id")`.</li><li>`net/http` murni bisa membaca path, tetapi routing param akan lebih nyaman dengan router.</li></ul></Fragment>
 </Compare>
 
 ```text title="Path, query, dan body"

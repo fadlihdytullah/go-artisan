@@ -1,0 +1,51 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import CourseCard from '../../components/CourseCard.astro';
+
+export async function getStaticPaths() {
+  const roadmaps = await getCollection('roadmaps');
+  return roadmaps.map((r) => ({ params: { slug: r.id }, props: { roadmap: r } }));
+}
+
+const { roadmap } = Astro.props;
+const allCourses = await getCollection('courses');
+// Urutan course mengikuti array `courses` di frontmatter (bukan order field).
+const ordered = roadmap.data.courses
+  .map((id) => allCourses.find((c) => c.id === id))
+  .filter(Boolean);
+const { title, hero, desc, cover, badge, level, outcome } = roadmap.data;
+---
+<BaseLayout title={`${title} - Web Artisan`} nav={{ variant: 'home' }}>
+  <main class="roadmap-detail">
+    <section class="roadmap-detail-hero">
+      <div class="roadmap-detail-hero-media">
+        <img src={cover} alt={`Banner roadmap ${title}`} decoding="async" />
+      </div>
+      <div class="roadmap-detail-hero-body">
+        <span class="roadmap-banner-badge">{badge}</span>
+        <h1 class="roadmap-detail-hero-title">{hero}</h1>
+        <p class="roadmap-detail-hero-desc">{desc}</p>
+        <dl class="roadmap-detail-meta">
+          {level && (
+            <div><dt>Level</dt><dd>{level}</dd></div>
+          )}
+          {outcome && (
+            <div><dt>Hasil</dt><dd>{outcome}</dd></div>
+          )}
+          <div><dt>Course</dt><dd>{ordered.length} course</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="roadmap-courses">
+      <div class="roadmap-courses-head">
+        <h2>Course dalam jalur ini</h2>
+        <span class="count">{ordered.length} course</span>
+      </div>
+      <div class="course-grid">
+        {ordered.map((course) => <CourseCard course={course} />)}
+      </div>
+    </section>
+  </main>
+</BaseLayout>

@@ -11,7 +11,7 @@
 
 /* Token Tailwind dipetakan ke CSS variables yang sudah ada via `inline`,
    sehingga utility (bg-paper, text-ink, border-line, …) ikut bereaksi saat
-   tema diganti ([data-theme="dark|sepia"]) tanpa refactor apa pun. */
+   tema diganti ([data-theme="reader"]) tanpa refactor apa pun. */
 @theme inline {
   --color-bg: var(--bg);
   --color-paper: var(--paper);
@@ -30,52 +30,77 @@
   --color-green: var(--green);
   --color-red: var(--red);
   --color-violet: var(--violet);
+  --color-lav: var(--lav);
+  --color-lav-soft: var(--lav-soft);
+  --color-lav-line: var(--lav-line);
+  --color-paper-illus: var(--paper-illus);
 
   --font-display: "Geist", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Newsreader", Georgia, serif;
   --font-mono: "Geist Mono", ui-monospace, monospace;
 
-  --radius-card: 0;
+  --radius-card: 12px;
+  --radius-sm: 8px;
+  --radius-xs: 5px;
   --ease-spring: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 :root {
-  --bg: #f8f8fa;
-  --paper: #ffffff;
-  --paper-soft: #fafafa;
-  --ink: #0f172a;
-  --ink-soft: #475569;
-  --ink-muted: #586577;
-  --line: #e2e8f0;
-  --line-strong: #cbd5e1;
-  /* primary accent — Go lang cyan */
-  --blue: #006f8a;
-  --blue-bright: #00add8;
-  --blue-soft: #e6f8fd;
-  --blue-mid: #99dff0;
-  /* alias → Go cyan */
-  --orange: #006f8a;
-  --orange-bright: #00add8;
-  --orange-soft: #e6f8fd;
-  /* structural */
-  --navy: #0f172a;
-  --navy-soft: #1e293b;
-  /* semantic — unchanged */
-  --teal: #087f73;
-  --teal-soft: #e8f6f3;
-  --green: #16794f;
-  --green-soft: #e8f6ee;
-  --red: #c33d35;
-  --red-soft: #fff0ee;
-  --violet: #6750a4;
-  --violet-soft: #f1edff;
-  --code-bg: #0f172a;
-  --shadow: none;
-  --shadow-lg: none;
-  --shell-max: 1180px;
-  --shell-gutter: 28px;
+  /* base hangat (Anthropic-derived) */
+  --bg:          #faf9f5;   /* ivory parchment */
+  --paper:       #fffdf8;   /* kertas, lebih terang dari bg, tetap hangat (BUKAN #fff murni) */
+  --paper-soft:  #f4f1e8;   /* zebra row / surface tenang */
+  --ink:         #1f1c17;   /* near-black hangat */
+  --ink-soft:    #544e44;   /* body sekunder */
+  --ink-muted:   #6b6457;   /* meta/caption — titik AA paling ketat, JANGAN dibuat lebih terang */
+  --line:        #e6e1d6;   /* hairline hangat */
+  --line-strong: #d2cabb;   /* divider tegas */
+
+  /* AKSEN — Coral/Clay ala Claude, SATU-SATUNYA aksen (repoint dari Go cyan) */
+  --blue:        #a3461f;   /* coral GELAP — teks/link/interaktif, AA >=4.5 di atas cream */
+  --blue-bright: #d97757;   /* coral terang Claude — dekoratif/aksen besar SAJA (bukan teks) */
+  --blue-soft:   #f9ebe3;   /* tint hangat untuk badge/section-num */
+  --blue-mid:    #e8c3b0;   /* tint border coral (ganti #99dff0) */
+
+  /* alias → coral (repoint, sama persis dengan --blue*) */
+  --orange:        #a3461f;
+  --orange-bright: #d97757;
+  --orange-soft:   #f9ebe3;
+
+  /* struktural — ungu-tinta gelap (echo lavender), bukan navy dingin */
+  --navy:        #211d33;
+  --navy-soft:   #2c2742;
+
+  /* ILUSTRASI / panel lavender — TOKEN BARU (bukan aksen UI, tidak pernah jadi tombol/link/teks) */
+  --paper-illus: #f3efe6;   /* "kertas" off-white di balik objek ilustrasi */
+  --lav:         #c6c2de;   /* lavender backplate — IDENTIK dgn latar PNG (full-bleed thumb) */
+  --lav-soft:    #ece9f5;   /* lavender sangat ringan untuk panel hero/section */
+  --lav-line:    #b6b1d2;   /* hairline lavender untuk bingkai panel */
+
+  /* semantic — -soft dihangatkan agar duduk di cream */
+  --teal:   #087f73;  --teal-soft:   #e2f3ef;
+  --green:  #16794f;  --green-soft:  #e3f2e8;
+  --red:    #bb3a32;  --red-soft:    #fbeeec;
+  --violet: #5d4b9c;  --violet-soft: #efe9fb;
+
+  --code-bg: #1c1830;   /* permukaan kode: ungu-tinta gelap hangat */
+  --shadow: none;       /* FLAT — wajib */
+  --shadow-lg: none;    /* FLAT — wajib */
+  --shell-max: 1180px;  /* pertahankan */
+  --shell-gutter: 28px; /* pertahankan */
   /* reading text scale — driven by the font-size switcher */
-  --scale: 1;
+  --scale: 1;           /* pertahankan */
+
+  /* WF2 — hairline lembut & tint permukaan (de-boxy tanpa shadow).
+     Semua turunan dari token reaktif tema (--ink/--paper/--bg/--blue/--blue-soft),
+     jadi otomatis benar di [data-theme="reader"] tanpa redefinisi. */
+  --hair:        color-mix(in srgb, var(--ink) 9%, transparent);   /* hairline default kartu/figur */
+  --hair-soft:   color-mix(in srgb, var(--ink) 7%, transparent);   /* divider antar-baris/caption */
+  --hair-strong: color-mix(in srgb, var(--ink) 14%, transparent);  /* hairline saat scrolled/aktif */
+  --hair-accent: color-mix(in srgb, var(--blue) 26%, transparent); /* hairline coral saat hover */
+  --tint-paper:  color-mix(in srgb, var(--paper) 92%, var(--bg));  /* tint permukaan halus beda dari bg */
+  --tint-soft:   color-mix(in srgb, var(--paper-soft) 60%, var(--paper)); /* tint area lebih kalem */
+  --wash-coral:  color-mix(in srgb, var(--blue-soft) 40%, var(--paper));  /* wash hover coral tipis */
 }
 
 * {
@@ -90,7 +115,7 @@ html {
 body {
   margin: 0;
   background:
-    linear-gradient(180deg, rgba(255,255,255,.6), rgba(255,255,255,0) 320px),
+    linear-gradient(180deg, rgba(255,253,248,.6), rgba(255,253,248,0) 320px),
     radial-gradient(var(--line) .7px, transparent .7px),
     var(--bg);
   background-size: auto, 22px 22px, auto;
@@ -134,7 +159,7 @@ pre,
 
 .topbar {
   /* Kontrol nav memakai variabel scoped ini → otomatis reaktif tema.
-     Default (light/sepia) = kaca terang, ink gelap; dark = kaca gelap, ink terang. */
+     Kedua tema (light/reader) = kaca terang hangat, ink gelap. */
   --nav-ink: var(--ink);
   --nav-dim: var(--ink-muted);
   --nav-line: color-mix(in srgb, var(--ink) 14%, transparent);
@@ -149,25 +174,15 @@ pre,
     calc(100% - (var(--shell-gutter) * 2))
   );
   margin: 14px auto 0;
-  border-radius: 0;
+  border-radius: var(--radius-card);
   background: color-mix(in srgb, var(--paper) 90%, transparent);
   backdrop-filter: blur(8px) saturate(1.15);
-  border: 1px solid var(--line);
+  border: 1px solid var(--hair);
   transition: border-color .25s ease, background-color .25s ease;
 }
 .topbar[data-scrolled] {
   background: color-mix(in srgb, var(--paper) 96%, transparent);
-  border-color: var(--line-strong);
-}
-/* Tema gelap: bg sudah gelap, jadi drop-shadow gelap tak terlihat. Pakai shadow gelap
-   pekat + hairline sedikit lebih kuat agar island tetap terbaca melayang. */
-[data-theme="dark"] .topbar {
-  background: color-mix(in srgb, var(--paper) 82%, transparent);
-  border-color: var(--line);
-}
-[data-theme="dark"] .topbar[data-scrolled] {
-  background: color-mix(in srgb, var(--paper) 92%, transparent);
-  border-color: var(--line-strong);
+  border-color: var(--hair-strong);
 }
 
 .topbar-inner {
@@ -182,7 +197,7 @@ pre,
 .logo-badge {
   width: 32px;
   height: 32px;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   flex: none;
   display: grid;
   place-items: center;
@@ -208,15 +223,18 @@ pre,
 
 .topbar-link {
   margin-left: auto;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
   color: var(--nav-dim);
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
-  transition: color .15s ease;
+  transition: color .15s ease, background-color .15s ease;
 }
 
 .topbar-link:hover {
   color: var(--nav-ink);
+  background: var(--nav-fill);
 }
 
 /* ── Layout ─────────────────────────────────────────────────── */
@@ -280,7 +298,7 @@ nav.toc a {
   gap: 11px;
   padding: 7px 14px;
   color: var(--ink-soft);
-  border-left: 2px solid var(--line);
+  border-left: 2px solid var(--hair-soft);
   font-size: calc(13.5px * var(--scale));
   font-weight: 500;
   line-height: 1.4;
@@ -301,7 +319,7 @@ nav.toc a .num {
 
 nav.toc a:hover {
   color: var(--ink);
-  border-left-color: var(--line-strong);
+  border-left-color: color-mix(in srgb, var(--ink) 18%, transparent);
 }
 
 nav.toc a:hover .num {
@@ -326,7 +344,7 @@ header.hero {
   margin-bottom: 8px;
   color: var(--ink);
   background: transparent;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--hair-soft);
 }
 
 .hero .eyebrow,
@@ -367,21 +385,25 @@ header.hero h1 em {
   font-weight: 500;
 }
 
-/* hanya lede (anak langsung hero), bukan <p> di dalam chip/card/komponen lain */
+/* hanya lede (anak langsung hero), bukan <p> di dalam chip/card/komponen lain.
+   Serif editorial (Newsreader) = sumber "kehangatan Anthropic" pada lede besar. */
 .hero > p,
 header.hero > p.lede,
+.lede,
 .lead {
-  max-width: 760px;
+  max-width: 720px;
   color: var(--ink-soft);
-  font-size: calc(19px * var(--scale));
-  line-height: 1.62;
+  font-family: var(--font-serif);
+  font-weight: 450;
+  font-size: calc(clamp(18px, 2.1vw, 22px) * var(--scale));
+  line-height: 1.6;
 }
 
 .hero-meta,
 .meta-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: clamp(20px, 4vw, 36px);
   margin-top: 24px;
 }
 
@@ -391,8 +413,8 @@ header.hero > p.lede,
   min-height: 34px;
   padding: 7px 13px;
   border: 1px solid var(--line);
-  border-radius: 0;
-  background: rgba(255, 255, 255, .8);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
   color: var(--ink-soft);
   font-size: 12px;
   font-weight: 650;
@@ -421,8 +443,8 @@ header.hero > p.lede,
 /* ── Sections ────────────────────────────────────────────────── */
 
 section {
-  padding: 48px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 56px 0;
+  border-bottom: 1px solid var(--hair-soft);
 }
 
 section:last-child {
@@ -443,8 +465,8 @@ section:last-child {
   height: 38px;
   display: inline-grid;
   place-items: center;
-  border: 1px solid rgba(0, 111, 138, .2);
-  border-radius: 0;
+  border: 1px solid color-mix(in srgb, var(--blue) 20%, transparent);
+  border-radius: var(--radius-sm);
   background: var(--blue-soft);
   color: var(--blue);
   font-size: 13px;
@@ -458,7 +480,7 @@ section:last-child {
   min-width: 0;
   margin-bottom: 12px;
   padding: 7px 11px;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   font-size: 11px;
   letter-spacing: .11em;
   text-transform: uppercase;
@@ -481,7 +503,7 @@ h2 {
 }
 
 h3 {
-  margin: 44px 0 10px;
+  margin: 48px 0 10px;
   color: var(--ink);
   font-size: 22px;
   font-weight: 720;
@@ -496,7 +518,7 @@ h4 {
 }
 
 p {
-  max-width: 780px;
+  max-width: 720px;
   margin: 18px 0;
 }
 
@@ -515,13 +537,13 @@ em.term {
 a.inline {
   color: var(--blue);
   text-decoration: underline;
-  text-decoration-color: rgba(0, 111, 138, .35);
+  text-decoration-color: color-mix(in srgb, var(--blue) 35%, transparent);
   text-underline-offset: 3px;
 }
 
 ul,
 ol {
-  max-width: 780px;
+  max-width: 720px;
   margin: 16px 0;
   padding-left: 24px;
 }
@@ -560,12 +582,11 @@ ul.clean li::before {
 
 .box {
   max-width: 860px;
-  margin: 26px 0;
-  padding: 22px 24px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: rgba(255, 255, 255, .85);
-  box-shadow: var(--shadow);
+  margin: 30px 0;
+  padding: 24px 26px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-card);
+  background: var(--paper);
 }
 
 .box-tag,
@@ -586,8 +607,9 @@ ul.clean li::before {
   height: 29px;
   display: inline-grid;
   place-items: center;
-  border-radius: 0;
-  background: rgba(255, 255, 255, .75);
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--tint-soft);
   font-size: 14px;
   letter-spacing: 0;
 }
@@ -602,8 +624,8 @@ ul.clean li::before {
 }
 
 .analogy {
-  background: linear-gradient(180deg, var(--teal-soft), #fff);
-  border-color: rgba(8, 127, 115, .18);
+  background: linear-gradient(180deg, var(--teal-soft), var(--paper));
+  border-color: color-mix(in srgb, var(--teal) 18%, transparent);
 }
 
 .analogy .box-tag,
@@ -612,8 +634,8 @@ ul.clean li::before {
 }
 
 .tip {
-  background: linear-gradient(180deg, var(--blue-soft), #fff);
-  border-color: rgba(0, 111, 138, .18);
+  background: linear-gradient(180deg, var(--blue-soft), var(--paper));
+  border-color: color-mix(in srgb, var(--blue) 18%, transparent);
 }
 
 .tip .box-tag,
@@ -622,8 +644,8 @@ ul.clean li::before {
 }
 
 .warn {
-  background: linear-gradient(180deg, var(--red-soft), #fff);
-  border-color: rgba(195, 61, 53, .2);
+  background: linear-gradient(180deg, var(--red-soft), var(--paper));
+  border-color: color-mix(in srgb, var(--red) 18%, transparent);
 }
 
 .warn .box-tag,
@@ -632,8 +654,8 @@ ul.clean li::before {
 }
 
 .exam {
-  background: linear-gradient(180deg, var(--violet-soft), #fff);
-  border-color: rgba(103, 80, 164, .2);
+  background: linear-gradient(180deg, var(--violet-soft), var(--paper));
+  border-color: color-mix(in srgb, var(--violet) 18%, transparent);
 }
 
 .exam .box-tag,
@@ -648,10 +670,9 @@ figure {
   margin: 30px 0;
   padding: 24px;
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: rgba(255, 255, 255, .85);
-  box-shadow: var(--shadow);
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  border-radius: var(--radius-card);
+  background: var(--tint-paper);
 }
 
 figure svg {
@@ -661,7 +682,9 @@ figure svg {
 }
 
 figcaption {
-  margin-top: 16px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hair-soft);
   color: var(--ink-soft);
   font-size: 13px;
   font-weight: 550;
@@ -692,11 +715,10 @@ figcaption b {
 
 .card {
   min-width: 0;
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: rgba(255, 255, 255, .88);
-  box-shadow: var(--shadow);
+  padding: 20px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-card);
+  background: var(--tint-paper);
 }
 
 .card h4 {
@@ -719,7 +741,7 @@ figcaption b {
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   background: var(--blue-soft);
 }
 
@@ -767,9 +789,10 @@ figcaption b {
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 0;
-  background: var(--navy);
-  color: #fff;
+  border: 1px solid color-mix(in srgb, var(--blue) 20%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--blue-soft);
+  color: var(--blue);
   font-size: 13px;
   font-weight: 800;
 }
@@ -811,10 +834,9 @@ figcaption b {
   max-width: 920px;
   margin: 24px 0;
   overflow-x: auto;
-  border: 1px solid var(--line);
-  border-radius: 0;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-card);
   background: var(--paper);
-  box-shadow: var(--shadow);
 }
 
 table {
@@ -828,23 +850,32 @@ table {
 th,
 td {
   padding: 13px 15px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--hair-soft);
   text-align: left;
   vertical-align: top;
 }
 
 thead th,
 th {
-  background: var(--navy);
-  color: #fff;
-  font-size: 12px;
+  background: var(--tint-soft);
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px;
   font-weight: 780;
-  letter-spacing: .04em;
+  letter-spacing: .045em;
   text-transform: uppercase;
 }
 
+tbody tr {
+  transition: background-color .14s ease;
+}
+
 tbody tr:nth-child(even) {
-  background: var(--paper-soft);
+  background: var(--tint-soft);
+}
+
+tbody tr:hover {
+  background: color-mix(in srgb, var(--blue-soft) 38%, transparent);
 }
 
 tbody tr:last-child td {
@@ -865,10 +896,10 @@ td strong {
 .def {
   max-width: 800px;
   margin: 20px 0;
-  padding: 14px 18px;
-  border: 1px solid rgba(0, 111, 138, .18);
-  border-radius: 0;
-  background: rgba(0, 111, 138, .04);
+  padding: 16px 20px;
+  border: 1px solid color-mix(in srgb, var(--blue) 18%, transparent);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--blue-soft) 55%, var(--paper));
 }
 
 .dterm {
@@ -881,6 +912,17 @@ td strong {
   color: var(--ink-soft);
 }
 
+/* ── Blockquote — kutipan editorial tenang (serif, aksen coral kiri) ──── */
+blockquote {
+  max-width: 720px;
+  margin: 22px 0;
+  padding: 4px 0 4px 20px;
+  border-left: 2px solid var(--blue-mid);
+  color: var(--ink-soft);
+  font-family: var(--font-serif);
+  font-style: italic;
+}
+
 /* ── Code ────────────────────────────────────────────────────── */
 
 pre {
@@ -889,10 +931,9 @@ pre {
   padding: 20px 22px;
   overflow-x: auto;
   border: 1px solid rgba(255, 255, 255, .06);
-  border-radius: 0;
+  border-radius: var(--radius-card);
   background: var(--code-bg);
   color: #e2e8f0;
-  box-shadow: var(--shadow);
   font-size: 13.5px;
   line-height: 1.65;
 }
@@ -909,9 +950,9 @@ pre {
 
 code,
 code.ic {
-  padding: 2px 6px;
-  border: 1px solid rgba(0, 111, 138, .18);
-  border-radius: 0;
+  padding: 1.5px 6px;
+  border: 1px solid color-mix(in srgb, var(--blue) 18%, transparent);
+  border-radius: var(--radius-xs);
   background: var(--blue-soft);
   color: var(--blue);
   font-size: .84em;
@@ -947,21 +988,25 @@ pre .o {
 
 /* ── Recap card ──────────────────────────────────────────────── */
 
+/* Recap = kartu ringkasan tenang: permukaan hangat (tint coral di atas paper)
+   + hairline lembut, BUKAN slab gelap. De-boxy & selaras target Anthropic.
+   Semua teks pakai token ink → AA terjaga di light & reader. */
 .recap {
   max-width: 920px;
   margin: 34px 0 8px;
-  padding: 26px 28px;
-  border: 1px solid #1e3a5f;
-  border-radius: 0;
-  background: linear-gradient(160deg, #1e293b, #0f172a);
-  color: #cbd5e1;
-  box-shadow: var(--shadow-lg);
+  padding: 28px 30px;
+  border: 1px solid color-mix(in srgb, var(--blue) 16%, transparent);
+  border-radius: var(--radius-card);
+  background: linear-gradient(165deg,
+              color-mix(in srgb, var(--blue-soft) 72%, var(--paper)),
+              color-mix(in srgb, var(--blue-soft) 30%, var(--paper)));
+  color: var(--ink-soft);
 }
 
 .recap h3,
 .recap h4 {
   margin: 0 0 14px;
-  color: #fff;
+  color: var(--blue);
   font-size: 16px;
   font-weight: 780;
   letter-spacing: .08em;
@@ -977,8 +1022,8 @@ pre .o {
 .recap li {
   position: relative;
   margin: 9px 0;
-  padding-left: 28px;
-  color: #94a3b8;
+  padding-left: 22px;
+  color: var(--ink-soft);
   font-size: 15px;
 }
 
@@ -986,23 +1031,35 @@ pre .o {
   content: "";
   position: absolute;
   left: 0;
-  top: .62em;
-  width: 12px;
-  height: 12px;
-  border-radius: 0;
-  background: var(--blue-bright);
+  top: .72em;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--blue);
 }
 
 .recap b,
 .recap strong {
-  color: #f1f5f9;
+  color: var(--ink);
+}
+
+/* Inline-code di dalam Recap: chip tipis di atas permukaan hangat, teks coral AA.
+   Karena Recap kini permukaan terang, override .recap code dari kritik (light
+   fill di atas slab gelap) tidak lagi diperlukan — chip default sudah pas, hanya
+   dinaikkan kontras border-nya sedikit agar terbaca di atas wash coral. */
+.recap code,
+.recap code.ic {
+  background: color-mix(in srgb, var(--paper) 75%, transparent);
+  border-color: color-mix(in srgb, var(--blue) 24%, transparent);
+  color: var(--blue);
 }
 
 /* ── Footer ──────────────────────────────────────────────────── */
 
 footer {
-  padding: 46px 28px;
-  border-top: 1px solid var(--line);
+  padding: 56px 28px 64px;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--paper-soft) 60%, transparent));
   color: var(--ink-soft);
   font-size: 13px;
   text-align: center;
@@ -1028,11 +1085,10 @@ footer b {
   height: 42px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(0, 111, 138, .25);
-  border-radius: 0;
-  background: rgba(255, 255, 255, .9);
+  border: 1px solid color-mix(in srgb, var(--blue) 25%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--paper) 90%, transparent);
   color: var(--blue);
-  box-shadow: var(--shadow);
   text-decoration: none;
   opacity: 0;
   visibility: hidden;
@@ -1050,6 +1106,11 @@ footer b {
 #toTop:hover {
   background: var(--blue);
   color: #fff;
+}
+
+#toTop:focus-visible {
+  outline: 2px solid var(--blue-bright);
+  outline-offset: 2px;
 }
 
 /* ── Responsive ──────────────────────────────────────────────── */
@@ -1112,7 +1173,7 @@ footer b {
   align-items: center;
   padding: 2px;
   border: 1px solid var(--nav-line);
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   background: var(--nav-fill);
 }
 
@@ -1131,7 +1192,7 @@ footer b {
   min-height: 44px;
   padding: 0 11px;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--nav-dim);
   font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
@@ -1172,6 +1233,9 @@ footer b {
   background: var(--nav-fill-hover);
 }
 
+.rc-theme svg { transition: transform .3s var(--ease-spring); }
+.rc-theme:hover svg { transform: rotate(12deg); }
+
 .topbar-actions .topbar-link {
   margin-left: 2px;
 }
@@ -1181,102 +1245,55 @@ footer b {
   .topbar-title span { display: none; }
 }
 
-/* ── Theme: Sepia (reading mode) ────────────────────────────── */
+/* ── Theme: Reader (reading mode) ───────────────────────────── */
 
-[data-theme="sepia"] {
-  --bg: #efe6d2;
-  --paper: #f7efdd;
-  --paper-soft: #efe5cf;
-  --ink: #2f2618;
-  --ink-soft: #5f5238;
-  --ink-muted: #6a5e42;
-  --line: #ddd0b3;
+[data-theme="reader"] {
+  --bg:          #f0e8d8;   /* parchment hangat, lebih kalem dari sepia lama */
+  --paper:       #f8f1e0;
+  --paper-soft:  #efe6d2;
+  --ink:         #34291a;   /* kontras lebih lembut dari light */
+  --ink-soft:    #5f5238;
+  --ink-muted:   #6d6044;
+  --line:        #ddd0b3;
   --line-strong: #ccba93;
-  --blue: #005f78;
-  --blue-bright: #007d9c;
-  --blue-soft: rgba(0, 95, 120, .08);
-  --shadow: none;
-  --shadow-lg: none;
+
+  /* Coral diredam untuk baca panjang, tetap AA (repoint dari Go cyan) */
+  --blue:        #964020;   /* coral-clay gelap reader */
+  --blue-bright: #c56a4a;   /* coral terang reader, dekoratif */
+  --blue-soft:   rgba(150,64,32,.12);   /* tint coral transparan; komposit tetap AA */
+  --blue-mid:    #d4ad97;   /* tint border coral reader (ganti #8fc9d8) */
+  /* alias coral untuk reader */
+  --orange:        #964020;
+  --orange-bright: #c56a4a;
+  --orange-soft:   rgba(150,64,32,.12);
+
+  /* WAJIB ditambahkan (sepia lama tidak set ini → tabel/code/steps tampak dingin di reader) */
+  --navy:        #3a2f1f;   /* th/steps/thead: coklat-tinta, bukan ungu */
+  --navy-soft:   #4a3c28;
+  --code-bg:     #2a2218;   /* kode di reader: coklat gelap hangat */
+
+  --paper-illus: #efe5cf;
+  --lav:         #c6c2de;   /* TETAP konstan = warna brand ilustrasi (thumb tema-invariant) */
+  --lav-soft:    #e8e2d8;   /* panel lavender ringan versi reader (lebih hangat) */
+  --lav-line:    #c4bcc9;
+
+  /* semantic reader (pertahankan dari sepia bila ada; -soft dihangatkan) */
+  --teal:   #087f73;  --teal-soft:   #e2eee9;
+  --green:  #16794f;  --green-soft:  #e3eee5;
+  --red:    #bb3a32;  --red-soft:    #f6e9e3;
+  --violet: #5d4b9c;  --violet-soft: #e9e2e2;
+
+  --shadow: none; --shadow-lg: none;
 }
 
-[data-theme="sepia"] body {
+[data-theme="reader"] body {
   background:
     radial-gradient(var(--line) .7px, transparent .7px),
     var(--bg);
   background-size: 22px 22px, auto;
 }
 
-[data-theme="sepia"] .chip { background: rgba(255, 255, 255, .42); }
-
-/* ── Theme: Dark (reading mode) ─────────────────────────────── */
-
-[data-theme="dark"] {
-  --bg: #0b1120;
-  --paper: #131c2f;
-  --paper-soft: #0f1727;
-  --ink: #e8eef8;
-  --ink-soft: #a3b3c9;
-  --ink-muted: #8294ad;
-  --line: #233044;
-  --line-strong: #33425a;
-  --blue: #5ccfed;
-  --blue-bright: #00add8;
-  --blue-soft: rgba(0, 173, 216, .12);
-  --navy: #0b1120;
-  --code-bg: #0a0f1c;
-  --shadow: none;
-  --shadow-lg: none;
-}
-
-[data-theme="dark"] body {
-  background:
-    radial-gradient(rgba(255, 255, 255, .03) .7px, transparent .7px),
-    var(--bg);
-  background-size: 22px 22px, auto;
-}
-
-[data-theme="dark"] .chip { background: rgba(255, 255, 255, .04); }
-[data-theme="dark"] .box { background: var(--paper); }
-[data-theme="dark"] .card { background: var(--paper); }
-[data-theme="dark"] .b-icon { background: rgba(255, 255, 255, .06); }
-
-[data-theme="dark"] .analogy { background: rgba(13, 148, 136, .1); border-color: rgba(13, 148, 136, .3); }
-[data-theme="dark"] .tip { background: rgba(0, 173, 216, .1); border-color: rgba(0, 173, 216, .28); }
-[data-theme="dark"] .warn { background: rgba(239, 68, 68, .1); border-color: rgba(239, 68, 68, .3); }
-[data-theme="dark"] .exam { background: rgba(167, 139, 250, .1); border-color: rgba(167, 139, 250, .3); }
-
-[data-theme="dark"] .analogy .box-tag { color: #2dd4bf; }
-[data-theme="dark"] .tip .box-tag { color: #5ccfed; }
-[data-theme="dark"] .warn .box-tag { color: #fca5a5; }
-[data-theme="dark"] .exam .box-tag { color: #c4b5fd; }
-
-[data-theme="dark"] code,
-[data-theme="dark"] code.ic {
-  background: rgba(0, 173, 216, .14);
-  color: #99eaf8;
-  border-color: rgba(0, 173, 216, .24);
-}
-
-[data-theme="dark"] .def {
-  background: rgba(0, 173, 216, .07);
-  border-color: rgba(0, 173, 216, .2);
-}
-
-/* keep diagrams on a light canvas so the hand-built SVGs stay legible */
-[data-theme="dark"] figure { background: #f1f5f9; border-color: #cbd5e1; }
-[data-theme="dark"] figcaption { color: #475569; }
-[data-theme="dark"] figcaption b { color: #0f172a; }
-
-[data-theme="dark"] #toTop {
-  background: rgba(19, 28, 47, .92);
-  border-color: rgba(0, 173, 216, .3);
-  color: var(--blue);
-}
-
-[data-theme="dark"] #toTop:hover {
-  background: var(--blue);
-  color: #fff;
-}
+[data-theme="reader"] .chip { background: color-mix(in srgb, var(--paper) 55%, transparent); }
 
 @media (prefers-reduced-motion: reduce) {
   body { transition: none; }
@@ -1289,7 +1306,7 @@ footer b {
   align-items: center;
   gap: 9px;
   text-decoration: none;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   transition: opacity .15s ease;
 }
 .nav-brand:hover { opacity: .85; }
@@ -1340,7 +1357,7 @@ footer b {
   flex: none;
   margin-right: 2px;
   border: 1px solid var(--nav-line);
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   background: var(--nav-fill);
   color: var(--nav-ink);
   cursor: pointer;
@@ -1409,7 +1426,7 @@ nav.toc a .num { color: var(--ink-soft); }
     width: 40px;
     height: 40px;
     border: 0;
-    border-radius: 0;
+    border-radius: var(--radius-sm);
     background: transparent;
     color: var(--ink-muted);
     font-size: 26px;
@@ -1446,14 +1463,16 @@ nav.toc a .num { color: var(--ink-soft); }
   position: relative;
   padding-bottom: clamp(34px, 5vw, 52px);
 }
+/* Lavender backplate (atmosfer ilustrasi) — flat, low-opacity, di sisi kanan
+   di belakang kartu kode hero. Aksen UI (eyebrow/CTA) tetap Go cyan. */
 .home-hero::before {
   content: "";
   position: absolute;
-  left: -6%;
-  top: -140px;
-  width: min(580px, 78vw);
-  height: 420px;
-  background: radial-gradient(58% 58% at 32% 40%, color-mix(in srgb, var(--blue) 11%, transparent), transparent 72%);
+  right: -8%;
+  top: -120px;
+  width: min(620px, 80vw);
+  height: 480px;
+  background: radial-gradient(60% 60% at 68% 38%, var(--lav-soft) 0%, transparent 70%);
   pointer-events: none;
   z-index: -1;
 }
@@ -1520,7 +1539,7 @@ nav.toc a .num { color: var(--ink-soft); }
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 2px 22px;
+  padding: 2px clamp(20px, 2.4vw, 30px);
   border-left: 1px solid var(--line);
 }
 .home-stats > div:first-child { padding-left: 0; border-left: 0; }
@@ -1543,7 +1562,8 @@ nav.toc a .num { color: var(--ink-soft); }
 .home-code {
   align-self: center;
   border: 1px solid rgba(255, 255, 255, .1);
-  background: #0f1830;
+  border-radius: var(--radius-card);
+  background: var(--code-bg);
   overflow: hidden;
   animation: rise .6s var(--ease-spring) .2s backwards;
 }
@@ -1552,7 +1572,7 @@ nav.toc a .num { color: var(--ink-soft); }
   align-items: center;
   gap: 11px;
   padding: 11px 15px;
-  background: #16213d;
+  background: color-mix(in srgb, #fff 6%, var(--code-bg));
   border-bottom: 1px solid rgba(255, 255, 255, .07);
 }
 .home-code-dots { display: inline-flex; gap: 6px; }
@@ -1571,6 +1591,7 @@ nav.toc a .num { color: var(--ink-soft); }
   margin-left: auto;
   padding: 2px 9px;
   border: 1px solid color-mix(in srgb, var(--blue-bright) 42%, transparent);
+  border-radius: var(--radius-xs);
   color: var(--blue-bright);
   font-family: var(--font-mono);
   font-size: 10.5px;
@@ -1632,11 +1653,104 @@ nav.toc a .num { color: var(--ink-soft); }
   color: var(--ink-muted);
 }
 
+/* ── Course list (thumbnail ilustrasi di KIRI, list vertikal kompak, flat) ──
+   Layout tiap kartu ada di CourseCard.astro (scoped). Di sini hanya kontainer. */
+.course-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+/* ── Menu Course di top navigation (dropdown <details>, flat, token-driven) ── */
+.nav-courses { position: relative; }
+.nav-courses-btn {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--nav-ink);
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+.nav-courses-btn:focus-visible {
+  outline: 2px solid var(--blue-bright);
+  outline-offset: 2px;
+}
+.nav-courses-btn::-webkit-details-marker { display: none; }
+.nav-courses-btn:hover { background: var(--nav-fill); }
+.nav-courses[open] .nav-courses-btn { background: var(--nav-fill); border-color: var(--nav-line); }
+.nav-courses-caret { transition: transform .2s ease; }
+.nav-courses[open] .nav-courses-caret { transform: rotate(180deg); }
+.nav-courses-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 250px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--blue-soft) 22%, var(--paper)), var(--paper) 56px);
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  border-radius: var(--radius-card);
+  padding: 8px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav-courses-kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  padding: 4px 8px 6px;
+}
+.nav-courses-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  text-decoration: none;
+  color: var(--ink);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+.nav-courses-item:hover { background: var(--blue-soft); border-color: color-mix(in srgb, var(--blue) 16%, transparent); }
+.nav-courses-item:focus-visible { outline: 2px solid var(--blue-bright); outline-offset: 2px; }
+.nav-courses-badge {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--blue);
+  background: var(--blue-soft);
+  border-radius: var(--radius-xs);
+  padding: 2px 7px;
+  flex: 0 0 auto;
+}
+.nav-courses-title { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.nav-courses-all {
+  font-size: 12.5px;
+  color: var(--blue);
+  text-decoration: none;
+  padding: 8px;
+  margin-top: 2px;
+  border-radius: var(--radius-sm);
+  border-top: 1px solid var(--hair-soft);
+}
+.nav-courses-all:hover { color: var(--blue-bright); }
+@media (max-width: 560px) {
+  .nav-courses-label { display: none; }
+  .nav-courses-menu { right: auto; left: 0; }
+}
+
 /* Roadmap group — accordion per roadmap di halaman kurikulum.
    Memakai <details>/<summary> bawaan: keyboard-accessible & jalan tanpa JS.
    Hanya Roadmap 1 terbuka by default; sisanya menutup agar kurikulum ringkas. */
 .curr-roadmap {
-  border: 1px solid var(--line);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-card);
+  overflow: hidden;
   scroll-margin-top: 84px;
 }
 .curr-roadmap + .curr-roadmap { margin-top: 14px; }
@@ -1653,13 +1767,13 @@ nav.toc a .num { color: var(--ink-soft); }
   transition: background-color .16s ease;
 }
 .curr-roadmap-head::-webkit-details-marker { display: none; }
-.curr-roadmap-head:hover { background: var(--blue-soft); }
+.curr-roadmap-head:hover { background: color-mix(in srgb, var(--blue-soft) 60%, var(--paper-soft)); }
 .curr-roadmap-head:focus-visible {
   outline: 2px solid var(--blue-bright);
   outline-offset: -2px;
 }
 .curr-roadmap[open] > .curr-roadmap-head {
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--hair-soft);
 }
 
 .curr-roadmap-label {
@@ -1704,9 +1818,6 @@ nav.toc a .num { color: var(--ink-soft); }
 }
 .curr-roadmap-head:hover .curr-roadmap-chevron { color: var(--blue); }
 
-[data-theme="dark"] .curr-roadmap-head { background: rgba(255,255,255,.03); }
-[data-theme="dark"] .curr-roadmap-head:hover { background: rgba(255,255,255,.06); }
-
 /* Reveal lembut saat accordion dibuka — list & item ikut animasi rise. */
 .curr-roadmap[open] > .curr {
   animation: roadmapReveal .26s var(--ease-spring) both;
@@ -1724,11 +1835,11 @@ nav.toc a .num { color: var(--ink-soft); }
   margin: 0;
   padding: 0;
   max-width: none;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hair-soft);
 }
 .curr-roadmap .curr { border-top: 0; }
 .curr-item {
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--hair-soft);
   animation: rise .5s var(--ease-spring) backwards;
   animation-delay: calc(var(--i, 0) * 42ms + .12s);
 }
@@ -1741,13 +1852,13 @@ nav.toc a .num { color: var(--ink-soft); }
   align-items: center;
   column-gap: 16px;
   row-gap: 4px;
-  padding: 16px 14px;
-  border-radius: 0;
+  padding: 18px 16px;
+  border-radius: var(--radius-card);
   color: inherit;
   text-decoration: none;
   transition: background .18s ease;
 }
-.curr-item > a:hover { background: var(--blue-soft); }
+.curr-item > a:hover { background: color-mix(in srgb, var(--blue-soft) 55%, transparent); }
 .curr-item > a:focus-visible { outline: 2px solid var(--blue-bright); outline-offset: -2px; }
 
 .curr-index {
@@ -1783,7 +1894,7 @@ nav.toc a .num { color: var(--ink-soft); }
 .curr-badge {
   padding: 1px 7px;
   border: 1px solid var(--blue-mid);
-  border-radius: 0;
+  border-radius: var(--radius-xs);
   background: var(--blue-soft);
   color: var(--blue);
   font-family: var(--font-mono);
@@ -1793,7 +1904,7 @@ nav.toc a .num { color: var(--ink-soft); }
 }
 .curr-flag {
   padding: 1px 9px;
-  border-radius: 0;
+  border-radius: var(--radius-xs);
   background: var(--blue);
   color: #fff;
   font-size: 10.5px;
@@ -1896,7 +2007,7 @@ nav.toc a .num { color: var(--ink-soft); }
   .toc-eyebrow { display: none; }
 }
 
-nav.toc a { border-radius: 0; }
+nav.toc a { border-radius: var(--radius-sm); }
 nav.toc a.active {
   background: linear-gradient(90deg, color-mix(in srgb, var(--blue) 12%, transparent), transparent 80%);
 }
@@ -1914,16 +2025,15 @@ nav.toc a.active {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 18px 20px;
-  border: 1px solid var(--line);
-  border-radius: 0;
+  padding: 20px 22px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-card);
   background: var(--paper);
-  box-shadow: var(--shadow);
   text-decoration: none;
   color: inherit;
-  transition: transform .24s var(--ease-spring), border-color .2s ease, box-shadow .24s ease;
+  transition: transform .24s var(--ease-spring), border-color .2s ease, background-color .2s ease;
 }
-.pager-card:hover { transform: translateY(-3px); border-color: var(--blue-mid); box-shadow: var(--shadow-lg); }
+.pager-card:hover { transform: translateY(-3px); border-color: var(--hair-accent); background: var(--wash-coral); }
 .pager-card:focus-visible { outline: 2px solid var(--blue-bright); outline-offset: 3px; }
 .pager-next { text-align: right; align-items: flex-end; }
 .pager-dir {
@@ -1941,12 +2051,12 @@ nav.toc a.active {
 
 /* ── Shared content cards: gentle hover (lifts module grids to life) ──── */
 .card {
-  transition: transform .22s var(--ease-spring), border-color .2s ease, box-shadow .22s ease;
+  transition: transform .22s var(--ease-spring), border-color .2s ease, background-color .18s ease;
 }
 .card:hover {
   transform: translateY(-2px);
-  border-color: var(--blue-mid);
-  box-shadow: var(--shadow-lg);
+  border-color: var(--hair-accent);
+  background: var(--wash-coral);
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────── */
@@ -1972,8 +2082,12 @@ nav.toc a.active {
   .home-eyebrow, .home-title, .home-lede, .home-stats, .home-code, .home-actions, .curr-item { animation: none; }
   .curr-roadmap[open] > .curr { animation: none; }
   .pager-card:hover, .card:hover { transform: none; }
+  .course-card:hover, .roadmap-banner:hover, .endpoint:hover { transform: none; }
+  .nav-switch-btn:active { transform: none; }
+  .rc-theme:hover svg { transform: none; }
   .home-cta:hover { transform: none; }
   .curr-item > a:hover .curr-go { transform: none; }
+  .course-card:hover .course-card-go { transform: none; }
   .mod-back:hover svg { transform: none; }
   .reading-progress-bar { transition: none; }
   .learning-progress-fill { transition: none; }
@@ -1995,7 +2109,7 @@ nav.toc a.active {
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--nav-line);
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   background: var(--nav-fill);
   color: var(--nav-ink);
   font-family: var(--font-display);
@@ -2003,9 +2117,10 @@ nav.toc a.active {
   font-weight: 600;
   line-height: 1;
   cursor: pointer;
-  transition: background .15s ease, border-color .15s ease;
+  transition: background .15s ease, border-color .15s ease, transform .15s var(--ease-spring);
 }
-.nav-switch-btn:hover { background: var(--nav-fill-hover); border-color: color-mix(in srgb, var(--ink) 22%, transparent); }
+.nav-switch-btn:hover { background: var(--nav-fill-hover); border-color: color-mix(in srgb, var(--ink) 16%, transparent); }
+.nav-switch-btn:active { transform: translateY(1px); }
 .nav-switch-btn:focus-visible { outline: 2px solid var(--blue-bright); outline-offset: 2px; }
 .nav-switch-glyph { flex: none; color: var(--blue); }
 .nav-switch-label {
@@ -2024,6 +2139,7 @@ nav.toc a.active {
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--nav-line);
+  border-radius: var(--radius-sm);
   background: var(--nav-fill);
   color: var(--nav-ink);
   font-family: var(--font-display);
@@ -2034,7 +2150,7 @@ nav.toc a.active {
 }
 .nav-switch-fallback:hover {
   background: var(--nav-fill-hover);
-  border-color: color-mix(in srgb, var(--ink) 22%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 16%, transparent);
 }
 .nav-switch-fallback:focus-visible {
   outline: 2px solid var(--blue-bright);
@@ -2051,11 +2167,10 @@ nav.toc a.active {
   overflow-x: hidden;
   overscroll-behavior: contain;
   padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--paper);
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  border-radius: var(--radius-card);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--blue-soft) 22%, var(--paper)), var(--paper) 56px);
   color: var(--ink);
-  box-shadow: var(--shadow-lg);
   opacity: 0;
   transform: translateY(-6px);
   transition: opacity .16s ease, transform .16s var(--ease-spring), overlay .16s allow-discrete, display .16s allow-discrete;
@@ -2101,7 +2216,8 @@ nav.toc a.active {
   gap: 8px;
   min-height: 42px;
   padding: 0 10px;
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--paper) 82%, var(--blue-soft));
 }
 .nss-search:focus-within {
@@ -2137,10 +2253,11 @@ nav.toc a.active {
   padding-top: 2px;
 }
 .nss-group-block + .nss-group-block {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hair-soft);
   padding-top: 10px;
 }
 .nss-group-block.is-current-roadmap .nss-group-head {
+  border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--blue-soft) 72%, var(--paper));
 }
 .nss-group-head {
@@ -2156,7 +2273,7 @@ nav.toc a.active {
   gap: 11px;
   padding: 9px 10px;
   border: 1px solid transparent;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   text-decoration: none;
   color: inherit;
   transition: background .14s ease, border-color .14s ease;
@@ -2178,7 +2295,7 @@ nav.toc a.active {
   display: grid;
   place-items: center;
   border: 1px solid var(--blue-mid);
-  border-radius: 0;
+  border-radius: var(--radius-xs);
   background: var(--blue-soft);
   color: var(--blue);
   font-family: var(--font-mono);
@@ -2205,6 +2322,7 @@ nav.toc a.active {
   align-self: center;
   padding: 4px 7px;
   border: 1px solid color-mix(in srgb, var(--blue) 28%, transparent);
+  border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--blue-soft) 70%, var(--paper));
   font-size: 10px;
   font-weight: 700;
@@ -2275,7 +2393,7 @@ nav.toc a.active {
    Compare — dua sisi yang sering tertukar (CapEx vs OpEx, Scalability vs
    Elasticity, security OF vs IN the cloud). Token-driven & reaktif tema.
    Badge "vs" memakai var(--ink)/var(--paper) sehingga selalu kontras dengan
-   latar di tiga tema (light/sepia/dark) tanpa aturan khusus per tema.
+   latar di kedua tema (light/reader) tanpa aturan khusus per tema.
    ══════════════════════════════════════════════════════════════════════ */
 .compare {
   position: relative;
@@ -2288,11 +2406,10 @@ nav.toc a.active {
 .cmp-side {
   min-width: 0;
   padding: 18px 20px 20px;
-  border: 1px solid var(--line);
-  border-top: 3px solid var(--line-strong);
-  border-radius: 0;
-  background: var(--paper);
-  box-shadow: var(--shadow);
+  border: 1px solid var(--hair);
+  border-top: 2px solid var(--line-strong);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--paper-soft) 45%, var(--paper));
 }
 .cmp-label {
   margin-bottom: 9px;
@@ -2325,7 +2442,7 @@ nav.toc a.active {
   place-items: center;
   width: 40px;
   height: 40px;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   background: var(--ink);
   color: var(--paper);
   font-family: var(--font-display);
@@ -2337,10 +2454,10 @@ nav.toc a.active {
   transform: translate(-50%, -50%);
 }
 
-.cmp-blue   { border-top-color: var(--blue); }
-.cmp-teal   { border-top-color: var(--teal); }
-.cmp-red    { border-top-color: var(--red); }
-.cmp-violet { border-top-color: var(--violet); }
+.cmp-blue   { border-top-color: color-mix(in srgb, var(--blue)   55%, transparent); }
+.cmp-teal   { border-top-color: color-mix(in srgb, var(--teal)   55%, transparent); }
+.cmp-red    { border-top-color: color-mix(in srgb, var(--red)    55%, transparent); }
+.cmp-violet { border-top-color: color-mix(in srgb, var(--violet) 55%, transparent); }
 .cmp-blue .cmp-label   { color: var(--blue); }
 .cmp-teal .cmp-label   { color: var(--teal); }
 .cmp-red .cmp-label    { color: var(--red); }
@@ -2369,6 +2486,16 @@ nav.toc a.active {
   overflow-wrap: anywhere;
 }
 
+/* ── Panel lavender — atmosfer ilustrasi (dipakai HEMAT: hero + 1–2 section) ─ */
+/* Flat, solid, bingkai hairline lavender. Bukan aksen UI: tidak pernah jadi
+   tombol/link/teks. -soft menghangat di reader; teks ink AA terverifikasi. */
+.lav-panel {
+  border: 1px solid color-mix(in srgb, var(--lav-line) 70%, transparent);
+  border-radius: var(--radius-card);
+  background: var(--lav-soft);
+  padding: clamp(20px, 3vw, 28px);
+}
+
 /* ── Box: varian Go-Artisan ───────────────────────────────────────────── */
 /* note = catatan netral; bridge = "jembatan" dari konsep JS/React/PHP/Laravel. */
 .note {
@@ -2380,15 +2507,10 @@ nav.toc a.active {
 
 .bridge {
   background: linear-gradient(180deg, var(--violet-soft), var(--paper));
-  border-color: rgba(103, 80, 164, .22);
+  border-color: color-mix(in srgb, var(--violet) 18%, transparent);
 }
 .bridge .box-tag,
 .bridge .b-head { color: var(--violet); }
-
-[data-theme="dark"] .note { background: var(--paper); border-color: var(--line-strong); }
-[data-theme="dark"] .note .box-tag { color: var(--ink-soft); }
-[data-theme="dark"] .bridge { background: rgba(167, 139, 250, .1); border-color: rgba(167, 139, 250, .3); }
-[data-theme="dark"] .bridge .box-tag { color: #c4b5fd; }
 
 /* ── Code block (Shiki) — header nama file, label bahasa, tombol salin ──── */
 /* Permukaan kode selalu gelap (var(--code-bg)) di semua tema, seperti terminal.
@@ -2399,9 +2521,8 @@ pre.astro-code {
   margin: 26px 0;
   padding: 0;
   border: 1px solid rgba(148, 163, 184, .16);
-  border-radius: 0;
+  border-radius: var(--radius-card);
   background: var(--code-bg) !important;
-  box-shadow: var(--shadow);
   overflow: hidden;
 }
 pre.astro-code .cb-head {
@@ -2432,7 +2553,7 @@ pre.astro-code .cb-copy {
   gap: 5px;
   padding: 4px 11px;
   border: 1px solid rgba(148, 163, 184, .22);
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   background: rgba(148, 163, 184, .08);
   color: #cbd5e1;
   font-family: var(--font-mono);
@@ -2464,10 +2585,9 @@ pre.astro-code > code {
   max-width: 920px;
   margin: 30px auto;
   padding: 22px 24px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--paper);
-  box-shadow: var(--shadow);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--paper-soft) 45%, var(--paper));
   text-align: center;
   overflow-x: auto;
 }
@@ -2625,16 +2745,15 @@ pre.astro-code > code {
 .filetree {
   max-width: 720px;
   margin: 26px 0;
-  border: 1px solid var(--line);
-  border-radius: 0;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-card);
   background: var(--paper);
-  box-shadow: var(--shadow);
   overflow: hidden;
 }
 .ft-head {
   padding: 10px 16px;
-  border-bottom: 1px solid var(--line);
-  background: var(--paper-soft);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  background: var(--tint-soft);
   color: var(--ink-soft);
   font-family: var(--font-mono);
   font-size: 12px;
@@ -2656,7 +2775,9 @@ pre.astro-code > code {
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.55;
+  transition: background-color .14s ease;
 }
+.ft-row:hover { background: color-mix(in srgb, var(--blue-soft) 40%, transparent); }
 .ft-row::marker { content: ""; }
 .ft-ic { flex: none; display: inline-flex; color: var(--ink-muted); }
 .ft-dir > .ft-ic { color: var(--blue); }
@@ -2676,20 +2797,25 @@ pre.astro-code > code {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 14px;
   max-width: 880px;
   margin: 12px 0;
-  padding: 12px 16px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--paper);
-  box-shadow: var(--shadow);
+  padding: 13px 16px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-sm);
+  background: var(--tint-soft);
+  transition: border-color .18s ease, background-color .18s ease, transform .2s var(--ease-spring);
+}
+.endpoint:hover {
+  border-color: var(--blue-mid);
+  background: var(--wash-coral);
+  transform: translateX(2px);
 }
 .ep-method {
   flex: none;
   min-width: 62px;
   padding: 4px 10px;
-  border-radius: 0;
+  border-radius: var(--radius-xs);
   color: #fff;
   font-family: var(--font-mono);
   font-size: 11px;
@@ -2722,16 +2848,6 @@ pre.astro-code > code {
   .endpoint { gap: 8px 12px; }
   .ep-desc { flex-basis: 100%; }
 }
-
-/* ── Kontras tema gelap (WCAG AA) ─────────────────────────────────────── */
-/* Beberapa token menerang di tema gelap (--blue -> #60a5fa, --ink-muted ->
-   #8294ad). Teks putih di atasnya gagal AA (< 4.5:1). Kunci ke biru/abu gelap
-   yang stabil agar tetap >= 4.5:1 di tema gelap. */
-[data-theme="dark"] .ep-post { background: #00738a; }
-[data-theme="dark"] .ep-head,
-[data-theme="dark"] .ep-options { background: #475569; }
-[data-theme="dark"] .curr-flag { background: #00738a; }
-[data-theme="dark"] .nss-item.is-current .nss-badge { background: #00738a; border-color: #00738a; }
 
 /* ── Progress Tracking ────────────────────────────────────────────────── */
 .home-actions {
@@ -2789,9 +2905,9 @@ pre.astro-code > code {
   margin-top: 18px;
   padding: 16px 18px;
   border: 1px solid color-mix(in srgb, var(--line) 70%, var(--blue-mid));
+  border-radius: var(--radius-card);
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--paper) 88%, var(--blue-soft)), var(--paper));
-  box-shadow: var(--shadow);
 }
 
 .learning-progress-panel-home {
@@ -2859,6 +2975,7 @@ pre.astro-code > code {
   position: relative;
   height: 10px;
   overflow: hidden;
+  border-radius: 999px;
   background: color-mix(in srgb, var(--paper) 42%, var(--blue-soft));
 }
 
@@ -2866,6 +2983,7 @@ pre.astro-code > code {
   display: block;
   width: 100%;
   height: 100%;
+  border-radius: inherit;
   transform: scaleX(0);
   transform-origin: left;
   background:
@@ -2993,4 +3111,389 @@ pre.astro-code > code {
     text-align: left;
   }
   .module-actions { align-items: flex-start; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   WF1 — Web Artisan: kelas komponen baru (kontrak SPEC bagian 7).
+   Semua token-driven (coral via --blue*), flat (--shadow:none), rounded
+   (--radius-*), reaktif-tema (light + reader). Tanpa shadow; sudut membulat.
+   Dipakai oleh: homepage banner (E), indeks /courses & /roadmaps (C),
+   hero detail /roadmaps/<slug> (C), item nav Roadmap/Courses (D).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Section wrapper indeks (/courses & /roadmaps) ─────────────────────── */
+.courses-index,
+.roadmaps-index {
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: clamp(40px, 6vw, 80px) var(--shell-gutter) 112px;
+}
+.courses-index-head,
+.roadmaps-index-head {
+  margin-bottom: clamp(22px, 3vw, 34px);
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+.courses-index-head h1,
+.roadmaps-index-head h1 {
+  margin: 0 0 8px;
+  font-size: clamp(26px, 4vw, 38px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.courses-index-intro,
+.roadmaps-index-intro {
+  margin: 0;
+  max-width: 64ch;
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.courses-index-eyebrow,
+.roadmaps-index-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 14px;
+  color: var(--blue);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+/* ── Banner roadmap (kartu lebar dgn cover 16:9, landscape) ────────────────
+   Dipakai di: homepage banner unggulan, indeks /roadmaps, hero /roadmaps/<slug>.
+   Kartu <a> flat, border hairline, hover coral-mid; tanpa shadow. */
+.roadmap-banner {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: var(--paper);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  transition: border-color .18s ease, transform .22s var(--ease-spring);
+}
+.roadmap-banner:hover {
+  border-color: var(--hair-accent);
+  transform: translateY(-2px);
+}
+.roadmap-banner:focus-visible {
+  outline: 2px solid var(--blue-bright);
+  outline-offset: 3px;
+}
+.roadmap-banner-media {
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  background: var(--paper-soft);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 7%, transparent);
+}
+.roadmap-banner-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.roadmap-banner-body {
+  padding: clamp(18px, 2.5vw, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.roadmap-banner-badge {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--blue);
+  background: var(--blue-soft);
+  border-radius: var(--radius-xs);
+  padding: 2px 7px;
+}
+.roadmap-banner-title {
+  margin: 0;
+  font-size: clamp(18px, 2.6vw, 24px);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.roadmap-banner-sum {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+/* ── Grid indeks /roadmaps (1 kolom; siap multi-roadmap responsif) ───────── */
+.roadmap-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(18px, 2.5vw, 26px);
+  margin-top: 22px;
+}
+@media (min-width: 760px) {
+  .roadmap-grid { grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); }
+}
+
+/* ── Hero detail /roadmaps/<slug> (cover landscape besar + hero/desc/meta) ── */
+.roadmap-detail-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+  gap: clamp(24px, 4vw, 48px);
+  align-items: center;
+  margin-bottom: clamp(34px, 5vw, 56px);
+}
+.roadmap-detail-media,
+.roadmap-detail-hero-media {
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  background: var(--paper-soft);
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  border-radius: var(--radius-card);
+}
+.roadmap-detail-media img,
+.roadmap-detail-hero-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.roadmap-detail-copy,
+.roadmap-detail-hero-body { min-width: 0; }
+.roadmap-detail-badge {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  color: var(--blue);
+  background: var(--blue-soft);
+  border-radius: var(--radius-xs);
+  padding: 3px 9px;
+}
+.roadmap-detail-title,
+.roadmap-detail-hero-title {
+  margin: 0 0 14px;
+  font-size: clamp(30px, 5vw, 48px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--ink);
+}
+.roadmap-detail-desc,
+.roadmap-detail-hero-desc {
+  margin: 0 0 20px;
+  max-width: 56ch;
+  color: var(--ink-soft);
+  font-size: 16px;
+  line-height: 1.65;
+}
+.roadmap-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.roadmap-detail-meta li,
+.roadmap-detail-meta > div {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-xs);
+  padding: 5px 10px;
+  background: color-mix(in srgb, var(--paper-soft) 60%, transparent);
+}
+.roadmap-detail-meta li b,
+.roadmap-detail-meta dt {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--blue);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.roadmap-detail-meta dd {
+  margin: 0;
+  color: var(--ink-soft);
+}
+@media (max-width: 760px) {
+  .roadmap-detail-hero { grid-template-columns: 1fr; }
+}
+
+/* ── Wrapper daftar course di /roadmaps/<slug> (reuse .course-grid) ──────── */
+.roadmap-courses { margin-top: clamp(28px, 4vw, 44px); }
+.roadmap-courses-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.roadmap-courses-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.roadmap-courses-head .count {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+/* ── Item nav top-bar: Roadmap & Courses (tautan teks tegas) ─────────────── */
+.nav-item {
+  display: inline-flex;
+  align-items: center;
+}
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--nav-dim, var(--ink-soft));
+  text-decoration: none;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  transition: color .15s ease, background-color .15s ease;
+}
+.nav-link:hover,
+.nav-link.is-active,
+.nav-link[aria-current="page"] {
+  color: var(--blue);
+  background: var(--nav-fill);
+}
+.nav-link:focus-visible {
+  outline: 2px solid var(--blue-bright);
+  outline-offset: 2px;
+}
+
+/* ── Homepage landing platform: varian hero & banner unggulan ────────────── */
+.home-hero-platform {
+  position: relative;
+  padding-bottom: clamp(34px, 5vw, 52px);
+}
+.home-featured {
+  margin-top: clamp(40px, 6vw, 74px);
+}
+.home-featured-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.home-featured-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.home-featured-head .count {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+/* ── Homepage: lede course & link "Semua roadmap/course" ───────────────── */
+.home-courses-lede {
+  max-width: 60ch;
+  margin: 0 0 8px;
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.home-roadmaps-all {
+  color: var(--blue);
+  text-decoration: none;
+  transition: color .15s ease;
+}
+.home-roadmaps-all:hover { color: var(--blue-bright); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Course landing (/courses/<slug>) — hero editorial + overview.
+   Reuse pola .home-hero-*; flat, hairline, rounded, reaktif tema.
+   ══════════════════════════════════════════════════════════════════════ */
+.course-landing {
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: clamp(40px, 6vw, 80px) var(--shell-gutter) 112px;
+}
+.course-landing-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr);
+  gap: clamp(28px, 4vw, 56px);
+  align-items: center;
+}
+.course-landing-hero-copy { min-width: 0; }
+.course-landing-title {
+  max-width: 16ch;
+  margin: 0 0 14px;
+  font-size: clamp(34px, 5vw, 52px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+.course-landing-sub {
+  margin: 0 0 14px;
+  color: var(--ink-soft);
+  font-size: clamp(15px, 1.8vw, 18px);
+  line-height: 1.55;
+}
+.course-landing-lede {
+  max-width: 52ch;
+  margin: 0 0 26px;
+  color: var(--ink-soft);
+  font-family: var(--font-serif);
+  font-weight: 450;
+  font-size: clamp(16px, 1.9vw, 20px);
+  line-height: 1.6;
+}
+.course-landing-hero-media {
+  align-self: center;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  border: 1px solid var(--lav-line);
+  border-radius: var(--radius-card);
+  background: var(--lav);
+}
+.course-landing-hero-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.course-landing-overview { padding-block: clamp(20px, 3vw, 32px); }
+@media (max-width: 920px) {
+  .course-landing-hero-grid { grid-template-columns: 1fr; }
+  .course-landing-hero-media { max-width: 420px; }
+}
+
+@media (max-width: 600px) {
+  .roadmap-banner-title { font-size: 19px; }
+  .roadmap-detail-title,
+  .roadmap-detail-hero-title { font-size: clamp(28px, 9vw, 40px); }
 }

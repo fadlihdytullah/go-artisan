@@ -1,0 +1,1044 @@
+---
+title: "Modul Belajar Redis dengan Go - Web Artisan"
+badge: "RDIS"
+topTitle: "Belajar Redis dengan Go"
+topSub: "Go untuk Developer JavaScript & PHP"
+summary: "Memakai Redis sebagai memory layer untuk cache, session, rate limit, dan state sementara di backend Go yang idiomatik, tanpa menjadikannya sumber kebenaran."
+order: 3
+target: "Course · Redis"
+readingTime: "~95 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa Redis (dan Kapan Berbahaya)" }
+  - { num: "02", id: "mental-model", title: "Mental Model: Key, Value, TTL" }
+  - { num: "03", id: "data-types", title: "Data Types Redis" }
+  - { num: "04", id: "go-redis", title: "Memakai go-redis/v9 di Go" }
+  - { num: "05", id: "cache-aside", title: "Pola Cache-Aside" }
+  - { num: "06", id: "cache-key-design", title: "Desain Cache Key" }
+  - { num: "07", id: "ttl-invalidation", title: "TTL dan Invalidation" }
+  - { num: "08", id: "jangan-cache", title: "Apa yang TIDAK Boleh Di-cache" }
+  - { num: "09", id: "rate-limiting", title: "Rate Limiting dengan INCR dan EXPIRE" }
+  - { num: "10", id: "session-token", title: "Session dan Token Store" }
+  - { num: "11", id: "atomic-transaction", title: "Atomic Operation dan Transaction" }
+  - { num: "12", id: "resilience", title: "Error Handling, Resilience, dan Observability" }
+  - { num: "13", id: "stack-usage-map", title: "Stack Lokal dan Peta Penggunaan Redis" }
+  - { num: "14", id: "topik-lanjutan", title: "Topik Lanjutan & Langkah Berikutnya" }
+  - { num: "15", id: "ringkasan", title: "Ringkasan & Poin Penting" }
+footerTitle: "Modul Belajar Redis dengan Go - Web Artisan"
+footerSub: "Bagian dari Course Web Artisan, memperdalam backend Go di luar jalur roadmap"
+---
+
+import { Section, Box, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Endpoint, Def } from "@components";
+
+<Hero eyebrow="Course &middot; Redis" title="Belajar <em>Redis</em> dengan Go<br />Cepat di Tempat yang Benar">
+  <p>Redis adalah memory layer yang bisa membuat backend terasa instan, asal dipasang di tempat yang tepat dan tidak diperlakukan sebagai pengganti database.</p>
+  <Fragment slot="meta">
+    <Chip icon="database">Redis <b>memory layer</b></Chip>
+    <Chip icon="code">go-redis <b>v9.20.1</b></Chip>
+    <Chip icon="clock">~95 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa Redis (dan Kapan Berbahaya)" sub="Akselerator opsional, bukan sumber kebenaran">
+
+<p class="lead">Redis adalah penyimpanan key-value berbasis memori yang sangat cepat. Ia menolong untuk cache, session, rate limit, dan data sementara, tetapi ia bukan pengganti PostgreSQL untuk data bisnis yang harus permanen dan konsisten.</p>
+
+Banyak masalah performa backend berbentuk sama: satu query database yang sama dijalankan ribuan kali untuk data yang jarang berubah. Halaman detail produk, daftar kategori, dan profil publik dibaca jauh lebih sering daripada diubah. Di sinilah Redis bersinar. Ia menyimpan hasil di memori dan mengembalikannya dalam hitungan mikrodetik, sehingga database tidak menjadi titik panas tiap request.
+
+Tetapi kecepatan itu datang dengan syarat. Redis menyimpan salinan data, dan salinan bisa basi. Begitu kamu menaruh data yang sensitif terhadap konsistensi (stok, status pesanan, status pembayaran) di Redis tanpa disiplin, kamu menukar bug yang jarang dengan bug yang sering, dan biasanya bug yang merugikan uang. Aturan mental yang dipegang sepanjang course ini: Redis adalah akselerator opsional, bukan sumber kebenaran.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari React Query dan Laravel Cache ke shared cache"><p>Di React Query, cache hidup di memori satu browser dan hilang saat tab ditutup. Di Laravel, `Cache::remember` menyimpan hasil agar tidak menghitung ulang. Redis adalah versi shared dari ide yang sama: satu cache yang dipakai bersama oleh semua instance backend dan semua user, bukan per-tab atau per-proses.</p></Box>
+
+```mermaid
+flowchart LR
+  Client["Frontend"] -->|HTTP JSON| API["Go API"]
+  API -->|cek dulu| Redis[("Redis (memory)")]
+  Redis -.->|miss| DB[("PostgreSQL (sumber kebenaran)")]
+  API -->|tulis bisnis| DB
+  Redis -->|hit cepat| API
+```
+
+<p class="fig-cap"><b>Gambar 1.</b> Redis duduk di depan PostgreSQL sebagai akselerator baca. PostgreSQL tetap satu-satunya sumber kebenaran untuk data bisnis.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Redis menolong</h4><p>Cache hasil baca yang mahal, session dengan TTL alami, rate limit counter, ranking, dan event log ringan.</p></Card>
+  <Card><h4>Redis berbahaya</h4><p>Saat dipakai menyimpan stok, status order, atau saldo sebagai kebenaran. Salinan basi di sana berubah jadi kerugian nyata.</p></Card>
+  <Card><h4>Redis bukan database utama</h4><p>Data di memori bisa hilang saat restart bila tidak dikonfigurasi persisten. Jangan menaruh data yang tidak boleh hilang hanya di Redis.</p></Card>
+  <Card><h4>Redis itu opsional</h4><p>API harus tetap melayani request walau Redis mati. Kalau Redis jadi syarat hidup, kamu menambah titik kegagalan baru.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Refleks yang harus dilawan"><p>Refleks "cache semua GET biar cepat" adalah sumber bug paling umum di backend pemula. Sebelum cache apa pun, tanya: kalau data ini telat update beberapa detik atau menit, siapa yang rugi? Bila jawabannya pelanggan atau uang, jangan cache dulu.</p></Box>
+
+<Box variant="tip" icon="💡" label="Cara membaca course ini"><p>Tiga section pertama membangun model pikir (kenapa, key/value/TTL, data types). Section 04 sampai 08 adalah inti caching. Section 09 sampai 11 memakai sifat atomic dan TTL Redis untuk rate limit, session, dan transaksi. Section 12 sampai 13 soal ketahanan dan stack lokal. Dua section terakhir merangkum dan menunjuk jalan ke materi scaling.</p></Box>
+
+</Section>
+
+<Section num="02" id="mental-model" title="Mental Model: Key, Value, TTL" sub="Berpikir memory-first sebelum menghafal command">
+
+<p class="lead">Sebelum menghafal command, pegang model intinya: Redis adalah peta besar dari key ke value yang hidup di memori, dan setiap key bisa diberi waktu hidup (TTL) yang otomatis menghapusnya saat kedaluwarsa.</p>
+
+Tiga konsep ini lebih dulu dari sintaks command apa pun. Key adalah string unik yang menjadi alamat data. Value adalah isinya, yang bisa berupa string, hash, list, set, dan tipe lain. TTL adalah durasi sebelum key dihapus sendiri. Begitu kamu berpikir dalam tiga kata ini, sebagian besar keputusan caching jadi jelas.
+
+<Def term="memory-first thinking"><p>Kebiasaan menaruh di Redis hanya data yang cepat berubah atau bisa dibuat ulang dari sumber lain. Bila data hilang dari Redis, sistem harus tetap benar, cukup sedikit lebih lambat.</p></Def>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari object cache JavaScript ke key terstruktur"><p>Di JavaScript kamu mungkin menyimpan `cache[productId] = data` di sebuah object. Redis adalah object raksasa yang dipakai bersama lintas proses, dengan key berbentuk string terstruktur seperti `product:123` dan kemampuan auto-expire yang tidak dimiliki object biasa.</p></Box>
+
+Key yang baik bersifat deskriptif dan berpola namespace, dipisah titik dua. Pola `entitas:id` atau `entitas:id:atribut` membuat key mudah dibaca manusia dan mudah dikelola. Contohnya `product:123` untuk detail produk, `category:list` untuk daftar kategori, dan `session:abc123` untuk sesi login.
+
+TTL adalah fitur yang membuat Redis ideal untuk data sementara. Kamu tidak perlu job pembersih yang menghapus data lama; Redis melakukannya sendiri. Inilah alasan session, rate limit window, dan cache berumur pendek terasa alami di Redis.
+
+```mermaid
+flowchart TD
+  Set["SET product:123 (JSON) EX 300"] --> Live["Key hidup di memori"]
+  Live -->|dalam 300 detik| Hit["GET product:123 -> value"]
+  Live -->|lewat 300 detik| Expired["Key terhapus otomatis"]
+  Expired --> Miss["GET product:123 -> nil (miss)"]
+```
+
+<p class="fig-cap"><b>Gambar 2.</b> Siklus hidup satu key dengan TTL 5 menit. Setelah kedaluwarsa, key hilang sendiri tanpa job pembersih.</p>
+
+Sebagai latihan model pikir, bayangkan menyimpan detail produk dengan TTL 5 menit. Selama 5 menit pertama, semua request membaca dari memori. Setelah itu, request pertama yang datang akan miss, mengambil ulang dari database, lalu mengisi cache lagi. Toleransi 5 menit ini adalah keputusan bisnis: harga dan deskripsi produk yang telat 5 menit hampir tidak pernah merugikan, dan inilah kandidat cache yang sehat.
+
+<Box variant="note" icon="📝" label="TTL adalah keputusan, bukan default"><p>Setiap key cache sebaiknya punya TTL eksplisit. Key tanpa TTL akan menumpuk di memori selamanya sampai dihapus manual atau di-evict. Kita bahas pemilihan durasi TTL dan kapan harus menghapus eksplisit di section TTL dan Invalidation.</p></Box>
+
+</Section>
+
+<Section num="03" id="data-types" title="Data Types Redis" sub="Satu peta keputusan: pilih tipe sebelum menulis command">
+
+<p class="lead">Redis bukan sekadar penyimpan string. Ia punya beberapa tipe data inti, dan memilih tipe yang tepat adalah keputusan desain yang lebih penting daripada hafal sintaks command.</p>
+
+Menurut [dokumentasi Redis](https://redis.io/docs/latest/develop/data-types/), tipe inti yang sering dipakai adalah String, Hash, List, Set, Sorted Set, dan Stream. Tiap tipe punya kasus pakai yang berbeda. Jangan memaksakan satu tipe untuk semua; pilih berdasar bentuk data dan operasi yang dibutuhkan.
+
+<div class="tbl-wrap">
+<table>
+  <thead>
+    <tr><th>Tipe</th><th>Bentuk</th><th>Kasus pakai khas</th><th>Command kunci</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>String</td><td>Satu nilai (teks, angka, JSON)</td><td>Cache JSON produk, counter, flag</td><td>SET, GET, INCR</td></tr>
+    <tr><td>Hash</td><td>Map field ke value dalam satu key</td><td>Object ringan: ringkasan kartu produk</td><td>HSET, HGET, HGETALL</td></tr>
+    <tr><td>List</td><td>Urutan terurut, akses ujung</td><td>Antrian ringan, log terbaru</td><td>LPUSH, RPUSH, BRPOP</td></tr>
+    <tr><td>Set</td><td>Kumpulan anggota unik</td><td>Favorit unik, tag, membership</td><td>SADD, SISMEMBER, SMEMBERS</td></tr>
+    <tr><td>Sorted Set</td><td>Anggota dengan score terurut</td><td>Ranking, top viewed, leaderboard</td><td>ZADD, ZRANGE, ZREVRANGE</td></tr>
+    <tr><td>Stream</td><td>Log append-only dengan ID</td><td>Event log, event-driven worker</td><td>XADD, XREAD, XREADGROUP</td></tr>
+  </tbody>
+</table>
+</div>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari struktur data JavaScript ke tipe Redis"><p>Pemetaan kasarnya: object atau `Map` di JS menjadi Hash, array menjadi List, `Set` menjadi Set, dan array yang diurutkan berdasar skor menjadi Sorted Set. Bedanya, operasi ini berjalan di server Redis dan dibagi semua proses, bukan di memori satu runtime.</p></Box>
+
+### String vs Hash untuk object
+
+Untuk menyimpan satu produk, ada dua pilihan umum. String JSON menyimpan seluruh produk sebagai satu blob JSON. Hash menyimpan tiap field terpisah dalam satu key. Pilihannya bergantung pada apakah kamu sering memperbarui satu field saja.
+
+<Compare aLabel="String JSON" bLabel="Hash" aTone="blue" bTone="teal">
+  <Fragment slot="a"><ul><li>Simpan seluruh object sebagai satu blob: `SET product:123 (json)`.</li><li>Ambil sekali, decode di aplikasi. Sederhana dan cocok untuk cache baca utuh.</li><li>Memperbarui satu field berarti baca, ubah, tulis ulang seluruh JSON.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Simpan per field: `HSET product:123 name "..." price 129000`.</li><li>Bisa ambil atau ubah satu field tanpa menyentuh sisanya: `HGET product:123 price`.</li><li>Cocok untuk ringkasan kartu produk yang field-nya kadang diperbarui terpisah.</li></ul></Fragment>
+</Compare>
+
+Untuk cache-aside produk yang dibaca utuh lalu dikirim ke frontend, String JSON biasanya lebih praktis karena satu kali GET dan satu kali decode. Hash menang ketika kamu butuh memperbarui atau membaca sebagian field tanpa memuat seluruh object.
+
+### List vs Stream untuk urutan event
+
+List bisa dipakai sebagai antrian sederhana: `LPUSH` di satu ujung, `BRPOP` di ujung lain. Ini cukup untuk tugas ringan. Tetapi begitu kamu butuh banyak consumer yang membaca event yang sama, perlu acknowledgement, atau perlu memutar ulang event, List mulai kewalahan. Di titik itu, Stream adalah jawabannya.
+
+[Redis Streams](https://redis.io/docs/latest/develop/data-types/streams/) didesain sebagai struktur data append-only log untuk event processing, dengan dukungan consumer group dan pending messages. Detail consumer group sengaja kita tunda ke section Topik Lanjutan agar fokus section ini tetap pada pemilihan tipe.
+
+### Set dan Sorted Set untuk fitur cepat
+
+Set menyimpan anggota unik tanpa urutan, ideal untuk daftar favorit user (`SADD favorites:user:42 product:123`) karena `SADD` otomatis menolak duplikat. Sorted Set menambahkan score ke tiap anggota dan menjaganya tetap terurut, ideal untuk ranking seperti produk paling banyak dilihat (`ZADD top:viewed 1 product:123`, lalu `ZREVRANGE` untuk ambil teratas).
+
+<Box variant="tip" icon="💡" label="Pilih tipe dari operasi, bukan dari data"><p>Pertanyaan kuncinya bukan "data ini bentuknya apa" melainkan "operasi apa yang sering saya jalankan". Sering ambil satu field? Hash. Butuh keunikan? Set. Butuh urutan berdasar skor? Sorted Set. Butuh log event yang bisa dibaca banyak consumer? Stream.</p></Box>
+
+</Section>
+
+<Section num="04" id="go-redis" title="Memakai go-redis/v9 di Go" sub="Client resmi, context sebagai parameter pertama">
+
+<p class="lead">Client Go resmi untuk Redis adalah `github.com/redis/go-redis/v9`. Versi terbaru saat course ini ditulis adalah v9.20.1 (rilis 11 Juni 2026), berlisensi BSD-2-Clause.</p>
+
+Pola di go-redis konsisten: setiap command menerima `context.Context` sebagai parameter pertama, lalu argumen command, dan mengembalikan sebuah objek hasil yang nilainya diambil lewat `.Result()` atau `.Err()`. Karena context jadi parameter pertama, kamu bisa memasang timeout dan pembatalan dengan rapi, persis seperti pada query pgx di modul PostgreSQL.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari Redis client Node.js ke idiom Go"><p>Di Node.js kamu menulis `await client.get(key)` dan key yang tidak ada mengembalikan `null`. Di Laravel, `Redis::get($key)` mengembalikan `null` juga. Di go-redis, key yang tidak ada bukan nilai kosong biasa; ia mengembalikan error khusus `redis.Nil`. Membedakan `redis.Nil` dari error sungguhan adalah inti dari menangani cache miss dengan benar.</p></Box>
+
+Pertama, pasang dependency.
+
+```bash title="Terminal"
+go get github.com/redis/go-redis/v9@v9.20.1
+```
+
+Lalu buat client. `redis.NewClient` menerima `*redis.Options`, dan untuk lokal cukup mengisi `Addr`. Setelah itu, `Ping` memverifikasi koneksi.
+
+```go title="internal/cache/redis.go"
+package cache
+
+import (
+	"context"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+)
+
+// New membuat client Redis dan memverifikasi koneksi dengan Ping.
+func New(ctx context.Context, addr string) (*redis.Client, error) {
+	client := redis.NewClient(&redis.Options{
+		Addr: addr,
+	})
+
+	pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	if err := client.Ping(pingCtx).Err(); err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+```
+
+Sekarang operasi dasar Set dan Get. Perhatikan `context.WithTimeout` per operasi dan penanganan `redis.Nil` sebagai cache miss, bukan error.
+
+```go title="internal/cache/redis.go"
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+)
+
+// SetString menyimpan value string dengan TTL.
+func SetString(ctx context.Context, client *redis.Client, key, value string, ttl time.Duration) error {
+	ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+	defer cancel()
+
+	return client.Set(ctx, key, value, ttl).Err()
+}
+
+// GetString mengembalikan value, found=false bila key tidak ada (cache miss).
+func GetString(ctx context.Context, client *redis.Client, key string) (value string, found bool, err error) {
+	ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+	defer cancel()
+
+	value, err = client.Get(ctx, key).Result()
+	if errors.Is(err, redis.Nil) {
+		return "", false, nil // cache miss, bukan error
+	}
+	if err != nil {
+		return "", false, err // error sungguhan (timeout, koneksi putus)
+	}
+	return value, true, nil
+}
+```
+
+<Box variant="warn" icon="⚠️" label="redis.Nil bukan error yang harus digagalkan"><p>Kesalahan klasik adalah memperlakukan `redis.Nil` sebagai kegagalan dan mengembalikan 500 ke client. Padahal `redis.Nil` cuma berarti "key tidak ada", yaitu cache miss yang sepenuhnya normal. Periksa `errors.Is(err, redis.Nil)` lebih dulu, dan hanya error setelahnya yang dianggap kegagalan nyata.</p></Box>
+
+```mermaid
+flowchart TD
+  Get["client.Get(ctx, key).Result()"] --> Check{"err?"}
+  Check -->|err == nil| Hit["value valid (cache hit)"]
+  Check -->|errors.Is err redis.Nil| Miss["cache miss (normal)"]
+  Check -->|err lain| Fail["error nyata: timeout / koneksi"]
+```
+
+<p class="fig-cap"><b>Gambar 3.</b> Tiga cabang hasil dari satu Get. Hanya cabang paling kanan yang benar-benar kegagalan.</p>
+
+<Box variant="tip" icon="💡" label="Bungkus client, jangan sebar di mana-mana"><p>Letakkan client Redis di `internal/cache` dan ekspos fungsi berdomain (mis. `GetProductCache`, `SetProductCache`) alih-alih membiarkan handler memanggil `client.Get` langsung. Ini menjaga key dan TTL terpusat, mudah diuji, dan mudah diganti.</p></Box>
+
+</Section>
+
+<Section num="05" id="cache-aside" title="Pola Cache-Aside" sub="Cek Redis dulu, miss baru ke PostgreSQL, lalu isi cache">
+
+<p class="lead">Cache-aside adalah pola caching paling umum dan paling aman untuk dipelajari pertama: aplikasi mengecek Redis dulu, kalau miss baru mengambil dari PostgreSQL, lalu mengisi Redis untuk request berikutnya.</p>
+
+Disebut "aside" karena cache berdiri di samping database, bukan di tengah jalur tulis. Aplikasi yang memegang kendali kapan membaca dan kapan mengisi cache. Pola ini cocok untuk data baca-berat yang jarang berubah, seperti detail produk.
+
+```mermaid
+sequenceDiagram
+  participant H as Handler
+  participant R as Redis
+  participant DB as PostgreSQL
+  H->>R: GET product:123
+  alt cache hit
+    R-->>H: JSON produk
+  else cache miss
+    R-->>H: nil
+    H->>DB: SELECT produk WHERE id=123
+    DB-->>H: row produk
+    H->>R: SET product:123 (JSON) EX 300
+    H-->>H: kembalikan produk
+  end
+```
+
+<p class="fig-cap"><b>Gambar 4.</b> Alur cache-aside. Database hanya tersentuh saat miss, sehingga ia tidak menjadi titik panas tiap request.</p>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari React Query stale data ke cache bersama"><p>React Query menyimpan data agar komponen tidak fetch ulang terus-menerus, tetapi cache itu milik satu browser. Cache-aside di Redis adalah ide yang sama di sisi server: satu salinan dipakai semua user, sehingga query database benar-benar berkurang secara global, bukan per pengunjung.</p></Box>
+
+Berikut penerapan pada `GET /v1/products/:id` tanpa mengubah kontrak API. Service mencoba cache lebih dulu, jatuh ke repository bila miss, lalu menyimpan hasilnya.
+
+<Endpoint method="GET" path="/v1/products/{id}" desc="Detail produk; dilayani dari cache bila tersedia, dari PostgreSQL bila miss" />
+
+```go title="internal/product/service.go"
+package product
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+)
+
+const productTTL = 5 * time.Minute
+
+type Repository interface {
+	FindByID(ctx context.Context, id int64) (Product, error)
+}
+
+type Service struct {
+	repo  Repository
+	redis *redis.Client
+}
+
+func NewService(repo Repository, rdb *redis.Client) *Service {
+	return &Service{repo: repo, redis: rdb}
+}
+
+// GetByID menerapkan cache-aside: cek Redis, miss baru ke PostgreSQL.
+func (s *Service) GetByID(ctx context.Context, id int64) (Product, error) {
+	key := productKey(id)
+
+	// 1. Cek cache.
+	cached, err := s.redis.Get(ctx, key).Result()
+	if err == nil {
+		var p Product
+		if jsonErr := json.Unmarshal([]byte(cached), &p); jsonErr == nil {
+			return p, nil // cache hit
+		}
+		// JSON rusak: anggap miss, lanjut ke database.
+	} else if !errors.Is(err, redis.Nil) {
+		// Error Redis nyata: jangan gagalkan request, lanjut ke database.
+		// (Resilience dibahas di section 12.)
+	}
+
+	// 2. Cache miss: ambil dari sumber kebenaran.
+	p, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return Product{}, err
+	}
+
+	// 3. Isi cache untuk request berikutnya (best-effort).
+	if blob, marshalErr := json.Marshal(p); marshalErr == nil {
+		_ = s.redis.Set(ctx, key, blob, productTTL).Err()
+	}
+
+	return p, nil
+}
+
+func productKey(id int64) string {
+	return "product:" + itoa(id)
+}
+```
+
+<Box variant="warn" icon="⚠️" label="Mengisi cache bersifat best-effort"><p>Perhatikan langkah 3 memakai `_ =` untuk mengabaikan error Set. Bila Redis gagal menyimpan, request tetap mengembalikan data yang benar dari database. Caching yang menggagalkan request hanya karena gagal mengisi cache adalah desain yang salah; cache seharusnya menambah, bukan mengurangi, keandalan.</p></Box>
+
+<Box variant="note" icon="📝" label="Kontrak API tidak berubah"><p>Frontend tidak tahu dan tidak peduli apakah respons datang dari Redis atau PostgreSQL. Bentuk JSON, status code, dan path tetap sama. Caching adalah optimasi internal, bukan perubahan kontrak.</p></Box>
+
+</Section>
+
+<Section num="06" id="cache-key-design" title="Desain Cache Key" sub="Key yang konsisten menentukan kemudahan invalidasi">
+
+<p class="lead">Key yang dirancang dengan disiplin menentukan seberapa mudah kamu menghapus dan memperbarui cache nanti. Key yang berantakan membuat invalidasi jadi mimpi buruk.</p>
+
+Key yang baik punya struktur yang konsisten dan dapat ditebak. Pola yang umum dan kuat adalah menyusun komponen yang dipisah titik dua, dari yang paling umum ke paling spesifik.
+
+<div class="tbl-wrap">
+<table>
+  <thead>
+    <tr><th>Komponen</th><th>Contoh</th><th>Tujuan</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Environment prefix</td><td>prod, staging</td><td>Memisahkan cache antar lingkungan</td></tr>
+    <tr><td>Versi skema cache</td><td>v1</td><td>Membuang seluruh cache lama saat bentuk berubah</td></tr>
+    <tr><td>Entitas</td><td>product, category</td><td>Mengelompokkan jenis data</td></tr>
+    <tr><td>ID atau hash query</td><td>123, list, q hash</td><td>Mengidentifikasi item atau hasil spesifik</td></tr>
+  </tbody>
+</table>
+</div>
+
+Dengan pola itu, beberapa contoh key untuk online shop terlihat seperti ini.
+
+```text title="Contoh cache key"
+prod:v1:product:123                detail produk id 123
+prod:v1:category:list              daftar kategori
+prod:v1:search:8f3a1c              hasil pencarian (8f3a1c = hash query)
+prod:v1:session:abc123             sesi login
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari naming route ke naming data"><p>Kamu sudah terbiasa menamai route frontend secara konsisten, mis. `/products/:id`. Anggap cache key sebagai naming yang sama untuk data backend: terstruktur, dapat ditebak, dan stabil, sehingga siapa pun di tim tahu bentuk key tanpa menebak.</p></Box>
+
+Untuk hasil yang bergantung pada banyak parameter (pencarian dengan filter dan paginasi), jangan menempelkan seluruh query mentah ke key karena panjang dan rawan karakter aneh. Buat hash pendek yang deterministik dari parameter yang sudah dinormalkan.
+
+```go title="internal/product/cachekey.go"
+package product
+
+import (
+	"crypto/sha1"
+	"encoding/hex"
+	"fmt"
+)
+
+// searchKey membuat key stabil dari parameter pencarian yang sudah dinormalkan.
+func searchKey(env, q, category string, page int) string {
+	raw := fmt.Sprintf("q=%s&cat=%s&page=%d", q, category, page)
+	sum := sha1.Sum([]byte(raw))
+	short := hex.EncodeToString(sum[:])[:6]
+	return fmt.Sprintf("%s:v1:search:%s", env, short)
+}
+```
+
+<Box variant="tip" icon="💡" label="Versi di key adalah tombol panic"><p>Menyisipkan `v1` di key memberi cara murah membuang seluruh cache sekaligus. Saat kamu mengubah bentuk JSON yang disimpan, naikkan ke `v2`. Key lama `v1` tidak akan pernah dibaca lagi dan akan kedaluwarsa sendiri lewat TTL, tanpa perlu menghapus satu per satu.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Hindari key yang tidak bisa dihapus berkelompok"><p>Bila key tersebar tanpa pola (mis. `produk_123_cache` di satu tempat dan `cacheProduct123` di tempat lain), kamu tidak bisa menemukan dan menghapusnya saat data berubah. Konsistensi penamaan adalah fondasi invalidasi di section berikutnya.</p></Box>
+
+</Section>
+
+<Section num="07" id="ttl-invalidation" title="TTL dan Invalidation" sub="Kapan data cache dianggap basi dan bagaimana membuangnya">
+
+<p class="lead">Pertanyaan tersulit dalam caching bukan cara menyimpan, melainkan kapan data cache dianggap basi dan bagaimana membuangnya. Ada dua alat utama: TTL dan penghapusan eksplisit saat data berubah.</p>
+
+TTL membuat cache kedaluwarsa sendiri setelah durasi tertentu. Ini cocok untuk data yang boleh sedikit telat. Penghapusan eksplisit (delete-on-write) membuang key cache segera setelah sumbernya berubah, sehingga request berikutnya pasti mengambil data segar. Keduanya sering dipakai bersama.
+
+<div class="tbl-wrap">
+<table>
+  <thead>
+    <tr><th>Strategi</th><th>Cara kerja</th><th>Cocok untuk</th><th>Risiko</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>TTL pendek</td><td>Key hidup beberapa detik sampai menit</td><td>Data yang boleh telat sebentar</td><td>Hit rate lebih rendah, database sedikit lebih sibuk</td></tr>
+    <tr><td>TTL panjang</td><td>Key hidup jam sampai hari</td><td>Data yang sangat jarang berubah</td><td>Stale lama bila tidak ada invalidasi</td></tr>
+    <tr><td>Delete-on-write</td><td>Hapus key saat sumber diubah</td><td>Data yang harus segar setelah update</td><td>Harus konsisten dipanggil di setiap jalur tulis</td></tr>
+  </tbody>
+</table>
+</div>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari invalidate React Query setelah mutation"><p>Di React Query, setelah mutation kamu memanggil `queryClient.invalidateQueries` agar data lama dibuang dan di-fetch ulang. Delete-on-write di Redis adalah versi server dari kebiasaan itu: setelah menulis ke PostgreSQL, hapus key cache yang terkait supaya pembaca berikutnya mendapat data segar.</p></Box>
+
+Pola paling jelas untuk online shop adalah menghapus `product:{id}` setelah admin memperbarui produk. Update menulis ke PostgreSQL dulu (sumber kebenaran), baru menghapus cache. Urutan ini penting: tulis dulu, baru buang cache.
+
+```go title="internal/product/service.go"
+// Update menulis ke PostgreSQL lalu membuang cache produk terkait.
+func (s *Service) Update(ctx context.Context, p Product) error {
+	// 1. Tulis ke sumber kebenaran dulu.
+	if err := s.repo.Update(ctx, p); err != nil {
+		return err
+	}
+
+	// 2. Buang cache (best-effort). Request berikutnya akan miss
+	//    lalu mengisi ulang dari data yang sudah segar.
+	_ = s.redis.Del(ctx, productKey(p.ID)).Err()
+
+	return nil
+}
+```
+
+```mermaid
+sequenceDiagram
+  participant Admin as Admin
+  participant API as Go API
+  participant DB as PostgreSQL
+  participant R as Redis
+  Admin->>API: PATCH /v1/admin/products/123
+  API->>DB: UPDATE produk SET ... WHERE id=123
+  DB-->>API: ok
+  API->>R: DEL product:123
+  API-->>Admin: 200 OK
+  Note over R: request baca berikutnya miss,<br/>isi ulang dari data segar
+```
+
+<p class="fig-cap"><b>Gambar 5.</b> Delete-on-write. Tulis ke PostgreSQL dulu, baru hapus cache, agar tidak ada jendela di mana cache terisi data lama setelah database sudah baru.</p>
+
+<Box variant="warn" icon="⚠️" label="Jangan hapus cache sebelum menulis database"><p>Bila kamu menghapus cache lebih dulu lalu menulis database, ada celah waktu di mana request lain bisa miss, membaca data lama dari database (karena update belum selesai), lalu mengisi cache dengan data basi yang justru baru saja kamu hapus. Selalu tulis sumber kebenaran dulu, baru buang cache.</p></Box>
+
+<Box variant="tip" icon="💡" label="Kapan cukup TTL saja?"><p>Bila data tidak punya jalur tulis yang jelas atau update-nya jarang dan tidak kritikal (mis. daftar kategori), TTL pendek saja sudah cukup. Pakai delete-on-write hanya saat kamu butuh kesegaran segera setelah perubahan dan punya satu tempat jelas untuk memicu penghapusan.</p></Box>
+
+</Section>
+
+<Section num="08" id="jangan-cache" title="Apa yang TIDAK Boleh Di-cache" sub="Melawan refleks cache semua GET">
+
+<p class="lead">Section ini adalah pertahanan. Tidak semua data layak di-cache, dan beberapa data justru berbahaya bila di-cache. Mengetahui apa yang tidak boleh di-cache sama pentingnya dengan tahu cara cache.</p>
+
+Aturan keputusannya sederhana: cache aman untuk data yang jarang berubah dan tidak merugikan bila telat. Cache berbahaya untuk data yang harus selalu akurat saat itu juga, terutama yang menyangkut uang, stok, dan status transaksi.
+
+<div class="tbl-wrap">
+<table>
+  <thead>
+    <tr><th>Klasifikasi</th><th>Contoh data online shop</th><th>Alasan</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Aman di-cache</td><td>Katalog produk, daftar kategori, detail produk, konten halaman statis</td><td>Jarang berubah, telat beberapa menit hampir tak merugikan</td></tr>
+    <tr><td>Hati-hati</td><td>Hasil pencarian, ranking produk</td><td>Boleh di-cache dengan TTL pendek, tetapi awasi kesegarannya</td></tr>
+    <tr><td>Dilarang di-cache (sebagai kebenaran)</td><td>Stok inventory, cart aktif, status order, status payment, data privat user</td><td>Salinan basi langsung berubah jadi bug yang merugikan uang atau kepercayaan</td></tr>
+  </tbody>
+</table>
+</div>
+
+<Box variant="warn" icon="⚠️" label="Cache stok adalah jebakan paling mahal"><p>Bila stok di-cache, pelanggan bisa melihat "tersedia" untuk produk yang sebenarnya sudah habis, lalu checkout gagal di langkah terakhir, atau lebih buruk, dua pelanggan membeli unit terakhir yang sama. Stok harus dibaca dan dikurangi dari PostgreSQL dalam transaksi, bukan dari salinan memori yang bisa basi.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Status order dan payment harus selalu segar"><p>Pelanggan yang baru membayar lalu melihat status "menunggu pembayaran" karena cache basi akan kehilangan kepercayaan. Status order dan payment menggerakkan keputusan dan emosi pelanggan; baca selalu dari sumber kebenaran.</p></Box>
+
+```mermaid
+flowchart TD
+  Q{"Data ini kalau telat<br/>beberapa menit,<br/>siapa yang rugi?"}
+  Q -->|tidak ada yang rugi| Cache["Aman di-cache dengan TTL"]
+  Q -->|UX sedikit terganggu| Careful["Hati-hati: TTL pendek + awasi"]
+  Q -->|pelanggan atau uang rugi| NoCache["JANGAN cache sebagai kebenaran"]
+```
+
+<p class="fig-cap"><b>Gambar 6.</b> Pohon keputusan satu pertanyaan yang bisa langsung dipakai tim sebelum memutuskan cache.</p>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari 'semua GET bisa cache' ke realita domain"><p>Di tutorial caching umum, semua endpoint GET sering diperlakukan setara. Realita online shop berbeda: `GET /v1/products` aman di-cache, tetapi `GET /v1/orders/{id}` dan `GET /v1/cart` tidak, karena keduanya state hidup milik satu user yang harus akurat.</p></Box>
+
+<Box variant="note" icon="📝" label="Data privat user butuh kehati-hatian ganda"><p>Selain soal kesegaran, data privat user (alamat, riwayat order) berisiko bocor bila key cache tidak mengikat ke user yang benar. Bila terpaksa cache data per-user, pastikan user ID jadi bagian key dan TTL pendek, dan jangan pernah cache data privat di key yang bisa dibaca lintas user.</p></Box>
+
+</Section>
+
+<Section num="09" id="rate-limiting" title="Rate Limiting dengan INCR dan EXPIRE" sub="Memanfaatkan operasi atomic untuk membatasi laju request">
+
+<p class="lead">Redis sangat cocok untuk rate limiting karena `INCR` bersifat atomic: menaikkan counter aman walau banyak request datang bersamaan, sehingga hitungan tidak pernah salah karena race.</p>
+
+Pola paling sederhana adalah fixed window: untuk tiap kombinasi subjek dan jendela waktu, naikkan counter, dan bila ini kenaikan pertama, pasang TTL sepanjang jendela. Saat counter melewati batas, tolak request dengan status 429.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari throttle middleware Laravel ke implementasi eksplisit"><p>Di Laravel, `throttle:60,1` memberi rate limit nyaris tanpa kamu memikirkan mekanismenya. Di Go kita membangunnya eksplisit dengan `INCR` dan `EXPIRE` di Redis. Lebih banyak baris, tetapi kamu paham persis bagaimana batas dihitung dan bisa menyesuaikannya per endpoint.</p></Box>
+
+```go title="internal/ratelimit/fixedwindow.go"
+package ratelimit
+
+import (
+	"context"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+)
+
+// Allow menaikkan counter untuk key di jendela tetap.
+// Mengembalikan true bila request masih di bawah limit.
+func Allow(ctx context.Context, rdb *redis.Client, key string, limit int64, window time.Duration) (bool, error) {
+	count, err := rdb.Incr(ctx, key).Result()
+	if err != nil {
+		return false, err
+	}
+
+	// Saat counter baru dibuat (nilai 1), pasang TTL jendela.
+	if count == 1 {
+		if err := rdb.Expire(ctx, key, window).Err(); err != nil {
+			return false, err
+		}
+	}
+
+	return count <= limit, nil
+}
+```
+
+Karena `INCR` mengembalikan nilai baru secara atomic, dua request bersamaan tidak akan membaca nilai lama yang sama lalu menimpanya. Inilah yang membuat counter aman tanpa lock manual.
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant API as Go API
+  participant R as Redis
+  U->>API: POST /v1/auth/login
+  API->>R: INCR ratelimit:login:ip:1.2.3.4
+  R-->>API: count = 1
+  API->>R: EXPIRE key 60s (karena count==1)
+  API-->>U: lanjut proses login
+  Note over U,R: request ke-6 dalam 60 detik
+  U->>API: POST /v1/auth/login
+  API->>R: INCR key
+  R-->>API: count = 6 (> limit 5)
+  API-->>U: 429 Too Many Requests
+```
+
+<p class="fig-cap"><b>Gambar 7.</b> Fixed window limit 5 per 60 detik pada login per-IP. Request keenam ditolak sampai jendela reset.</p>
+
+Terapkan ini ke endpoint sensitif seperti login (per-IP, melawan brute force) dan checkout (per-user, melawan klik ganda atau abuse). Kunci key membedakan subjek: `ratelimit:login:ip:{ip}` dan `ratelimit:checkout:user:{id}`.
+
+<Endpoint method="POST" path="/v1/auth/login" desc="Login; dibatasi per-IP untuk meredam brute force" />
+<Endpoint method="POST" path="/v1/checkout" desc="Checkout; dibatasi per-user untuk meredam abuse" />
+
+<Box variant="note" icon="🧩" label="Fixed window vs sliding window"><p>Fixed window sederhana tetapi punya efek tepi: dua lonjakan di akhir satu jendela dan awal jendela berikut bisa melebihi limit sesaat. Sliding window menghaluskan ini dengan memperhitungkan waktu lebih halus (mis. memakai Sorted Set berisi timestamp). Untuk perlindungan dasar, fixed window sudah cukup; sliding window dipakai saat kamu butuh batas yang lebih ketat.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jangan jadikan rate limit penjaga konsistensi"><p>Rate limit melindungi dari laju berlebih, bukan menjamin konsistensi data. Mencegah klik ganda di checkout dengan rate limit itu bagus, tetapi pencegahan pesanan ganda yang benar tetap butuh idempotency key dan transaksi di PostgreSQL.</p></Box>
+
+</Section>
+
+<Section num="10" id="session-token" title="Session dan Token Store" sub="State autentikasi sementara dengan TTL alami">
+
+<p class="lead">Redis ideal untuk session store dan token blacklist karena keduanya secara alami punya masa hidup. TTL Redis menghapus session kedaluwarsa dan token tercabut tanpa job pembersih.</p>
+
+Session adalah state autentikasi sementara: ID acak yang menunjuk ke data user yang sedang login, dengan TTL sebagai masa berlaku. Token blacklist menyimpan token yang sengaja dicabut (mis. setelah logout) sampai token itu kedaluwarsa sendiri. Keduanya bukan sumber kebenaran identitas; identitas tetap ada di PostgreSQL.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari Laravel Redis session driver"><p>Laravel bisa menyimpan session di Redis lewat `SESSION_DRIVER=redis`, dan kamu jarang melihat mekanismenya. Di Go kita melakukannya eksplisit: simpan JSON session di `session:{id}` dengan TTL, baca saat request, perpanjang saat aktif, hapus saat logout.</p></Box>
+
+```go title="internal/auth/session.go"
+package auth
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+)
+
+const sessionTTL = 24 * time.Hour
+
+type Session struct {
+	UserID int64  `json:"user_id"`
+	Role   string `json:"role"`
+}
+
+type Store struct {
+	redis *redis.Client
+}
+
+func NewStore(rdb *redis.Client) *Store {
+	return &Store{redis: rdb}
+}
+
+// Save menyimpan session dengan TTL.
+func (s *Store) Save(ctx context.Context, id string, sess Session) error {
+	blob, err := json.Marshal(sess)
+	if err != nil {
+		return err
+	}
+	return s.redis.Set(ctx, "session:"+id, blob, sessionTTL).Err()
+}
+
+// Get membaca session; found=false bila tidak ada atau sudah kedaluwarsa.
+func (s *Store) Get(ctx context.Context, id string) (Session, bool, error) {
+	blob, err := s.redis.Get(ctx, "session:"+id).Result()
+	if errors.Is(err, redis.Nil) {
+		return Session{}, false, nil
+	}
+	if err != nil {
+		return Session{}, false, err
+	}
+	var sess Session
+	if err := json.Unmarshal([]byte(blob), &sess); err != nil {
+		return Session{}, false, err
+	}
+	return sess, true, nil
+}
+
+// Touch memperpanjang masa hidup session yang masih aktif.
+func (s *Store) Touch(ctx context.Context, id string) error {
+	return s.redis.Expire(ctx, "session:"+id, sessionTTL).Err()
+}
+
+// Revoke menghapus session saat logout.
+func (s *Store) Revoke(ctx context.Context, id string) error {
+	return s.redis.Del(ctx, "session:"+id).Err()
+}
+```
+
+```mermaid
+stateDiagram-v2
+  [*] --> Aktif: login (Save, TTL 24 jam)
+  Aktif --> Aktif: request (Touch, perpanjang TTL)
+  Aktif --> Habis: TTL kedaluwarsa
+  Aktif --> Dicabut: logout (Revoke / Del)
+  Habis --> [*]
+  Dicabut --> [*]
+```
+
+<p class="fig-cap"><b>Gambar 8.</b> Siklus hidup session. TTL menghapus session diam yang tidak aktif; logout mencabut segera.</p>
+
+<Box variant="tip" icon="💡" label="Token blacklist untuk JWT yang dicabut"><p>Bila kamu memakai JWT stateless, logout tidak benar-benar membatalkan token sampai ia kedaluwarsa. Solusinya: simpan ID token tercabut di Redis (`revoked:{jti}`) dengan TTL sepanjang sisa umur token, lalu periksa setiap request. Setelah token kedaluwarsa, key blacklist-nya juga hilang sendiri, jadi memori tidak menumpuk.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Session di Redis bisa hilang saat restart"><p>Bila Redis tidak dikonfigurasi persisten, restart akan menghapus semua session dan semua user terpaksa login ulang. Itu merepotkan, tetapi tidak merusak data bisnis karena identitas tetap aman di PostgreSQL. Ini menegaskan: session adalah state sementara, bukan sumber kebenaran identitas.</p></Box>
+
+</Section>
+
+<Section num="11" id="atomic-transaction" title="Atomic Operation dan Transaction" sub="Atomicity Redis lebih terbatas dari transaksi PostgreSQL">
+
+<p class="lead">Banyak command Redis bersifat atomic per command, tetapi menggabungkan beberapa langkah jadi satu unit yang aman butuh desain. Atomicity Redis lebih terbatas dibanding transaksi PostgreSQL.</p>
+
+Ada tiga tingkat. Pertama, command tunggal seperti `INCR` sudah atomic, jadi counter dan flag aman tanpa usaha tambahan. Kedua, `MULTI/EXEC` (lewat `TxPipelined` di go-redis) mengirim beberapa command sebagai satu blok yang dijalankan berurutan tanpa disela command lain. Ketiga, optimistic transaction dengan `WATCH` (lewat `client.Watch`) untuk operasi baca-ubah-tulis yang harus gagal bila data berubah di tengah.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari transaksi PostgreSQL ke atomicity Redis"><p>Transaksi PostgreSQL memberi ACID penuh: kamu bisa membaca, memutuskan, dan menulis dalam satu transaksi dengan rollback otomatis bila ada konflik. Redis lebih ramping. `MULTI/EXEC` tidak punya rollback bila satu command gagal di tengah, dan baca-ubah-tulis aman butuh pola `WATCH` yang gagal lalu di-retry, bukan locking otomatis.</p></Box>
+
+Untuk command atomic tunggal seperti counter view produk, cukup `INCR`. Tidak perlu transaksi.
+
+```go title="internal/product/views.go"
+// IncrViews menaikkan penghitung tampilan produk secara atomic.
+func IncrViews(ctx context.Context, rdb *redis.Client, productID int64) (int64, error) {
+	return rdb.Incr(ctx, viewsKey(productID)).Result()
+}
+```
+
+Untuk beberapa command yang harus berjalan sebagai satu blok, pakai `TxPipelined`. Contoh: menaikkan counter rate limit dan memasang TTL dalam satu kirim.
+
+```go title="internal/ratelimit/pipeline.go"
+import "github.com/redis/go-redis/v9"
+
+// AllowPipelined menjalankan INCR + EXPIRE sebagai satu blok MULTI/EXEC.
+func AllowPipelined(ctx context.Context, rdb *redis.Client, key string, limit int64, window time.Duration) (bool, error) {
+	var incr *redis.IntCmd
+	_, err := rdb.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		incr = pipe.Incr(ctx, key)
+		pipe.Expire(ctx, key, window)
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+	return incr.Val() <= limit, nil
+}
+```
+
+Untuk baca-ubah-tulis yang harus konsisten, pakai `client.Watch`. Menurut [panduan transaksi Redis](https://redis.io/docs/latest/develop/clients/transpipe/), bila key yang di-`WATCH` berubah sebelum `Exec`, transaksi gagal dengan `redis.TxFailedErr` dan perlu di-retry dalam loop.
+
+```go title="internal/cache/optimistic.go"
+import (
+	"context"
+	"errors"
+
+	"github.com/redis/go-redis/v9"
+)
+
+// IncrementBy melakukan baca-ubah-tulis aman dengan optimistic transaction.
+func IncrementBy(ctx context.Context, rdb *redis.Client, key string, delta int64) error {
+	const maxRetries = 3
+
+	txf := func(tx *redis.Tx) error {
+		current, err := tx.Get(ctx, key).Int64()
+		if err != nil && !errors.Is(err, redis.Nil) {
+			return err
+		}
+		next := current + delta
+		// Exec hanya jalan bila key yang di-WATCH tidak berubah.
+		_, err = tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+			pipe.Set(ctx, key, next, 0)
+			return nil
+		})
+		return err
+	}
+
+	for i := 0; i < maxRetries; i++ {
+		err := rdb.Watch(ctx, txf, key)
+		if err == nil {
+			return nil // sukses
+		}
+		if errors.Is(err, redis.TxFailedErr) {
+			continue // key berubah, coba lagi
+		}
+		return err // error nyata
+	}
+	return errors.New("optimistic transaction gagal setelah retry")
+}
+```
+
+```mermaid
+flowchart TD
+  Watch["WATCH key"] --> Read["baca nilai sekarang"]
+  Read --> Compute["hitung nilai baru"]
+  Compute --> Exec["EXEC (TxPipelined)"]
+  Exec --> Check{"key berubah<br/>saat di-WATCH?"}
+  Check -->|tidak| Done["sukses"]
+  Check -->|ya: redis.TxFailedErr| Retry["retry dari WATCH"]
+  Retry --> Watch
+```
+
+<p class="fig-cap"><b>Gambar 9.</b> Pola optimistic transaction. Bila ada yang menyentuh key di tengah, EXEC gagal dan kita ulang dari WATCH.</p>
+
+<Box variant="note" icon="🧩" label="Lua script untuk atomic kompleks"><p>Untuk logika atomic yang lebih rumit (beberapa baca dan tulis bersyarat dalam satu eksekusi tak terinterupsi), Redis mendukung Lua script yang dijalankan server secara atomic. Ini opsi kuat tetapi menambah kompleksitas; pakai hanya saat `WATCH` dan pipeline tidak cukup, dan jangan dipakai sebelum kebutuhannya jelas.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Atomicity Redis bukan pengganti transaksi bisnis"><p>Untuk operasi business-critical seperti mengurangi stok saat checkout, gunakan transaksi PostgreSQL, bukan transaksi Redis. Atomic di Redis cocok untuk counter, rate limit, dan flag; konsistensi uang dan stok adalah urusan database relasional.</p></Box>
+
+</Section>
+
+<Section num="12" id="resilience" title="Error Handling, Resilience, dan Observability" sub="Redis boleh gagal tanpa menjatuhkan API, dan harus dipantau">
+
+<p class="lead">Redis adalah akselerator, jadi ia boleh gagal tanpa membuat API ikut gagal. Bila Redis mati, API harus tetap melayani request dari PostgreSQL, sedikit lebih lambat. Dan agar tahu cache benar-benar menolong, ia harus dipantau.</p>
+
+Inti resilience adalah membedakan cache error dari business error. Cache error (Redis timeout, koneksi putus) tidak boleh menggagalkan request; ia hanya berarti "lewati cache kali ini, ambil dari database". Business error (produk tidak ada, validasi gagal) adalah hasil sah yang memang harus dikembalikan ke client.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari optional cache ke dependency yang graceful"><p>Di Laravel, `Cache::remember` tetap memanggil closure database bila cache miss, jadi kegagalan cache terasa transparan. Di Go kita harus eksplisit: setiap pemanggilan Redis dibungkus timeout pendek, dan kegagalannya di-fallback ke database, bukan dipropagasi sebagai error 500.</p></Box>
+
+Pola fallback: coba cache dengan timeout pendek, dan apa pun yang bukan cache hit (miss atau error) jatuh ke database. Inilah yang membuat Redis bukan single point of failure.
+
+```go title="internal/product/service.go"
+// GetByIDResilient memperlakukan kegagalan Redis sebagai miss, bukan error fatal.
+func (s *Service) GetByIDResilient(ctx context.Context, id int64) (Product, error) {
+	key := productKey(id)
+
+	// Timeout pendek khusus cache: kalau Redis lambat, jangan tahan request.
+	cacheCtx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	cached, err := s.redis.Get(cacheCtx, key).Result()
+	cancel()
+
+	switch {
+	case err == nil:
+		var p Product
+		if json.Unmarshal([]byte(cached), &p) == nil {
+			s.metrics.RecordHit()
+			return p, nil
+		}
+	case errors.Is(err, redis.Nil):
+		s.metrics.RecordMiss()
+	default:
+		// Redis error (timeout, koneksi): catat, lalu lanjut ke database.
+		s.metrics.RecordError()
+		s.log.Warn("redis get gagal, fallback ke database", "key", key, "err", err)
+	}
+
+	// Sumber kebenaran selalu tersedia walau Redis bermasalah.
+	p, dbErr := s.repo.FindByID(ctx, id)
+	if dbErr != nil {
+		return Product{}, dbErr
+	}
+
+	// Isi cache best-effort; abaikan error.
+	if blob, mErr := json.Marshal(p); mErr == nil {
+		setCtx, c := context.WithTimeout(ctx, 100*time.Millisecond)
+		_ = s.redis.Set(setCtx, key, blob, productTTL).Err()
+		c()
+	}
+
+	return p, nil
+}
+```
+
+```mermaid
+flowchart TD
+  Req["GET /v1/products/123"] --> Try["coba Redis (timeout 100ms)"]
+  Try --> R{"hasil?"}
+  R -->|hit| Fast["balas cepat dari cache"]
+  R -->|miss| DB["ambil dari PostgreSQL"]
+  R -->|error / timeout| DB
+  DB --> Resp["balas dari database"]
+  DB --> Fill["isi cache best-effort"]
+```
+
+<p class="fig-cap"><b>Gambar 10.</b> Dengan fallback, mematikan Redis hanya membuat lebih banyak request menyentuh PostgreSQL. API tetap hidup.</p>
+
+<Box variant="tip" icon="💡" label="Uji ketahanan dengan mematikan Redis"><p>Cara terbaik membuktikan Redis bukan single point of failure adalah mematikannya saat development, lalu memastikan `GET /v1/products/{id}` tetap mengembalikan 200 dari PostgreSQL. Bila API ikut mati, berarti ada jalur yang memperlakukan cache error sebagai fatal; perbaiki itu.</p></Box>
+
+### Observability: tahu cache benar-benar efektif
+
+Cache yang tidak dipantau adalah kotak ajaib. Metrik inti yang menentukan apakah cache efektif adalah hit rate (rasio hit terhadap total), latency pemanggilan Redis, pemakaian memori, eviction (key terbuang karena memori penuh), dan slowlog (command yang lambat).
+
+<div class="tbl-wrap">
+<table>
+  <thead>
+    <tr><th>Metrik</th><th>Yang dijawab</th><th>Tindakan bila buruk</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Hit rate</td><td>Seberapa sering cache menolong</td><td>Hit rate rendah berarti TTL terlalu pendek atau data tidak layak di-cache</td></tr>
+    <tr><td>Latency Redis call</td><td>Apakah Redis benar-benar cepat</td><td>Latency tinggi berarti masalah jaringan atau command berat</td></tr>
+    <tr><td>Memory usage</td><td>Seberapa penuh Redis</td><td>Mendekati batas berarti perlu TTL lebih ketat atau memori lebih besar</td></tr>
+    <tr><td>Eviction</td><td>Apakah key dibuang paksa</td><td>Eviction tinggi berarti memori kurang untuk beban cache</td></tr>
+    <tr><td>Slowlog</td><td>Command apa yang lambat</td><td>Hindari command yang memindai banyak key (mis. KEYS di produksi)</td></tr>
+  </tbody>
+</table>
+</div>
+
+Yang paling mudah dikontrol dari sisi aplikasi adalah hit rate dan latency. Catat hit, miss, dan error di service (seperti `RecordHit`/`RecordMiss` di kode di atas), lalu ukur durasi tiap pemanggilan Redis.
+
+```go title="internal/cache/instrument.go"
+// timed mengukur durasi satu operasi Redis untuk metrik latency.
+func timed(name string, log *slog.Logger, fn func() error) error {
+	start := time.Now()
+	err := fn()
+	log.Info("redis op", "op", name, "ms", time.Since(start).Milliseconds(), "err", err)
+	return err
+}
+```
+
+<Box variant="warn" icon="⚠️" label="KEYS dan SCAN besar bisa menjatuhkan Redis"><p>Jangan memakai `KEYS *` di produksi untuk mencari key; ia memblokir Redis selama memindai seluruh keyspace. Bila perlu iterasi, pakai `SCAN` dengan cursor. Slowlog akan menunjukkan command seperti ini, dan itu sinyal untuk segera mengubah pola akses.</p></Box>
+
+</Section>
+
+<Section num="13" id="stack-usage-map" title="Stack Lokal dan Peta Penggunaan Redis" sub="Redis di Docker Compose plus peta di mana ia dipasang">
+
+<p class="lead">Bagian ini menyatukan dua hal praktis: menambahkan Redis ke stack lokal lewat Docker Compose, dan memetakan di mana saja Redis dipakai (dan tidak dipakai) di online shop skincare.</p>
+
+Redis mudah dijalankan lokal bersama Go API dan PostgreSQL. Tambahkan satu service ringkas ke `docker-compose.yml`, dengan env `REDIS_ADDR` yang dibaca aplikasi.
+
+```yaml title="docker-compose.yml"
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://app:secret@postgres:5432/skincare?sslmode=disable
+      REDIS_ADDR: redis:6379
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: skincare
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari Laravel Sail ke stack Go lokal"><p>Laravel Sail memberi `docker-compose.yml` siap pakai dengan app, database, dan Redis. Di sini kita merakit yang setara untuk backend Go: satu service API, satu PostgreSQL sebagai sumber kebenaran, satu Redis sebagai akselerator. Aplikasi membaca alamat Redis dari `REDIS_ADDR`.</p></Box>
+
+```go title="cmd/api/main.go"
+// Baca alamat Redis dari environment, dengan default lokal yang masuk akal.
+addr := os.Getenv("REDIS_ADDR")
+if addr == "" {
+	addr = "localhost:6379"
+}
+
+rdb, err := cache.New(ctx, addr)
+if err != nil {
+	// Redis opsional: log peringatan, tetap jalan tanpa cache bila perlu.
+	log.Printf("redis tidak tersedia, jalan tanpa cache: %v", err)
+}
+```
+
+<FileTree title="Tempat Redis di struktur proyek" tree={`
+cmd/
+  api/
+    main.go          # baca REDIS_ADDR, buat client cache
+internal/
+  cache/
+    redis.go         # client + helper Get/Set
+    instrument.go    # metrik latency cache
+  product/
+    service.go       # cache-aside detail produk
+  ratelimit/
+    fixedwindow.go   # INCR + EXPIRE per-IP / per-user
+  auth/
+    session.go       # session store + token blacklist
+docker-compose.yml   # service redis, postgres, api
+`} />
+
+### Peta penggunaan Redis di online shop
+
+Berikut peta selektif: bagian mana memakai Redis, dan bagian mana tetap murni di PostgreSQL. Ini ringkasan keputusan dari seluruh course.
+
+<div class="tbl-wrap">
+<table>
+  <thead>
+    <tr><th>Bagian</th><th>Pakai Redis?</th><th>Caranya</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Detail produk dan kategori</td><td>Ya</td><td>Cache-aside dengan TTL pendek, delete-on-write saat admin update</td></tr>
+    <tr><td>Session login</td><td>Ya</td><td>Session store `session:{id}` dengan TTL alami</td></tr>
+    <tr><td>Login dan checkout throttle</td><td>Ya</td><td>Rate limit fixed window dengan INCR + EXPIRE</td></tr>
+    <tr><td>Top viewed products</td><td>Ya</td><td>Sorted Set untuk ranking</td></tr>
+    <tr><td>Stok inventory</td><td>Tidak</td><td>Selalu dari PostgreSQL dalam transaksi</td></tr>
+    <tr><td>Status order dan payment</td><td>Tidak</td><td>Selalu dari PostgreSQL, harus segar</td></tr>
+    <tr><td>Cart aktif</td><td>Tidak (sebagai kebenaran)</td><td>State hidup milik user, simpan di PostgreSQL</td></tr>
+  </tbody>
+</table>
+</div>
+
+```mermaid
+flowchart LR
+  subgraph Redis["Redis (akselerator + state sementara)"]
+    PC["product / category cache"]
+    SS["user session"]
+    RL["login / checkout throttle"]
+    TV["top viewed (sorted set)"]
+  end
+  subgraph PG["PostgreSQL (sumber kebenaran)"]
+    INV["inventory / stok"]
+    ORD["order + payment status"]
+    CART["cart aktif"]
+  end
+  API["Go API"] --> Redis
+  API --> PG
+```
+
+<p class="fig-cap"><b>Gambar 11.</b> Peta penggunaan. Redis memegang yang cepat dan sementara; PostgreSQL memegang yang harus benar dan permanen.</p>
+
+<Box variant="tip" icon="💡" label="Stack lokal utuh dalam satu perintah"><p>Dengan `docker compose up`, kamu mendapat API plus PostgreSQL plus Redis sekaligus, mencerminkan produksi. Ini mempermudah menguji cache-aside, rate limit, dan fallback (matikan service `redis`, lalu lihat API tetap hidup) tanpa memasang apa pun secara manual.</p></Box>
+
+</Section>
+
+<Section num="14" id="topik-lanjutan" title="Topik Lanjutan & Langkah Berikutnya" sub="Apa yang sengaja ditunda, lengkap dengan peringatannya">
+
+<p class="lead">Course ini sengaja menunda beberapa topik agar fokus tetap pada fondasi caching dan state sementara. Bagian ini menyebutnya secara jujur, lengkap dengan peringatan dan arah lanjutan, supaya tidak ada yang hilang diam-diam.</p>
+
+### Pub/Sub dan batasannya
+
+Redis Pub/Sub memungkinkan satu proses mem-publish pesan ke channel dan proses lain men-subscribe untuk menerimanya, cocok untuk broadcast realtime ringan seperti memberi tahu antar proses bahwa sebuah cache perlu di-invalidasi. Tetapi menurut [dokumentasi Pub/Sub Redis](https://redis.io/docs/latest/develop/pubsub/), Pub/Sub bersifat at-most-once: pesan dikirim sekali saja, tidak dipersistensi, dan bila subscriber sedang tidak bisa menerima (error atau disconnect), pesan itu hilang selamanya.
+
+<Box variant="warn" icon="⚠️" label="Jangan pakai Pub/Sub untuk payment atau order"><p>Karena pesan bisa hilang permanen, Pub/Sub tidak boleh dipakai untuk proses yang harus bisa retry seperti pemrosesan pembayaran atau order. Untuk jaminan at-least-once, pakai Redis Streams. Pub/Sub hanya untuk notifikasi ringan yang boleh hilang.</p></Box>
+
+### Distributed lock dengan SET NX PX
+
+Lock terdistribusi memakai `SET key value NX PX` untuk memastikan hanya satu proses memegang lock pada satu waktu, dengan expiry (PX) dan token kepemilikan agar unlock aman. Ide ini menggoda, tetapi mudah salah.
+
+<Box variant="warn" icon="⚠️" label="Kapan JANGAN pakai distributed lock"><p>Pada Redis single-instance, lock adalah single point of failure, dan karena replikasi Redis asinkron, failover bisa membuat dua proses sama-sama mengira memegang lock. Martin Kleppmann mengkritik Redlock sebagai tidak aman untuk correctness yang bergantung pada asumsi waktu (lihat [tulisannya](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)). Maka jangan pakai lock Redis untuk operasi business-critical seperti mengurangi stok checkout; itu urusan transaksi PostgreSQL. Lock Redis boleh untuk hal ringan seperti melindungi refresh cache mahal agar tidak dikerjakan banyak proses sekaligus.</p></Box>
+
+### Cache stampede dan singleflight
+
+Cache stampede terjadi ketika banyak request miss bersamaan (mis. tepat saat key kedaluwarsa) lalu serentak menyerang database, mengubah cache miss jadi database spike. Solusi di Go adalah menekan panggilan duplikat dengan [`golang.org/x/sync/singleflight`](https://pkg.go.dev/golang.org/x/sync/singleflight), yang menyediakan `Group.Do`: untuk key yang sama, fungsi dieksekusi sekali dan hasilnya dibagikan ke semua pemanggil konkuren.
+
+```go title="internal/product/singleflight.go"
+import "golang.org/x/sync/singleflight"
+
+var group singleflight.Group
+
+// GetByIDDeduped memastikan hanya satu pengambilan database per key
+// walau banyak request miss bersamaan.
+func (s *Service) GetByIDDeduped(ctx context.Context, id int64) (Product, error) {
+	key := productKey(id)
+	v, err, _ := group.Do(key, func() (any, error) {
+		return s.GetByIDResilient(ctx, id)
+	})
+	if err != nil {
+		return Product{}, err
+	}
+	return v.(Product), nil
+}
+```
+
+Selain singleflight, teknik pelengkap adalah memberi jitter (sedikit variasi acak) pada TTL agar banyak key tidak kedaluwarsa di detik yang sama, dan pola stale-while-revalidate yang menyajikan data lama sebentar sambil menyegarkan di latar.
+
+### Redis Streams dan consumer group
+
+Stream adalah log append-only untuk event processing. Berbeda dari Pub/Sub, pesan di Stream dipersistensi dan mendukung at-least-once, sehingga cocok untuk event-driven backend dan worker. Consumer group memungkinkan banyak worker membagi beban membaca event yang sama, dengan pending messages dan acknowledgement agar tidak ada event yang hilang. Ini adalah pintu masuk ke materi scaling berikutnya.
+
+<Box variant="note" icon="🧩" label="Ke mana setelah ini"><p>Topik di atas membawa kamu ke caching strategy lanjutan (stampede, stale-while-revalidate), arsitektur worker (Streams + consumer group), dan event-driven backend. Semuanya adalah fondasi untuk backend high-traffic yang men-scale, di luar cakupan course pengantar ini.</p></Box>
+
+</Section>
+
+<Section num="15" id="ringkasan" title="Ringkasan & Poin Penting" sub="Pakai Redis di tempat yang benar, bukan di mana-mana">
+
+<p class="lead">Seluruh materi bermuara pada satu prinsip: pakai Redis di tempat yang benar, bukan di mana-mana. Redis adalah tool performa dan state sementara, bukan pengganti desain database yang benar.</p>
+
+Mari petakan ke empat flow nyata online shop. Pada detail produk, cache-aside dengan TTL dan delete-on-write membuat database tidak menjadi titik panas. Pada login, rate limit `INCR`+`EXPIRE` melindungi dari brute force, dan session disimpan di Redis dengan TTL alami. Pada checkout, Redis boleh membatasi laju, tetapi pengurangan stok dan pembuatan order tetap transaksi PostgreSQL. Pada admin update product, tulis ke PostgreSQL dulu lalu hapus `product:{id}` agar pembaca berikutnya mendapat data segar.
+
+```mermaid
+flowchart TD
+  PD["Detail produk"] --> CA["cache-aside + TTL + delete-on-write"]
+  LG["Login"] --> RT["rate limit + session store"]
+  CO["Checkout"] --> TX["rate limit di Redis, stok & order di PostgreSQL"]
+  AU["Admin update product"] --> INV["tulis DB dulu, lalu DEL cache"]
+```
+
+<p class="fig-cap"><b>Gambar 12.</b> Empat flow, satu prinsip: Redis mempercepat dan menyimpan sementara; PostgreSQL menjaga kebenaran.</p>
+
+<Recap title="Yang Wajib Menempel"><ul><li>Redis adalah memory layer untuk cache, session, rate limit, dan data sementara, bukan sumber kebenaran data bisnis.</li><li>Model intinya key + value + TTL; pilih tipe data (String, Hash, List, Set, Sorted Set, Stream) dari operasi yang dibutuhkan.</li><li>Client resmi `github.com/redis/go-redis/v9` (v9.20.1) memakai `context.Context` sebagai parameter pertama; `redis.Nil` berarti cache miss, bukan error.</li><li>Cache-aside: cek Redis dulu, miss baru ke PostgreSQL, lalu isi cache best-effort tanpa menggagalkan request.</li><li>Desain key konsisten (env, versi, entitas, id/hash) menentukan kemudahan invalidasi; versi key adalah tombol panic.</li><li>TTL untuk data yang boleh telat; delete-on-write untuk kesegaran segera, selalu tulis database dulu baru hapus cache.</li><li>Jangan cache stok, status order, status payment, cart aktif, dan data privat sebagai kebenaran.</li><li>`INCR`+`EXPIRE` yang atomic untuk rate limit; session dan token blacklist memakai TTL alami Redis.</li><li>Atomicity Redis terbatas: command tunggal atomic, `TxPipelined` untuk MULTI/EXEC, `Watch` untuk optimistic transaction yang di-retry saat `redis.TxFailedErr`.</li><li>Redis boleh gagal: timeout pendek + fallback database menjadikannya akselerator, bukan single point of failure; pantau hit rate, latency, memori, eviction, dan slowlog.</li></ul></Recap>
+
+Langkah berikutnya menuju backend high-traffic adalah memperdalam caching strategy (stampede protection, stale-while-revalidate), membangun worker dan event-driven flow dengan Redis Streams, serta merancang observability yang matang. Tetapi prinsip yang kamu pegang di sini tidak berubah: tempatkan Redis di tempat yang benar, jaga PostgreSQL tetap menjadi sumber kebenaran, dan biarkan kecepatan datang dari desain yang disiplin, bukan dari cache yang dipasang di mana-mana.
+
+</Section>

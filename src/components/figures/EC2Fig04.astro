@@ -1,0 +1,37 @@
+<svg viewBox="0 0 760 384" xmlns="http://www.w3.org/2000/svg" font-family="Inter, ui-sans-serif, system-ui, sans-serif">
+  <text x="380" y="34" text-anchor="middle" font-size="20" fill="#241f17" font-weight="700">Nasib Data: EBS vs Instance Store</text>
+  <text x="380" y="56" text-anchor="middle" font-size="12" fill="#6e6a5c">Apa yang terjadi pada data saat instance Stop, Hibernate, atau Terminate</text>
+
+  <rect x="36" y="78" width="688" height="40" rx="10" fill="#f0e3d8" stroke="#d9d4c4" stroke-width="1.5" />
+  <text x="150" y="103" text-anchor="middle" font-size="13" fill="#241f17" font-weight="700">Aksi</text>
+  <text x="390" y="103" text-anchor="middle" font-size="13" fill="#0a7d6e" font-weight="700">EBS (block persisten)</text>
+  <text x="618" y="103" text-anchor="middle" font-size="13" fill="#bd5d3e" font-weight="700">Instance Store (lokal)</text>
+  <line x1="276" y1="78" x2="276" y2="358" stroke="#d9d4c4" stroke-width="1.5" />
+  <line x1="504" y1="78" x2="504" y2="358" stroke="#d9d4c4" stroke-width="1.5" />
+
+  <rect x="48" y="130" width="216" height="64" rx="10" fill="#9c4a2f" />
+  <text x="150" y="158" text-anchor="middle" font-size="14" fill="#fbfaf5" font-weight="700">STOP</text>
+  <text x="150" y="178" text-anchor="middle" font-size="10.5" fill="#edeadf">EBS-backed &middot; tanpa biaya instance</text>
+  <rect x="292" y="138" width="196" height="48" rx="9" fill="#0a7d6e" />
+  <text x="390" y="167" text-anchor="middle" font-size="12.5" fill="#fbfaf5" font-weight="700">Data tetap ada</text>
+  <rect x="520" y="138" width="192" height="48" rx="9" fill="#bd5d3e" />
+  <text x="616" y="167" text-anchor="middle" font-size="12.5" fill="#fbfaf5" font-weight="700">Hilang</text>
+
+  <rect x="48" y="206" width="216" height="64" rx="10" fill="#22201a" />
+  <text x="150" y="234" text-anchor="middle" font-size="14" fill="#fbfaf5" font-weight="700">HIBERNATE</text>
+  <text x="150" y="254" text-anchor="middle" font-size="10.5" fill="#edeadf">RAM ke EBS &middot; bayar saat stopping</text>
+  <rect x="292" y="214" width="196" height="48" rx="9" fill="#0a7d6e" />
+  <text x="390" y="237" text-anchor="middle" font-size="12.5" fill="#fbfaf5" font-weight="700">Data + RAM tetap</text>
+  <text x="390" y="253" text-anchor="middle" font-size="10" fill="#edeadf">IP privat &amp; instance ID dijaga</text>
+  <rect x="520" y="214" width="192" height="48" rx="9" fill="#bd5d3e" />
+  <text x="616" y="243" text-anchor="middle" font-size="12.5" fill="#fbfaf5" font-weight="700">Hilang</text>
+
+  <rect x="48" y="282" width="216" height="64" rx="10" fill="#c14a39" />
+  <text x="150" y="310" text-anchor="middle" font-size="14" fill="#fbfaf5" font-weight="700">TERMINATE</text>
+  <text x="150" y="330" text-anchor="middle" font-size="10.5" fill="#f7e6df">instance dihapus permanen</text>
+  <rect x="292" y="290" width="196" height="48" rx="9" fill="#9c4a2f" />
+  <text x="390" y="313" text-anchor="middle" font-size="12" fill="#fbfaf5" font-weight="700">Root volume dihapus*</text>
+  <text x="390" y="329" text-anchor="middle" font-size="10" fill="#bd5d3e">*data volume default dijaga</text>
+  <rect x="520" y="290" width="192" height="48" rx="9" fill="#bd5d3e" />
+  <text x="616" y="319" text-anchor="middle" font-size="12.5" fill="#fbfaf5" font-weight="700">Hilang</text>
+</svg>

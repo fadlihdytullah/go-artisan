@@ -1,0 +1,372 @@
+---
+title: "Modul Cloud Computing - AWS Cloud Practitioner CLF-C02"
+badge: "CC"
+topTitle: "Cloud Computing"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Fondasi cloud computing: traditional IT vs cloud, model layanan, deployment model, global infrastructure, shared responsibility, ekonomi cloud, dan cara menjelaskannya ke siapa pun."
+order: 1
+target: "CLF-C02"
+readingTime: "~85 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa Cloud Computing Penting?" }
+  - { num: "02", id: "tradisional-vs-cloud", title: "Traditional IT vs Cloud" }
+  - { num: "03", id: "definisi-cloud-computing", title: "Definisi Cloud Computing" }
+  - { num: "04", id: "enam-keuntungan-cloud", title: "Enam Keuntungan Cloud" }
+  - { num: "05", id: "tipe-cloud-computing", title: "Tipe Layanan: IaaS, PaaS, SaaS" }
+  - { num: "06", id: "deployment-model", title: "Deployment Model: Public, Private, Hybrid" }
+  - { num: "07", id: "global-infrastructure", title: "AWS Global Infrastructure" }
+  - { num: "08", id: "aws-cloud-overview", title: "AWS Cloud Overview" }
+  - { num: "09", id: "console-dan-layanan", title: "Console, CLI, SDK & Keamanan Akun" }
+  - { num: "10", id: "shared-responsibility", title: "Shared Responsibility Model" }
+  - { num: "11", id: "acceptable-use-policy", title: "AWS Acceptable Use Policy" }
+  - { num: "12", id: "cloud-economics", title: "Ekonomi Cloud & Tiga Dasar Biaya" }
+  - { num: "13", id: "stakeholder-non-teknis", title: "Menjelaskan Cloud ke Stakeholder" }
+  - { num: "14", id: "hands-on-konseptual", title: "Hands-on Konseptual" }
+  - { num: "15", id: "kesalahan-dan-jebakan", title: "Kesalahan Umum & Jebakan Ujian" }
+  - { num: "16", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul Cloud Computing - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import CloudComputingFig01 from "@figures/CloudComputingFig01.astro";
+import CloudComputingFig02 from "@figures/CloudComputingFig02.astro";
+import CloudComputingFig03 from "@figures/CloudComputingFig03.astro";
+import CloudComputingFig04 from "@figures/CloudComputingFig04.astro";
+import CloudComputingFig05 from "@figures/CloudComputingFig05.astro";
+import CloudComputingFig06 from "@figures/CloudComputingFig06.astro";
+
+<Hero eyebrow="Modul &middot; Cloud Concepts" title="Cloud Computing<br /><em>CLF-C02</em>">
+  <p>Bayangkan AWS Cloud seperti gedung serbaguna modern: kamu menyewa ruang, listrik, keamanan, dan fasilitas sesuai kebutuhan, bukan membangun gedung dari nol.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~85 menit baca</Chip>
+    <Chip icon="book">Domain 1 &middot; 24%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa Cloud Computing Penting?" sub="Mulai dari analogi sederhana sebelum masuk istilah teknis.">
+
+<p class="lead">Di dunia tradisional, perusahaan membeli server seperti membeli dapur restoran lengkap sebelum tahu berapa pelanggan yang datang.</p>
+
+Cloud computing mengubah cara berpikir itu. Daripada membeli server, menyiapkan ruang data center, memasang pendingin, menjaga listrik cadangan, lalu menunggu berhari-hari untuk menambah kapasitas, perusahaan bisa memakai sumber daya IT melalui internet saat dibutuhkan. AWS mendefinisikan cloud computing sebagai pengiriman sumber daya IT sesuai permintaan melalui internet dengan model pembayaran sesuai pemakaian, termasuk compute, database, storage, aplikasi, dan sumber daya lain. Lihat sumber resmi: <a href="https://docs.aws.amazon.com/whitepapers/latest/aws-overview/what-is-cloud-computing.html">AWS Overview, What is cloud computing</a>.
+
+<Box variant="analogy" icon="🏢" label="Analogi gedung serbaguna"><p>Traditional IT seperti membangun gedung sendiri; cloud seperti menyewa ruang kerja yang bisa diperbesar, diperkecil, dan dibayar sesuai pemakaian. Listrik, lift, dan keamanan gedung sudah diurus pengelola, kamu fokus pada pekerjaanmu.</p></Box>
+
+Kenapa ini penting untukmu? Karena hampir semua hal di AWS bertumpu pada satu ide besar: sumber daya IT menjadi layanan yang bisa dinyalakan, dimatikan, diperbesar, dan dibayar per pemakaian. Begitu kamu paham pergeseran cara pikir ini, layanan AWS yang ratusan jumlahnya menjadi jauh lebih mudah dipahami.
+
+Untuk CLF-C02, topik ini adalah pintu masuk Domain 1, Cloud Concepts (24% soal). Namun efeknya menyebar ke semua domain: keamanan dibahas lewat shared responsibility (Domain 2), teknologi dibahas lewat layanan AWS (Domain 3), dan biaya dibahas lewat pay-as-you-go (Domain 4).
+
+<Box variant="tip" icon="🧭" label="Cara membaca modul ini"><p>Setiap section dimulai dari analogi, lalu definisi, lalu contoh nyata, lalu jebakan ujian. Jika satu istilah terasa asing, lanjutkan dulu; biasanya analogi di awal section berikutnya akan menyambungnya.</p></Box>
+
+</Section>
+
+<Section num="02" id="tradisional-vs-cloud" title="Traditional IT vs Cloud" sub="Apa yang berubah saat perusahaan pindah dari ruang server sendiri ke cloud?">
+
+<p class="lead">Traditional IT membuat kapasitas seperti keputusan besar di awal, sedangkan cloud membuat kapasitas seperti keran air yang bisa dibuka sesuai kebutuhan.</p>
+
+Pada traditional IT, tim harus memperkirakan kebutuhan server jauh sebelum aplikasi berjalan. Jika prediksi terlalu kecil, aplikasi lambat saat ramai dan pelanggan kabur. Jika prediksi terlalu besar, banyak server menganggur tetapi tetap menelan biaya. Selain itu, perusahaan harus mengurus pembelian hardware, instalasi rak, listrik, pendingin, jaringan, kontrak data center, penggantian disk, dan siklus refresh hardware setiap beberapa tahun.
+
+Di cloud, sebagian besar pekerjaan fisik berpindah ke penyedia cloud. Kamu tetap merancang aplikasi, mengatur akses, memilih layanan, dan mengelola data, tetapi tidak perlu membeli server fisik sendiri. Perubahan utamanya bukan sekadar "server pindah tempat", melainkan cara kerja bisnis: lebih cepat mencoba ide, lebih mudah skala, dan lebih jelas melihat biaya per penggunaan.
+
+<Figure><CloudComputingFig01 /><Fragment slot="caption"><b>Gambar 1.</b> Pergeseran pola pikir dari membeli kapasitas tetap di awal ke memakai kapasitas elastis sesuai kebutuhan.</Fragment></Figure>
+
+<h3>CapEx vs OpEx</h3>
+
+Pergeseran ini sering diringkas sebagai perpindahan dari <em class="term">capital expenditure</em> (CapEx) ke <em class="term">operational expenditure</em> (OpEx). CapEx adalah belanja modal besar di muka untuk aset yang dipakai bertahun-tahun, misalnya membeli server dan membangun data center. OpEx adalah biaya operasional yang muncul mengikuti pemakaian, misalnya tagihan AWS bulanan. Soal CLF-C02 senang menguji perbedaan ini.
+
+<Compare aLabel="Traditional IT &middot; CapEx" bLabel="Cloud &middot; OpEx" aTone="muted" bTone="blue">
+  <Fragment slot="a"><ul><li>Modal besar di awal sebelum nilai bisnis terbukti.</li><li>Provisioning lambat, hitungan minggu sampai bulan.</li><li>Kapasitas sering overprovision atau underprovision.</li><li>Tim sibuk merawat hardware, listrik, dan pendingin.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Bayar mengikuti pemakaian, tanpa modal awal besar.</li><li>Provisioning cepat, hitungan menit lewat console atau API.</li><li>Kapasitas naik turun mengikuti permintaan nyata.</li><li>Pekerjaan fisik dasar ditangani penyedia cloud.</li></ul></Fragment>
+</Compare>
+
+<Box variant="warn" icon="⚠️" label="Jangan salah kaprah"><p>Cloud bukan berarti tidak ada server; server tetap ada, tetapi kamu tidak mengelola hardware fisiknya secara langsung. Cloud juga tidak otomatis lebih murah; murah hanya jika kamu mematikan resource yang tidak dipakai dan memilih ukuran yang tepat.</p></Box>
+
+</Section>
+
+<Section num="03" id="definisi-cloud-computing" title="Definisi Cloud Computing" sub="Definisi singkat yang aman untuk ujian dan mudah dijelaskan.">
+
+<p class="lead">Cloud computing adalah cara memakai sumber daya IT sebagai layanan, bukan sebagai aset fisik yang harus dibeli dan dirawat sendiri.</p>
+
+Definisi praktisnya: cloud computing menyediakan compute, storage, database, jaringan, analitik, machine learning, dan layanan IT lain melalui internet, tersedia sesuai permintaan, dan dibayar sesuai penggunaan. AWS memakai konsep <em class="term">pay-as-you-go</em>, yang berarti kamu membayar sumber daya yang kamu pakai, bukan membeli semua kapasitas di awal.
+
+Ada tiga kata kunci yang sering muncul di soal CLF-C02. Pertama, **on-demand**, sumber daya tersedia saat dibutuhkan tanpa antre pengadaan. Kedua, **elastic**, kapasitas bisa otomatis bertambah saat ramai dan berkurang saat sepi. Ketiga, **pay-as-you-go**, biaya mengikuti konsumsi. Ketiganya adalah dasar untuk memahami mengapa cloud membantu kecepatan, efisiensi biaya, dan inovasi.
+
+<h3>Bedakan elasticity dan scalability</h3>
+
+Dua istilah ini sering tertukar. <em class="term">Scalability</em> adalah kemampuan menambah kapasitas untuk menampung beban yang lebih besar, biasanya direncanakan. <em class="term">Elasticity</em> lebih spesifik: kapasitas menyesuaikan diri otomatis, naik dan turun mengikuti permintaan saat itu juga. Cloud unggul karena menyediakan keduanya, terutama elasticity yang sulit ditiru data center sendiri.
+
+<Box variant="exam" icon="🎯" label="Bahasa ujian"><p>Jika soal menanyakan manfaat dasar cloud, cari jawaban seperti agility, elasticity, pay-as-you-go, economies of scale, dan tidak perlu mengelola data center fisik. Kata "automatically scale up and down" hampir selalu mengarah ke elasticity.</p></Box>
+
+<h3>Contoh nyata</h3>
+
+Sebuah toko online biasanya sepi pada hari biasa, tetapi ramai saat kampanye 11.11. Dengan traditional IT, toko itu harus membeli server untuk puncak trafik meskipun hanya dipakai beberapa hari, lalu menanggung server menganggur sepanjang tahun. Dengan cloud, kapasitas dapat dinaikkan otomatis saat kampanye dan diturunkan setelahnya, sehingga biaya mengikuti kebutuhan nyata.
+
+</Section>
+
+<Section num="04" id="enam-keuntungan-cloud" title="Enam Keuntungan Cloud" sub="AWS sering menjelaskan manfaat cloud lewat enam keuntungan inti.">
+
+<p class="lead">Enam keuntungan cloud terasa seperti daftar hafalan, tetapi sebenarnya logis jika dilihat dari sisi bisnis.</p>
+
+AWS Overview menjelaskan enam keuntungan cloud computing dengan kalimat yang konsisten dari tahun ke tahun. Mengenali frasa aslinya membantu karena soal ujian sering memakai parafrase yang mirip. Lihat sumber resmi: <a href="https://docs.aws.amazon.com/whitepapers/latest/aws-overview/six-advantages-of-cloud-computing.html">AWS Overview, Six advantages of cloud computing</a>.
+
+<CardGrid cols={3}>
+  <Card><h4>1. Trade fixed expense for variable expense</h4><p>Tukar biaya tetap besar di awal menjadi biaya variabel; bayar hanya saat memakai sumber daya komputasi.</p></Card>
+  <Card><h4>2. Benefit from massive economies of scale</h4><p>Pemakaian ratusan ribu pelanggan digabung, sehingga AWS mencapai skala ekonomi dan harga pay-as-you-go lebih rendah.</p></Card>
+  <Card><h4>3. Stop guessing capacity</h4><p>Berhenti menebak kapasitas; akses sebanyak atau sesedikit yang dibutuhkan dan skala dalam hitungan menit.</p></Card>
+  <Card><h4>4. Increase speed and agility</h4><p>Sumber daya baru hanya sejauh satu klik, sehingga waktu menyiapkannya turun dari minggu menjadi menit.</p></Card>
+  <Card><h4>5. Stop spending money running data centers</h4><p>Berhenti menghabiskan uang menjalankan data center; fokus pada proyek yang membedakan bisnis, bukan racking dan stacking server.</p></Card>
+  <Card><h4>6. Go global in minutes</h4><p>Sebar aplikasi ke banyak Region dunia dengan beberapa klik untuk latensi rendah dan pengalaman lebih baik bagi pengguna.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Cara mengingat"><p>Pakai rumus cerita: biaya lebih fleksibel, skala lebih murah, berhenti menebak, lebih gesit, lepas dari beban data center, dan mendunia cepat. Tiga keuntungan pertama berbicara tentang uang, tiga terakhir tentang kecepatan dan jangkauan.</p></Box>
+
+</Section>
+
+<Section num="05" id="tipe-cloud-computing" title="Tipe Layanan: IaaS, PaaS, SaaS" sub="Tiga tipe layanan membedakan siapa mengelola apa.">
+
+<p class="lead">Anggap layanan cloud seperti pilihan cara makan: masak sendiri dari bahan mentah, pakai dapur siap pakai, atau langsung beli makanan jadi.</p>
+
+AWS menjelaskan tiga tipe umum cloud computing: Infrastructure as a Service, Platform as a Service, dan Software as a Service. Setiap tipe memberi tingkat kontrol, fleksibilitas, dan tanggung jawab manajemen yang berbeda. Semakin ke kiri (IaaS) semakin banyak yang kamu kelola; semakin ke kanan (SaaS) semakin banyak yang dikelola penyedia. Lihat sumber resmi: <a href="https://aws.amazon.com/types-of-cloud-computing/">AWS, Types of cloud computing</a>.
+
+<Figure><CloudComputingFig02 /><Fragment slot="caption"><b>Gambar 2.</b> Tumpukan tanggung jawab pada IaaS, PaaS, dan SaaS. Bagian oranye dikelola pelanggan, bagian biru dikelola penyedia layanan.</Fragment></Figure>
+
+<CardGrid cols={3}>
+  <Card><h4>IaaS</h4><p>Building block dasar cloud: jaringan, komputer virtual atau dedicated, dan storage. Kontrol dan fleksibilitas paling tinggi; contoh model ini adalah Amazon EC2.</p></Card>
+  <Card><h4>PaaS</h4><p>Penyedia mengurus hardware dan sistem operasi, kamu fokus pada deploy dan kelola aplikasi tanpa pusing procurement, capacity planning, atau patching dasar.</p></Card>
+  <Card><h4>SaaS</h4><p>Aplikasi jadi yang dijalankan dan dikelola penuh oleh penyedia. Contoh klasik adalah email berbasis web; kamu cukup memakai, tanpa mengurus server.</p></Card>
+</CardGrid>
+
+<h3>Analogi dapur</h3>
+
+IaaS seperti menyewa dapur lengkap, kamu menentukan resep, bahan, dan cara masak. PaaS seperti memakai dapur yang sudah disiapkan dengan banyak alat otomatis, kamu fokus pada menu. SaaS seperti membeli makanan siap santap, kamu fokus pada hasil akhir, bukan cara memasaknya. Trade-off-nya jelas: makin praktis, makin sedikit kontrol detail.
+
+<Box variant="exam" icon="🎯" label="Jebakan CLF-C02"><p>Soal sering menguji tingkat kontrol: IaaS memberi kontrol paling besar, SaaS memberi kemudahan paling besar, PaaS berada di tengah. Jika soal menyebut "fokus pada aplikasi tanpa mengelola OS", jawabannya cenderung PaaS. Jika menyebut "tinggal pakai lewat browser", cenderung SaaS.</p></Box>
+
+</Section>
+
+<Section num="06" id="deployment-model" title="Deployment Model: Public, Private, Hybrid" sub="Deployment model menjawab: cloud ini dijalankan di mana dan untuk siapa?">
+
+<p class="lead">Jika tipe layanan menjawab "berapa banyak yang dikelola penyedia", deployment model menjawab "di lingkungan seperti apa beban kerja berjalan".</p>
+
+<em class="term">Public cloud</em> adalah layanan cloud yang tersedia melalui penyedia seperti AWS, dengan infrastruktur dikelola penyedia dan digunakan banyak pelanggan secara terisolasi. <em class="term">Private cloud</em> adalah lingkungan cloud yang didedikasikan untuk satu organisasi, biasanya karena kebutuhan kontrol atau aturan tertentu. <em class="term">Hybrid cloud</em> menggabungkan lingkungan on-premises dan cloud sehingga beban kerja atau data dapat berjalan di keduanya.
+
+AWS sendiri sering memakai istilah deployment yang berbeda tetapi sejalan: <b>cloud</b> (aplikasi sepenuhnya berjalan di cloud), <b>hybrid</b> (menghubungkan resource cloud dengan resource yang masih di luar cloud), dan <b>on-premises</b> (memakai virtualisasi di data center sendiri, mirip private cloud). Lihat sumber resmi: <a href="https://aws.amazon.com/types-of-cloud-computing/">AWS, Types of cloud computing</a>.
+
+<Figure><CloudComputingFig04 /><Fragment slot="caption"><b>Gambar 3.</b> Spektrum deployment dari on-premises penuh, hybrid sebagai jembatan, hingga public cloud yang dipakai banyak pelanggan.</Fragment></Figure>
+
+<CardGrid cols={3}>
+  <Card><h4>Public cloud</h4><p>Cocok untuk skalabilitas cepat, layanan luas, dan model biaya berbasis pemakaian. Tidak perlu mengurus data center sendiri.</p></Card>
+  <Card><h4>Private cloud / on-premises</h4><p>Cocok ketika organisasi butuh lingkungan khusus dengan kontrol internal ketat, misalnya karena regulasi atau data sensitif.</p></Card>
+  <Card><h4>Hybrid cloud</h4><p>Cocok saat sebagian sistem masih on-premises tetapi sebagian lain mulai memakai cloud, atau saat migrasi dilakukan bertahap.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Contoh hybrid"><p>Bank menyimpan sebagian sistem inti lama di data center sendiri karena regulasi, tetapi memakai AWS untuk analitik, backup, disaster recovery, atau aplikasi digital baru. AWS Outposts dan Storage Gateway adalah contoh layanan yang membantu pola hybrid ini.</p></Box>
+
+</Section>
+
+<Section num="07" id="global-infrastructure" title="AWS Global Infrastructure" sub="Region, Availability Zone, dan Edge Location: tulang punggung 'go global in minutes'.">
+
+<p class="lead">Bayangkan AWS sebagai jaringan kota data di seluruh dunia: setiap kota (Region) punya beberapa gedung terpisah (Availability Zone), ditambah banyak pos kecil dekat pengguna (Edge Location).</p>
+
+AWS Global Infrastructure adalah cara AWS mewujudkan janji "go global in minutes". Topik ini termasuk Domain 3 dan sering muncul di ujian, jadi pahami hierarkinya dengan baik. Per 2026, AWS mengoperasikan sekitar <b>39 Region</b>, <b>123 Availability Zone</b>, lebih dari <b>750 titik edge CloudFront</b>, serta puluhan Local Zone dan Wavelength Zone, dengan rencana penambahan Region baru. Angka ini terus bertambah, jadi rujuk sumber resmi untuk data terbaru. Lihat: <a href="https://aws.amazon.com/about-aws/global-infrastructure/">AWS Global Infrastructure</a>.
+
+<Figure><CloudComputingFig05 /><Fragment slot="caption"><b>Gambar 4.</b> Satu Region berisi beberapa Availability Zone yang terpisah fisik namun terhubung latensi rendah; edge location mendekatkan konten ke pengguna.</Fragment></Figure>
+
+<CardGrid cols={2}>
+  <Card><h4>Region</h4><p>Area geografis (misalnya Singapore atau Jakarta) yang berisi beberapa Availability Zone. Kamu memilih Region berdasarkan latensi ke pengguna, kepatuhan data, ketersediaan layanan, dan harga.</p></Card>
+  <Card><h4>Availability Zone (AZ)</h4><p>Satu atau lebih data center independen dengan listrik, pendingin, dan jaringan terpisah. Tiap Region punya minimal tiga AZ agar aplikasi tahan terhadap kegagalan satu lokasi.</p></Card>
+  <Card><h4>Edge Location</h4><p>Titik kehadiran (Points of Presence) untuk Amazon CloudFront dan layanan tepi. Konten di-cache dekat pengguna sehingga unduhan lebih cepat dan latensi lebih rendah.</p></Card>
+  <Card><h4>Local Zone & Wavelength</h4><p>Perpanjangan infrastruktur lebih dekat ke kota besar atau jaringan 5G, untuk aplikasi yang butuh latensi sangat rendah seperti game atau media real time.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Fokus ujian"><p>Hafalkan hierarki: Region berisi banyak AZ, AZ berisi satu atau lebih data center, edge location bukan AZ. Menyebar aplikasi ke beberapa AZ disebut high availability; menyebar ke beberapa Region biasanya untuk disaster recovery atau kepatuhan data.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Region itu pilihan sadar"><p>Banyak layanan bersifat regional: resource yang kamu buat di satu Region tidak otomatis ada di Region lain. Salah memilih Region bisa berdampak pada latensi, biaya, dan kepatuhan data. Sebagian layanan seperti IAM bersifat global.</p></Box>
+
+</Section>
+
+<Section num="08" id="aws-cloud-overview" title="AWS Cloud Overview" sub="AWS adalah kumpulan layanan cloud, bukan satu layanan tunggal.">
+
+<p class="lead">AWS lebih mirip kota teknologi lengkap daripada satu gedung server.</p>
+
+AWS menyediakan layanan untuk compute, storage, database, networking, security, analytics, machine learning, developer tools, migration, dan banyak kategori lain. Untuk CLF-C02, kamu tidak perlu menguasai semua layanan sedalam arsitek, tetapi perlu tahu fungsi utama, kapan dipakai, dan perbedaan layanan yang sering dibandingkan. Daftar layanan dalam cakupan CLF-C02 bersifat non-exhaustive dan dapat berubah, sehingga rujukan resmi tetap penting. Lihat sumber resmi: <a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/clf-02-in-scope-services.html">AWS CLF-C02, In-Scope AWS Services</a>.
+
+<h3>Komponen besar yang perlu dikenali</h3>
+
+<CardGrid cols={3}>
+  <Card><h4>Compute</h4><p>Menjalankan kode atau aplikasi, misalnya Amazon EC2 (server virtual), AWS Lambda (serverless), dan container seperti ECS atau EKS.</p></Card>
+  <Card><h4>Storage</h4><p>Menyimpan data sebagai objek, file, atau block, misalnya Amazon S3 (objek), EBS (block), dan EFS (file).</p></Card>
+  <Card><h4>Database</h4><p>Mengelola data terstruktur atau khusus, misalnya Amazon RDS (relasional), DynamoDB (NoSQL), dan Redshift (data warehouse).</p></Card>
+  <Card><h4>Networking</h4><p>Menghubungkan resource dan pengguna, misalnya Amazon VPC (jaringan privat), Route 53 (DNS), dan CloudFront (CDN).</p></Card>
+  <Card><h4>Security</h4><p>Mengelola identitas, enkripsi, deteksi, dan kepatuhan, misalnya IAM, KMS, GuardDuty, dan AWS Artifact.</p></Card>
+  <Card><h4>Billing & Support</h4><p>Mengontrol biaya, anggaran, laporan, dan dukungan, misalnya AWS Budgets, Cost Explorer, dan AWS Support.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Fokus ujian"><p>Untuk Cloud Practitioner, hafalkan tujuan layanan dan skenario pemilihan, bukan konfigurasi mendalam seperti detail subnet route table atau tuning database. Pola soal: "layanan apa yang paling tepat untuk kebutuhan X".</p></Box>
+
+</Section>
+
+<Section num="09" id="console-dan-layanan" title="Console, CLI, SDK & Keamanan Akun" sub="Banyak cara mengakses AWS, dan keamanan akun adalah langkah pertama.">
+
+<p class="lead">AWS Management Console seperti dashboard kendaraan: kamu bisa melihat status, menyalakan fitur, dan mengatur banyak hal tanpa menulis kode.</p>
+
+AWS Management Console membantu pemula mengenali layanan, Region, billing, identitas, dan resource secara visual. Namun console bukan satu-satunya cara mengelola AWS. Ada AWS CLI untuk perintah terminal, SDK untuk kode aplikasi dalam berbagai bahasa, API untuk otomasi, dan infrastructure as code seperti AWS CloudFormation untuk membuat resource secara konsisten dan berulang.
+
+<Steps>
+  <Step><b>Masuk ke AWS Management Console</b><p>Perhatikan kotak pencarian layanan, region selector di kanan atas, menu account, dan notifikasi billing.</p></Step>
+  <Step><b>Kenali cara akses lain</b><p>Console untuk eksplorasi, CLI untuk otomasi cepat, SDK untuk aplikasi, dan CloudFormation untuk membuat infrastruktur dari template.</p></Step>
+  <Step><b>Perhatikan region</b><p>Resource regional seperti EC2 bergantung Region yang aktif, sedangkan layanan seperti IAM bersifat global.</p></Step>
+  <Step><b>Jangan asal membuat resource berbayar</b><p>Untuk belajar awal, baca halaman layanan, pricing, dan free tier sebelum menekan tombol create.</p></Step>
+</Steps>
+
+<h3>Amankan akun sejak menit pertama</h3>
+
+Saat membuat akun, kamu mendapat <em class="term">root user</em> dengan akses penuh. Root user terlalu kuat untuk dipakai harian. Praktik yang aman: aktifkan MFA pada root user, simpan kredensialnya, lalu buat identitas terpisah untuk aktivitas sehari-hari lewat IAM atau AWS IAM Identity Center.
+
+<Box variant="warn" icon="⚠️" label="Keamanan akun belajar"><p>Aktifkan MFA pada root user, hindari memakai root untuk tugas harian, buat user atau role administratif terpisah, dan pasang AWS Budgets agar eksperimen tidak berubah menjadi tagihan tak terduga.</p></Box>
+
+</Section>
+
+<Section num="10" id="shared-responsibility" title="Shared Responsibility Model" sub="AWS mengamankan cloud, pelanggan mengamankan apa yang dibuat di dalam cloud.">
+
+<p class="lead">Bayangkan apartemen: pengelola gedung menjaga fondasi, lift, gerbang, dan keamanan fisik; penghuni tetap mengunci pintu unit dan menjaga barangnya sendiri.</p>
+
+AWS menyatakan security dan compliance adalah tanggung jawab bersama antara AWS dan pelanggan. AWS bertanggung jawab atas security **of** the cloud, yaitu infrastruktur yang menjalankan layanan AWS: fasilitas data center, hardware, software dasar, networking fisik, host operating system, dan lapisan virtualisasi. Pelanggan bertanggung jawab atas security **in** the cloud: data pelanggan, konfigurasi akses, identitas, sistem operasi guest pada layanan tertentu, konfigurasi jaringan, dan enkripsi. Lihat sumber resmi: <a href="https://aws.amazon.com/compliance/shared-responsibility-model/">AWS Shared Responsibility Model</a>.
+
+<Figure><CloudComputingFig03 /><Fragment slot="caption"><b>Gambar 5.</b> AWS menjaga fondasi cloud (security of the cloud), pelanggan menjaga konfigurasi, identitas, dan data (security in the cloud).</Fragment></Figure>
+
+<Compare aLabel="AWS &middot; Security OF the cloud" bLabel="Pelanggan &middot; Security IN the cloud" aTone="blue" bTone="violet">
+  <Fragment slot="a"><ul><li>Fasilitas dan keamanan fisik data center.</li><li>Hardware dan jaringan fisik.</li><li>Host operating system dan lapisan virtualisasi.</li><li>Fondasi software yang menjalankan layanan AWS.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Data, klasifikasi, dan enkripsi yang dipilih.</li><li>Identitas, IAM, dan konfigurasi akses.</li><li>Guest OS dan patching pada layanan seperti EC2.</li><li>Konfigurasi jaringan dan firewall (security group).</li></ul></Fragment>
+</Compare>
+
+<h3>Garis tanggung jawab bergeser per layanan</h3>
+
+Pembagian ini tidak kaku; ia bergeser sesuai jenis layanan. Pada EC2 (lebih dekat IaaS), pelanggan mengelola guest OS, patching, dan aplikasi. Pada layanan terkelola seperti S3 atau DynamoDB, AWS menangani lebih banyak lapisan sehingga pelanggan fokus pada data, policy, dan konfigurasi akses. AWS juga menyebut tiga kategori kontrol: <b>inherited controls</b> (sepenuhnya diwarisi dari AWS, seperti kontrol fisik), <b>shared controls</b> (dibagi, seperti patch management dan awareness training), dan <b>customer-specific controls</b> (sepenuhnya milik pelanggan).
+
+<Box variant="exam" icon="🎯" label="Jebakan ujian"><p>Tanggung jawab pelanggan berubah sesuai layanan. Patokan cepat: apa pun tentang data, identitas, akses, dan konfigurasi hampir selalu tanggung jawab pelanggan; apa pun tentang fisik, hardware, dan virtualisasi adalah tanggung jawab AWS.</p></Box>
+
+</Section>
+
+<Section num="11" id="acceptable-use-policy" title="AWS Acceptable Use Policy" sub="Cloud memberi fleksibilitas besar, tetapi ada batas penggunaan yang harus dipatuhi.">
+
+<p class="lead">Menyewa gedung serbaguna bukan berarti bebas melakukan apa pun di dalamnya; ada aturan keselamatan dan penggunaan yang berlaku.</p>
+
+AWS Acceptable Use Policy menjelaskan penggunaan yang dilarang pada layanan AWS. Kategori utamanya mencakup aktivitas ilegal atau menipu, melanggar hak orang lain, mendorong kekerasan atau terorisme, konten eksploitasi anak, melanggar keamanan atau ketersediaan sistem dan jaringan, serta mengirim spam atau pesan massal tanpa izin. Untuk CLF-C02, kamu tidak perlu menghafal seluruh teks kebijakan, tetapi perlu paham bahwa pelanggan bertanggung jawab menggunakan layanan secara aman, legal, dan sesuai aturan. Lihat sumber resmi: <a href="https://aws.amazon.com/aup/">AWS Acceptable Use Policy</a>.
+
+<Box variant="tip" icon="💡" label="Cara berpikir"><p>Shared Responsibility Model menjawab "siapa menjaga apa"; Acceptable Use Policy menjawab "apa yang tidak boleh dilakukan di platform". Keduanya bagian dari tanggung jawab pelanggan untuk memakai cloud dengan benar.</p></Box>
+
+</Section>
+
+<Section num="12" id="cloud-economics" title="Ekonomi Cloud & Tiga Dasar Biaya" sub="Memahami dari mana tagihan AWS berasal, dan bagaimana menjaganya tetap rendah.">
+
+<p class="lead">Cloud memberi alat hemat biaya yang ampuh, tetapi tagihan tetap bisa membengkak jika kamu tidak tahu dari mana angkanya berasal.</p>
+
+Secara umum, biaya AWS bertumpu pada tiga dasar: <b>compute</b> (membayar saat resource hidup, per jam atau per detik), <b>storage</b> (membayar data yang disimpan, biasanya per GB per bulan), dan <b>data transfer</b> (data masuk umumnya gratis, sedangkan data keluar dari AWS biasanya dibayar). Memahami tiga sumber ini membuat estimasi biaya jauh lebih intuitif.
+
+<Figure><CloudComputingFig06 /><Fragment slot="caption"><b>Gambar 6.</b> Tiga dasar biaya cloud: compute saat resource hidup, storage per GB, dan data transfer yang dibebankan saat data keluar.</Fragment></Figure>
+
+<h3>AWS Free Tier 2026</h3>
+
+AWS Free Tier membantu belajar tanpa biaya, tetapi modelnya berubah. Untuk akun baru yang dibuat sejak <b>15 Juli 2025</b>, AWS menawarkan free account plan: sekitar <b>100 USD kredit saat mendaftar</b> dan tambahan hingga <b>100 USD</b> bila memakai layanan tertentu seperti EC2, RDS, Lambda, Amazon Bedrock, dan AWS Budgets, sehingga total hingga sekitar <b>200 USD</b>. Plan ini berlaku <b>6 bulan</b> atau sampai kredit habis, dan tidak menimbulkan tagihan sampai kamu memilih upgrade ke paid plan. Akun yang dibuat sebelum 15 Juli 2025 tetap di program legacy: 12-bulan gratis, layanan always free, dan short-term trials. Lihat sumber resmi: <a href="https://aws.amazon.com/free/">AWS Free Tier</a>.
+
+<CardGrid cols={3}>
+  <Card><h4>AWS Pricing Calculator</h4><p>Estimasi biaya sebelum membuat resource, berguna untuk merencanakan anggaran proyek.</p></Card>
+  <Card><h4>AWS Budgets</h4><p>Tetapkan batas biaya atau penggunaan dan dapatkan peringatan saat mendekati ambang, sehingga tidak ada kejutan tagihan.</p></Card>
+  <Card><h4>AWS Cost Explorer</h4><p>Visualisasikan dan analisis pengeluaran historis untuk menemukan layanan paling boros dan peluang penghematan.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Fokus ujian"><p>Kaitkan alat ke tugasnya: Pricing Calculator untuk estimasi sebelum pakai, Budgets untuk peringatan saat memakai, Cost Explorer untuk analisis setelah pakai. Inti pay-as-you-go: matikan resource yang tidak dipakai untuk berhenti membayar.</p></Box>
+
+</Section>
+
+<Section num="13" id="stakeholder-non-teknis" title="Menjelaskan Cloud ke Stakeholder" sub="Cloud bukan hanya topik teknis, tetapi juga topik bisnis.">
+
+<p class="lead">Untuk stakeholder non-teknis, jangan mulai dari subnet, instance type, atau enkripsi; mulai dari hasil bisnis.</p>
+
+Penjelasan yang mudah diterima biasanya menjawab tiga pertanyaan: apa masalahnya, apa perubahan cara kerjanya, dan apa dampaknya ke bisnis. Misalnya, "Dengan cloud, tim tidak perlu membeli server berbulan-bulan sebelum peluncuran. Kita bisa mulai kecil, mengukur pemakaian, lalu memperbesar kapasitas saat pelanggan bertambah." Bahasa seperti ini menghubungkan teknologi dengan keputusan bisnis.
+
+<CardGrid cols={2}>
+  <Card><h4>Bahasa teknis</h4><p>EC2 Auto Scaling menambah instance ketika metrik CloudWatch melewati threshold tertentu.</p></Card>
+  <Card><h4>Bahasa stakeholder</h4><p>Sistem otomatis menambah kapasitas saat ramai agar pelanggan tetap bisa bertransaksi tanpa gangguan.</p></Card>
+  <Card><h4>Bahasa teknis</h4><p>S3 menyimpan object dengan bucket policy, encryption setting, dan lifecycle rule.</p></Card>
+  <Card><h4>Bahasa stakeholder</h4><p>Dokumen dan aset digital tersimpan aman, tahan lama, dan biayanya dikelola sesuai umur data.</p></Card>
+</CardGrid>
+
+<Box variant="analogy" icon="🧭" label="Rumus menjelaskan"><p>Mulai dari analogi, lanjutkan definisi satu kalimat, beri contoh bisnis, lalu tutup dengan risiko dan tanggung jawab. Pola yang sama dipakai modul ini di setiap section.</p></Box>
+
+</Section>
+
+<Section num="14" id="hands-on-konseptual" title="Hands-on Konseptual" sub="Latihan ringan tanpa harus membuat resource berbayar.">
+
+<p class="lead">Hands-on pertama tidak harus langsung deploy aplikasi; tujuan awalnya adalah mengenali pola berpikir cloud.</p>
+
+<Steps>
+  <Step><b>Buka daftar layanan AWS</b><p>Kelompokkan layanan yang kamu lihat ke compute, storage, database, networking, security, dan billing.</p></Step>
+  <Step><b>Ambil satu skenario</b><p>Contoh: toko online butuh website, penyimpanan gambar, database pesanan, login admin, monitoring, dan perkiraan biaya.</p></Step>
+  <Step><b>Pilih layanan tingkat tinggi</b><p>Website memakai compute, gambar memakai storage objek, data pesanan memakai database, akses admin memakai IAM.</p></Step>
+  <Step><b>Tandai tanggung jawab</b><p>Untuk tiap layanan, tulis mana yang dikelola AWS (security of) dan mana yang tetap milik pelanggan (security in).</p></Step>
+  <Step><b>Cek risiko biaya</b><p>Tulis resource yang bisa menimbulkan biaya jika lupa dimatikan, lalu rencanakan AWS Budgets untuk memantaunya.</p></Step>
+</Steps>
+
+<Box variant="tip" icon="💡" label="Latihan aman"><p>Untuk pemula, mulai dari membaca console, dokumentasi, dan pricing page sebelum membuat resource nyata. Saat siap mencoba, pilih layanan free tier dan matikan resource setelah selesai.</p></Box>
+
+</Section>
+
+<Section num="15" id="kesalahan-dan-jebakan" title="Kesalahan Umum & Jebakan Ujian" sub="Kesalahan pemula biasanya muncul dari menyederhanakan cloud terlalu jauh.">
+
+<p class="lead">Cloud memang menyederhanakan banyak hal, tetapi bukan berarti semua tanggung jawab hilang.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Mengira cloud selalu lebih murah</h4><p>Cloud memberi alat untuk hemat biaya, tetapi biaya tetap bisa membengkak jika resource tidak dipantau, overprovisioned, atau salah arsitektur.</p></Card>
+  <Card><h4>Mengira AWS mengamankan semua hal</h4><p>AWS menjaga infrastruktur cloud, tetapi pelanggan tetap menjaga data, akses, konfigurasi, dan penggunaan layanan.</p></Card>
+  <Card><h4>Menghafal layanan tanpa skenario</h4><p>CLF-C02 sering menanyakan layanan mana yang cocok untuk kebutuhan tertentu, bukan sekadar definisi satu kata.</p></Card>
+  <Card><h4>Menyamakan region dan layanan global</h4><p>Banyak resource bersifat regional, tetapi beberapa layanan seperti IAM punya cakupan global; ini sering muncul di pembahasan awal AWS.</p></Card>
+  <Card><h4>Tertukar IaaS, PaaS, SaaS</h4><p>Kunci pembeda adalah siapa mengelola OS dan platform. Baca kata kunci soal: "mengelola OS sendiri" mengarah ke IaaS, "tinggal pakai" ke SaaS.</p></Card>
+  <Card><h4>Mencampur availability dan durability</h4><p>Availability soal seberapa sering layanan bisa diakses; durability soal seberapa aman data dari kehilangan. Keduanya berbeda dan sering ditanyakan terpisah.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Pola soal"><p>Jika soal menyebut "mengurangi pengelolaan data center", "kapasitas sesuai permintaan", atau "biaya mengikuti pemakaian", biasanya jawabannya mengarah ke manfaat cloud. Waspadai jawaban yang terdengar benar tetapi keliru menempatkan tanggung jawab keamanan.</p></Box>
+
+</Section>
+
+<Section num="16" id="ringkasan" title="Ringkasan & Tips Ujian" sub="Peta cepat untuk mengunci konsep Chapter 01.">
+
+<p class="lead">Cloud computing adalah fondasi cara berpikir AWS: sewa kemampuan IT sesuai kebutuhan, bukan membeli semua infrastruktur di awal.</p>
+
+<Recap title="Poin Penting">
+<ul>
+  <li>Cloud computing menyediakan sumber daya IT on-demand melalui internet dengan model pay-as-you-go.</li>
+  <li>Traditional IT (CapEx) menuntut pembelian kapasitas fisik; cloud (OpEx) memberi elasticity dan agility.</li>
+  <li>Enam keuntungan cloud: biaya variabel, skala ekonomi, berhenti menebak kapasitas, lebih gesit, lepas dari beban data center, dan mendunia dalam menit.</li>
+  <li>IaaS, PaaS, dan SaaS membedakan tingkat kontrol dan tanggung jawab pengelolaan.</li>
+  <li>Public, private, dan hybrid cloud membedakan di mana dan untuk siapa beban kerja berjalan.</li>
+  <li>Global Infrastructure: Region berisi banyak Availability Zone; edge location mendekatkan konten ke pengguna.</li>
+  <li>Shared Responsibility Model: AWS atas security of the cloud, pelanggan atas security in the cloud.</li>
+  <li>Biaya bertumpu pada compute, storage, dan data transfer; Free Tier 2026 untuk akun baru berbasis kredit selama 6 bulan.</li>
+</ul>
+</Recap>
+
+<h3>Pemetaan ke domain CLF-C02</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr><th>Domain</th><th>Bobot</th><th>Kaitannya dengan modul ini</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Domain 1, Cloud Concepts</td><td>24%</td><td>Definisi cloud, enam keuntungan, model layanan, deployment model, dan ekonomi cloud.</td></tr>
+    <tr><td>Domain 2, Security and Compliance</td><td>30%</td><td>Shared Responsibility Model, keamanan akun awal, dan Acceptable Use Policy.</td></tr>
+    <tr><td>Domain 3, Cloud Technology and Services</td><td>34%</td><td>Global Infrastructure, kategori layanan AWS, dan cara akses console, CLI, SDK, serta IaC.</td></tr>
+    <tr><td>Domain 4, Billing, Pricing, and Support</td><td>12%</td><td>Pay-as-you-go, tiga dasar biaya, Free Tier, Pricing Calculator, Budgets, dan Cost Explorer.</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Fakta ujian yang perlu diingat</h3>
+
+CLF-C02 berisi 65 soal (50 dinilai, 15 tidak dinilai), berdurasi 90 menit, dengan skor skala 100 sampai 1000 dan nilai lulus 700. Biaya ujian sekitar 100 USD. Lihat sumber resmi: <a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html">AWS Certified Cloud Practitioner CLF-C02 Exam Guide</a>.
+
+<Box variant="exam" icon="🎯" label="Tips ujian terakhir"><p>Untuk Chapter 01, jangan terlalu dalam ke konfigurasi; kuasai bahasa manfaat, tanggung jawab keamanan, model layanan, hierarki infrastruktur, dan alasan bisnis memakai cloud.</p></Box>
+
+</Section>

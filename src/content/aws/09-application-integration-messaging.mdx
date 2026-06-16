@@ -1,0 +1,426 @@
+---
+title: "Modul Application Integration & Messaging - AWS Cloud Practitioner CLF-C02"
+badge: "INT"
+topTitle: "Application Integration & Messaging"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Belajar memilih SQS, SNS, EventBridge, Step Functions, dan API Gateway untuk komunikasi antar aplikasi di AWS."
+order: 9
+target: "CLF-C02"
+readingTime: "~75 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa Aplikasi Perlu Integrasi?" }
+  - { num: "02", id: "konsep-decoupling", title: "Decoupling, Messaging, dan Event" }
+  - { num: "03", id: "peta-layanan", title: "Peta Layanan Integrasi AWS" }
+  - { num: "04", id: "amazon-sqs", title: "Amazon SQS: Antrean Kerja" }
+  - { num: "05", id: "amazon-sns", title: "Amazon SNS: Pengumuman ke Banyak Tujuan" }
+  - { num: "06", id: "amazon-eventbridge", title: "Amazon EventBridge: Jalur Event" }
+  - { num: "07", id: "aws-step-functions", title: "AWS Step Functions: Workflow Bertahap" }
+  - { num: "08", id: "amazon-api-gateway", title: "Amazon API Gateway: Pintu Depan API" }
+  - { num: "09", id: "pola-arsitektur", title: "Pola Arsitektur yang Sering Muncul" }
+  - { num: "10", id: "keamanan-operasional", title: "Keamanan, Monitoring, dan Keandalan" }
+  - { num: "11", id: "hands-on-konseptual", title: "Hands-on Konseptual" }
+  - { num: "12", id: "kesalahan-jebakan", title: "Kesalahan Umum dan Jebakan Soal" }
+  - { num: "13", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul Application Integration & Messaging - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import IntegrationMessagingFig01 from "@figures/IntegrationMessagingFig01.astro";
+import IntegrationMessagingFig02 from "@figures/IntegrationMessagingFig02.astro";
+import IntegrationMessagingFig03 from "@figures/IntegrationMessagingFig03.astro";
+import IntegrationMessagingFig04 from "@figures/IntegrationMessagingFig04.astro";
+import IntegrationMessagingFig05 from "@figures/IntegrationMessagingFig05.astro";
+import IntegrationMessagingFig06 from "@figures/IntegrationMessagingFig06.astro";
+import IntegrationMessagingFig07 from "@figures/IntegrationMessagingFig07.astro";
+
+<Hero eyebrow="Modul &middot; Application Integration" title="Application Integration<br /><em>&amp; Messaging</em>">
+  <p>Bayangkan aplikasi modern seperti tim restoran besar, pesanan, dapur, kasir, kurir, dan notifikasi harus saling bicara tanpa saling menunggu terus-menerus.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~75 menit baca</Chip>
+    <Chip icon="book">Domain 3 &middot; 34%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa Aplikasi Perlu Integrasi?" sub="Analogi restoran: pesanan masuk, dapur bekerja, kasir mencatat, kurir mengantar, pelanggan menerima kabar.">
+
+<p class="lead">Semakin banyak bagian aplikasi, semakin penting cara mereka berkomunikasi.</p>
+
+Dalam aplikasi kecil, satu program bisa menerima request, memproses pembayaran, mengirim email, memperbarui stok, dan menulis laporan sekaligus. Ini seperti satu orang yang menjadi kasir, koki, pelayan, dan kurir. Awalnya cepat, tetapi ketika pesanan ramai, semua pekerjaan ikut macet.
+
+Application integration membantu aplikasi dipecah menjadi bagian-bagian yang bisa bekerja sendiri, tetapi tetap terhubung. Di AWS, bagian ini biasanya dihubungkan dengan **antrean**, **topik publikasi**, **event bus**, **workflow**, atau **API**. Modul ini fokus pada layanan yang paling relevan untuk CLF-C02, yaitu [Amazon SQS](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html), [Amazon SNS](https://docs.aws.amazon.com/sns/latest/dg/welcome.html), [Amazon EventBridge](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html), [AWS Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html), dan [Amazon API Gateway](https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html).
+
+<Box variant="analogy" icon="🍽️" label="Analogi cepat"><p>SQS seperti rak pesanan dapur, SNS seperti pengeras suara untuk banyak petugas, EventBridge seperti petugas routing yang membaca jenis kejadian, Step Functions seperti checklist SOP, dan API Gateway seperti resepsionis pintu depan.</p></Box>
+
+Untuk ujian, target utamanya bukan menghafal semua konfigurasi detail. Targetnya adalah menjawab, "layanan mana yang paling tepat untuk pola komunikasi ini?" Begitu kamu memetakan tiap layanan ke satu kata kerja inti (terima, antre, siarkan, rute, orkestrasi), pilihan ganda yang tadinya membingungkan menjadi jauh lebih mudah dieliminasi.
+
+Menurut [Exam Guide CLF-C02](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html), topik integrasi aplikasi terutama masuk Domain 3 (Cloud Technology and Services, bobot 34%), tetapi juga menyentuh Domain 2 (akses aman, enkripsi, audit) dan Domain 4 (model pay-per-request dan free tier). Catatan scope penting yang sering keliru: di exam guide, kategori resmi Application Integration hanya berisi SQS, SNS, EventBridge, dan Step Functions. API Gateway sebenarnya ada di kategori Networking and Content Delivery, dan AppSync di kategori Frontend Web and Mobile. Modul ini tetap membahas API Gateway karena pola "pintu depan API" sangat sering muncul bersama layanan integrasi, tetapi ingat letak kategorinya.
+
+</Section>
+
+<Section num="02" id="konsep-decoupling" title="Decoupling, Messaging, dan Event" sub="Fondasi yang membuat SQS, SNS, EventBridge, dan Step Functions terasa masuk akal.">
+
+<p class="lead">Decoupling berarti komponen tidak saling menggenggam terlalu erat.</p>
+
+Jika layanan pembayaran langsung memanggil layanan email dan email sedang error, pembayaran bisa ikut lambat. Dengan decoupling, pembayaran cukup menaruh pesan "kirim email tanda terima" ke layanan perantara. Email boleh memproses beberapa detik kemudian tanpa membuat pembayaran gagal. Inilah inti loose coupling: kegagalan satu komponen tidak langsung menyeret komponen lain ikut jatuh.
+
+<CardGrid cols={3}>
+  <Card><h4>Synchronous</h4><p>Pengirim menunggu jawaban saat itu juga, seperti pelanggan bertanya harga ke kasir.</p></Card>
+  <Card><h4>Asynchronous</h4><p>Pengirim menitipkan pesan lalu lanjut bekerja, seperti pelanggan mengambil nomor antrean.</p></Card>
+  <Card><h4>Event-driven</h4><p>Sistem bereaksi terhadap kejadian, seperti "order dibuat" memicu stok, email, dan laporan.</p></Card>
+</CardGrid>
+
+Dalam CLF-C02, kata kunci yang sering mengarah ke integrasi aplikasi adalah **loosely coupled**, **message queue**, **publish-subscribe**, **event-driven**, **workflow orchestration**, **API front door**, **fanout**, dan **asynchronous processing**.
+
+<Figure><IntegrationMessagingFig02 /><Fragment slot="caption"><b>Gambar 1.</b> Panduan mental cepat: setiap kata kunci skenario mengarah ke satu layanan integrasi yang paling cocok.</Fragment></Figure>
+
+<Box variant="exam" icon="🎯" label="Bahasa soal ujian"><p>Jika soal berkata "komponen harus tetap berjalan walau komponen lain sibuk", pikirkan decoupling. Jika soal berkata "satu event harus memicu banyak target", pikirkan SNS atau EventBridge.</p></Box>
+
+<h3>Pesan vs event</h3>
+
+Pesan biasanya adalah instruksi atau data yang harus diproses, misalnya "proses order 123". Event biasanya adalah fakta bahwa sesuatu sudah terjadi, misalnya "order 123 dibuat". Perbedaannya halus, tetapi penting. SQS sangat kuat untuk antrean pekerjaan, SNS kuat untuk menyebarkan pesan ke banyak subscriber, EventBridge kuat untuk merutekan event berdasarkan pola, dan Step Functions kuat untuk mengatur urutan langkah.
+
+<Box variant="analogy" icon="📮" label="Pesan vs event"><p>Pesan seperti memo tugas di meja rekan kerja ("tolong kerjakan ini"), event seperti pengumuman di grup ("acara sudah dimulai"). Memo ditujukan ke satu pelaksana, pengumuman boleh ditanggapi siapa pun yang berkepentingan.</p></Box>
+
+</Section>
+
+<Section num="03" id="peta-layanan" title="Peta Layanan Integrasi AWS" sub="Lihat dulu gambaran besarnya sebelum masuk satu per satu.">
+
+<p class="lead">Setiap layanan punya peran, jangan dipaksa menyelesaikan semua masalah dengan satu layanan.</p>
+
+<Figure><IntegrationMessagingFig01 /><Fragment slot="caption"><b>Gambar 2.</b> Gambaran umum cara API, queue, pub/sub, event bus, dan workflow saling melengkapi dalam aplikasi modern.</Fragment></Figure>
+
+<CardGrid cols={2}>
+  <Card><h4>Amazon SQS</h4><p>Antrean pesan untuk memisahkan producer dan consumer, cocok untuk job background, buffering, dan beban yang naik turun.</p></Card>
+  <Card><h4>Amazon SNS</h4><p>Layanan publish-subscribe untuk menyebarkan satu pesan ke banyak subscriber, cocok untuk fanout dan notifikasi.</p></Card>
+  <Card><h4>Amazon EventBridge</h4><p>Event bus serverless untuk merutekan event dari aplikasi, layanan AWS, atau SaaS ke target berdasarkan rule.</p></Card>
+  <Card><h4>AWS Step Functions</h4><p>Workflow visual untuk mengatur langkah-langkah proses, retry, percabangan, dan orkestrasi layanan.</p></Card>
+  <Card><h4>Amazon API Gateway</h4><p>Pintu depan API untuk membuat, memublikasikan, memantau, dan mengamankan HTTP, REST, atau WebSocket API. Catatan: di exam guide ada di kategori Networking, bukan Application Integration.</p></Card>
+  <Card><h4>Layanan terkait (kenali saja)</h4><p>Kenali nama AWS AppSync (in-scope, kategori Frontend), Amazon MQ, dan Amazon AppFlow. Penting: Amazon MQ, AppFlow, dan Amazon SWF BUKAN in-scope CLF-C02, jadi kalau muncul sebagai opsi jawaban integrasi biasanya distractor.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Cara mengingat"><p>Queue menahan pekerjaan, topic menyiarkan, event bus memilah kejadian, workflow mengatur langkah, API Gateway menerima request dari luar.</p></Box>
+
+<Figure><IntegrationMessagingFig07 /><Fragment slot="caption"><b>Gambar 3.</b> Peta scope CLF-C02: hanya SQS, SNS, EventBridge, dan Step Functions yang masuk kategori Application Integration resmi, sementara API Gateway dan AppSync ada di kategori lain dan Amazon MQ, AppFlow, serta SWF tidak in-scope.</Fragment></Figure>
+
+<Box variant="exam" icon="🗂️" label="Jebakan kategori"><p>Amazon MQ relevan hanya saat soal menyebut migrasi message broker existing seperti ActiveMQ atau RabbitMQ (lift-and-shift JMS, AMQP, MQTT). Tetap di luar in-scope CLF-C02, jadi jangan menghafalnya sebagai jawaban integrasi default.</p></Box>
+
+</Section>
+
+<Section num="04" id="amazon-sqs" title="Amazon SQS: Antrean Kerja" sub="Untuk pekerjaan yang boleh diproses nanti, tidak harus langsung selesai di depan pengguna.">
+
+<p class="lead">Amazon SQS adalah rak antrean, producer menaruh pekerjaan, consumer mengambil pekerjaan saat siap.</p>
+
+[Amazon Simple Queue Service](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html) adalah layanan message queue terkelola yang membantu memisahkan sistem terdistribusi. Producer mengirim pesan ke queue. Consumer membaca, memproses, lalu menghapus pesan. Jika consumer sedang sibuk, pesan tetap menunggu di queue.
+
+<Steps>
+  <Step><b>Producer mengirim pesan</b><p>Aplikasi order menaruh pesan "proses pembayaran" atau "buat thumbnail gambar" ke queue.</p></Step>
+  <Step><b>SQS menyimpan pesan</b><p>Queue menjadi buffer agar lonjakan request tidak langsung membanjiri worker.</p></Step>
+  <Step><b>Consumer mengambil pesan</b><p>Worker, Lambda, atau aplikasi backend memproses pesan sesuai kapasitasnya.</p></Step>
+  <Step><b>Pesan dihapus setelah sukses</b><p>Jika consumer gagal menghapus pesan, pesan bisa terlihat lagi setelah visibility timeout.</p></Step>
+</Steps>
+
+<Figure><IntegrationMessagingFig04 /><Fragment slot="caption"><b>Gambar 4.</b> SQS bersifat pull-based: satu pesan diproses satu consumer dari pool worker, sementara SNS bersifat push-based dan menyalin satu pesan ke banyak subscriber.</Fragment></Figure>
+
+<h3>Standard Queue vs FIFO Queue</h3>
+
+SQS Standard cocok untuk proses seperti resize gambar, kirim log, atau sinkronisasi inventori yang toleran terhadap urutan. SQS FIFO cocok untuk proses seperti transaksi rekening, urutan status order, atau operasi yang tidak boleh tertukar.
+
+<Compare aLabel="Standard Queue &middot; throughput tinggi" bLabel="FIFO Queue &middot; urutan terjaga" aTone="blue" bTone="violet" vs="vs">
+  <Fragment slot="a"><ul><li>At-least-once delivery: pesan bisa terkirim lebih dari sekali, jadi consumer harus idempotent.</li><li>Best-effort ordering: urutan tidak dijamin sempurna.</li><li>Throughput hampir tak terbatas, cocok untuk volume sangat tinggi.</li><li>Pilih saat urutan dan duplikasi tidak kritis: resize gambar, log, notifikasi.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Exactly-once processing: tidak ada duplikat dalam window deduplikasi.</li><li>First-in-first-out: urutan pesan dijaga ketat.</li><li>Throughput lebih rendah (default sekitar 300 TPS, lebih tinggi dengan high-throughput mode; cek dokumentasi karena angka per region).</li><li>Pilih hanya saat order atau dedup penting: transaksi keuangan, urutan status.</li></ul></Fragment>
+</Compare>
+
+<Box variant="warn" icon="⚠️" label="Jebakan pemula"><p>At-least-once berarti consumer harus idempotent, karena pesan bisa saja diproses lebih dari sekali pada kondisi tertentu. Jangan memilih FIFO hanya karena terdengar lebih rapi, FIFO menukar throughput demi urutan dan dedup.</p></Box>
+
+<h3>Istilah SQS yang perlu dikenal</h3>
+
+- **Visibility timeout**: periode ketika pesan yang sedang diproses disembunyikan dari consumer lain. Default 30 detik, minimum 0 detik, maksimum 12 jam. Catatan halus: batas 12 jam dihitung sejak pesan pertama kali diterima dan tidak ter-reset saat kamu meng-extend timeout.
+- **Message retention**: lamanya pesan bertahan di queue sebelum kedaluwarsa. Default 4 hari, minimum 60 detik, maksimum 14 hari.
+- **Long polling**: consumer menunggu sampai ada pesan (maksimum 20 detik) agar empty response berkurang dan biaya turun. Short polling adalah default untuk queue baru. Jangan tertukar: long polling maksimum 20 detik, visibility timeout maksimum 12 jam.
+- **Max message size**: kini 1 MiB (1.048.576 byte) untuk Standard dan FIFO, naik dari 256 KiB sejak Agustus 2025. Untuk payload lebih besar pakai Extended Client Library + Amazon S3 (hingga 2 GB).
+- **In-flight messages**: pesan yang sedang diproses tetapi belum dihapus, dibatasi sekitar 120.000 untuk Standard maupun FIFO (limit FIFO dinaikkan dari 20.000 ke 120.000 pada 2024). Jika tercapai, SQS mengembalikan error OverLimit.
+- **Dead-letter queue (DLQ)**: queue khusus untuk pesan yang gagal diproses berulang kali, agar tidak mengganggu pesan sehat. DLQ adalah pola lintas layanan: SNS, Lambda, dan EventBridge juga bisa mengirim pesan gagal ke SQS sebagai DLQ.
+
+<Box variant="tip" icon="💰" label="Free tier SQS"><p>SQS punya free tier always-free: 1 juta request SQS gratis tiap bulan (bukan hanya 12 bulan pertama). Tiap chunk 64 KB payload dihitung sebagai 1 request, jadi pesan besar bisa memakai beberapa request. Lihat [pricing SQS](https://aws.amazon.com/sqs/pricing/) untuk angka terbaru.</p></Box>
+
+<Box variant="exam" icon="🧠" label="Tips CLF-C02"><p>Jika soal menyebut "decouple microservices", "buffer workload", "process later", "background job", atau "worker mengambil pesan", jawaban kuat biasanya Amazon SQS. Ingat juga angka aman: visibility timeout maksimum 12 jam, long polling maksimum 20 detik, retention default 4 hari (maksimum 14 hari), max size 1 MiB. Angka bisa berubah, tetap cek dokumentasi resmi.</p></Box>
+
+</Section>
+
+<Section num="05" id="amazon-sns" title="Amazon SNS: Pengumuman ke Banyak Tujuan" sub="Untuk satu pesan yang perlu disebarkan ke banyak penerima sekaligus.">
+
+<p class="lead">Amazon SNS seperti papan pengumuman, publisher menempel pesan, subscriber yang terdaftar menerima salinannya.</p>
+
+[Amazon Simple Notification Service](https://docs.aws.amazon.com/sns/latest/dg/welcome.html) adalah layanan publish-subscribe. Aplikasi mengirim pesan ke **topic**, lalu SNS mengirim pesan tersebut ke subscriber seperti SQS queue, AWS Lambda, endpoint HTTP/S, email, SMS, atau layanan lain sesuai dukungan region dan konfigurasi.
+
+<CardGrid cols={2}>
+  <Card><h4>Topic</h4><p>Tempat publisher mengirim pesan, seperti kanal pengumuman "OrderCreated".</p></Card>
+  <Card><h4>Subscriber</h4><p>Penerima pesan dari topic, misalnya queue billing, queue analytics, dan fungsi notifikasi.</p></Card>
+  <Card><h4>Fanout</h4><p>Satu pesan disalin ke banyak tujuan, sehingga tiap tim bisa memproses tanpa saling mengganggu.</p></Card>
+  <Card><h4>Filtering</h4><p>Subscriber dapat menerima pesan tertentu saja berdasarkan atribut, sehingga pengiriman lebih relevan.</p></Card>
+</CardGrid>
+
+<h3>Contoh nyata fanout</h3>
+
+Sebuah aplikasi toko online membuat event "order selesai dibayar". SNS topic menerima pesan tersebut. Queue gudang menerima untuk proses packing, fungsi notifikasi menerima untuk kirim email, queue analitik menerima untuk laporan penjualan. Satu kejadian bisnis menyebar ke banyak proses tanpa order service harus mengenal semua penerima.
+
+<Figure><IntegrationMessagingFig05 /><Fragment slot="caption"><b>Gambar 5.</b> Pola fanout klasik: satu SNS topic menyebar ke beberapa SQS queue (gudang, analitik, notifikasi) yang masing-masing punya consumer dan ritme sendiri, dengan DLQ menampung pesan yang gagal.</Fragment></Figure>
+
+<h3>SNS Standard topic vs FIFO topic</h3>
+
+Seperti SQS, SNS juga punya dua tipe topic. Standard topic mengutamakan throughput tinggi dengan best-effort ordering, sedangkan FIFO topic menjaga urutan dan menghindari duplikat. Pola yang sering dipakai untuk fanout yang tetap berurutan adalah SNS FIFO topic &rarr; SQS FIFO queue, sehingga banyak consumer tetap menerima pesan dalam urutan yang benar.
+
+<h3>Catatan ukuran pesan dan biaya</h3>
+
+Max message size SNS adalah 256 KB. Ini berbeda dari SQS yang naik ke 1 MiB pada Agustus 2025; SNS tidak ikut naik, jadi jangan asumsikan keduanya sama besar. Untuk payload lebih dari 256 KB pakai Extended Client Library + Amazon S3 (hingga 2 GB).
+
+<Box variant="tip" icon="💰" label="Free tier SNS"><p>SNS punya free tier always-free per bulan: 1 juta SNS request, 100.000 HTTP/S deliveries, 1.000 email deliveries, dan 1 juta mobile push notifications. SMS ditagih terpisah. Lihat [pricing SNS](https://aws.amazon.com/sns/pricing/) untuk angka terbaru.</p></Box>
+
+<Box variant="tip" icon="📣" label="Kapan memilih SNS"><p>Pilih SNS saat satu publisher perlu mengirim pesan ke banyak subscriber, terutama pola fanout SNS ke beberapa SQS queue, atau notifikasi via email, SMS, dan mobile push.</p></Box>
+
+<Box variant="exam" icon="🎯" label="Jebakan CLF-C02"><p>Jika soal hanya butuh antrean satu consumer group, SQS lebih tepat (pull). Jika soal butuh broadcast ke banyak subscriber, SNS lebih tepat (push). Ingat: SNS push-based, SQS pull-based, dan ukuran pesan SNS tetap 256 KB.</p></Box>
+
+</Section>
+
+<Section num="06" id="amazon-eventbridge" title="Amazon EventBridge: Jalur Event" sub="Untuk merutekan event dari banyak sumber ke target yang tepat berdasarkan pola.">
+
+<p class="lead">EventBridge seperti petugas sortir paket, ia membaca label event lalu mengirim ke tujuan yang cocok.</p>
+
+[Amazon EventBridge](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html) adalah event bus serverless untuk membangun aplikasi event-driven. Event dapat berasal dari aplikasi sendiri, layanan AWS, atau aplikasi SaaS partner. EventBridge menggunakan rule dan event pattern untuk menentukan target yang harus menerima event.
+
+<CardGrid cols={2}>
+  <Card><h4>Event</h4><p>Catatan bahwa sesuatu terjadi, misalnya file baru diunggah, pembayaran sukses, atau ticket support dibuat.</p></Card>
+  <Card><h4>Event bus</h4><p>Router yang menerima event dan mengirimnya ke target yang cocok.</p></Card>
+  <Card><h4>Rule</h4><p>Aturan pencocokan event, misalnya hanya event dari sumber tertentu atau tipe tertentu.</p></Card>
+  <Card><h4>Target</h4><p>Tujuan event, misalnya Lambda, SQS, Step Functions, Kinesis, atau target lain yang didukung.</p></Card>
+</CardGrid>
+
+EventBridge sering terlihat mirip SNS karena sama-sama bisa mengirim ke target. Bedanya, SNS sederhana untuk pub/sub dan fanout pesan, sedangkan EventBridge lebih kaya untuk routing event berdasarkan pola, integrasi SaaS, event bus lintas akun, schema registry, dan event-driven architecture yang lebih terstruktur. Catatan sejarah yang berguna untuk ujian: EventBridge adalah evolusi atau rename dari Amazon CloudWatch Events (sejak 2019). API-nya kompatibel, tetapi EventBridge menambah ingestion event dari SaaS partner, schema registry, custom events, Pipes, dan Scheduler. Kata kunci "event dari SaaS atau third-party" kuat mengarah ke EventBridge, bukan CloudWatch Events.
+
+<Box variant="analogy" icon="📦" label="Analogi EventBridge"><p>SNS seperti pengeras suara yang menyiarkan ke semua pendengar terdaftar, EventBridge seperti pusat sortir yang melihat isi label lalu memilih jalur paling cocok.</p></Box>
+
+<Compare aLabel="Amazon SNS &middot; pub/sub sederhana" bLabel="Amazon EventBridge &middot; event routing kaya" aTone="violet" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Fokus pub/sub dan fanout pesan ke subscriber (SQS, Lambda, HTTP/S, email, SMS, push).</li><li>Latensi rendah, throughput tinggi untuk fanout sederhana.</li><li>Tidak membaca event dari SaaS pihak ketiga.</li><li>Pilih saat soal sebut simple pub/sub, high-throughput fanout, atau notifikasi SMS/email/push.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Event bus serverless yang menerima event dari aplikasi sendiri, layanan AWS, dan SaaS partner.</li><li>Routing berdasarkan event pattern yang kaya, plus schema registry dan event bus lintas akun.</li><li>Punya Pipes (point-to-point) dan Scheduler (penjadwalan task).</li><li>Pilih saat soal sebut event dari SaaS/third-party atau route based on event content/pattern.</li></ul></Fragment>
+</Compare>
+
+<h3>EventBridge Pipes dan EventBridge Scheduler</h3>
+
+Selain rule biasa, EventBridge punya dua kemampuan yang sering disebut di materi modern. **EventBridge Pipes** (GA Desember 2022) adalah integrasi point-to-point antara satu producer dan satu consumer, misalnya dari SQS, DynamoDB Streams, atau Kinesis ke target, dengan opsi filter dan enrichment di tengah jalan. Ini berbeda dari rule yang merutekan ke banyak target sekaligus. **EventBridge Scheduler** (diluncurkan November 2022) adalah penjadwal serverless untuk task one-time atau recurring ke ratusan layanan AWS, terpisah dari scheduled events lama berbasis rule.
+
+<h3>Kapan memilih EventBridge</h3>
+
+Pilih EventBridge saat kamu ingin aplikasi bereaksi terhadap event dari banyak sumber, termasuk layanan AWS dan SaaS, dengan aturan routing yang jelas. Contohnya, event "customer updated" dari SaaS CRM masuk ke EventBridge, lalu EventBridge mengirim ke Lambda untuk validasi, Step Functions untuk proses onboarding, dan SQS untuk sinkronisasi data.
+
+<Box variant="tip" icon="💰" label="Biaya EventBridge"><p>Ingestion management events dari layanan AWS ke default event bus gratis. Custom events dan partner/SaaS events ditagih sekitar $1,00 per juta. Pipes sekitar $0,40 per juta request, dan Scheduler sekitar $1,00 per juta invocation setelah free tier 14 juta invocation per bulan. Tiap chunk 64 KB dihitung sebagai 1 event; cek [pricing EventBridge](https://aws.amazon.com/eventbridge/pricing/) untuk angka terbaru.</p></Box>
+
+<Box variant="exam" icon="🎯" label="SNS vs EventBridge"><p>Jika soal sebut "event from SaaS app" atau "route based on event content/pattern", jawabannya EventBridge. Jika soal sebut "simple pub/sub", "high throughput fanout to SQS", atau "SMS/email/mobile push", jawabannya SNS. Jangan tertukar dengan CloudWatch Alarms yang memicu aksi berdasar threshold metrik, bukan merutekan event.</p></Box>
+
+</Section>
+
+<Section num="07" id="aws-step-functions" title="AWS Step Functions: Workflow Bertahap" sub="Untuk proses yang punya urutan, cabang keputusan, retry, dan status yang perlu terlihat.">
+
+<p class="lead">Step Functions seperti checklist SOP, setiap langkah tahu apa yang harus dilakukan berikutnya.</p>
+
+[AWS Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) membantu membuat workflow, disebut **state machine**, untuk membangun aplikasi terdistribusi, mengotomasi proses, dan mengorkestrasi microservices. Ia tidak menggantikan Lambda, SQS, atau API Gateway. Ia mengatur kapan layanan-layanan itu dipanggil dan apa yang terjadi jika sukses atau gagal.
+
+<Steps>
+  <Step><b>Mulai workflow</b><p>Misalnya order baru memulai proses validasi, pembayaran, packing, dan notifikasi.</p></Step>
+  <Step><b>Jalankan task</b><p>Workflow memanggil Lambda, layanan AWS, atau API sesuai desain proses.</p></Step>
+  <Step><b>Ambil keputusan</b><p>Jika pembayaran sukses lanjut packing, jika gagal kirim notifikasi gagal.</p></Step>
+  <Step><b>Tangani error</b><p>Retry dan catch membantu proses tidak langsung berhenti karena gangguan sementara.</p></Step>
+</Steps>
+
+State machine didefinisikan dengan **Amazon States Language (ASL)**, sebuah format JSON yang menggambarkan state, transisi, retry, dan catch. Tipe workflow bersifat immutable setelah dibuat: kamu tidak bisa mengubah Standard menjadi Express tanpa membuat ulang. Untuk Cloud Practitioner kamu tidak perlu menulis ASL, cukup tahu bahwa Step Functions adalah orchestration, bukan messaging.
+
+<h3>Standard vs Express</h3>
+
+<Figure><IntegrationMessagingFig06 /><Fragment slot="caption"><b>Gambar 6.</b> Step Functions Standard vs Express: durasi 1 tahun vs 5 menit, model exactly-once vs at-least/at-most-once, penagihan per state transition vs per eksekusi plus durasi dan memori.</Fragment></Figure>
+
+<Compare aLabel="Standard Workflows" bLabel="Express Workflows" aTone="blue" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Durasi maksimum sampai 1 tahun.</li><li>Model exactly-once, cocok untuk proses non-idempotent (pembayaran, start EMR).</li><li>Riwayat eksekusi tersimpan 90 hari, mudah diaudit.</li><li>Ditagih per state transition.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Durasi maksimum 5 menit, untuk event processing volume tinggi.</li><li>Express Async = at-least-once, Express Sync = at-most-once, jadi cocok untuk aksi idempotent.</li><li>Observability lewat CloudWatch Logs, bukan riwayat 90 hari.</li><li>Ditagih per jumlah eksekusi plus durasi dan memori.</li></ul></Fragment>
+</Compare>
+
+Pembeda exactly-once vs at-least/at-most-once sering jadi penentu: jika setiap langkah harus berjalan tepat sekali (mis. memproses pembayaran), Standard lebih aman. Jika aksi idempotent dan volumenya sangat tinggi, Express lebih hemat dan cepat. Jika soal menggambarkan proses banyak langkah seperti validasi dokumen, approval, pemanggilan beberapa layanan, retry, dan cabang keputusan, Step Functions adalah kandidat kuat.
+
+<Box variant="exam" icon="🎯" label="Kata kunci ujian"><p>"Coordinate components", "visual workflow", "state machine", "multi-step process", "retry", dan "branching logic" sering mengarah ke AWS Step Functions. Bedakan dari SQS yang hanya buffer/antrean: jika soal sebut orkestrasi banyak langkah dengan retry dan percabangan, jawabannya Step Functions, bukan SQS.</p></Box>
+
+</Section>
+
+<Section num="08" id="amazon-api-gateway" title="Amazon API Gateway: Pintu Depan API" sub="Untuk menerima request dari client dan meneruskannya ke backend dengan kontrol keamanan dan operasi.">
+
+<p class="lead">API Gateway seperti resepsionis gedung, ia menerima tamu, mengecek akses, mencatat kunjungan, lalu mengarahkan ke ruangan yang benar.</p>
+
+[Amazon API Gateway](https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html) membantu membuat, memublikasikan, memelihara, memantau, dan mengamankan API pada skala besar. API dapat mengarah ke AWS Lambda, endpoint HTTP, atau layanan AWS lain. Untuk ujian, pahami tiga keluarga utama: **HTTP API**, **REST API**, dan **WebSocket API**.
+
+<CardGrid cols={3}>
+  <Card><h4>HTTP API</h4><p>API ringan untuk banyak skenario modern, sering dipakai dengan Lambda atau backend HTTP.</p></Card>
+  <Card><h4>REST API</h4><p>Fitur API management lebih lengkap, cocok saat butuh kapabilitas REST API yang lebih kaya.</p></Card>
+  <Card><h4>WebSocket API</h4><p>Koneksi dua arah real-time, cocok untuk chat, notifikasi live, dan dashboard interaktif.</p></Card>
+</CardGrid>
+
+API Gateway dapat membantu autentikasi dan otorisasi (IAM, Lambda authorizer, Amazon Cognito), throttling, logging ke CloudWatch dan CloudTrail, monitoring, canary deployment, serta integrasi dengan WAF dan AWS X-Ray. Untuk CLF-C02, ingat fungsinya sebagai **front door** aplikasi, bukan tempat utama menyimpan data atau menjalankan batch job.
+
+<h3>HTTP API vs REST API: kapan pilih mana</h3>
+
+<Compare aLabel="HTTP API &middot; ringan dan murah" bLabel="REST API &middot; fitur penuh" aTone="blue" bTone="violet" vs="vs">
+  <Fragment slot="a"><ul><li>Lebih murah dan latensi lebih rendah.</li><li>Fitur minimal, cocok sebagai proxy ke Lambda atau backend HTTP.</li><li>Pilihan default modern untuk API sederhana.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Fitur API management lengkap: API keys, usage plans, request validation.</li><li>Mendukung edge-optimized dan private endpoint, plus integrasi WAF.</li><li>Pilih saat butuh kontrol dan kapabilitas REST yang kaya.</li></ul></Fragment>
+</Compare>
+
+WebSocket API berbeda dari keduanya: ia stateful dan full-duplex, merutekan pesan berdasarkan isi, cocok untuk chat, dashboard live, dan notifikasi real-time. HTTP dan REST API bersifat stateless.
+
+<Box variant="tip" icon="🚪" label="Kapan memilih API Gateway"><p>Pilih API Gateway saat client eksternal perlu memanggil backend melalui endpoint API yang dikelola, diamankan, dipantau, dan diskalakan. Pola umum decoupling: API Gateway dapat langsung mengirim ke SQS atau Step Functions tanpa Lambda di tengah (service integration), sehingga request berat bisa diantre dan diproses async.</p></Box>
+
+<Box variant="exam" icon="🎯" label="API Gateway vs Load Balancer"><p>API Gateway adalah API management (auth, throttling, versioning, REST/HTTP/WebSocket, integrasi Lambda). Application Load Balancer membagi trafik ke target seperti EC2, ECS, IP, atau Lambda. Jika soal sebut "managed API front door dengan auth dan throttling", jawabannya API Gateway, bukan ALB.</p></Box>
+
+</Section>
+
+<Section num="09" id="pola-arsitektur" title="Pola Arsitektur yang Sering Muncul" sub="Bukan hanya hafal layanan, tetapi paham pola memilihnya.">
+
+<p class="lead">Soal CLF-C02 sering menanyakan pola, bukan nama menu di console.</p>
+
+<Figure><IntegrationMessagingFig03 /><Fragment slot="caption"><b>Gambar 7.</b> Pohon keputusan memilih layanan integrasi: dari "butuh jawaban langsung?" ke API Gateway, "tahan pekerjaan untuk worker?" ke SQS (Standard atau FIFO), "sebar ke banyak tujuan?" ke SNS atau EventBridge, dan "banyak langkah plus retry plus cabang?" ke Step Functions.</Fragment></Figure>
+
+<h3>1. Asynchronous job processing</h3>
+
+Aplikasi menerima upload gambar. Daripada pengguna menunggu proses resize lama, aplikasi menaruh pesan ke SQS. Worker mengambil pesan dan memproses gambar di belakang layar. Ini membuat pengalaman pengguna lebih cepat dan backend lebih tahan terhadap lonjakan.
+
+<h3>2. Fanout dengan SNS ke banyak SQS queue</h3>
+
+Order service publish ke SNS topic "OrderPaid". SNS mengirim salinan ke queue gudang, queue analitik, dan queue notifikasi. Setiap consumer punya ritme sendiri. Jika analitik lambat, gudang tetap bisa bekerja.
+
+<h3>3. Event-driven routing dengan EventBridge</h3>
+
+Aplikasi SaaS mengirim event "lead created" ke EventBridge. Rule pertama mengirim ke Step Functions untuk onboarding, rule kedua mengirim ke SQS untuk sinkronisasi data warehouse, rule ketiga mengirim ke Lambda untuk enrich data.
+
+<h3>4. Workflow approval dengan Step Functions</h3>
+
+Pengajuan refund melewati validasi, cek fraud, approval manager, update database, dan notifikasi pelanggan. Step Functions membuat alur terlihat, bisa diberi retry, dan mudah diaudit secara konseptual.
+
+<h3>5. API front door dengan API Gateway</h3>
+
+Mobile app memanggil endpoint `/orders`. API Gateway menerima request, menerapkan autentikasi, lalu meneruskan ke Lambda atau backend container. Untuk request yang perlu diproses nanti, API Gateway juga dapat menjadi pintu masuk menuju SQS atau Step Functions melalui integrasi yang sesuai.
+
+<Box variant="exam" icon="🧩" label="Cara membaca skenario"><p>Tanyakan dulu "apakah pengirim butuh jawaban langsung, perlu antrean, perlu broadcast, perlu routing event, atau perlu workflow bertahap?"</p></Box>
+
+</Section>
+
+<Section num="10" id="keamanan-operasional" title="Keamanan, Monitoring, dan Keandalan" sub="Domain 2 tetap penting walau topiknya layanan integrasi.">
+
+<p class="lead">Integrasi yang baik bukan hanya tersambung, tetapi juga aman, terlihat, dan tahan gangguan.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>IAM least privilege</h4><p>Berikan izin minimum, misalnya producer hanya boleh mengirim ke queue tertentu dan consumer hanya boleh membaca queue tertentu.</p></Card>
+  <Card><h4>Encryption</h4><p>Gunakan enkripsi yang disediakan layanan saat data sensitif masuk ke queue, topic, event, atau workflow.</p></Card>
+  <Card><h4>Resource policy</h4><p>SNS topic, SQS queue, dan API dapat memakai policy untuk mengontrol siapa yang boleh mengakses resource.</p></Card>
+  <Card><h4>Monitoring</h4><p>Gunakan Amazon CloudWatch untuk metrik, log, alarm, dan observability pada antrean, API, workflow, dan event.</p></Card>
+  <Card><h4>DLQ dan retry</h4><p>Pesan gagal jangan dibiarkan berputar selamanya, arahkan ke dead-letter queue atau tangani dengan retry yang terkontrol.</p></Card>
+  <Card><h4>Idempotency</h4><p>Desain consumer agar aman jika pesan atau event diproses lebih dari sekali.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="🔐" label="Catatan keamanan"><p>Jangan menaruh rahasia seperti password atau token jangka panjang langsung di pesan. Gunakan layanan seperti AWS Secrets Manager untuk rahasia aplikasi.</p></Box>
+
+<h3>Shared responsibility dalam konteks integrasi</h3>
+
+AWS mengelola infrastruktur layanan terkelola seperti SQS, SNS, EventBridge, Step Functions, dan API Gateway. Pelanggan tetap bertanggung jawab atas konfigurasi akses, data yang dikirim, policy, enkripsi yang dipilih, observability, dan desain error handling. Inilah pola shared responsibility yang sering muncul lintas domain ujian.
+
+</Section>
+
+<Section num="11" id="hands-on-konseptual" title="Hands-on Konseptual" sub="Walkthrough ringan tanpa harus membuat akun atau mengeluarkan biaya.">
+
+<p class="lead">Kita akan merancang alur order toko online dengan layanan integrasi yang tepat.</p>
+
+<Steps>
+  <Step><b>Buat pintu masuk API</b><p>Mobile app mengirim order ke Amazon API Gateway, lalu API meneruskan request ke backend order service.</p></Step>
+  <Step><b>Terima order cepat</b><p>Backend menyimpan order dan segera mengembalikan respons "order diterima" agar pengguna tidak menunggu proses panjang.</p></Step>
+  <Step><b>Masukkan pekerjaan ke SQS</b><p>Order service mengirim pesan ke SQS queue untuk proses pembayaran atau packing yang bisa berjalan async.</p></Step>
+  <Step><b>Sebarkan kabar ke SNS</b><p>Setelah order dibayar, sistem publish ke SNS topic agar gudang, notifikasi, dan analitik menerima salinan pesan.</p></Step>
+  <Step><b>Route event penting lewat EventBridge</b><p>Event "OrderPaid" dapat dirutekan ke target berbeda berdasarkan pola event, misalnya loyalty service atau audit pipeline.</p></Step>
+  <Step><b>Orkestrasi proses refund</b><p>Untuk refund yang punya validasi, approval, dan cabang keputusan, gunakan Step Functions agar alur terlihat dan terkontrol.</p></Step>
+</Steps>
+
+<h3>Pertanyaan refleksi</h3>
+
+- Jika worker pembayaran lambat, apakah pengguna harus menunggu? Tidak, SQS membantu buffering.
+- Jika satu order perlu memberi tahu tiga sistem, apakah order service harus memanggil semuanya satu per satu? Tidak, SNS atau EventBridge bisa membantu.
+- Jika proses refund punya beberapa langkah dan keputusan, apakah SQS saja cukup? Tidak ideal, Step Functions lebih jelas untuk workflow.
+- Jika aplikasi mobile butuh endpoint publik yang aman, layanan apa yang menjadi pintu depan? API Gateway.
+
+<Box variant="tip" icon="🧪" label="Latihan mental"><p>Coba gambar ulang alur ini dengan lima kotak: Client, API Gateway, SQS, SNS atau EventBridge, dan Step Functions. Lalu jelaskan fungsi tiap kotak dalam satu kalimat.</p></Box>
+
+</Section>
+
+<Section num="12" id="kesalahan-jebakan" title="Kesalahan Umum dan Jebakan Soal" sub="Bagian ini sengaja praktis karena CLF-C02 sering menguji perbedaan layanan yang tampak mirip.">
+
+<p class="lead">Banyak jawaban salah terjadi karena semua layanan integrasi terlihat seperti "penghubung".</p>
+
+<CardGrid cols={2}>
+  <Card><h4>SQS vs SNS</h4><p>SQS menyimpan pesan untuk diproses consumer, SNS menyebarkan pesan ke subscriber.</p></Card>
+  <Card><h4>SNS vs EventBridge</h4><p>SNS kuat untuk pub/sub sederhana, EventBridge kuat untuk event routing berdasarkan pola dan sumber yang beragam.</p></Card>
+  <Card><h4>SQS vs Step Functions</h4><p>SQS adalah queue, Step Functions adalah orkestrator workflow bertahap.</p></Card>
+  <Card><h4>API Gateway vs Load Balancer</h4><p>API Gateway adalah layanan API management, load balancer membagi trafik ke target seperti instance atau container.</p></Card>
+  <Card><h4>EventBridge vs CloudWatch Alarms</h4><p>EventBridge merutekan event, CloudWatch Alarms memberi alarm berdasarkan metrik atau kondisi yang dipantau.</p></Card>
+  <Card><h4>FIFO bukan default untuk semua</h4><p>Gunakan FIFO saat urutan dan duplikasi penting, jangan memilihnya hanya karena terdengar lebih "rapi". FIFO menukar throughput demi urutan.</p></Card>
+  <Card><h4>SNS vs SQS ukuran pesan</h4><p>SQS naik ke 1 MiB (Agustus 2025), tetapi SNS tetap 256 KB. Jangan asumsikan keduanya sama besar.</p></Card>
+  <Card><h4>Angka SQS yang mirip</h4><p>Long polling maksimum 20 detik, visibility timeout maksimum 12 jam, retention default 4 hari. Jangan tertukar angkanya.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Kesalahan desain umum"><p>Membuat semua service saling memanggil langsung bisa menghasilkan sistem rapuh. Gunakan queue atau event saat proses tidak perlu selesai sinkron.</p></Box>
+
+<h3>Jebakan pilihan ganda</h3>
+
+- "Memisahkan komponen agar tetap bisa memproses saat downstream lambat" mengarah ke SQS.
+- "Mengirim satu pesan ke beberapa sistem secara paralel" mengarah ke SNS fanout atau EventBridge, lihat apakah soal menekankan topic sederhana atau routing event.
+- "Membangun workflow visual dengan retry dan branching" mengarah ke Step Functions.
+- "Menerima request dari aplikasi web atau mobile melalui endpoint API" mengarah ke API Gateway.
+- "React to events from AWS services, custom apps, or SaaS" mengarah ke EventBridge.
+- "Lift-and-shift existing ActiveMQ or RabbitMQ broker" mengarah ke Amazon MQ (perhatikan: di luar in-scope CLF-C02, jarang jadi jawaban benar di level ini).
+- "Process each step exactly once for a payment workflow" mengarah ke Step Functions Standard, bukan Express.
+
+</Section>
+
+<Section num="13" id="ringkasan" title="Ringkasan & Tips Ujian" sub="Peta cepat untuk mengunci materi ke domain CLF-C02.">
+
+<p class="lead">Kunci modul ini adalah memilih layanan berdasarkan pola komunikasi.</p>
+
+<Recap title="Poin Penting"><ul><li><strong>SQS</strong> (pull) adalah queue untuk decoupling, buffering, worker, dan pemrosesan async. Standard = at-least-once + best-effort order; FIFO = exactly-once + urutan. Visibility timeout maks 12 jam, long polling maks 20 detik, retention default 4 hari (maks 14 hari), max size 1 MiB.</li><li><strong>SNS</strong> (push) adalah pub/sub topic untuk fanout dan notifikasi ke banyak subscriber. Max size 256 KB (tidak ikut naik seperti SQS). Punya Standard dan FIFO topic.</li><li><strong>EventBridge</strong> adalah event bus untuk routing event dari aplikasi, AWS services, dan SaaS. Punya Pipes (point-to-point) dan Scheduler (penjadwalan); evolusi dari CloudWatch Events.</li><li><strong>Step Functions</strong> adalah workflow orchestration. Standard = sampai 1 tahun, exactly-once, audit 90 hari; Express = sampai 5 menit, at-least/at-most-once, untuk volume tinggi.</li><li><strong>API Gateway</strong> adalah front door API (HTTP, REST, WebSocket). Catatan scope: kategori Networking di exam guide, bukan Application Integration.</li><li><strong>In-scope Application Integration</strong> hanya SQS, SNS, EventBridge, dan Step Functions. Amazon MQ, AppFlow, dan SWF tidak in-scope.</li></ul></Recap>
+
+<h3>Pemetaan ke domain CLF-C02</h3>
+
+| Domain | Kaitan materi | Yang perlu dikuasai |
+|---|---|---|
+| Domain 1, Cloud Concepts | Agility, elasticity, loose coupling, managed services | Kenapa async dan event-driven membuat aplikasi lebih scalable dan resilient. |
+| Domain 2, Security and Compliance | IAM, resource policy, encryption, logging, shared responsibility | Siapa boleh mengirim, membaca, menjalankan workflow, dan memanggil API. |
+| Domain 3, Cloud Technology and Services | SQS, SNS, EventBridge, Step Functions, API Gateway | Pilih layanan yang tepat dari skenario bisnis. Ini porsi paling penting untuk modul ini. |
+| Domain 4, Billing, Pricing, and Support | Model pay-per-request dan free tier always-free | Pahami bahwa request, pesan, event, dan eksekusi memengaruhi biaya. SQS dan SNS punya 1 juta request gratis per bulan; EventBridge management events gratis; Scheduler punya 14 juta invocation gratis. Tidak perlu hafal angka detail. |
+
+<h3>Checklist jawab soal</h3>
+
+<Steps>
+  <Step><b>Apakah butuh jawaban langsung?</b><p>Jika client butuh endpoint API, pikirkan API Gateway. Jika tidak harus langsung, pertimbangkan asynchronous.</p></Step>
+  <Step><b>Apakah butuh antrean?</b><p>Jika pekerjaan perlu ditahan sampai worker siap, pilih SQS.</p></Step>
+  <Step><b>Apakah satu pesan perlu ke banyak penerima?</b><p>Jika ya, pilih SNS untuk pub/sub sederhana atau EventBridge untuk routing event lebih kaya.</p></Step>
+  <Step><b>Apakah proses punya banyak langkah?</b><p>Jika perlu state, retry, percabangan, dan visual workflow, pilih Step Functions.</p></Step>
+</Steps>
+
+<Box variant="exam" icon="🎓" label="Tips terakhir"><p>Di ujian, jangan memilih layanan paling kompleks. Pilih layanan paling sesuai dengan kata kunci: queue = SQS, fanout = SNS, event bus = EventBridge, workflow = Step Functions, API endpoint = API Gateway. Untuk SQS vs SNS, ingat pull vs push; untuk SNS vs EventBridge, ingat simple pub/sub vs event dari SaaS plus pola.</p></Box>
+
+<h3>Referensi resmi untuk pendalaman</h3>
+
+- [AWS Certified Cloud Practitioner CLF-C02 Exam Guide](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html)
+- [In-Scope AWS Services for CLF-C02](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/clf-02-in-scope-services.html)
+- [Amazon SQS Developer Guide](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html)
+- [Amazon SNS Developer Guide](https://docs.aws.amazon.com/sns/latest/dg/welcome.html)
+- [Amazon EventBridge User Guide](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html)
+- [AWS Step Functions Developer Guide](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html)
+- [Step Functions Standard vs Express Workflows](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-standard-vs-express.html)
+- [Amazon API Gateway Developer Guide](https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html)
+- [SQS Visibility Timeout](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html) &middot; [Short vs Long Polling](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-short-and-long-polling.html)
+- [EventBridge Pipes](https://aws.amazon.com/eventbridge/pipes/) &middot; [EventBridge Scheduler](https://docs.aws.amazon.com/scheduler/latest/UserGuide/what-is-scheduler.html)
+
+</Section>

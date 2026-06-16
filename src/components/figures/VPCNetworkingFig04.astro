@@ -1,0 +1,47 @@
+<svg viewBox="0 0 760 420" xmlns="http://www.w3.org/2000/svg" font-family="Inter, ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <marker id="vpcSgArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9c4a2f" />
+    </marker>
+  </defs>
+  <rect x="20" y="20" width="720" height="380" rx="18" fill="#fbfaf5" stroke="#d9d4c4" stroke-width="2" />
+  <text x="380" y="50" text-anchor="middle" font-size="18" fill="#241f17" font-weight="700">Defense in depth: dua lapis firewall menuju EC2</text>
+
+  <rect x="55" y="90" width="120" height="64" rx="12" fill="#fbfaf5" stroke="#bd5d3e" stroke-width="2" />
+  <text x="115" y="118" text-anchor="middle" font-size="13" fill="#c14a39" font-weight="700">Internet</text>
+  <text x="115" y="137" text-anchor="middle" font-size="11" fill="#6e6a5c">traffic user</text>
+
+  <rect x="55" y="200" width="120" height="64" rx="12" fill="#f0e3d8" stroke="#9c4a2f" stroke-width="2" />
+  <text x="115" y="228" text-anchor="middle" font-size="12" fill="#bd5d3e" font-weight="700">Internet</text>
+  <text x="115" y="245" text-anchor="middle" font-size="12" fill="#bd5d3e" font-weight="700">Gateway</text>
+
+  <line x1="115" y1="154" x2="115" y2="200" stroke="#9c4a2f" stroke-width="3" marker-end="url(#vpcSgArrow)" />
+
+  <rect x="225" y="80" width="490" height="290" rx="14" fill="#f0e3d8" stroke="#c6c0ac" stroke-width="2" />
+  <text x="245" y="102" font-size="12" fill="#6e6a5c" font-weight="700">Amazon VPC</text>
+
+  <rect x="250" y="118" width="445" height="230" rx="12" fill="#e1f1ec" stroke="#0a7d6e" stroke-width="2" stroke-dasharray="6 4" />
+  <text x="270" y="140" font-size="12" fill="#0a7d6e" font-weight="700">Subnet</text>
+
+  <rect x="270" y="152" width="180" height="44" rx="9" fill="#fbfaf5" stroke="#0a7d6e" stroke-width="2" />
+  <text x="360" y="172" text-anchor="middle" font-size="12" fill="#241f17" font-weight="700">Route Table</text>
+  <text x="360" y="188" text-anchor="middle" font-size="10.5" fill="#6e6a5c">0.0.0.0/0 ke IGW</text>
+
+  <rect x="270" y="212" width="405" height="50" rx="10" fill="#f7e6df" stroke="#c14a39" stroke-width="2" />
+  <text x="472" y="232" text-anchor="middle" font-size="13" fill="#c14a39" font-weight="700">Network ACL &middot; gerbang subnet</text>
+  <text x="472" y="250" text-anchor="middle" font-size="10.5" fill="#6e6a5c">stateless &middot; allow + deny &middot; rule dievaluasi berurutan by number</text>
+
+  <rect x="290" y="280" width="365" height="48" rx="10" fill="#ece6f3" stroke="#6a5aa6" stroke-width="2" />
+  <text x="472" y="300" text-anchor="middle" font-size="13" fill="#6a5aa6" font-weight="700">Security Group &middot; pintu instance</text>
+  <text x="472" y="318" text-anchor="middle" font-size="10.5" fill="#6e6a5c">stateful &middot; allow saja &middot; return traffic otomatis diizinkan</text>
+
+  <circle cx="595" cy="170" r="26" fill="#241f17" />
+  <text x="595" y="167" text-anchor="middle" font-size="11" fill="#bd5d3e" font-weight="700">EC2</text>
+  <text x="595" y="181" text-anchor="middle" font-size="9" fill="#fbfaf5">instance</text>
+
+  <line x1="175" y1="232" x2="270" y2="232" stroke="#9c4a2f" stroke-width="3" marker-end="url(#vpcSgArrow)" />
+  <line x1="472" y1="262" x2="472" y2="280" stroke="#c14a39" stroke-width="3" marker-end="url(#vpcSgArrow)" />
+  <path d="M 595 280 L 595 196" fill="none" stroke="#6a5aa6" stroke-width="3" marker-end="url(#vpcSgArrow)" />
+
+  <text x="380" y="392" text-anchor="middle" font-size="11.5" fill="#6e6a5c">Traffic melewati NACL (batas subnet) lalu Security Group (batas instance). Keduanya saling melengkapi.</text>
+</svg>

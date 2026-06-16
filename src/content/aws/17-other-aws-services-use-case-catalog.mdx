@@ -1,0 +1,430 @@
+---
+title: "Modul Other AWS Services & Use Case Catalog - AWS Cloud Practitioner CLF-C02"
+badge: "OTH"
+topTitle: "Other AWS Services & Use Case Catalog"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Kamus skenario untuk memilih layanan AWS yang sering muncul sebagai pelengkap layanan inti di CLF-C02."
+order: 17
+target: "CLF-C02"
+readingTime: "~72 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa Modul Ini Ada?" }
+  - { num: "02", id: "cara-membaca-katalog", title: "Cara Membaca Kamus Skenario" }
+  - { num: "03", id: "business-applications", title: "Business Applications: SES & Connect" }
+  - { num: "04", id: "end-user-computing", title: "End User Computing: WorkSpaces, AppStream 2.0 & Secure Browser" }
+  - { num: "05", id: "frontend-mobile", title: "Frontend Web & Mobile: Amplify & AppSync" }
+  - { num: "06", id: "iot-hybrid-edge", title: "IoT, Hybrid & Edge: IoT Core dan Outposts" }
+  - { num: "07", id: "compute-khusus", title: "Compute Khusus: Lightsail dan AWS Batch" }
+  - { num: "08", id: "kamus-skenario", title: "Kamus Skenario Cepat" }
+  - { num: "09", id: "walkthrough", title: "Walkthrough Konseptual" }
+  - { num: "10", id: "jebakan-ujian", title: "Kesalahan Umum & Jebakan Ujian" }
+  - { num: "11", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul Other AWS Services & Use Case Catalog - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import OtherAwsServicesFig01 from "@figures/OtherAwsServicesFig01.astro";
+import OtherAwsServicesFig02 from "@figures/OtherAwsServicesFig02.astro";
+import OtherAwsServicesFig03 from "@figures/OtherAwsServicesFig03.astro";
+import OtherAwsServicesFig04 from "@figures/OtherAwsServicesFig04.astro";
+import OtherAwsServicesFig05 from "@figures/OtherAwsServicesFig05.astro";
+import OtherAwsServicesFig06 from "@figures/OtherAwsServicesFig06.astro";
+
+<Hero eyebrow="Modul &middot; Service Picker" title="Other AWS Services<br /><em>Use Case Catalog</em>">
+  <p>Kita belajar memilih layanan AWS dari masalah bisnisnya, seperti memilih toko yang tepat di sebuah pusat perbelanjaan besar.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~72 menit baca</Chip>
+    <Chip icon="book">Domain 3 &middot; 34%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa Modul Ini Ada?">
+
+<p class="lead">AWS punya ratusan layanan, tetapi ujian Cloud Practitioner jarang bertanya "bagaimana cara setup". Ia hampir selalu bertanya "layanan mana yang cocok untuk skenario ini?"</p>
+
+Bayangkan AWS seperti kota besar. Modul sebelumnya sudah membahas jalan utama: compute, storage, database, network, security, monitoring, billing, migration, dan AI. Modul ini adalah peta kios khusus: tempat mengirim email massal, membuka contact center, memberi desktop virtual, membuat aplikasi frontend, menghubungkan device IoT, menjalankan job batch, atau membawa sebagian AWS ke lokasi fisik perusahaan.
+
+Kenapa modul ini penting untukmu? Karena justru di sinilah banyak orang kehilangan poin. Layanan inti seperti EC2 dan S3 sudah dilatih berkali-kali, jadi terasa familiar. Layanan pelengkap ini muncul lebih jarang, namanya mirip-mirip, dan satu kata kunci kecil bisa membalik jawaban. Soal tidak menguji kedalaman teknismu, ia menguji apakah kamu bisa mencocokkan satu kalimat skenario dengan satu nama layanan yang tepat.
+
+Di CLF-C02, kamu tidak perlu menjadi ahli konfigurasi setiap layanan. Kamu perlu mengenali pola. Kalau pertanyaannya menyebut **email transaksional atau marketing**, arahkan ke Amazon SES. Kalau menyebut **contact center**, pilih Amazon Connect. Kalau menyebut **virtual desktop**, pilih Amazon WorkSpaces. Kalau menyebut **GraphQL API**, pilih AWS AppSync.
+
+<Box variant="analogy" icon="🧭" label="Analogi peta kota"><p>Layanan inti seperti EC2, S3, dan RDS adalah jalan raya. Layanan di modul ini adalah alamat tujuan spesifik, seperti kantor pos (SES), call center (Connect), studio aplikasi (Amplify), pabrik IoT (IoT Core), dan bengkel batch processing (Batch). Kamu tidak perlu tahu setiap mesin di dalamnya, cukup tahu kios mana yang menjual apa.</p></Box>
+
+Secara resmi, layanan yang kita bahas ada di daftar [in-scope CLF-C02](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/clf-02-in-scope-services.html) pada beberapa kategori: Business Applications (SES, Connect), End User Computing (WorkSpaces, AppStream 2.0, WorkSpaces Secure Browser), Frontend Web and Mobile (Amplify, AppSync), Internet of Things (hanya IoT Core), dan Compute (Batch, Lightsail, Outposts). Artinya, soal muncul sebagai pertanyaan pemilihan layanan, bukan sebagai pertanyaan konfigurasi mendalam.
+
+<Box variant="warn" icon="🚫" label="Yang TIDAK ada di silabus ujian"><p>Beberapa layanan terkenal sengaja kita lewati karena tidak ada di daftar in-scope CLF-C02: Amazon Pinpoint (bahkan sedang dipensiunkan, end of support 30 Oktober 2026), AWS Device Farm, Amazon Chime, AWS Elemental MediaConvert/MediaLive, Amazon Ground Station, dan Amazon Braket. Jika nama-nama ini muncul sebagai pilihan jawaban, mereka biasanya distractor; jawaban yang benar hampir pasti layanan in-scope. Kenali namanya agar tidak terkecoh, tapi jangan habiskan waktu mempelajarinya.</p></Box>
+
+<Recap title="Pola Besar Modul"><ul><li>Fokus utama: pasangan skenario bisnis dan layanan AWS yang paling cocok.</li><li>Fokus ujian: bedakan layanan yang terdengar mirip, terutama WorkSpaces vs AppStream 2.0, SES vs SNS, Amplify vs AppSync, IoT Core vs Kinesis, dan Lightsail vs EC2 vs Batch.</li><li>Fokus praktik: selalu cek keamanan, integrasi, lokasi data, dan biaya sebelum memilih layanan.</li></ul></Recap>
+
+</Section>
+
+<Section num="02" id="cara-membaca-katalog" title="Cara Membaca Kamus Skenario" sub="Mulai dari pekerjaan yang ingin diselesaikan, bukan dari nama layanan.">
+
+<p class="lead">Cara tercepat memahami layanan AWS yang banyak adalah bertanya, "pekerjaan apa yang ingin saya selesaikan?"</p>
+
+Pemula sering menghafal nama layanan seperti daftar kosakata asing. Itu melelahkan dan rapuh, karena ujian sengaja menaruh dua nama mirip dalam satu soal. Cara yang lebih kuat adalah membuat peta mental berbasis pekerjaan: **komunikasi**, **akses pengguna**, **pengembangan aplikasi**, **device dan edge**, serta **compute khusus**. Begitu kamu mendengar pekerjaannya, kamu langsung tahu kios mana yang dituju.
+
+<Figure><OtherAwsServicesFig01 /><Fragment slot="caption"><b>Gambar 1.</b> Mulai dari skenario, lalu pilih kategori layanan, baru pilih layanan spesifik.</Fragment></Figure>
+
+<Figure><OtherAwsServicesFig02 /><Fragment slot="caption"><b>Gambar 2.</b> Decision tree "pilih dari kata kerja": satu pekerjaan utama dalam soal memetakan langsung ke satu layanan in-scope.</Fragment></Figure>
+
+<CardGrid cols={2}>
+  <Card><h4>1. Komunikasi bisnis</h4><p>Butuh email aplikasi atau contact center? Mulai dari SES dan Connect.</p></Card>
+  <Card><h4>2. Akses pengguna</h4><p>Butuh desktop, aplikasi streaming, atau browser aman? Mulai dari WorkSpaces, AppStream 2.0, dan Secure Browser.</p></Card>
+  <Card><h4>3. Aplikasi frontend dan API</h4><p>Butuh hosting frontend, auth, data, atau GraphQL? Mulai dari Amplify dan AppSync.</p></Card>
+  <Card><h4>4. Device, edge, dan hybrid</h4><p>Butuh device terhubung ke cloud atau AWS di lokasi sendiri? Mulai dari IoT Core dan Outposts.</p></Card>
+  <Card><h4>5. Compute khusus</h4><p>Butuh VPS sederhana atau ribuan job batch? Mulai dari Lightsail dan AWS Batch.</p></Card>
+  <Card><h4>6. Validasi biaya dan operasi</h4><p>Cek model pembayaran, data transfer, integrasi IAM, logging, dan batasan region sebelum produksi.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Cara jawab soal"><p>Jika soal memberi kata kunci use case, jangan langsung mencari layanan paling canggih. Cari layanan yang namanya paling dekat dengan pekerjaan utama dalam skenario.</p></Box>
+
+<h3>Pertanyaan pemilih layanan</h3>
+
+<ul><li><strong>Siapa aktornya?</strong> Pelanggan, agent support, karyawan remote, developer frontend, device pabrik, atau sistem batch.</li><li><strong>Apa medianya?</strong> Email, telepon, chat, desktop, aplikasi, GraphQL API, MQTT, browser, atau container job.</li><li><strong>Apakah perlu real-time?</strong> Contact center, IoT, chat, dan GraphQL subscription sering menuntut respons cepat.</li><li><strong>Apakah butuh lingkungan managed?</strong> Banyak layanan di modul ini mengurangi beban mengelola server.</li><li><strong>Apakah ada batas fisik?</strong> Outposts muncul ketika ada kebutuhan on-premises, latensi rendah ke sistem lokal, atau residensi data.</li></ul>
+
+</Section>
+
+<Section num="03" id="business-applications" title="Business Applications: SES &amp; Connect">
+
+<p class="lead">Kategori ini menjawab kebutuhan komunikasi pelanggan: email aplikasi dan pusat kontak.</p>
+
+<h3>Amazon Simple Email Service (Amazon SES)</h3>
+
+Bayangkan ruang surat perusahaan: aplikasi menulis alamat tujuan, isi pesan, dan nama pengirim, lalu petugas pos memastikan surat itu benar-benar sampai dan tidak masuk kotak spam. [Amazon SES](https://aws.amazon.com/ses/) adalah ruang surat itu dalam bentuk cloud, layanan untuk mengirim (dan menerima) email dari aplikasi secara terkelola dan dalam skala besar.
+
+Contoh nyata: toko online mengirim email verifikasi akun, reset password, invoice, notifikasi pengiriman, dan newsletter promo. Semua itu bukan tugas database dan bukan tugas S3. Itu tugas layanan email aplikasi, dan SES dirancang khusus untuk urusan yang halus seperti deliverability (apakah email benar-benar sampai), bounce (email yang gagal terkirim), dan complaint (penerima menandai spam), yang semuanya menjaga reputasi pengirim agar email berikutnya tidak diblokir.
+
+<Box variant="tip" icon="✉️" label="Kapan pakai SES"><p>Pilih SES saat soal menyebut email transaksional, email marketing, newsletter, deliverability, reputasi pengirim, bounce, complaint, domain verified, atau SMTP/API email.</p></Box>
+
+<h4>Komponen yang perlu dikenali</h4>
+
+<ul><li><strong>Verified identity</strong>, domain atau alamat email yang dibuktikan sebagai milik pengirim sebelum boleh mengirim atas namanya.</li><li><strong>Sandbox</strong>, mode awal untuk pengujian. Di sini SES membatasi tujuan (hanya ke alamat yang sudah diverifikasi) dan volume.</li><li><strong>SMTP interface dan API</strong>, dua cara aplikasi mengirim email melalui SES.</li><li><strong>Bounce dan complaint handling</strong>, sinyal penting untuk menjaga reputasi pengirim.</li><li><strong>Dedicated IP, shared IP, dan owned IP</strong>, opsi deployment pengiriman email sesuai kebutuhan reputasi dan kontrol.</li></ul>
+
+<Box variant="exam" icon="🔢" label="Angka sandbox yang aman dihafal"><p>Di [SES sandbox](https://docs.aws.amazon.com/ses/latest/dg/manage-sending-quotas.html), kuota default adalah <b>200 email per periode 24 jam</b> dengan laju maksimum <b>1 pesan per detik</b>, dihitung atas jendela bergulir 24 jam. Batas ini tidak bisa dinaikkan selama masih di sandbox, kamu harus mengajukan pindah ke produksi. Soal kadang menyembunyikan "akun baru hanya bisa kirim ke alamat terverifikasi dengan volume kecil", itu kode untuk sandbox.</p></Box>
+
+<Box variant="warn" icon="📅" label="Free tier SES sudah berubah"><p>Lupakan angka lama "62.000 email gratis per bulan dari EC2" (dihentikan Agustus 2023). Skema sekarang: 3.000 message charge per bulan untuk 12 bulan pertama, lalu untuk akun yang dibuat sejak 15 Juli 2025 berlaku model Free Tier baru berupa kredit $200 yang bisa dipakai lintas layanan. Untuk ujian, jangan menghafal angka harga; cukup ingat SES dibayar per email terkirim/diterima. Cek [halaman pricing SES](https://aws.amazon.com/ses/pricing/) untuk angka terbaru.</p></Box>
+
+<h4>SES vs SNS: jangan tertukar</h4>
+
+Ini salah satu jebakan paling klasik. SES dan SNS sama-sama bisa "mengirim sesuatu", tapi tujuannya berbeda. SES adalah produk email; SNS adalah mesin pemberitahuan pub/sub. Patokan cepat: jika kata kuncinya tentang isi dan kualitas email (newsletter, deliverability, reputasi), itu SES. Jika kata kuncinya tentang menyebar satu pesan ke banyak penerima/sistem (fanout, topic, decoupling), itu SNS.
+
+<Compare aLabel="Amazon SES &middot; email sebagai produk" bLabel="Amazon SNS &middot; notifikasi pub/sub" aTone="blue" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Mengirim dan menerima email transaksional, marketing, dan newsletter.</li><li>Peduli pada deliverability, reputasi pengirim, bounce, dan complaint.</li><li>Pakai SMTP atau API, dengan domain/identity yang diverifikasi.</li><li>Kata kunci: email, newsletter, invoice, reset password, inbox.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Menyebar satu pesan ke banyak subscriber sekaligus (fanout).</li><li>Subscriber bisa email, SMS, Lambda, SQS, atau HTTP endpoint.</li><li>Dipakai untuk decoupling sistem, bukan kampanye email.</li><li>Kata kunci: topic, publish, subscribe, fanout, notifikasi sistem.</li></ul></Fragment>
+</Compare>
+
+<h3>Amazon Connect</h3>
+
+Bayangkan perusahaan ingin membuka call center, tetapi tidak mau membeli PBX, server telepon, lisensi software contact center, dan tidak mau menandatangani kontrak seat per agent selama bertahun-tahun. [Amazon Connect](https://aws.amazon.com/connect/) menjawab itu: contact center cloud yang dibuat dalam hitungan menit. Perusahaan tinggal membuat instance, mengklaim nomor telepon, menyusun queue, agent, routing, contact flow, chat, dan task.
+
+Contoh nyata: e-commerce ingin pelanggan bisa menghubungi support lewat telepon dan chat, agent bisa melihat antrean, supervisor bisa memantau kualitas, dan flow bisa mengarahkan pelanggan ke tim yang tepat. Itu skenario Amazon Connect.
+
+<Box variant="tip" icon="☎️" label="Kapan pakai Connect"><p>Pilih Amazon Connect saat soal menyebut cloud contact center, call center, customer service agent, routing panggilan, queue, IVR, chat support, atau pengalaman pelanggan omnichannel.</p></Box>
+
+<h4>Komponen yang perlu dikenali</h4>
+
+<ul><li><strong>Instance</strong>, lingkungan contact center virtual.</li><li><strong>Phone number</strong>, nomor yang diklaim atau dipindahkan untuk menerima dan melakukan panggilan.</li><li><strong>Contact flow</strong>, alur interaksi pelanggan seperti menu IVR, pesan pembuka, dan routing.</li><li><strong>Queue dan routing profile</strong>, pengaturan antrean dan skill agent.</li><li><strong>Agent workspace</strong>, tempat agent menangani interaksi pelanggan.</li></ul>
+
+<Box variant="exam" icon="💳" label="Model biaya Connect (testable)"><p>Menurut [halaman pricing Connect](https://aws.amazon.com/connect/pricing/), Connect memakai model <b>pay-as-you-go</b>: tidak ada komitmen di muka, tidak ada kontrak jangka panjang, tidak ada lisensi seat per agent, dan tidak ada biaya minimum. Tagihan dihitung per menit (suara) dan per pesan (chat/SMS) sesuai pemakaian. Di Domain 4, kata kunci "no upfront, no per-agent license, pay per use untuk contact center" mengarah ke Connect.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Bukan sekadar telepon, bukan meeting tim"><p>Connect adalah contact center menghadap pelanggan (agent melayani pelanggan), bukan layanan video meeting internal. Layanan meeting internal adalah Amazon Chime, tetapi Chime tidak ada di silabus CLF-C02, jadi skenario "contact center" hampir pasti merujuk Connect.</p></Box>
+
+</Section>
+
+<Section num="04" id="end-user-computing" title="End User Computing: WorkSpaces, AppStream 2.0 &amp; Secure Browser">
+
+<p class="lead">Kategori ini menjawab pertanyaan: bagaimana pengguna mengakses desktop, aplikasi, atau browser kerja tanpa mengelola laptop kantor secara penuh?</p>
+
+Ada tiga jawaban, dan ujian suka menukar-nukar ketiganya. Patokan satu kalimat: WorkSpaces memberi desktop penuh, AppStream 2.0 memberi satu aplikasi, WorkSpaces Secure Browser memberi sesi browser saja.
+
+<Figure><OtherAwsServicesFig03 /><Fragment slot="caption"><b>Gambar 3.</b> Tiga layanan End User Computing dan apa yang benar-benar diterima pengguna: desktop penuh, satu aplikasi, atau sesi browser.</Fragment></Figure>
+
+<h3>Amazon WorkSpaces</h3>
+
+Bayangkan karyawan meminjam komputer kantor, tetapi komputer itu sebenarnya berjalan di AWS, bukan di meja mereka. Dari laptop tipis, tablet, atau device pribadi, mereka membuka desktop yang sama persis setiap hari. Itulah [Amazon WorkSpaces](https://aws.amazon.com/workspaces/): desktop virtual terkelola, sering disebut VDI (Virtual Desktop Infrastructure) atau DaaS (Desktop as a Service). Desktopnya persisten, jadi file dan setting tetap ada saat mereka login lagi.
+
+Contoh nyata: perusahaan punya karyawan remote, kontraktor sementara, atau tim call center yang butuh desktop standar. Daripada mengirim laptop fisik ke semua orang, perusahaan menyediakan WorkSpaces dengan kebijakan keamanan dan kontrol terpusat. WorkSpaces juga terhubung ke directory (AWS Directory Service atau Active Directory) untuk login karyawan, jadi identitas dan akses dikelola dari satu tempat, ini sisi keamanan yang sering disinggung di Domain 2.
+
+<Box variant="tip" icon="🖥️" label="Kapan pakai WorkSpaces"><p>Pilih WorkSpaces saat soal menyebut virtual desktop, desktop cloud, VDI, DaaS, karyawan remote, desktop persisten, atau akses lingkungan kerja lengkap.</p></Box>
+
+<h4>Dua mode tagihan WorkSpaces</h4>
+
+Satu konsep biaya WorkSpaces cukup sering muncul: pilih mode tagihan sesuai pola pakai pengguna. Menurut [halaman pricing WorkSpaces](https://aws.amazon.com/workspaces/desktop-as-a-service/pricing/), ada dua mode.
+
+<Compare aLabel="AlwaysOn &middot; pengguna penuh waktu" bLabel="AutoStop &middot; pengguna paruh waktu" aTone="teal" bTone="blue" vs="vs">
+  <Fragment slot="a"><ul><li>Tarif <b>bulanan flat</b> untuk pemakaian tanpa batas jam.</li><li>Predictable, cocok untuk desktop utama yang dipakai tiap hari.</li><li>Pengguna full-time, tidak peduli berapa jam aktif.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Biaya dasar bulanan rendah <b>plus tarif per jam</b> hanya saat dipakai.</li><li>Hemat untuk pengguna intermittent atau musiman.</li><li>Pengguna part-time, login hanya beberapa jam per hari.</li></ul></Fragment>
+</Compare>
+
+<Figure><OtherAwsServicesFig06 /><Fragment slot="caption"><b>Gambar 4.</b> Mode tagihan WorkSpaces dipilih dari pola pakai pengguna: AlwaysOn (flat bulanan) untuk pemakaian penuh, AutoStop (base rendah plus per jam) untuk pemakaian sesekali.</Fragment></Figure>
+
+<Box variant="exam" icon="🎯" label="Patokan pilih mode"><p>Banyak jam per hari, setiap hari &rarr; AlwaysOn (flat bulanan). Sedikit jam, jarang &rarr; AutoStop (dasar + per jam). Kata kunci "pekerja musiman / hanya beberapa jam / hemat saat tidak dipakai" mengarah ke AutoStop.</p></Box>
+
+<h3>Amazon AppStream 2.0 (kini Amazon WorkSpaces Applications)</h3>
+
+Di daftar ujian CLF-C02 (per Juni 2026), kamu akan melihat **Amazon AppStream 2.0**. Di halaman produk AWS, layanan ini sudah diganti nama menjadi **Amazon WorkSpaces Applications** (rename efektif sekitar 6 November 2025, fungsi tidak berubah, dilebur ke keluarga WorkSpaces). Untuk ujian, ingat dua nama ini sebagai satu konsep: [streaming satu aplikasi](https://aws.amazon.com/appstream2/) dari cloud ke pengguna.
+
+<Box variant="warn" icon="🏷️" label="Nama ujian vs nama produk"><p>Penting: silabus CLF-C02 masih menulis "Amazon AppStream 2.0", jadi di soal pilihan jawaban yang benar kemungkinan besar berbunyi <b>AppStream 2.0</b>, bukan "WorkSpaces Applications". Kenali kedua nama, tapi pilih opsi bertuliskan AppStream 2.0 saat ragu.</p></Box>
+
+Analogi: WorkSpaces memberi satu komputer penuh, sedangkan AppStream 2.0 hanya menayangkan satu aplikasi dari cloud, seperti menonton aplikasi lewat layar streaming. Pengguna tidak perlu menginstal aplikasi berat di laptopnya, tetapi tetap bisa memakai aplikasi itu lewat browser atau client.
+
+<Box variant="tip" icon="🧩" label="Kapan pakai AppStream 2.0"><p>Pilih AppStream 2.0 saat soal menyebut streaming aplikasi, aplikasi desktop tanpa instalasi lokal, software trial, training lab, atau akses aplikasi khusus dari browser.</p></Box>
+
+<h3>Amazon WorkSpaces Secure Browser</h3>
+
+[Amazon WorkSpaces Secure Browser](https://aws.amazon.com/workspaces/secure-browser/) adalah browser enterprise terkelola yang berjalan sebagai sesi remote. Analogi: pengguna melihat layar browser dari jarak jauh, tetapi data sensitif tetap berada di lingkungan AWS dan kebijakan perusahaan diterapkan di sesi tersebut. Ini bukan desktop dan bukan aplikasi yang distreaming, hanya browser.
+
+Contoh nyata: vendor eksternal perlu mengakses portal internal, tetapi perusahaan tidak ingin memberi VPN penuh atau mengizinkan data aplikasi menyentuh device vendor. Secure Browser bisa menjadi pilihan karena akses dibatasi ke browser, bukan desktop lengkap.
+
+<Box variant="tip" icon="🌐" label="Kapan pakai Secure Browser"><p>Pilih WorkSpaces Secure Browser saat soal menyebut secure browser, akses SaaS atau web internal secara aman, tanpa VPN penuh, dan kontrol policy browser terpusat.</p></Box>
+
+<h3>Perbandingan cepat</h3>
+
+<div class="tbl-wrap"><table><thead><tr><th>Kebutuhan</th><th>Layanan yang paling cocok</th><th>Petunjuk ujian</th></tr></thead><tbody><tr><td>Desktop lengkap untuk karyawan</td><td>Amazon WorkSpaces</td><td>Kata kunci: VDI, virtual desktop, remote worker.</td></tr><tr><td>Satu aplikasi desktop distreaming</td><td>Amazon AppStream 2.0</td><td>Kata kunci: application streaming, tanpa install lokal.</td></tr><tr><td>Browser aman untuk web internal/SaaS</td><td>Amazon WorkSpaces Secure Browser</td><td>Kata kunci: secure browser, web access, no VPN.</td></tr></tbody></table></div>
+
+<Box variant="exam" icon="🎯" label="Jebakan populer"><p>Kalau pengguna butuh desktop penuh, jawab WorkSpaces. Kalau hanya butuh aplikasi tertentu, jawab AppStream 2.0. Kalau hanya butuh akses web aman, jawab WorkSpaces Secure Browser.</p></Box>
+
+</Section>
+
+<Section num="05" id="frontend-mobile" title="Frontend Web &amp; Mobile: Amplify &amp; AppSync">
+
+<p class="lead">Kategori ini membantu developer frontend membuat aplikasi web/mobile lebih cepat tanpa membangun semua backend dari nol.</p>
+
+<h3>AWS Amplify</h3>
+
+Bayangkan paket starter rumah: pondasi, listrik, dan air sudah terpasang, kamu tinggal mengisi perabot. [AWS Amplify](https://aws.amazon.com/amplify/) adalah paket starter itu untuk developer frontend, kumpulan tools dan layanan untuk membangun, men-deploy, dan menskalakan aplikasi web dan mobile. Di dalamnya ada hosting dengan CI/CD berbasis Git, auth, storage, dan data yang dibungkus rapi agar tim frontend tidak perlu merakit backend dari nol.
+
+Contoh nyata: tim ingin membuat aplikasi React atau Next.js, deploy otomatis dari repository Git, menambahkan login, menyimpan file, dan menghubungkan data tanpa mengelola pipeline kompleks. Amplify cocok sebagai pintu masuk yang ramah frontend.
+
+<Box variant="tip" icon="🚀" label="Kapan pakai Amplify"><p>Pilih Amplify saat soal menyebut build dan deploy web/mobile app, frontend hosting, Git based deployment, auth untuk aplikasi, storage frontend, atau developer experience untuk aplikasi fullstack.</p></Box>
+
+<h3>AWS AppSync</h3>
+
+Bayangkan pelayan restoran yang tahu persis dari dapur mana setiap menu berasal. Pelanggan cukup memesan apa yang diinginkan dalam satu daftar, pelayan mengambilnya dari banyak dapur sekaligus. [AWS AppSync](https://aws.amazon.com/appsync/) adalah pelayan itu: layanan managed untuk GraphQL API. Aplikasi meminta tepat data yang dibutuhkan lewat satu GraphQL endpoint, lalu AppSync menariknya dari sumber seperti DynamoDB, Lambda, Aurora, OpenSearch, atau HTTP endpoint, dengan subscription real-time lewat WebSocket.
+
+Contoh nyata: aplikasi mobile ingin menampilkan profil pengguna, daftar order, status pengiriman, dan notifikasi perubahan status secara real-time. Daripada memanggil banyak REST API terpisah, aplikasi menggunakan satu GraphQL API dari AppSync.
+
+<Box variant="tip" icon="🔗" label="Kapan pakai AppSync"><p>Pilih AppSync saat soal menyebut GraphQL API, real-time subscriptions, sync data mobile, atau menggabungkan data dari beberapa sumber untuk aplikasi. Kata "GraphQL" hampir selalu mengarah ke AppSync.</p></Box>
+
+<Box variant="tip" icon="🆕" label="AppSync bukan GraphQL saja lagi"><p>Sejak Oktober 2024, AppSync menambah <b>AppSync Events</b>, yaitu serverless WebSocket API (pub/sub real-time) yang tidak butuh GraphQL. Heuristik inti "GraphQL &rarr; AppSync" tetap benar untuk ujian, tetapi sekarang skenario fanout real-time juga bisa mengarah ke AppSync, bukan hanya IoT atau API Gateway WebSocket.</p></Box>
+
+<h3>Amplify vs AppSync</h3>
+
+Keduanya sering tertukar karena sama-sama "untuk aplikasi modern", padahal perannya beda lapisan. Amplify mengurus bagaimana aplikasi dibangun dan di-host; AppSync mengurus bagaimana aplikasi mengambil data. Keduanya justru saling melengkapi: Amplify bisa memakai AppSync sebagai backend datanya.
+
+<Compare aLabel="AWS Amplify &middot; build &amp; host frontend" bLabel="AWS AppSync &middot; API data" aTone="violet" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Build, host, dan deploy aplikasi web/mobile dari Git.</li><li>Menyediakan auth, storage, dan CI/CD untuk tim frontend.</li><li>Pengalaman end-to-end, bukan sekadar satu API.</li><li>Kata kunci: deploy React/Next.js dari Git, hosting frontend.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Managed GraphQL API (dan kini WebSocket pub/sub via Events).</li><li>Menyatukan data dari DynamoDB, Lambda, Aurora, HTTP, dan lainnya.</li><li>Fokus pada lapisan API dan data, bukan hosting.</li><li>Kata kunci: GraphQL, real-time subscription, satu endpoint banyak sumber.</li></ul></Fragment>
+</Compare>
+
+<div class="tbl-wrap"><table><thead><tr><th>Pertanyaan skenario</th><th>Jawaban kuat</th><th>Alasan</th></tr></thead><tbody><tr><td>"Developer frontend ingin deploy aplikasi web dari Git dengan mudah."</td><td>AWS Amplify</td><td>Amplify fokus pada build, hosting, dan pengalaman frontend.</td></tr><tr><td>"Aplikasi butuh satu GraphQL endpoint untuk data dari DynamoDB dan Lambda."</td><td>AWS AppSync</td><td>AppSync fokus pada GraphQL API dan integrasi sumber data.</td></tr><tr><td>"Aplikasi butuh update real-time seperti chat atau live score."</td><td>AWS AppSync</td><td>AppSync mendukung real-time event dan subscription pattern.</td></tr></tbody></table></div>
+
+<Box variant="warn" icon="⚠️" label="Jangan tertukar"><p>Amplify bukan database. AppSync bukan hosting frontend umum. Amplify bisa memakai AppSync, tetapi kata kunci GraphQL biasanya mengarah langsung ke AppSync.</p></Box>
+
+</Section>
+
+<Section num="06" id="iot-hybrid-edge" title="IoT, Hybrid &amp; Edge: IoT Core dan Outposts">
+
+<p class="lead">Kategori ini muncul saat dunia fisik bertemu cloud: sensor, mesin, lokasi pabrik, data lokal, dan kebutuhan latensi rendah.</p>
+
+<h3>AWS IoT Core</h3>
+
+Bayangkan gerbang masuk gedung kantor yang menerima jutaan kurir kecil. Setiap kurir wajib menunjukkan kartu identitas (sertifikat) sebelum boleh masuk, satpam (broker) menerima paket lalu menaruhnya di rak yang benar, dan ada aturan tertulis (rules engine) untuk meneruskan tiap jenis paket ke departemen yang tepat. [AWS IoT Core](https://aws.amazon.com/iot-core/) adalah gerbang itu untuk dunia device: layanan untuk menghubungkan device ke AWS secara aman dan terkelola, lalu meneruskan pesannya ke layanan lain. Ia adalah satu-satunya layanan IoT yang masuk silabus CLF-C02, jadi setiap skenario IoT pada ujian hampir pasti mengarah ke sini.
+
+Kenapa device butuh layanan khusus, bukan sekadar mengirim HTTP ke server biasa? Karena device IoT punya tiga sifat yang merepotkan server konvensional: jumlahnya bisa jutaan, koneksinya sering putus-nyambung (truk masuk terowongan, sensor di pelosok), dan tiap device harus dipercaya secara individual. IoT Core lahir untuk menangani ketiga sifat itu sekaligus, terutama lewat protokol ringan MQTT dan mekanisme state Device Shadow.
+
+Contoh nyata: perusahaan logistik memasang sensor suhu di truk pendingin. Sensor mengirim data ke AWS melalui MQTT. IoT Core menerima pesan, menerapkan aturan, lalu meneruskan data ke layanan analitik, database, alarm, atau fungsi serverless.
+
+<Figure><OtherAwsServicesFig04 /><Fragment slot="caption"><b>Gambar 5.</b> Alur data IoT Core: device dengan sertifikat X.509 mengirim lewat MQTT ke Device Gateway dan Message Broker, lalu Rules Engine memfilter dan menyebarkan data ke Lambda, DynamoDB, SNS, dan S3. Device Shadow menyimpan state walau device sedang offline.</Fragment></Figure>
+
+<Box variant="tip" icon="📡" label="Kapan pakai IoT Core"><p>Pilih AWS IoT Core saat soal menyebut device IoT, sensor, MQTT, telemetry, device fleet, mutual authentication, atau rule untuk memproses pesan device.</p></Box>
+
+<h4>Komponen yang perlu dikenali</h4>
+
+<ul><li><strong>Thing</strong>, representasi device di AWS IoT, terdaftar di Registry.</li><li><strong>Certificate dan policy</strong>, identitas dan izin untuk device.</li><li><strong>MQTT broker</strong>, komponen komunikasi pesan antar device dan cloud.</li><li><strong>Rules engine</strong>, aturan untuk memfilter, mentransformasi, dan meneruskan data ke layanan lain.</li><li><strong>Device Shadow</strong>, representasi state device sehingga aplikasi dapat membaca atau menetapkan state meski device tidak selalu online.</li></ul>
+
+<h4>Protokol dan autentikasi</h4>
+
+Menurut [FAQ IoT Core](https://aws.amazon.com/iot-core/faqs/), device bisa terhubung lewat **MQTT**, MQTT over WebSocket, **HTTPS**, dan **LoRaWAN**. MQTT adalah protokol andalan karena ringan dan hemat baterai, cocok untuk device kecil yang sering offline. Untuk keamanan, device diautentikasi dengan **sertifikat X.509**, IAM, atau Amazon Cognito, dan semua trafik dienkripsi dengan TLS. Kata kunci "MQTT" di soal hampir selalu menunjuk IoT Core.
+
+<Box variant="exam" icon="🎯" label="IoT Core vs Kinesis"><p>Jebakan klasik: keduanya sama-sama menangani data masuk dalam jumlah besar. Bedanya, IoT Core fokus pada <b>menghubungkan dan mengelola device</b> (identitas, MQTT, Device Shadow), sedangkan Kinesis fokus pada <b>ingest dan proses aliran data</b> skala besar setelah datanya masuk. Kata kunci sensor, MQTT, certificate, device fleet &rarr; IoT Core. Kata kunci streaming data, pipeline analitik real-time &rarr; Kinesis.</p></Box>
+
+<Compare aLabel="AWS IoT Core &middot; hubungkan device" bLabel="Amazon Kinesis &middot; aliran data" aTone="teal" bTone="blue" vs="vs">
+  <Fragment slot="a"><ul><li>Menghubungkan dan mengamankan jutaan device fisik.</li><li>Protokol MQTT/HTTPS/LoRaWAN, sertifikat X.509, Device Shadow.</li><li>Cocok saat masalahnya "device-nya bagaimana terhubung dan dipercaya".</li><li>Kata kunci: sensor, IoT, MQTT, telemetry, device fleet.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Menampung dan memproses aliran data berskala besar.</li><li>Untuk analitik real-time, log, clickstream, dan pipeline data.</li><li>Cocok saat masalahnya "datanya sudah masuk, lalu diolah bagaimana".</li><li>Kata kunci: data stream, real-time analytics, ingest pipeline.</li></ul></Fragment>
+</Compare>
+
+<h3>AWS Outposts</h3>
+
+Analogi: AWS membuka cabang mini di gedung perusahaan, tetapi tetap dikelola dengan pendekatan AWS. Rak servernya dipasang di ruang IT pelanggan, namun kamu memakainya dengan API, console, dan tooling AWS yang sama persis. [AWS Outposts](https://aws.amazon.com/outposts/) adalah cabang mini itu: keluarga layanan terkelola yang membawa infrastruktur dan sebagian layanan AWS ke lokasi on-premises atau edge pelanggan. Di silabus CLF-C02, Outposts duduk di kategori Compute, bukan Networking atau Migration.
+
+Contoh nyata: rumah sakit harus memproses data dekat alat medis karena latensi dan regulasi. Pabrik perlu aplikasi berjalan dekat mesin produksi. Perusahaan punya sistem lama di data center lokal dan aplikasi baru perlu berkomunikasi sangat cepat dengan sistem itu. Outposts cocok untuk kebutuhan hybrid yang harus tetap konsisten dengan AWS Region.
+
+<Box variant="tip" icon="🏭" label="Kapan pakai Outposts"><p>Pilih AWS Outposts saat soal menyebut AWS services on premises, latency sangat rendah ke sistem lokal, local data processing, data residency, atau pengalaman hybrid yang konsisten dengan AWS.</p></Box>
+
+<Box variant="exam" icon="🎯" label="Catatan ujian"><p>Outposts bukan sekadar migration tool. Ia adalah opsi hybrid untuk menjalankan infrastruktur AWS di lokasi pelanggan ketika workload tidak bisa sepenuhnya pindah ke Region.</p></Box>
+
+</Section>
+
+<Section num="07" id="compute-khusus" title="Compute Khusus: Lightsail dan AWS Batch">
+
+<p class="lead">Tidak semua compute harus dimulai dari EC2 detail. Ada skenario yang lebih sederhana, dan ada skenario yang butuh pemrosesan massal.</p>
+
+<h3>Amazon Lightsail</h3>
+
+Analogi: Lightsail seperti paket kos siap huni. Sudah ada kamar, listrik, dan internet dasar dengan satu harga per bulan, jadi kamu tidak perlu menghitung tagihan air, listrik, dan internet secara terpisah. Cocok untuk mulai cepat, tetapi tidak sefleksibel membangun gedung sendiri dengan EC2, VPC, ALB, RDS, dan layanan lain. [Amazon Lightsail](https://aws.amazon.com/lightsail/) adalah paket kos itu: cara sederhana untuk menjalankan virtual private server, database sederhana, storage, container, CDN, load balancer, dan website dengan pengalaman yang lebih mudah daripada menyusun banyak layanan AWS satu per satu.
+
+Contoh nyata: developer ingin meluncurkan WordPress, blog, landing page, aplikasi kecil, atau server sederhana dengan paket bulanan yang mudah dipahami. Lightsail cocok untuk pemula dan workload sederhana.
+
+<Box variant="tip" icon="💡" label="Kapan pakai Lightsail"><p>Pilih Lightsail saat soal menyebut VPS sederhana, website kecil, WordPress cepat, aplikasi sederhana, paket preconfigured, atau user yang ingin pengalaman AWS paling mudah.</p></Box>
+
+<Box variant="exam" icon="💳" label="Model biaya Lightsail (testable)"><p>Menurut [halaman pricing Lightsail](https://aws.amazon.com/lightsail/pricing/), Lightsail memakai harga <b>bundle bulanan tetap dan mudah diprediksi</b> yang sudah memaket vCPU, RAM, storage SSD, kuota data transfer, IP statis, DNS, dan console dalam satu harga. Inilah pembedanya dari EC2 yang menagih banyak komponen terpisah. Kata kunci "harga bulanan tetap, paket sederhana, mudah diprediksi" mengarah ke Lightsail.</p></Box>
+
+<h3>AWS Batch</h3>
+
+Analogi: Batch seperti manajer antrian pabrik. Kamu menumpuk ribuan pekerjaan di loket masuk, lalu manajer mengatur kapan dan di mana tiap pekerjaan dikerjakan, menyalakan mesin saat antrean panjang dan mematikannya saat sepi. [AWS Batch](https://aws.amazon.com/batch/) adalah manajer antrian itu: layanan untuk merencanakan, menjadwalkan, dan menjalankan pekerjaan batch containerized pada skala besar, sambil memprovisioning compute (EC2 atau Fargate) sesuai kebutuhan.
+
+Kenapa tidak pakai Lambda atau menyalakan EC2 manual? Karena pekerjaan batch sering berjalan lama (menit sampai jam), perlu dijalankan ribuan kali, dan butuh diatur urutannya. Lambda dibatasi durasi pendek, dan menyalakan EC2 satu per satu tidak praktis untuk ribuan job. Batch dibuat khusus untuk pola "banyak job berat yang antre".
+
+Contoh nyata: tim riset menjalankan simulasi, rendering, pemrosesan genomik, model training batch, atau analisis ribuan file. Mereka tidak ingin menyalakan server manual satu per satu. AWS Batch mengatur tiga hal inti: **job queue** (antrean pekerjaan), **compute environment** (kumpulan compute yang dipakai), dan **job definition** (cetak biru tiap job).
+
+<Box variant="tip" icon="⚙️" label="Kapan pakai AWS Batch"><p>Pilih AWS Batch saat soal menyebut batch jobs, job queue, pemrosesan ribuan tugas, simulasi, analisis skala besar, ML training batch, atau containerized batch workloads.</p></Box>
+
+<h3>Lightsail vs EC2 vs Batch</h3>
+
+<div class="tbl-wrap"><table><thead><tr><th>Skenario</th><th>Pilih</th><th>Kenapa</th></tr></thead><tbody><tr><td>Website kecil ingin cepat online</td><td>Lightsail</td><td>Paket sederhana dan preconfigured.</td></tr><tr><td>Server fleksibel dengan kontrol detail</td><td>EC2</td><td>Kontrol instance, jaringan, storage, dan integrasi lebih luas.</td></tr><tr><td>Ribuan pekerjaan komputasi terjadwal</td><td>AWS Batch</td><td>Queue, scheduling, dan compute scaling untuk job batch.</td></tr></tbody></table></div>
+
+<Box variant="warn" icon="⚠️" label="Bukan semua compute sama"><p>Lambda cocok untuk event-driven function, EC2 cocok untuk server fleksibel, Lightsail cocok untuk kesederhanaan, dan Batch cocok untuk pekerjaan massal yang dijadwalkan.</p></Box>
+
+</Section>
+
+<Section num="08" id="kamus-skenario" title="Kamus Skenario Cepat">
+
+<p class="lead">Bagian ini adalah inti modul: baca skenario, tangkap kata kunci, pilih layanan.</p>
+
+<div class="tbl-wrap"><table><thead><tr><th>Skenario di soal</th><th>Layanan</th><th>Kata kunci yang perlu diingat</th></tr></thead><tbody><tr><td>Mengirim email reset password, invoice, dan newsletter dari aplikasi</td><td>Amazon SES</td><td>Email transaksional, marketing email, SMTP, deliverability.</td></tr><tr><td>Membangun cloud contact center untuk telepon dan chat pelanggan</td><td>Amazon Connect</td><td>Contact center, agent, queue, IVR, routing, customer service.</td></tr><tr><td>Menyediakan desktop virtual untuk karyawan remote</td><td>Amazon WorkSpaces</td><td>VDI, cloud desktop, desktop persisten, remote worker.</td></tr><tr><td>Memberi akses aplikasi desktop tanpa instalasi lokal</td><td>Amazon AppStream 2.0</td><td>Application streaming, software trial, training lab.</td></tr><tr><td>Memberi vendor akses web internal tanpa VPN penuh</td><td>Amazon WorkSpaces Secure Browser</td><td>Secure browser, web access, SaaS access, data tidak menyentuh device.</td></tr><tr><td>Deploy aplikasi web/mobile dari Git dengan auth dan backend sederhana</td><td>AWS Amplify</td><td>Frontend hosting, CI/CD, fullstack app, developer frontend.</td></tr><tr><td>Membuat GraphQL API untuk mobile app dengan data real-time</td><td>AWS AppSync</td><td>GraphQL, subscription, WebSocket, managed API.</td></tr><tr><td>Menghubungkan sensor pabrik ke AWS secara aman</td><td>AWS IoT Core</td><td>Device, MQTT, certificate, rule engine, telemetry.</td></tr><tr><td>Meluncurkan WordPress atau VPS sederhana</td><td>Amazon Lightsail</td><td>VPS, preconfigured, website kecil, paket sederhana.</td></tr><tr><td>Menjalankan ribuan job simulasi atau analitik</td><td>AWS Batch</td><td>Batch job, queue, scheduling, containerized workloads.</td></tr><tr><td>Menjalankan AWS infrastructure di lokasi pelanggan</td><td>AWS Outposts</td><td>On premises, hybrid, low latency, local data processing, data residency.</td></tr></tbody></table></div>
+
+<Box variant="exam" icon="🎯" label="Strategi 10 detik"><p>Lingkari kata kerja dalam soal: kirim email, layani pelanggan, beri desktop, stream aplikasi, deploy frontend, buat GraphQL, hubungkan sensor, jalankan batch, atau bawa AWS on premises.</p></Box>
+
+<h3>Tambahan pembeda yang sering menolong</h3>
+
+<Figure><OtherAwsServicesFig05 /><Fragment slot="caption"><b>Gambar 6.</b> Pasangan layanan yang sering tertukar di soal beserta pembeda intinya: SES vs SNS, WorkSpaces vs AppStream 2.0, Amplify vs AppSync, dan Lightsail vs EC2 vs Batch.</Fragment></Figure>
+
+<CardGrid cols={2}>
+  <Card><h4>SES vs SNS</h4><p>SES untuk email aplikasi dan deliverability. SNS untuk notifikasi pub/sub ke subscriber.</p></Card>
+  <Card><h4>Connect vs WorkSpaces</h4><p>Connect untuk agent melayani pelanggan. WorkSpaces untuk desktop virtual karyawan.</p></Card>
+  <Card><h4>AppStream vs WorkSpaces</h4><p>AppStream streaming aplikasi. WorkSpaces desktop lengkap.</p></Card>
+  <Card><h4>Amplify vs AppSync</h4><p>Amplify untuk workflow web/mobile. AppSync untuk GraphQL dan real-time API.</p></Card>
+  <Card><h4>IoT Core vs Kinesis</h4><p>IoT Core menghubungkan device. Kinesis streaming data skala besar.</p></Card>
+  <Card><h4>Lightsail vs Batch</h4><p>Lightsail untuk server sederhana. Batch untuk pekerjaan komputasi massal yang antre.</p></Card>
+</CardGrid>
+
+</Section>
+
+<Section num="09" id="walkthrough" title="Walkthrough Konseptual" sub="Latihan ringan untuk berpikir seperti pembuat keputusan cloud.">
+
+<p class="lead">Kita akan memakai satu perusahaan fiktif, lalu memilih layanan berdasarkan masalahnya.</p>
+
+Bayangkan perusahaan bernama TokoRapi, sebuah toko online yang berkembang cepat. Timnya punya pelanggan, agent support, developer frontend, gudang dengan sensor suhu, dan job laporan malam. Mereka bertanya: "layanan AWS mana yang perlu kami pilih untuk setiap kebutuhan?"
+
+<Steps>
+  <Step><b>Email pelanggan</b><p>TokoRapi perlu reset password, invoice, dan email promo. Pilih Amazon SES karena kebutuhan utamanya adalah email dari aplikasi.</p></Step>
+  <Step><b>Layanan pelanggan</b><p>TokoRapi ingin pelanggan menghubungi support via telepon dan chat, lalu agent menerima antrean. Pilih Amazon Connect.</p></Step>
+  <Step><b>Desktop agent remote</b><p>Agent kontrak bekerja dari rumah dan butuh desktop standar perusahaan. Pilih Amazon WorkSpaces.</p></Step>
+  <Step><b>Aplikasi internal khusus</b><p>Tim gudang butuh aplikasi desktop lama tanpa instalasi di laptop pribadi. Pilih AppStream 2.0 (kini juga dikenal sebagai WorkSpaces Applications).</p></Step>
+  <Step><b>Frontend toko</b><p>Developer ingin deploy aplikasi web dari Git dan menambahkan auth dengan cepat. Pilih AWS Amplify.</p></Step>
+  <Step><b>API mobile</b><p>Aplikasi mobile butuh GraphQL untuk order, profil, dan status pengiriman real-time. Pilih AWS AppSync.</p></Step>
+  <Step><b>Sensor gudang</b><p>Sensor suhu gudang mengirim telemetry dengan MQTT dan certificate. Pilih AWS IoT Core.</p></Step>
+  <Step><b>Laporan malam</b><p>Setiap malam ribuan file diproses untuk laporan. Pilih AWS Batch bila tugasnya batch containerized dan butuh antrean komputasi.</p></Step>
+</Steps>
+
+<h3>Walkthrough aman: SES dari sandbox ke produksi</h3>
+
+Ini alur konseptual yang bisa kamu pahami tanpa biaya, hanya membaca alurnya. Ia juga melatih kata kunci sandbox yang sering muncul di soal.
+
+<Steps>
+  <Step><b>Verifikasi identity</b><p>Buktikan kepemilikan domain atau alamat email pengirim. Tanpa identity terverifikasi, SES menolak mengirim atas namamu.</p></Step>
+  <Step><b>Kirim dalam sandbox</b><p>Akun baru otomatis di sandbox: hanya bisa kirim ke alamat terverifikasi, maksimal 200 email per 24 jam dan 1 pesan per detik. Cukup untuk uji coba, bukan untuk produksi.</p></Step>
+  <Step><b>Ajukan pindah ke produksi</b><p>Saat siap mengirim ke publik dengan volume nyata, ajukan keluar dari sandbox. Setelah disetujui, batas tujuan dan volume terangkat.</p></Step>
+  <Step><b>Pantau bounce dan complaint</b><p>Reputasi pengirim bergantung pada seberapa sehat pengirimanmu. Bersihkan alamat yang bounce dan tanggapi complaint agar email berikutnya tidak diblokir.</p></Step>
+</Steps>
+
+<Box variant="tip" icon="🧪" label="Latihan mandiri"><p>Ambil satu aplikasi yang kamu kenal, lalu tulis 10 kebutuhan bisnisnya. Untuk setiap kebutuhan, pilih satu layanan AWS dan satu alasan sederhana. Lalu uji dirimu: kata kunci mana di tiap kebutuhan yang menjadi penentu jawaban?</p></Box>
+
+<h3>Checklist sebelum produksi</h3>
+
+<ul><li><strong>Security</strong>, pastikan IAM least privilege, enkripsi, logging, dan audit trail sesuai layanan.</li><li><strong>Region</strong>, cek ketersediaan layanan dan kebutuhan residensi data.</li><li><strong>Pricing</strong>, pahami unit biaya seperti email, sesi, desktop, request API, pesan IoT, job compute, storage, dan data transfer.</li><li><strong>Operasional</strong>, tentukan monitoring, alert, backup, dan proses support.</li><li><strong>Integrasi</strong>, cek apakah layanan perlu terhubung ke VPC, directory, identity provider, database, Lambda, atau CloudWatch.</li></ul>
+
+</Section>
+
+<Section num="10" id="jebakan-ujian" title="Kesalahan Umum & Jebakan Ujian">
+
+<p class="lead">Banyak jawaban salah bukan karena tidak tahu AWS, tetapi karena salah membaca kata kunci.</p>
+
+<h3>1. Menganggap semua email adalah SNS</h3>
+
+SNS bisa mengirim notifikasi ke email subscriber, tetapi itu bukan layanan utama untuk kampanye email, email transaksional, reputasi pengirim, dan deliverability. Untuk email aplikasi berskala, jawab SES.
+
+<h3>2. Menganggap semua akses remote adalah WorkSpaces</h3>
+
+Remote access punya tiga bentuk. Desktop lengkap berarti WorkSpaces. Aplikasi desktop tertentu berarti AppStream 2.0. Browser aman untuk web berarti WorkSpaces Secure Browser.
+
+<h3>3. Menganggap Amplify dan AppSync saling menggantikan</h3>
+
+Amplify adalah pengalaman pengembangan web/mobile dan hosting. AppSync adalah managed GraphQL dan real-time API. Jika soal menyebut GraphQL secara eksplisit, AppSync biasanya jawaban kuat.
+
+<h3>4. Memilih EC2 untuk semua server kecil</h3>
+
+EC2 fleksibel, tetapi untuk skenario "mudah, cepat, VPS, WordPress, paket sederhana", Lightsail sering lebih tepat di level Cloud Practitioner.
+
+<h3>5. Memilih Lambda untuk semua pekerjaan otomatis</h3>
+
+Lambda bagus untuk fungsi event-driven. Namun, jika soal menyebut ribuan job batch, antrian job, simulasi, atau analisis skala besar, AWS Batch lebih tepat.
+
+<h3>6. Mengira Outposts sama dengan Region baru</h3>
+
+Outposts bukan Region publik. Outposts membawa infrastruktur dan layanan AWS ke lokasi pelanggan untuk kebutuhan hybrid, latensi rendah, pemrosesan lokal, atau residensi data.
+
+<h3>7. Menukar IoT Core dengan Kinesis</h3>
+
+Keduanya menangani data masuk skala besar. IoT Core mengurus cara device terhubung dan dipercaya (MQTT, certificate, Device Shadow). Kinesis mengurus aliran data setelah masuk (analitik real-time, pipeline). Kata kunci sensor dan MQTT mengarah ke IoT Core; kata kunci streaming data dan pipeline mengarah ke Kinesis.
+
+<h3>8. Mengira Connect untuk meeting tim internal</h3>
+
+Amazon Connect adalah contact center menghadap pelanggan (agent melayani pelanggan), bukan layanan video meeting internal. Layanan meeting internal adalah Amazon Chime, tetapi Chime tidak ada di silabus CLF-C02, jadi skenario "contact center" hampir pasti Connect.
+
+<h3>9. Melupakan shared responsibility</h3>
+
+Layanan managed tidak berarti pelanggan bebas tanggung jawab. Pelanggan tetap mengatur identitas, konfigurasi akses, data, compliance, dan cara menggunakan layanan secara aman.
+
+<Box variant="exam" icon="🎯" label="Formula membaca soal"><p>Kebutuhan bisnis + kata kunci teknis + batasan operasional = layanan yang paling cocok.</p></Box>
+
+<Recap title="Jebakan yang Paling Sering"><ul><li>Email marketing atau transaksional: SES, bukan SNS.</li><li>Desktop virtual: WorkSpaces, bukan AppStream 2.0.</li><li>Streaming aplikasi: AppStream 2.0, bukan WorkSpaces.</li><li>GraphQL API: AppSync, bukan Amplify saja.</li><li>Sensor dan MQTT: IoT Core, bukan Kinesis.</li><li>Contact center pelanggan: Connect, bukan Chime (Chime di luar silabus).</li><li>VPS sederhana: Lightsail, bukan selalu EC2.</li><li>Batch job massal: AWS Batch, bukan selalu Lambda.</li><li>AWS on premises: Outposts, bukan sekadar Direct Connect.</li></ul></Recap>
+
+</Section>
+
+<Section num="11" id="ringkasan" title="Ringkasan & Tips Ujian">
+
+<p class="lead">Modul ini adalah peta cepat untuk menjawab soal "layanan mana untuk skenario apa".</p>
+
+<h3>Peta layanan satu kalimat</h3>
+
+<ul><li><strong>Amazon SES</strong>, layanan email aplikasi untuk email transaksional, marketing, newsletter, SMTP/API, dan deliverability.</li><li><strong>Amazon Connect</strong>, cloud contact center untuk telepon, chat, agent, queue, routing, dan layanan pelanggan.</li><li><strong>Amazon WorkSpaces</strong>, desktop virtual terkelola untuk karyawan remote atau lingkungan kerja cloud.</li><li><strong>Amazon AppStream 2.0</strong>, streaming aplikasi desktop dari cloud tanpa instalasi lokal, kini diposisikan sebagai WorkSpaces applications di halaman produk AWS.</li><li><strong>Amazon WorkSpaces Secure Browser</strong>, browser remote terkelola untuk akses web dan SaaS yang lebih terkontrol.</li><li><strong>AWS Amplify</strong>, tools dan layanan untuk membangun, hosting, dan deploy aplikasi web/mobile dengan pengalaman frontend.</li><li><strong>AWS AppSync</strong>, managed GraphQL dan real-time API untuk aplikasi yang butuh data dari banyak sumber.</li><li><strong>AWS IoT Core</strong>, gerbang aman untuk device IoT, MQTT, certificate, telemetry, dan rule pemrosesan pesan.</li><li><strong>Amazon Lightsail</strong>, VPS dan resource cloud preconfigured untuk website atau aplikasi sederhana.</li><li><strong>AWS Batch</strong>, layanan managed untuk menjadwalkan dan menjalankan job batch containerized pada skala besar.</li><li><strong>AWS Outposts</strong>, infrastruktur AWS terkelola di lokasi pelanggan untuk hybrid, latensi rendah, pemrosesan lokal, dan data residency.</li></ul>
+
+<h3>Pemetaan ke domain CLF-C02</h3>
+
+<div class="tbl-wrap"><table><thead><tr><th>Domain</th><th>Kaitan modul</th><th>Prioritas belajar</th></tr></thead><tbody><tr><td>Domain 1: Cloud Concepts (24%)</td><td>Memahami nilai cloud: managed service, elastisitas, model hybrid, dan agility untuk aplikasi bisnis.</td><td>Sedang.</td></tr><tr><td>Domain 2: Security & Compliance (30%)</td><td>Memahami akses aman, identity, certificate IoT, secure browser, data residency, logging, dan shared responsibility.</td><td>Tinggi.</td></tr><tr><td>Domain 3: Cloud Technology & Services (34%)</td><td>Inti modul: memilih layanan dari kategori Business Applications, End User Computing, Frontend Web and Mobile, IoT, dan Compute.</td><td>Sangat tinggi.</td></tr><tr><td>Domain 4: Billing, Pricing & Support (12%)</td><td>Memahami pay as you use, unit biaya per layanan, AWS Pricing Calculator, Cost Explorer, Budgets, dan dokumentasi pricing resmi.</td><td>Sedang.</td></tr></tbody></table></div>
+
+<h3>Tips ujian praktis</h3>
+
+<ul><li>Hafalkan pasangan kata kunci dan layanan, bukan semua detail konfigurasi.</li><li>Jika soal menyebut "contact center", hampir selalu pikirkan Amazon Connect.</li><li>Jika soal menyebut "GraphQL", pikirkan AWS AppSync lebih dulu.</li><li>Jika soal menyebut "VPS sederhana" atau "WordPress cepat", pikirkan Lightsail.</li><li>Jika soal menyebut "batch job queue" dan pemrosesan massal, pikirkan AWS Batch.</li><li>Jika soal menyebut "on premises dengan pengalaman AWS", pikirkan Outposts.</li><li>Untuk pricing, jangan menghafal angka kecuali konteksnya jelas. Biasakan cek halaman pricing resmi karena harga, region, dan free tier bisa berubah.</li></ul>
+
+<Box variant="exam" icon="✅" label="Kalimat penutup untuk diingat"><p>Di CLF-C02, layanan kecil sering muncul sebagai jawaban besar ketika kata kunci skenarionya tepat.</p></Box>
+
+<Recap title="Sumber Resmi untuk Review"><ul><li><a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/clf-02-in-scope-services.html">CLF-C02 In-Scope AWS Services</a></li><li><a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02-domain3.html">CLF-C02 Domain 3: Cloud Technology and Services</a></li><li><a href="https://aws.amazon.com/ses/">Amazon SES</a>, <a href="https://aws.amazon.com/connect/">Amazon Connect</a>, <a href="https://aws.amazon.com/workspaces/">Amazon WorkSpaces</a>, <a href="https://aws.amazon.com/appstream2/">Amazon AppStream 2.0</a>, <a href="https://aws.amazon.com/workspaces/secure-browser/">WorkSpaces Secure Browser</a></li><li><a href="https://aws.amazon.com/amplify/">AWS Amplify</a>, <a href="https://aws.amazon.com/appsync/">AWS AppSync</a>, <a href="https://aws.amazon.com/iot-core/">AWS IoT Core</a>, <a href="https://aws.amazon.com/lightsail/">Amazon Lightsail</a>, <a href="https://aws.amazon.com/batch/">AWS Batch</a>, <a href="https://aws.amazon.com/outposts/">AWS Outposts</a></li></ul></Recap>
+
+</Section>

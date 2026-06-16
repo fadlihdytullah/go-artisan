@@ -1,0 +1,410 @@
+---
+title: "Modul EC2 - AWS Cloud Practitioner CLF-C02"
+badge: "EC2"
+topTitle: "Amazon EC2"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Pelajari Amazon EC2 sebagai layanan compute utama AWS, dari konsep instance, keluarga instance, keamanan, storage, lifecycle, networking, hingga opsi harga yang sering keluar di ujian."
+order: 3
+target: "CLF-C02"
+readingTime: "~75 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Apa itu Amazon EC2?" }
+  - { num: "02", id: "kenapa-ec2-penting", title: "Kenapa EC2 Penting di Cloud?" }
+  - { num: "03", id: "komponen-utama", title: "Komponen Utama EC2" }
+  - { num: "04", id: "cara-kerja", title: "Cara Kerja EC2 Tingkat Tinggi" }
+  - { num: "05", id: "keluarga-instance", title: "Keluarga Instance: Kapan Pilih Mana" }
+  - { num: "06", id: "keamanan-akses", title: "Keamanan dan Akses EC2" }
+  - { num: "07", id: "storage-networking", title: "Storage dan Networking" }
+  - { num: "08", id: "lifecycle", title: "Lifecycle: Stop, Hibernate, Terminate" }
+  - { num: "09", id: "skalabilitas-ketersediaan", title: "Skalabilitas dan Ketersediaan" }
+  - { num: "10", id: "opsi-harga", title: "Opsi Harga EC2" }
+  - { num: "11", id: "skenario-pemilihan", title: "Skenario Pemilihan Layanan" }
+  - { num: "12", id: "hands-on", title: "Hands-on Konseptual" }
+  - { num: "13", id: "kesalahan-umum", title: "Kesalahan Umum Pemula" }
+  - { num: "14", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul EC2 - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import EC2Fig01 from "@figures/EC2Fig01.astro";
+import EC2Fig02 from "@figures/EC2Fig02.astro";
+import EC2Fig03 from "@figures/EC2Fig03.astro";
+import EC2Fig04 from "@figures/EC2Fig04.astro";
+import EC2Fig05 from "@figures/EC2Fig05.astro";
+
+<Hero eyebrow="Modul &middot; Compute" title="Amazon <em>EC2</em><br />Elastic Compute Cloud">
+  <p>EC2 adalah cara menyewa komputer virtual di AWS, fleksibel seperti memesan ruang kerja sesuai kebutuhan.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~75 menit baca</Chip>
+    <Chip icon="book">Domain 3 &middot; 34%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Apa itu Amazon EC2?" sub="Mulai dari analogi sebelum masuk definisi teknis.">
+
+<p class="lead">Bayangkan kamu membuka toko kue musiman, kamu tidak perlu membeli gedung dan oven raksasa untuk setahun penuh jika ramai hanya saat lebaran.</p>
+
+Amazon Elastic Compute Cloud, atau Amazon EC2, adalah layanan AWS untuk menjalankan **server virtual** yang disebut **instance**. Server ini bisa dipakai untuk web server, aplikasi internal, backend API, batch processing, game server, development environment, dan banyak beban kerja lain.
+
+Di dunia tradisional, kamu membeli server fisik, memasangnya di data center, menunggu pengadaan, lalu menebak kapasitas. Dengan EC2, kamu memilih spesifikasi, sistem operasi, jaringan, storage, dan model pembayaran, lalu menjalankan instance dalam hitungan menit.
+
+<Box variant="analogy" icon="🏢" label="Analogi kos-kosan compute"><p>EC2 mirip menyewa kamar kos untuk aplikasi, kamu memilih ukuran kamar, lokasi, fasilitas, lama sewa, dan aturan akses tanpa harus membangun gedung sendiri.</p></Box>
+
+AWS mendeskripsikan EC2 sebagai kapasitas komputasi yang aman dan dapat diubah ukurannya di cloud. Untuk pengantar resmi, rujuk <a href="https://aws.amazon.com/ec2/">halaman Amazon EC2</a> dan <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html">dokumentasi konsep EC2</a>.
+
+</Section>
+
+<Section num="02" id="kenapa-ec2-penting" title="Kenapa EC2 Penting di Cloud?" sub="EC2 adalah salah satu layanan inti yang menghubungkan konsep cloud dengan praktik nyata.">
+
+<p class="lead">Kalau S3 adalah gudang barang, maka EC2 adalah mesin kerja yang memproses barang tersebut.</p>
+
+EC2 penting karena ia menunjukkan nilai utama cloud, yaitu **elasticity**, **pay as you go**, **global infrastructure**, dan **self-service provisioning**. Kamu bisa menaikkan kapasitas saat traffic naik, menurunkannya saat sepi, dan menempatkan server dekat pengguna melalui Region dan Availability Zone.
+
+Untuk CLF-C02, EC2 sering muncul bukan sebagai konfigurasi mendalam, tetapi sebagai pertanyaan pemilihan layanan. Misalnya, kapan memakai EC2 dibanding AWS Lambda, kapan memilih Spot Instances, kapan memakai Auto Scaling, dan siapa bertanggung jawab menambal sistem operasi.
+
+<CardGrid cols={3}>
+  <Card><h4>Kontrol tinggi</h4><p>Kamu bisa memilih OS, ukuran instance, storage, security group, dan software yang diinstal.</p></Card>
+  <Card><h4>Fleksibel</h4><p>Kapasitas dapat ditambah atau dikurangi sesuai kebutuhan, terutama jika dikombinasikan dengan Auto Scaling.</p></Card>
+  <Card><h4>Bayar sesuai model</h4><p>EC2 mendukung beberapa opsi pembelian seperti On-Demand, Savings Plans, Reserved Instances, dan Spot Instances.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Fokus ujian"><p>Ingat EC2 sebagai layanan compute berbasis server virtual dengan kontrol tinggi, bukan layanan serverless.</p></Box>
+
+</Section>
+
+<Section num="03" id="komponen-utama" title="Komponen Utama EC2" sub="Kenali bagian-bagian yang biasanya muncul di console dan soal ujian.">
+
+<p class="lead">Meluncurkan EC2 mirip merakit laptop untuk kantor, kamu memilih sistem operasi, ukuran mesin, disk, jaringan, dan kunci pintu.</p>
+
+<h3>Instance</h3>
+
+Instance adalah server virtual yang berjalan di infrastruktur AWS. Kamu memilih **instance type** untuk menentukan kombinasi CPU, memori, jaringan, dan kadang storage lokal. Contoh keluarga instance yang sering dijelaskan di level Cloud Practitioner adalah general purpose, compute optimized, memory optimized, storage optimized, dan accelerated computing.
+
+<h3>AMI</h3>
+
+Amazon Machine Image, atau AMI, adalah template untuk meluncurkan instance. AMI berisi informasi seperti sistem operasi, konfigurasi awal, dan volume root. Kamu bisa memakai AMI dari AWS, AWS Marketplace, komunitas, atau membuat AMI sendiri dari instance yang sudah dikonfigurasi.
+
+<h3>Instance type</h3>
+
+Instance type menentukan karakter mesin. Namanya mengikuti pola yang berguna untuk dipahami, misalnya `m7g.large`. Huruf depan adalah keluarga (`m` = general purpose), angka adalah generasi (`7` lebih baru dari `6`, biasanya lebih hemat dan cepat), huruf tambahan menandai varian (`g` = prosesor AWS Graviton berbasis ARM, `i` = Intel, `a` = AMD), dan kata terakhir adalah ukuran (`large`, `xlarge`, dan seterusnya). Untuk aplikasi web kecil, general purpose sering cukup. Untuk kalkulasi intensif, compute optimized lebih cocok. Untuk database in-memory atau cache besar, memory optimized lebih relevan. Pemilihan keluarga ini dibahas mendalam di Section 05.
+
+<h3>Key pair</h3>
+
+Key pair adalah kredensial untuk membuktikan identitas saat terhubung ke instance. Untuk Linux, private key dipakai untuk SSH. Untuk Windows, private key dapat dipakai untuk mendekripsi password administrator. Lihat <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html">dokumentasi key pairs EC2</a>.
+
+<h3>Security group</h3>
+
+Security group adalah firewall virtual di tingkat instance. Inbound rules mengatur traffic masuk, outbound rules mengatur traffic keluar. AWS menjelaskan security group sebagai firewall virtual untuk instance EC2 di <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-security-groups.html">dokumentasi security groups</a>.
+
+<h3>User data</h3>
+
+User data adalah skrip awal yang dapat dijalankan saat instance pertama kali dibuat, misalnya menginstal web server, menarik kode aplikasi, atau mengatur konfigurasi dasar.
+
+<Figure><EC2Fig01 /><Fragment slot="caption"><b>Gambar 1.</b> Komponen yang biasanya dipilih saat meluncurkan EC2, mulai dari AMI sampai security group.</Fragment></Figure>
+
+</Section>
+
+<Section num="04" id="cara-kerja" title="Cara Kerja EC2 Tingkat Tinggi" sub="Dari permintaan launch sampai aplikasi bisa diakses.">
+
+<p class="lead">Saat kamu menekan tombol launch, AWS menyiapkan mesin virtual, memasangnya di jaringan, lalu menghubungkannya ke aturan keamanan yang kamu pilih.</p>
+
+Secara sederhana, alurnya adalah memilih AMI, memilih instance type, memilih VPC dan subnet, menambahkan storage, menentukan security group, lalu menjalankan instance. Setelah aktif, kamu dapat mengaksesnya melalui SSH, RDP, Systems Manager, atau aplikasi yang berjalan di atasnya.
+
+<Steps>
+  <Step><b>Pilih template</b><p>Tentukan AMI, misalnya Amazon Linux, Ubuntu, Windows Server, atau AMI khusus perusahaan.</p></Step>
+  <Step><b>Pilih kapasitas</b><p>Tentukan instance type yang sesuai beban kerja, misalnya general purpose untuk aplikasi umum.</p></Step>
+  <Step><b>Pilih lokasi jaringan</b><p>Tempatkan instance di subnet dalam VPC, biasanya subnet public untuk web server atau private untuk backend.</p></Step>
+  <Step><b>Pasang storage</b><p>Tambahkan volume root dan volume tambahan jika aplikasi membutuhkan penyimpanan persisten.</p></Step>
+  <Step><b>Atur keamanan</b><p>Tentukan security group, IAM role, key pair, dan opsi metadata agar akses tetap terkendali.</p></Step>
+</Steps>
+
+<Box variant="tip" icon="💡" label="Pola pikir sederhana"><p>EC2 bukan hanya komputer virtual, tetapi kombinasi compute, jaringan, storage, identitas, monitoring, dan model biaya.</p></Box>
+
+</Section>
+
+<Section num="05" id="keluarga-instance" title="Keluarga Instance: Kapan Pilih Mana" sub="Memilih instance type yang tepat seperti memilih kendaraan sesuai muatan, bukan selalu yang terbesar.">
+
+<p class="lead">Memesan instance terbesar untuk web blog kecil seperti membeli truk gandeng untuk antar surat, mahal dan boros, sedangkan memesan instance terlalu kecil untuk database berat seperti menumpuk lemari di sepeda motor.</p>
+
+AWS mengelompokkan instance type ke dalam beberapa keluarga, masing-masing dioptimalkan untuk rasio CPU, memori, jaringan, dan akselerator yang berbeda. Per 2026, AWS resmi mengakui **enam kategori utama**, bukan lima seperti materi lama, karena HPC Optimized kini berdiri sendiri. Untuk CLF-C02 kamu tidak perlu menghafal kode tiap instance, tetapi perlu mengenali kapan satu kategori lebih tepat dari yang lain. Lihat sumber resmi: <a href="https://aws.amazon.com/ec2/instance-types/">Amazon EC2 Instance Types</a>.
+
+<CardGrid cols={3}>
+  <Card><h4>General Purpose (M, T)</h4><p>Seimbang antara CPU dan memori. Pilihan default untuk web server, aplikasi internal, dan dev environment. Seri T (mis. T4g) berbasis burstable, hemat untuk beban kerja yang sebagian besar diam.</p></Card>
+  <Card><h4>Compute Optimized (C)</h4><p>Rasio CPU tinggi terhadap memori. Cocok untuk batch processing, encoding media, game server, dan compute ilmiah yang haus prosesor.</p></Card>
+  <Card><h4>Memory Optimized (R, X)</h4><p>Memori besar per vCPU. Cocok untuk database in-memory, cache besar seperti Redis, dan analitik real time yang menyimpan banyak data di RAM.</p></Card>
+  <Card><h4>Storage Optimized (I, D)</h4><p>Throughput dan IOPS lokal tinggi. Cocok untuk data warehouse, database NoSQL berskala besar, dan beban kerja yang membaca atau menulis disk lokal secara intensif.</p></Card>
+  <Card><h4>Accelerated Computing (P, G, Inf)</h4><p>Memakai GPU atau chip khusus seperti AWS Inferentia. Cocok untuk machine learning, inferensi AI, rendering grafis, dan simulasi yang dipercepat hardware.</p></Card>
+  <Card><h4>HPC Optimized (Hpc)</h4><p>Dirancang untuk high performance computing skala besar dengan jaringan antar node sangat cepat. Cocok untuk simulasi rekayasa, prediksi cuaca, dan riset komputasi berat.</p></Card>
+</CardGrid>
+
+<h3>Cara cepat memilih saat membaca soal</h3>
+
+Soal CLF-C02 jarang menyebut nama instance, tetapi sering memberi petunjuk berupa karakter beban kerja. Latih dirimu menerjemahkan kata kunci ke kategori. Jika soal menekankan "in-memory database" atau "high memory", arahkan ke memory optimized. Jika menekankan "machine learning" atau "GPU", arahkan ke accelerated computing. Jika menekankan "general web application" tanpa kekhususan, general purpose hampir selalu jawaban paling aman.
+
+<CardGrid cols={2}>
+  <Card><h4>"Aplikasi web umum, beban naik turun"</h4><p>General Purpose. Jika sebagian besar waktu idle, seri T burstable lebih hemat karena memakai model kredit CPU.</p></Card>
+  <Card><h4>"Render video, simulasi numerik, banyak thread CPU"</h4><p>Compute Optimized, karena CPU jadi sumber daya pembatas, bukan memori.</p></Card>
+  <Card><h4>"Cache besar, database in-memory, SAP HANA"</h4><p>Memory Optimized, karena yang dibutuhkan banyak RAM per vCPU.</p></Card>
+  <Card><h4>"Inferensi model AI, training, transcoding GPU"</h4><p>Accelerated Computing, karena hardware khusus mempercepat dan menurunkan biaya per kerja.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Graviton sebagai jalan hemat"><p>Banyak keluarga punya varian Graviton (akhiran g, mis. M7g, C7g). Prosesor ARM ini sering menawarkan harga per kinerja lebih baik untuk beban kerja yang kompatibel, sehingga jadi cara umum menghemat tanpa mengubah arsitektur aplikasi.</p></Box>
+
+<Box variant="exam" icon="🎯" label="Fokus ujian"><p>Hafalkan pemetaan kategori ke karakter beban kerja, bukan kode instance. Kata kunci memori besar mengarah ke memory optimized, kata kunci CPU intensif ke compute optimized, kata kunci GPU atau ML ke accelerated computing.</p></Box>
+
+</Section>
+
+<Section num="06" id="keamanan-akses" title="Keamanan dan Akses EC2" sub="Bagian ini sangat penting karena CLF-C02 memberi bobot besar pada Security and Compliance.">
+
+<p class="lead">Keamanan EC2 seperti keamanan gedung, AWS menjaga fondasi dan bangunan, kamu mengatur penghuni, kunci pintu, dan aturan masuk ruangan.</p>
+
+Dalam model tanggung jawab bersama, AWS bertanggung jawab atas keamanan **of the cloud**, seperti fasilitas fisik, hardware, dan lapisan virtualisasi. Pelanggan bertanggung jawab atas keamanan **in the cloud**, seperti sistem operasi guest, patch aplikasi, konfigurasi firewall, data, identitas, dan izin akses. AWS menjelaskan konsep ini di <a href="https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/shared-responsibility.html">AWS Well-Architected Security Pillar</a>.
+
+<Compare aLabel="AWS &middot; Security OF the cloud" bLabel="Pelanggan &middot; Security IN the cloud" aTone="blue" bTone="violet">
+  <Fragment slot="a"><ul><li>Fasilitas dan keamanan fisik data center.</li><li>Hardware, host, dan jaringan fisik.</li><li>Hypervisor dan lapisan virtualisasi.</li><li>Pemeliharaan infrastruktur yang menjalankan EC2.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Patching guest OS dan software aplikasi.</li><li>Konfigurasi security group dan firewall.</li><li>Pengelolaan key pair dan IAM role.</li><li>Enkripsi data dan kontrol akses.</li></ul></Fragment>
+</Compare>
+
+<h3>Security group sebagai pagar instance</h3>
+
+Security group bersifat stateful. Artinya, jika request masuk diizinkan, response baliknya diizinkan otomatis. Untuk web server, kamu biasanya membuka HTTP atau HTTPS dari internet, tetapi SSH atau RDP sebaiknya dibatasi hanya dari IP admin atau diganti dengan akses melalui AWS Systems Manager jika sesuai.
+
+<h3>IAM role, bukan access key permanen</h3>
+
+Aplikasi di EC2 sering perlu mengakses S3, DynamoDB, CloudWatch, atau layanan lain. Praktik aman adalah memasang IAM role pada instance, bukan menyimpan access key jangka panjang di file konfigurasi. Kredensial role dapat diambil melalui Instance Metadata Service dan berupa kredensial sementara yang dirotasi otomatis, sesuai <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-metadata-security-credentials.html">dokumentasi kredensial metadata EC2</a>.
+
+<h3>Instance Metadata Service</h3>
+
+Instance Metadata Service, atau IMDS, menyediakan metadata tentang instance lewat alamat internal khusus, termasuk kredensial sementara dari IAM role. Ada dua versi. IMDSv1 memakai model request-response sederhana, sedangkan IMDSv2 menambahkan token sesi sehingga lebih tahan terhadap serangan seperti server side request forgery. Per dokumentasi resmi, secara default sebuah instance masih bisa memakai IMDSv1 atau IMDSv2, dan mode IMDSv2-only dapat diaktifkan per akun, per AMI, atau per instance. Sejak pertengahan 2024, instance type yang baru dirilis memakai IMDSv2-only secara default, dan AWS sangat merekomendasikan migrasi ke IMDSv2. Untuk CLF-C02, cukup pahami bahwa metadata bisa berisi kredensial sementara, IMDSv2 lebih aman, dan aksesnya perlu dikonfigurasi dengan hati-hati. Lihat sumber resmi: <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html">konfigurasi Instance Metadata Service</a>.
+
+<Figure><EC2Fig02 /><Fragment slot="caption"><b>Gambar 2.</b> Hubungan EC2 dengan security group, IAM role, dan layanan AWS lain melalui kredensial sementara.</Fragment></Figure>
+
+<Box variant="warn" icon="⚠️" label="Jebakan keamanan"><p>Jangan menaruh access key permanen di dalam instance, environment variable, atau repository aplikasi jika akses bisa diberikan lewat IAM role.</p></Box>
+
+</Section>
+
+<Section num="07" id="storage-networking" title="Storage dan Networking" sub="EC2 jarang berdiri sendiri, ia selalu terhubung ke disk dan jaringan.">
+
+<p class="lead">Server tanpa disk dan jaringan seperti dapur tanpa meja dan pintu, mesinnya ada, tetapi sulit dipakai dengan benar.</p>
+
+<h3>Amazon EBS</h3>
+
+Amazon Elastic Block Store, atau EBS, menyediakan block storage persisten untuk EC2. Anggap EBS seperti hard disk eksternal yang dipasang ke server lewat jaringan: ia hidup terpisah dari instance, sehingga datanya tetap ada meski instance dimatikan. Volume EBS dapat menjadi root volume atau volume data tambahan. Saat instance di-stop, data EBS tetap utuh. Saat instance di-terminate, root volume secara default ikut dihapus, tetapi volume data tambahan secara default justru dipertahankan, sebuah perilaku yang sering tertukar di soal.
+
+<h3>Instance store</h3>
+
+Instance store adalah storage lokal sementara yang menempel langsung pada host fisik tempat instance berjalan. Anggap instance store seperti disk internal di dalam mesin itu sendiri: sangat cepat karena dekat dengan CPU, tetapi terikat pada mesin tersebut. Karena sifatnya ephemeral, datanya hilang saat instance di-stop, di-hibernate, atau di-terminate. Untuk ujian, ingat perbedaan pentingnya, EBS untuk penyimpanan persisten yang harus selamat, instance store untuk data sementara yang cepat dan boleh hilang seperti cache atau buffer.
+
+<Compare aLabel="EBS &middot; block storage persisten" bLabel="Instance Store &middot; storage lokal sementara" aTone="teal" bTone="red">
+  <Fragment slot="a"><ul><li>Hidup terpisah dari instance, data selamat saat stop.</li><li>Bisa di-snapshot ke S3 dan dipulihkan kapan saja.</li><li>Cocok untuk root volume dan data penting yang persisten.</li><li>Bisa dipindah atau dipasang ulang ke instance lain.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Menempel ke host fisik, latensi sangat rendah.</li><li>Data hilang saat stop, hibernate, atau terminate.</li><li>Cocok untuk cache, buffer, scratch, dan data sementara.</li><li>Tidak bisa di-snapshot atau dipindah seperti EBS.</li></ul></Fragment>
+</Compare>
+
+<h3>Elastic IP</h3>
+
+Elastic IP adalah alamat IPv4 publik statis yang bisa diasosiasikan ke resource seperti EC2 instance, NAT gateway, atau Network Load Balancer. Dokumentasi AWS menjelaskan asosiasi Elastic IP di <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/working-with-eips.html">panduan Elastic IP</a>.
+
+<h3>VPC, subnet, dan route</h3>
+
+EC2 berjalan di dalam VPC. Subnet public biasanya memiliki rute ke internet gateway, sedangkan subnet private tidak langsung menerima koneksi dari internet. Untuk desain sederhana, web server bisa ditempatkan di subnet public, sedangkan database di subnet private.
+
+<Box variant="exam" icon="🧠" label="Ingat untuk ujian"><p>Security group melindungi instance, subnet dan route table mengatur jalur jaringan, EBS menyimpan data persisten.</p></Box>
+
+</Section>
+
+<Section num="08" id="lifecycle" title="Lifecycle: Stop, Hibernate, Terminate" sub="Tiga aksi yang sering tertukar di soal, dengan dampak berbeda pada data dan biaya.">
+
+<p class="lead">Mematikan instance EC2 mirip menutup toko, kamu bisa menutup sementara sambil mengunci barang (stop), tidur sebentar dengan lampu tetap menyala di gudang (hibernate), atau membongkar seluruh toko (terminate).</p>
+
+Instance EC2 melewati siklus hidup dari pending, running, stopping, stopped, hingga terminated. Tiga aksi yang paling sering diuji adalah stop, hibernate, dan terminate, karena masing-masing berdampak berbeda pada data, biaya, dan apakah instance bisa dihidupkan lagi. Lihat sumber resmi: <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-lifecycle.html">Amazon EC2 instance lifecycle</a>.
+
+<CardGrid cols={3}>
+  <Card><h4>Stop</h4><p>Hanya untuk instance EBS-backed. Instance dimatikan, isi RAM dihapus, dan kamu tidak membayar biaya pemakaian instance selama berstatus stopped. Data di EBS tetap ada, data di instance store hilang.</p></Card>
+  <Card><h4>Hibernate</h4><p>Hanya untuk instance EBS-backed. Isi RAM disimpan ke EBS root volume sehingga aplikasi bisa lanjut dari kondisi terakhir. Kamu dikenakan biaya selama status stopping, tetapi tidak saat stopped.</p></Card>
+  <Card><h4>Terminate</h4><p>Instance dihapus permanen dan tidak bisa dihidupkan lagi. Root volume EBS secara default ikut dihapus, semua data instance store hilang, dan instance ID dilepas.</p></Card>
+</CardGrid>
+
+<Figure><EC2Fig04 /><Fragment slot="caption"><b>Gambar 3.</b> Nasib data pada EBS dan instance store ketika instance di-stop, di-hibernate, atau di-terminate.</Fragment></Figure>
+
+<h3>Detail billing yang sering jadi jebakan</h3>
+
+Pada stop biasa, kamu berhenti membayar biaya pemakaian instance begitu masuk status stopping, meski volume EBS yang menempel tetap ditagih sebagai storage. Pada hibernate, ada perbedaan halus, kamu tetap dikenakan biaya selama instance berada di status stopping karena RAM sedang disimpan ke disk, dan baru berhenti saat benar-benar stopped. Hibernate juga mempertahankan private IPv4, IPv6, Elastic IP, dan instance ID, sehingga aplikasi yang start kembali terlihat seperti melanjutkan, bukan memulai dari nol.
+
+<Box variant="warn" icon="⚠️" label="Instance store tidak bisa di-stop"><p>Instance dengan instance store sebagai root volume tidak bisa di-stop, hanya bisa di-terminate. Karena itu data di instance store harus dianggap selalu sementara, jangan menaruh data penting di sana tanpa salinan di tempat lain.</p></Box>
+
+<Box variant="exam" icon="🎯" label="Pola jebakan lifecycle"><p>Stop dan hibernate hanya untuk EBS-backed. Terminate menghapus root volume secara default tetapi volume data tambahan tetap ada. Data instance store selalu hilang saat stop, hibernate, maupun terminate.</p></Box>
+
+</Section>
+
+<Section num="09" id="skalabilitas-ketersediaan" title="Skalabilitas dan Ketersediaan" sub="EC2 menjadi lebih kuat saat dipadukan dengan layanan lain.">
+
+<p class="lead">Satu kasir bisa kewalahan saat toko ramai, maka toko modern menambah kasir dan membagi antrean.</p>
+
+Amazon EC2 dapat diskalakan secara manual dengan mengganti ukuran instance, atau secara otomatis dengan Amazon EC2 Auto Scaling. Untuk ketersediaan yang lebih baik, beberapa instance dapat ditempatkan di beberapa Availability Zone, lalu traffic dibagikan oleh Elastic Load Balancing.
+
+<CardGrid cols={3}>
+  <Card><h4>Vertical scaling</h4><p>Menaikkan ukuran instance, misalnya dari kecil ke lebih besar, cocok saat aplikasi belum mudah dibagi ke banyak server.</p></Card>
+  <Card><h4>Horizontal scaling</h4><p>Menambah jumlah instance, biasanya dikombinasikan dengan load balancer dan Auto Scaling group.</p></Card>
+  <Card><h4>High availability</h4><p>Menjalankan instance di beberapa Availability Zone agar aplikasi lebih tahan gangguan zona.</p></Card>
+</CardGrid>
+
+Auto Scaling membantu menjaga jumlah instance sesuai kebutuhan. Elastic Load Balancing membantu membagi traffic. CloudWatch membantu memantau metrik seperti CPU utilization, status check, dan alarm. Untuk CLF-C02, pahami fungsi layanan pendampingnya, bukan konfigurasi lanjutan.
+
+<Box variant="tip" icon="💡" label="Pola arsitektur umum"><p>Untuk aplikasi web produksi, pikirkan ALB di depan, Auto Scaling group di beberapa AZ, EC2 di subnet private, dan database terkelola di belakang.</p></Box>
+
+<Figure><EC2Fig05 /><Fragment slot="caption"><b>Gambar 4.</b> Pola high availability klasik: pengguna masuk lewat ALB, traffic dibagi ke Auto Scaling group yang menyebar instance di beberapa Availability Zone, dengan database multi-AZ di belakang.</Fragment></Figure>
+
+<h3>Kenapa multi-AZ, bukan satu instance besar</h3>
+
+Menaikkan ukuran satu instance (vertical scaling) ada batasnya dan tetap menyisakan satu titik kegagalan, jika AZ tempatnya bermasalah, aplikasi ikut tumbang. Menyebar banyak instance ke beberapa AZ (horizontal scaling) membuat aplikasi tetap melayani meski satu zona gangguan. Auto Scaling menjaga jumlah instance sesuai permintaan, mengganti instance yang gagal health check, dan menambah kapasitas saat metrik seperti CPU melewati ambang. Inilah inti perbedaan antara aplikasi yang "berjalan" dan aplikasi yang "tahan gangguan".
+
+</Section>
+
+<Section num="10" id="opsi-harga" title="Opsi Harga EC2" sub="Soal ujian sering meminta model pembelian paling hemat untuk skenario tertentu.">
+
+<p class="lead">Membayar EC2 mirip memilih tarif transportasi, bayar per jalan, langganan, diskon jam sepi, atau kendaraan khusus.</p>
+
+AWS resmi mencantumkan beberapa opsi pembelian EC2: On-Demand, Savings Plans, Reserved Instances, Spot Instances, Dedicated Hosts, Dedicated Instances, dan Capacity Reservations. Jangan menghafal harga per jam karena berubah menurut Region, instance type, sistem operasi, dan konfigurasi. Untuk CLF-C02 yang terpenting adalah mengenali pola: makin besar komitmen yang kamu berikan, makin besar diskon yang ditawarkan, tetapi makin kecil fleksibilitasnya. Lihat sumber resmi: <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html">opsi pembelian EC2</a> dan <a href="https://aws.amazon.com/ec2/pricing/">halaman harga EC2</a>.
+
+<Figure><EC2Fig03 /><Fragment slot="caption"><b>Gambar 5.</b> Spektrum opsi harga EC2: dari On-Demand yang fleksibel tanpa komitmen, hingga Reserved dan Savings Plans yang menukar komitmen jangka panjang dengan diskon besar, serta Spot yang termurah tetapi bisa diinterupsi.</Fragment></Figure>
+
+<CardGrid cols={2}>
+  <Card><h4>On-Demand</h4><p>Cocok untuk beban kerja pendek, tidak pasti, eksperimen, atau kebutuhan fleksibilitas tanpa komitmen jangka panjang. Bayar per detik atau per jam tanpa diskon.</p></Card>
+  <Card><h4>Savings Plans</h4><p>Komitmen pengeluaran (USD per jam) selama 1 atau 3 tahun. EC2 Instance Savings Plans memberi diskon hingga 72%, Compute Savings Plans hingga 66% dengan fleksibilitas lebih luas lintas layanan.</p></Card>
+  <Card><h4>Reserved Instances</h4><p>Komitmen pada konfigurasi instance tertentu selama 1 atau 3 tahun. Standard RI memberi diskon hingga 72%, sedangkan Convertible RI hingga 66% dengan keleluasaan mengubah tipe.</p></Card>
+  <Card><h4>Spot Instances</h4><p>Memakai kapasitas idle AWS dengan diskon hingga 90% dibanding On-Demand. Cocok untuk workload tahan interupsi, karena AWS bisa menarik kapasitas dengan pemberitahuan singkat.</p></Card>
+  <Card><h4>Dedicated Hosts</h4><p>Server fisik khusus untukmu dengan visibilitas penuh atas socket dan core. Cocok untuk lisensi software berbasis hardware dan kebutuhan compliance ketat.</p></Card>
+  <Card><h4>Dedicated Instances</h4><p>Instance berjalan pada hardware yang diisolasi untuk satu akun, tetapi tanpa kontrol penempatan dan visibilitas host fisik sedetail Dedicated Hosts.</p></Card>
+</CardGrid>
+
+<h3>Skenario hemat yang sering keluar di ujian</h3>
+
+Kunci memilih opsi harga adalah membaca pola beban kerja. Beban yang stabil dan berjalan terus seperti web server produksi 24 jam paling hemat dengan Savings Plans atau Reserved Instances. Beban yang naik turun tak terduga atau hanya berjalan sebentar paling aman dengan On-Demand. Beban yang bisa diulang dan tahan berhenti seperti batch processing, rendering, atau pengujian besar paling murah dengan Spot. Banyak organisasi memadukan ketiganya: baseline yang selalu hidup dipesan dengan Savings Plans, lonjakan musiman ditangani On-Demand, dan pekerjaan latar belakang yang fleksibel memakai Spot.
+
+<Compare aLabel="On-Demand &middot; fleksibel" bLabel="Reserved / Savings Plans &middot; komitmen hemat" aTone="muted" bTone="blue">
+  <Fragment slot="a"><ul><li>Tanpa komitmen, mulai dan berhenti kapan saja.</li><li>Bayar penuh per detik atau per jam, tanpa diskon.</li><li>Cocok untuk beban baru, tak terduga, atau eksperimen.</li><li>Ideal saat pola pemakaian belum diketahui.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Komitmen 1 atau 3 tahun untuk diskon besar.</li><li>Diskon hingga 72%, lebih hemat untuk beban stabil.</li><li>Cocok untuk baseline produksi yang selalu hidup.</li><li>Savings Plans berbasis pengeluaran, RI berbasis tipe instance.</li></ul></Fragment>
+</Compare>
+
+<Box variant="exam" icon="🎯" label="Jebakan harga"><p>Spot bukan untuk database utama yang tidak boleh terputus, dan On-Demand bukan pilihan paling hemat untuk penggunaan stabil jangka panjang. Angka diskon selalu bersifat hingga (up to), aktualnya bervariasi per Region, tipe, term, dan opsi pembayaran.</p></Box>
+
+</Section>
+
+<Section num="11" id="skenario-pemilihan" title="Skenario Pemilihan Layanan" sub="Latihan memilih EC2 atau layanan lain dengan pola soal CLF-C02.">
+
+<p class="lead">Di ujian, kamu sering tidak ditanya cara klik console, tetapi layanan mana yang paling pas untuk kebutuhan bisnis.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Web server tradisional</h4><p>Pilih EC2 jika butuh kontrol OS, runtime khusus, library tertentu, atau migrasi aplikasi lama yang belum siap serverless.</p></Card>
+  <Card><h4>Fungsi singkat berbasis event</h4><p>Pilih AWS Lambda jika kode berjalan singkat, event-driven, dan kamu tidak ingin mengelola server.</p></Card>
+  <Card><h4>Container modern</h4><p>Pertimbangkan Amazon ECS, Amazon EKS, atau AWS Fargate jika aplikasi dikemas sebagai container dan butuh orkestrasi.</p></Card>
+  <Card><h4>Database relasional</h4><p>Pilih Amazon RDS jika kebutuhan utamanya database terkelola, bukan mengelola database sendiri di EC2.</p></Card>
+  <Card><h4>Batch murah dan fleksibel</h4><p>Pilih EC2 Spot jika pekerjaan bisa diulang, bisa berhenti sementara, dan tidak sensitif terhadap interupsi.</p></Card>
+  <Card><h4>Compliance server fisik</h4><p>Pilih Dedicated Hosts jika lisensi atau regulasi membutuhkan host fisik khusus yang terlihat jelas.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Cara menjawab cepat"><p>Jika soal menekankan kontrol OS, pilih EC2. Jika soal menekankan tanpa kelola server, pikirkan Lambda, Fargate, atau layanan terkelola.</p></Box>
+
+</Section>
+
+<Section num="12" id="hands-on" title="Hands-on Konseptual" sub="Walkthrough ringan tanpa bergantung pada tampilan console yang bisa berubah.">
+
+<p class="lead">Latihan ini membantu kamu memahami keputusan yang diambil saat membuat instance, bukan sekadar menghafal tombol.</p>
+
+<Steps>
+  <Step><b>Buka EC2 console</b><p>Masuk ke AWS Management Console, pilih Region latihan, lalu buka layanan EC2.</p></Step>
+  <Step><b>Pilih Launch instance</b><p>Beri nama instance, misalnya web-demo, agar mudah ditemukan dan dibersihkan setelah latihan.</p></Step>
+  <Step><b>Pilih AMI</b><p>Pilih AMI Linux yang sesuai latihan, misalnya Amazon Linux, lalu pahami bahwa AMI adalah template OS.</p></Step>
+  <Step><b>Pilih instance type</b><p>Gunakan instance kecil untuk latihan jika tersedia pada akun dan Region, lalu ingat bahwa tipe menentukan CPU, memori, dan jaringan.</p></Step>
+  <Step><b>Atur key pair</b><p>Buat atau pilih key pair jika akan melakukan SSH, simpan private key dengan aman dan jangan membagikannya.</p></Step>
+  <Step><b>Atur security group</b><p>Buka port yang diperlukan saja, misalnya HTTP untuk web demo, dan batasi SSH ke IP admin jika dipakai.</p></Step>
+  <Step><b>Tambahkan user data</b><p>Gunakan skrip sederhana untuk menginstal web server, sehingga instance siap menampilkan halaman demo saat berjalan.</p></Step>
+  <Step><b>Uji dan bersihkan</b><p>Akses alamat publik instance, amati status check dan metrik dasar, lalu terminate resource latihan agar tidak menimbulkan biaya tidak perlu.</p></Step>
+</Steps>
+
+<Box variant="warn" icon="🧹" label="Jangan lupa bersih-bersih"><p>Setelah latihan, terminate instance, hapus Elastic IP yang tidak dipakai, dan cek volume EBS yang tertinggal agar biaya tidak berjalan diam-diam.</p></Box>
+
+<h3>Contoh user data sederhana</h3>
+
+<pre><code>{`#!/bin/bash
+sudo yum update -y
+sudo yum install -y httpd
+sudo systemctl enable httpd
+sudo systemctl start httpd
+echo "Halo dari Amazon EC2" | sudo tee /var/www/html/index.html`}</code></pre>
+
+</Section>
+
+<Section num="13" id="kesalahan-umum" title="Kesalahan Umum Pemula" sub="Bagian ini mengubah pengalaman mahal menjadi pelajaran murah.">
+
+<p class="lead">Banyak masalah EC2 bukan karena AWS rumit, tetapi karena satu pintu, disk, atau izin kecil lupa diatur.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Membuka SSH ke semua orang</h4><p>Port 22 dari 0.0.0.0/0 meningkatkan risiko serangan brute force. Batasi IP atau pakai pendekatan akses yang lebih aman.</p></Card>
+  <Card><h4>Menyimpan access key di server</h4><p>Gunakan IAM role untuk EC2 agar aplikasi mendapat kredensial sementara, bukan access key permanen.</p></Card>
+  <Card><h4>Lupa menghentikan resource</h4><p>Instance, EBS, Elastic IP tidak terpakai, snapshot, dan data transfer dapat menambah biaya jika tidak dipantau.</p></Card>
+  <Card><h4>Salah paham stop dan terminate</h4><p>Stop mematikan instance tetapi resource tertentu tetap ada, terminate menghapus instance dan bisa menghapus volume root sesuai konfigurasi.</p></Card>
+  <Card><h4>Menganggap EC2 otomatis high availability</h4><p>Satu instance di satu AZ tetap single point of failure. Gunakan multi-AZ, load balancer, dan Auto Scaling untuk desain lebih tahan gangguan.</p></Card>
+  <Card><h4>Menaruh database produksi sendiri tanpa alasan kuat</h4><p>Untuk banyak kebutuhan pemula, database terkelola seperti RDS lebih aman dan lebih mudah dioperasikan daripada database di EC2.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🧠" label="Pola jebakan CLF-C02"><p>Jika soal menekankan operasional minimum, jawaban biasanya layanan terkelola, bukan menjalankan semuanya sendiri di EC2.</p></Box>
+
+</Section>
+
+<Section num="14" id="ringkasan" title="Ringkasan & Tips Ujian" sub="Peta cepat dari materi EC2 ke domain CLF-C02.">
+
+<p class="lead">EC2 adalah fondasi compute yang sangat fleksibel, tetapi fleksibilitas itu datang bersama tanggung jawab konfigurasi, keamanan, dan biaya.</p>
+
+<Recap title="Poin Penting EC2"><ul><li>EC2 menjalankan server virtual yang disebut instance, cocok saat kamu butuh kontrol OS, runtime, jaringan, dan konfigurasi.</li><li>AMI adalah template instance, instance type menentukan kapasitas, security group mengatur firewall virtual, dan EBS menyimpan data persisten.</li><li>Ada enam kategori keluarga instance: general purpose, compute optimized, memory optimized, storage optimized, accelerated computing, dan HPC optimized. Cocokkan kategori dengan karakter beban kerja.</li><li>EBS persisten dan data selamat saat stop, instance store sementara dan hilang saat stop, hibernate, atau terminate. Terminate menghapus root volume secara default.</li><li>Gunakan IAM role untuk aplikasi di EC2, bukan access key permanen di server, dan utamakan IMDSv2.</li><li>High availability biasanya membutuhkan beberapa instance di beberapa Availability Zone, Elastic Load Balancing, Auto Scaling, dan monitoring CloudWatch.</li><li>Model harga dipilih berdasarkan pola workload, On-Demand untuk fleksibilitas, Savings Plans atau Reserved Instances untuk penggunaan stabil (diskon hingga 72%), Spot untuk workload toleran interupsi (hingga 90%), Dedicated Hosts untuk kebutuhan host fisik khusus.</li></ul></Recap>
+
+<h3>Pemetaan ke domain CLF-C02</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr><th>Domain</th><th>Bobot</th><th>Kaitannya dengan modul ini</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Domain 1, Cloud Concepts</td><td>24%</td><td>EC2 menunjukkan elasticity, scalability, pay as you go, high availability, dan manfaat cloud dibanding server fisik tradisional.</td></tr>
+    <tr><td>Domain 2, Security and Compliance</td><td>30%</td><td>Shared responsibility, security group, IAM role, key pair, IMDSv2, patch OS, dan pembatasan akses admin.</td></tr>
+    <tr><td>Domain 3, Cloud Technology and Services</td><td>34%</td><td>EC2 sebagai compute inti: AMI, keluarga instance, lifecycle, VPC, subnet, EBS, ELB, Auto Scaling, dan CloudWatch.</td></tr>
+    <tr><td>Domain 4, Billing, Pricing, and Support</td><td>12%</td><td>Kapan memilih On-Demand, Savings Plans, Reserved Instances, Spot, Dedicated Hosts, dan risiko biaya resource tertinggal.</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Tips ujian cepat</h3>
+
+<ul>
+  <li>Jika pertanyaan menekankan kontrol penuh terhadap server, OS, atau software, EC2 sering menjadi jawaban.</li>
+  <li>Jika pertanyaan menekankan tidak mengelola server, pikirkan Lambda, Fargate, atau layanan terkelola lain.</li>
+  <li>Jika workload bisa terputus dan ingin biaya rendah, Spot Instances adalah kandidat kuat.</li>
+  <li>Jika workload stabil dan jangka panjang, lihat Savings Plans atau Reserved Instances.</li>
+  <li>Jika aplikasi di EC2 perlu akses layanan AWS, gunakan IAM role.</li>
+  <li>Jika ada pertanyaan siapa yang patch OS di EC2, jawab pelanggan, karena EC2 memberi kontrol pada guest OS.</li>
+</ul>
+
+<Box variant="exam" icon="🎯" label="Kalimat kunci untuk diingat"><p>EC2 memberi kontrol tinggi atas server virtual, tetapi pelanggan bertanggung jawab atas konfigurasi, keamanan guest OS, scaling design, dan optimasi biaya.</p></Box>
+
+<h3>Sumber resmi yang dipakai</h3>
+
+<ul>
+  <li><a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html">AWS Certified Cloud Practitioner CLF-C02 Exam Guide</a></li>
+  <li><a href="https://aws.amazon.com/ec2/">Amazon EC2 product page</a></li>
+  <li><a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html">Amazon EC2 User Guide, concepts</a></li>
+  <li><a href="https://aws.amazon.com/ec2/instance-types/">Amazon EC2 Instance Types</a></li>
+  <li><a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-purchasing-options.html">Amazon EC2 instance purchasing options</a></li>
+  <li><a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-lifecycle.html">Amazon EC2 instance lifecycle</a></li>
+  <li><a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html">Configuring the Instance Metadata Service (IMDSv2)</a></li>
+  <li><a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-security-groups.html">Amazon EC2 security groups</a></li>
+  <li><a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-metadata-security-credentials.html">Retrieve security credentials from instance metadata</a></li>
+  <li><a href="https://aws.amazon.com/ec2/pricing/reserved-instances/">Amazon EC2 Reserved Instances Pricing</a></li>
+  <li><a href="https://aws.amazon.com/savingsplans/compute-pricing/">AWS Savings Plans Pricing</a></li>
+  <li><a href="https://aws.amazon.com/ec2/pricing/">Amazon EC2 Pricing</a></li>
+  <li><a href="https://aws.amazon.com/compliance/shared-responsibility-model/">AWS Shared Responsibility Model</a></li>
+  <li><a href="https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/shared-responsibility.html">AWS Well-Architected, shared responsibility</a></li>
+</ul>
+
+</Section>

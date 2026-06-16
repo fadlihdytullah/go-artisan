@@ -1,0 +1,448 @@
+---
+title: "Modul Databases & Analytics - AWS Cloud Practitioner CLF-C02"
+badge: "DBA"
+topTitle: "Databases & Analytics"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Panduan memilih layanan database dan analytics AWS untuk skenario bisnis, operasional, dan ujian CLF-C02."
+order: 6
+target: "CLF-C02"
+readingTime: "~70 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Database dan Analytics sebagai Rak Dapur Data" }
+  - { num: "02", id: "cara-memilih", title: "Cara Memilih Database AWS" }
+  - { num: "03", id: "relasional-rds-aurora", title: "Relasional: Amazon RDS dan Aurora" }
+  - { num: "04", id: "deployment-rds", title: "Opsi Deployment RDS dan Aurora" }
+  - { num: "05", id: "cache-elasticache", title: "Cache: Amazon ElastiCache" }
+  - { num: "06", id: "dynamodb", title: "NoSQL Key-Value: Amazon DynamoDB" }
+  - { num: "07", id: "purpose-built", title: "Purpose-Built Databases" }
+  - { num: "08", id: "analytics-stack", title: "Analytics Stack: Redshift, EMR, Athena, QuickSight" }
+  - { num: "09", id: "glue-dms", title: "Integrasi dan Migrasi Data: Glue, Kinesis, dan DMS" }
+  - { num: "10", id: "keamanan-biaya", title: "Keamanan, Shared Responsibility, dan Biaya" }
+  - { num: "11", id: "hands-on", title: "Hands-On Ringan dan Skenario Bisnis" }
+  - { num: "12", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul Databases & Analytics - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import DatabasesAnalyticsFig01 from "@figures/DatabasesAnalyticsFig01.astro";
+import DatabasesAnalyticsFig02 from "@figures/DatabasesAnalyticsFig02.astro";
+import DatabasesAnalyticsFig03 from "@figures/DatabasesAnalyticsFig03.astro";
+import DatabasesAnalyticsFig04 from "@figures/DatabasesAnalyticsFig04.astro";
+
+<Hero eyebrow="Modul &middot; Database & Analytics" title="Databases &amp; Analytics<br /><em>CLF-C02</em>">
+  <p>Belajar memilih laci data yang tepat: transaksi, cache, NoSQL, analitik, migrasi, dan visualisasi bisnis.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~70 menit baca</Chip>
+    <Chip icon="book">Domain 3 &middot; 34%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Database dan Analytics sebagai Rak Dapur Data" sub="Mulai dari analogi, lalu definisi dan konteks ujian.">
+
+<p class="lead">Bayangkan data perusahaan seperti bahan makanan di restoran: ada bahan yang harus cepat diambil, ada yang disimpan rapi, ada yang dianalisis untuk menentukan menu besok.</p>
+
+Kalau semua bahan ditaruh di satu rak, dapur akan kacau. Bumbu harian perlu dekat kompor, stok beras perlu gudang, data penjualan perlu laporan, dan riwayat sensor perlu rak khusus berdasarkan waktu. Di AWS, ide yang sama disebut **purpose-built database** dan **analytics services**: pilih layanan sesuai bentuk data, pola akses, kebutuhan skala, dan tujuan bisnis. Kenapa AWS repot menyediakan belasan layanan database, bukan satu database raksasa serbaguna? Karena tidak ada satu mesin yang optimal untuk semua pola sekaligus. Database yang jago transaksi cepat justru lambat saat diminta menjumlahkan satu miliar baris; database analitik yang jago menjumlahkan justru boros saat hanya mengubah satu baris pesanan. Memaksa satu alat untuk semua pekerjaan adalah resep lambat dan mahal.
+
+Untuk CLF-C02, kamu tidak diminta menjadi database administrator mendalam. Kamu perlu tahu **layanan mana untuk kasus apa**, apa bedanya database operasional dan analytics, serta mana yang dikelola AWS versus tetap menjadi tanggung jawab pelanggan. AWS sendiri menempatkan database, migration, dan core service selection sebagai bagian dari kemampuan Cloud Practitioner untuk memposisikan layanan inti AWS pada use case umum.
+
+<Box variant="analogy" icon="🍳" label="Analogi cepat"><p>RDS seperti dapur restoran dengan resep tabel yang rapi, DynamoDB seperti loker super cepat berdasarkan nomor kunci, ElastiCache seperti meja saji sementara, Redshift seperti ruang analis penjualan, Athena seperti bertanya langsung ke tumpukan nota di gudang S3.</p></Box>
+
+<Figure><DatabasesAnalyticsFig01 /><Fragment slot="caption"><b>Gambar 1.</b> Peta mental layanan database dan analytics AWS untuk pemula CLF-C02.</Fragment></Figure>
+
+<h3>Definisi sederhana</h3>
+
+Database adalah tempat menyimpan dan mengambil data untuk aplikasi. Analytics adalah proses mengubah data menjadi insight, misalnya tren penjualan, pola fraud, atau laporan operasional. Di AWS, sebagian layanan fokus ke transaksi harian, sebagian fokus ke query besar, sebagian fokus ke migrasi, katalog, dan visualisasi. Membedakan dua dunia ini, transaksi versus analitik, adalah kunci membaca soal CLF-C02 dengan tenang.
+
+<h3>Kenapa topik ini penting di CLF-C02?</h3>
+
+CLF-C02 menekankan kemampuan mengenali layanan inti, memilih layanan untuk skenario umum, memahami keamanan dasar, dan memahami model biaya tingkat tinggi. Database dan analytics masuk terutama ke **Domain 3 Cloud Technology and Services** (34% soal), tetapi juga menyentuh **Domain 2 Security and Compliance** dan **Domain 4 Billing, Pricing, and Support**.
+
+<Box variant="exam" icon="🎯" label="Fokus ujian"><p>Soal biasanya berbentuk skenario: aplikasi butuh database relasional terkelola, query SQL langsung ke S3, cache latency rendah, replikasi multi-Region, atau dashboard bisnis untuk manajer. Tugasmu mencocokkan kata kunci skenario dengan satu layanan, bukan menghafal konfigurasi.</p></Box>
+
+</Section>
+
+<Section num="02" id="cara-memilih" title="Cara Memilih Database AWS" sub="Mulai dari pertanyaan bisnis, bukan dari nama layanan.">
+
+<p class="lead">Pertanyaan terbaik bukan "database AWS mana yang paling bagus?", tetapi "data ini bentuknya apa dan akan dipakai bagaimana?".</p>
+
+AWS menyediakan banyak layanan karena pola data berbeda-beda. Data order e-commerce biasanya butuh relasi dan transaksi. Keranjang belanja butuh akses sangat cepat. Log klik dari jutaan pengguna butuh analitik skala besar. Relasi teman, rekomendasi, dan fraud ring lebih cocok ke graph. Sensor suhu lebih cocok ke time series. Begitu kamu menamai bentuk data dan pola aksesnya, layanan yang tepat hampir selalu muncul sendiri.
+
+<CardGrid cols={3}>
+  <Card><h4>Struktur data</h4><p>Tabel relasional, key-value, dokumen JSON, graph, time series, atau file di S3.</p></Card>
+  <Card><h4>Pola akses</h4><p>Baca tulis transaksi, query ad-hoc, agregasi besar, lookup super cepat, atau analisis batch.</p></Card>
+  <Card><h4>Skala dan operasi</h4><p>Butuh serverless, multi-Region, read replica, cache, data warehouse, atau engine open-source tertentu.</p></Card>
+</CardGrid>
+
+<Figure><DatabasesAnalyticsFig04 /><Fragment slot="caption"><b>Gambar 2.</b> Pohon keputusan memilih database AWS: mulai dari bentuk data dan pola akses, lalu pertimbangkan kecepatan ekstra atau kebutuhan lintas Region.</Fragment></Figure>
+
+<h3>Pola pemilihan layanan</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Kebutuhan</th><th>Layanan yang sering tepat</th><th>Ingat untuk ujian</th></tr></thead>
+  <tbody>
+    <tr><td>SQL, transaksi, skema tabel</td><td>Amazon RDS, Amazon Aurora</td><td>Relasional terkelola, bukan self-managed di EC2 kecuali butuh kontrol penuh.</td></tr>
+    <tr><td>Cache milidetik, session, leaderboard</td><td>Amazon ElastiCache</td><td>In-memory cache, bukan database utama untuk semua data permanen.</td></tr>
+    <tr><td>Key-value atau document NoSQL skala besar</td><td>Amazon DynamoDB</td><td>Fully managed, serverless, cocok untuk akses berdasarkan key.</td></tr>
+    <tr><td>Data warehouse dan BI skala besar</td><td>Amazon Redshift</td><td>Analitik terstruktur (OLAP), bukan OLTP harian.</td></tr>
+    <tr><td>Query SQL langsung ke data di S3</td><td>Amazon Athena</td><td>Serverless, bayar berdasarkan data yang dipindai, memakai metadata seperti AWS Glue Data Catalog.</td></tr>
+    <tr><td>Dashboard dan visualisasi bisnis</td><td>Amazon QuickSight (kini di Amazon Quick Suite)</td><td>BI untuk insight yang mudah dibaca stakeholder.</td></tr>
+    <tr><td>ETL, katalog, transformasi data</td><td>AWS Glue</td><td>Data integration serverless dan Data Catalog.</td></tr>
+    <tr><td>Migrasi database</td><td>AWS DMS</td><td>Migrasi data dari dan ke database umum, termasuk cloud dan on-premises.</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Dua sumbu pemilihan yang paling sering ditanya</h3>
+
+Banyak soal sebenarnya menguji satu dari dua perbandingan besar: relasional versus NoSQL, dan transaksi (OLTP) versus analitik (OLAP). Kuasai dua sumbu ini dan sebagian besar skenario database langsung jelas.
+
+<Compare aLabel="RDS / Aurora &middot; relasional (OLTP)" bLabel="DynamoDB &middot; NoSQL key-value" aTone="blue" bTone="teal">
+  <Fragment slot="a"><ul><li>Skema tabel tetap dengan kolom dan tipe data jelas.</li><li>SQL, join antar tabel, dan transaksi multi-baris yang konsisten.</li><li>Skala vertikal dan read replica, ada batas ukuran instance.</li><li>Cocok: pesanan, pembayaran, inventori, sistem HR.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Schema-less, tiap item bisa punya atribut berbeda.</li><li>Akses berdasarkan primary key, bukan join kompleks.</li><li>Serverless dan skala horizontal nyaris tanpa batas.</li><li>Cocok: keranjang belanja, profil, IoT state, game state.</li></ul></Fragment>
+</Compare>
+
+<Box variant="tip" icon="💡" label="Aturan praktis"><p>Untuk soal CLF-C02, jangan mencari layanan paling canggih. Cari kata kunci skenario: relational, cache, NoSQL, graph, time-series, data warehouse, SQL on S3, ETL, migration, dashboard.</p></Box>
+
+</Section>
+
+<Section num="03" id="relasional-rds-aurora" title="Relasional: Amazon RDS dan Aurora" sub="Untuk aplikasi yang butuh tabel, SQL, transaksi, dan integritas data.">
+
+<p class="lead">Database relasional seperti buku besar akuntansi: kolomnya jelas, barisnya rapi, dan transaksi harus konsisten.</p>
+
+**Amazon RDS** adalah layanan database relasional terkelola yang memudahkan setup, operasi, dan scaling database di AWS. RDS menangani banyak tugas administrasi seperti patching, backup, failure detection, dan recovery, sehingga timmu tidak menghabiskan waktu untuk pekerjaan yang tidak membedakan bisnis. RDS mendukung enam engine: IBM Db2, MariaDB, Microsoft SQL Server, MySQL, Oracle Database, dan PostgreSQL.
+
+**Amazon Aurora** adalah engine relasional fully managed yang kompatibel dengan MySQL dan PostgreSQL, berada di bawah payung Amazon RDS namun dirancang khusus untuk cloud. Untuk ujian, ingat bahwa Aurora bukan sekadar "RDS biasa", melainkan engine database AWS dengan arsitektur storage terdistribusi yang dirancang untuk performa, ketersediaan, dan skalabilitas tinggi, sambil tetap memakai ekosistem MySQL atau PostgreSQL. Volume penyimpanan Aurora tumbuh otomatis sesuai kebutuhan, tanpa provisioning di muka, hingga maksimum sekitar 256 TiB per cluster.
+
+<CardGrid cols={2}>
+  <Card><h4>Amazon RDS</h4><p>Pilih saat ingin engine database populer yang dikelola AWS, misalnya MySQL, PostgreSQL, SQL Server, Oracle, MariaDB, atau Db2.</p></Card>
+  <Card><h4>Amazon Aurora</h4><p>Pilih saat ingin kompatibilitas MySQL atau PostgreSQL dengan kemampuan cloud-native AWS, storage yang tumbuh otomatis, dan opsi skalabilitas yang lebih tinggi.</p></Card>
+</CardGrid>
+
+<h3>Kapan dipakai?</h3>
+
+<ul>
+  <li>Order e-commerce, pembayaran, inventori, sistem HR, atau aplikasi bisnis yang butuh transaksi dan relasi antar tabel.</li>
+  <li>Aplikasi yang ingin tetap memakai SQL dan tool database yang sudah dikenal tim.</li>
+  <li>Workload yang ingin mengurangi beban operasional dibanding mengelola database sendiri di EC2.</li>
+</ul>
+
+<h3>RDS terkelola versus database di EC2</h3>
+
+Kamu tetap boleh memasang MySQL atau PostgreSQL sendiri di atas EC2. Bedanya, pada EC2 kamu yang mengurus instalasi engine, patch database, backup, replikasi, failover, dan tuning. Pada RDS, AWS menangani sebagian besar pekerjaan itu. Pilih EC2 hanya jika butuh kontrol penuh atas versi, ekstensi khusus, atau konfigurasi sistem operasi yang tidak didukung RDS.
+
+<Box variant="warn" icon="⚠️" label="Jebakan umum"><p>Menjalankan database di EC2 memberi kontrol besar, tetapi AWS tidak otomatis mengelola engine database, patch database, backup aplikasi, dan tuning seperti layanan managed database. Beban operasional itu pindah ke timmu.</p></Box>
+
+</Section>
+
+<Section num="04" id="deployment-rds" title="Opsi Deployment RDS dan Aurora" sub="Single-AZ, Multi-AZ, Read Replica, Aurora Global Database, dan Aurora Serverless dalam bahasa pemula.">
+
+<p class="lead">Opsi deployment database mirip memilih toko: satu toko hemat, cabang cadangan lebih tahan gangguan, cabang baca membantu antrean pelanggan.</p>
+
+Untuk Cloud Practitioner, kamu tidak perlu menghafal semua parameter. Yang penting adalah tahu tujuan setiap opsi deployment dan apa yang dioptimalkannya: ketersediaan, kapasitas baca, jangkauan global, atau elastisitas kapasitas.
+
+<CardGrid cols={2}>
+  <Card><h4>Single-AZ</h4><p>Database berada pada satu Availability Zone. Sederhana dan murah, tetapi bukan pilihan utama untuk high availability produksi.</p></Card>
+  <Card><h4>Multi-AZ</h4><p>Menambah salinan di Availability Zone lain untuk ketersediaan lebih baik dan failover otomatis pada gangguan tertentu.</p></Card>
+  <Card><h4>Read Replica</h4><p>Salinan untuk memperbesar kapasitas baca. Cocok saat query baca tinggi, bukan solusi utama untuk menulis lebih cepat.</p></Card>
+  <Card><h4>Aurora Global Database</h4><p>Aurora lintas Region: satu Region utama untuk write dan hingga banyak Region sekunder read-only untuk disaster recovery dan latency baca global.</p></Card>
+</CardGrid>
+
+<h3>Dua jenis Multi-AZ yang berbeda</h3>
+
+RDS punya dua bentuk Multi-AZ yang sering tertukar, dan keduanya valid untuk CLF-C02. Bedanya terletak pada apakah salinan kedua bisa melayani lalu lintas baca.
+
+<Compare aLabel="Multi-AZ DB instance" bLabel="Multi-AZ DB cluster" aTone="muted" bTone="blue">
+  <Fragment slot="a"><ul><li>Satu standby di AZ lain, replikasi sinkron.</li><li>Standby tidak melayani read traffic; ia hanya berjaga.</li><li>Fokus murni: high availability dan failover otomatis.</li><li>Tersedia untuk semua engine RDS yang didukung.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Satu writer dan dua reader di tiga AZ berbeda.</li><li>Kedua reader dapat melayani read traffic.</li><li>Replikasi semi-sinkron, failover lebih cepat.</li><li>Hanya untuk engine MySQL dan PostgreSQL.</li></ul></Fragment>
+</Compare>
+
+<h3>Aurora Replicas bukan RDS Read Replicas</h3>
+
+Ini perbedaan halus yang sering disalahpahami. **RDS Read Replicas** memakai replikasi asinkron dan punya storage terpisah dari primary, sehingga bisa ada jeda data dan failover relatif lebih lambat. **Aurora Replicas** berbagi satu storage terdistribusi yang sama dengan writer, sehingga tidak ada penyalinan data antar node, jeda sangat kecil, dan failover bisa terjadi dalam hitungan puluhan detik. Aurora cluster mendukung hingga 15 Aurora Replicas yang juga berperan sebagai target failover.
+
+<h3>Serverless di database</h3>
+
+Aurora Serverless v2 menjalankan Aurora dengan kapasitas yang menyesuaikan kebutuhan secara otomatis dalam satuan ACU (Aurora Capacity Units), tanpa mengelola ukuran instance secara manual. Ini cocok untuk workload variabel, development, testing, atau aplikasi dengan lonjakan yang tidak stabil. Aurora Serverless v2 bahkan dapat menjadi reader di Region sekunder pada Aurora Global Database. Untuk ujian, cukup kenali ide besarnya: **kapasitas database dapat menyesuaikan demand**.
+
+<Box variant="exam" icon="🧠" label="Jebakan soal"><p>Multi-AZ fokus ke high availability, Read Replica fokus ke scaling baca, backup dan snapshot fokus ke pemulihan data, dan Global Database fokus ke skenario lintas Region. Jangan tukar tujuan-tujuan ini.</p></Box>
+
+</Section>
+
+<Section num="05" id="cache-elasticache" title="Cache: Amazon ElastiCache" sub="Untuk data panas yang harus diambil sangat cepat.">
+
+<p class="lead">Cache seperti catatan pesanan yang ditempel di dekat kasir: bukan sumber kebenaran utama, tetapi mempercepat pekerjaan yang sering diulang.</p>
+
+**Amazon ElastiCache** adalah layanan terkelola untuk cache in-memory. AWS mendokumentasikan ElastiCache sebagai layanan yang memudahkan setup, pengelolaan, dan scaling lingkungan cache terdistribusi di cloud. Engine yang didukung mencakup **Valkey**, **Redis OSS**, dan **Memcached**. Perhatikan penamaannya: AWS menyebut "Redis OSS" (bukan sekadar "Redis") untuk membedakan dari layanan Redis berbayar, sedangkan Valkey adalah fork open-source dari Redis yang menjadi engine tersendiri, bukan bagian dari Redis OSS.
+
+<h3>Kapan dipakai?</h3>
+
+<ul>
+  <li>Menyimpan session login, token sementara, hasil query populer, leaderboard game, atau data yang sering dibaca.</li>
+  <li>Mengurangi beban database utama karena request yang sama tidak perlu selalu membaca RDS atau DynamoDB.</li>
+  <li>Memperbaiki latency aplikasi saat data dapat disimpan sementara di memori dan diambil dalam milidetik.</li>
+</ul>
+
+<CardGrid cols={2}>
+  <Card><h4>Valkey atau Redis OSS</h4><p>Cocok untuk struktur data lebih kaya, pub/sub, sorted set, replikasi, dan skenario cache modern.</p></Card>
+  <Card><h4>Memcached</h4><p>Cocok untuk cache sederhana key-value dengan pendekatan ringan dan mudah diskalakan horizontal.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="🔥" label="Kesalahan pemula"><p>Jangan memperlakukan cache sebagai satu-satunya tempat menyimpan data penting. Cache dapat kedaluwarsa, dihapus, atau dibangun ulang dari database utama. Sumber kebenaran tetap di RDS, Aurora, atau DynamoDB.</p></Box>
+
+<Box variant="tip" icon="🧠" label="Catatan versi"><p>ElastiCache untuk Redis OSS versi 4 dan 5 otomatis masuk Extended Support mulai 1 Februari 2026, dengan dukungan hingga tiga tahun setelah end of standard support. Extended Support biasanya menambah biaya, jadi rencanakan upgrade versi bila relevan.</p></Box>
+
+</Section>
+
+<Section num="06" id="dynamodb" title="NoSQL Key-Value: Amazon DynamoDB" sub="Untuk skala besar, latency rendah, dan akses berdasarkan key.">
+
+<p class="lead">DynamoDB seperti loker otomatis: masukkan nomor kunci, barang langsung ditemukan tanpa perlu mencari seluruh gudang.</p>
+
+**Amazon DynamoDB** adalah database NoSQL fully managed dan serverless. AWS menjelaskan DynamoDB sebagai layanan yang menghilangkan beban administrasi database terdistribusi seperti provisioning hardware, setup, konfigurasi, replikasi, patching, dan scaling cluster. Kamu cukup memikirkan data dan pola aksesnya, sisanya ditangani AWS.
+
+<h3>Konsep utama</h3>
+
+<ul>
+  <li><strong>Table</strong>: tempat kumpulan item.</li>
+  <li><strong>Item</strong>: satu record, mirip satu baris, tetapi fleksibel dan boleh punya atribut berbeda.</li>
+  <li><strong>Attribute</strong>: field di dalam item.</li>
+  <li><strong>Primary key</strong>: cara utama menemukan item, bisa partition key saja atau partition key plus sort key.</li>
+  <li><strong>Capacity mode</strong>: cara membaca dan menulis dibayar dan diskalakan, misalnya on-demand untuk pola tidak menentu atau provisioned untuk pola stabil.</li>
+</ul>
+
+<h3>Global Tables</h3>
+
+DynamoDB Global Tables mereplikasi data tabel antar AWS Region. AWS mendokumentasikan global tables sebagai replikasi multi-Region yang bersifat **multi-active**: setiap replica dapat menerima read **dan** write, bukan satu Region aktif dan sisanya pasif. Tersedia dua mode konsistensi: Multi-Region Eventual Consistency (MREC, default) dan Multi-Region Strong Consistency (MRSC, hanya untuk global tables same-account). Untuk ujian, kata kunci pentingnya adalah **multi-Region**, **multi-active**, **high availability**, **business continuity**, dan **latency global**.
+
+<CardGrid cols={2}>
+  <Card><h4>Cocok untuk</h4><p>Profil pengguna, keranjang belanja, metadata, IoT device state, game state, atau aplikasi web skala besar dengan akses berdasarkan key.</p></Card>
+  <Card><h4>Kurang cocok untuk</h4><p>Query relasional kompleks, join berat, laporan analitik besar, atau transaksi SQL tradisional multi-tabel.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Pola soal"><p>Jika skenario menyebut NoSQL, key-value, serverless, skala besar, dan latency rendah, DynamoDB sering menjadi jawaban terbaik. Jika menyebut aplikasi global yang butuh read dan write lokal di beberapa Region, arahnya DynamoDB Global Tables, bukan RDS Read Replica.</p></Box>
+
+</Section>
+
+<Section num="07" id="purpose-built" title="Purpose-Built Databases" sub="DocumentDB, Neptune, Timestream, Keyspaces, MemoryDB, dan Managed Blockchain.">
+
+<p class="lead">Tidak semua data cocok dimasukkan ke tabel SQL. Beberapa data lebih alami sebagai dokumen, hubungan, waktu, atau transaksi bersama antar organisasi.</p>
+
+AWS memiliki beberapa database yang dibuat untuk pola data tertentu. Di CLF-C02, kamu perlu mengenali nama layanan dan use case utamanya, bukan detail operasionalnya.
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Layanan</th><th>Jenis data</th><th>Contoh skenario</th><th>Kata kunci ujian</th></tr></thead>
+  <tbody>
+    <tr><td>Amazon DocumentDB</td><td>Dokumen JSON, kompatibel MongoDB</td><td>Katalog produk, profil pengguna fleksibel, content management</td><td>MongoDB-compatible, document database</td></tr>
+    <tr><td>Amazon Neptune</td><td>Graph, relasi antar entitas</td><td>Fraud detection, social network, knowledge graph, recommendation</td><td>Highly connected data, graph relationships</td></tr>
+    <tr><td>Amazon Timestream</td><td>Time series</td><td>IoT sensor, metrik aplikasi, telemetry, monitoring industri</td><td>Time-stamped data, IoT, operational metrics</td></tr>
+    <tr><td>Amazon Keyspaces</td><td>Wide-column, kompatibel Apache Cassandra</td><td>Workload Cassandra terkelola, katalog skala besar</td><td>Cassandra-compatible, serverless, high availability</td></tr>
+    <tr><td>Amazon MemoryDB</td><td>In-memory durable</td><td>Aplikasi yang butuh latency mikrodetik plus durabilitas</td><td>In-memory, durable, microsecond latency</td></tr>
+    <tr><td>Amazon Managed Blockchain</td><td>Blockchain network dan akses blockchain</td><td>Transaksi lintas pihak, pelacakan aset, integrasi Web3 tertentu</td><td>Decentralized ledger, multiple parties, blockchain</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="warn" icon="⚠️" label="Layanan yang sudah pensiun"><p>Amazon QLDB (Quantum Ledger Database) telah mengakhiri dukungan pada 31 Juli 2025 dan tidak lagi tersedia untuk pemakaian baru. Untuk use case audit atau ledger, AWS merekomendasikan Amazon Aurora PostgreSQL. Jangan memilih QLDB sebagai jawaban pada materi terbaru.</p></Box>
+
+<h3>Contoh nyata</h3>
+
+Sebuah marketplace bisa memakai RDS untuk transaksi pembayaran, DynamoDB untuk keranjang, ElastiCache untuk session, DocumentDB untuk metadata produk fleksibel, Neptune untuk rekomendasi hubungan produk, Timestream untuk metrik operasional, Redshift untuk laporan penjualan, dan QuickSight untuk dashboard manajemen. Satu aplikasi nyata sering memakai banyak database sekaligus, masing-masing untuk pola data yang paling cocok.
+
+<Box variant="tip" icon="🧭" label="Cara mengingat"><p>DocumentDB menyimpan dokumen, Neptune menghubungkan node seperti peta relasi, Timestream menyimpan data berdasarkan waktu, Keyspaces untuk Cassandra terkelola, MemoryDB menyimpan data in-memory yang tahan lama, dan Managed Blockchain berurusan dengan catatan transaksi bersama.</p></Box>
+
+</Section>
+
+<Section num="08" id="analytics-stack" title="Analytics Stack: Redshift, EMR, Athena, QuickSight" sub="Dari data mentah sampai dashboard bisnis.">
+
+<p class="lead">Analytics seperti dapur riset restoran: data penjualan mentah diolah, ditanya dengan SQL, lalu ditampilkan sebagai laporan yang bisa dipahami pemilik bisnis.</p>
+
+<Figure><DatabasesAnalyticsFig02 /><Fragment slot="caption"><b>Gambar 3.</b> Alur umum data lake dan analytics AWS: S3 sebagai penyimpanan, Glue sebagai katalog dan ETL, Athena atau Redshift untuk query, QuickSight untuk visualisasi.</Fragment></Figure>
+
+<h3>OLTP versus OLAP: dua dunia yang sering tertukar</h3>
+
+Sebelum menamai layanan, pahami dulu dua jenis pekerjaan data. **OLTP** (Online Transaction Processing) adalah dunia transaksi harian: banyak operasi kecil dan cepat, menulis dan membaca per baris, harus konsisten dan terbaru. Inilah ranah RDS, Aurora, dan DynamoDB. **OLAP** (Online Analytical Processing) adalah dunia analitik: sedikit query tetapi sangat berat, menjumlahkan dan mengelompokkan jutaan baris untuk laporan dan tren. Inilah ranah Redshift, Athena, dan EMR. Memaksa Redshift menangani ribuan transaksi pesanan per detik, atau memaksa RDS menjumlahkan satu miliar baris untuk dashboard, sama-sama keliru arsitektur.
+
+<Figure><DatabasesAnalyticsFig03 /><Fragment slot="caption"><b>Gambar 4.</b> OLTP menangani banyak operasi kecil per baris untuk transaksi harian, OLAP menangani sedikit query berat yang mengagregasi jutaan baris untuk analitik.</Fragment></Figure>
+
+<Compare aLabel="OLTP &middot; RDS / Aurora / DynamoDB" bLabel="OLAP &middot; Redshift / Athena / EMR" aTone="blue" bTone="red">
+  <Fragment slot="a"><ul><li>Banyak transaksi kecil dan cepat per detik.</li><li>Baca tulis per baris, data harus terbaru.</li><li>Disimpan per baris (row-oriented).</li><li>Contoh: catat pesanan, update saldo, simpan session.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Sedikit query besar yang memindai banyak data.</li><li>Agregasi, group by, tren historis.</li><li>Sering disimpan per kolom (columnar) untuk scan cepat.</li><li>Contoh: laporan penjualan kuartal, analisis perilaku.</li></ul></Fragment>
+</Compare>
+
+<h3>Amazon Redshift</h3>
+
+Amazon Redshift adalah data warehouse fully managed berskala petabyte dengan penyimpanan columnar untuk analitik cepat. Gunakan Redshift saat perusahaan ingin menganalisis data terstruktur dalam jumlah besar, membuat laporan BI, dan menjalankan query analitik kompleks. Tersedia juga Redshift Serverless yang menagih per RPU (Redshift Processing Unit) per detik tanpa mengelola cluster. Redshift bukan pengganti database transaksi harian seperti RDS.
+
+<h3>Amazon EMR</h3>
+
+Amazon EMR adalah platform terkelola untuk menjalankan framework big data seperti Apache Spark, Apache Hive, Apache Hudi, dan Presto di AWS. Gunakan EMR saat tim data perlu memproses data besar dengan tool open-source, misalnya transformasi batch, machine learning pipeline, atau pemrosesan log skala besar. Ada juga EMR Serverless yang menghilangkan kebutuhan provisioning cluster.
+
+<h3>Amazon Athena</h3>
+
+Amazon Athena adalah layanan query interaktif yang memudahkan analisis data langsung di Amazon S3 dengan SQL standar. Athena bersifat serverless, sehingga cocok untuk query ad-hoc tanpa mengelola cluster, dan ditagih berdasarkan jumlah data yang dipindai per query. Athena sering bekerja dengan AWS Glue Data Catalog untuk metadata tabel dan kolom.
+
+<h3>Amazon OpenSearch Service</h3>
+
+Amazon OpenSearch Service dipakai untuk pencarian (search) dan analitik log skala besar, misalnya menelusuri log aplikasi, observability, dan analisis teks. Tersedia juga OpenSearch Serverless. Jika skenario menyebut "search engine" atau "analisis log interaktif", arahnya OpenSearch.
+
+<h3>Amazon QuickSight</h3>
+
+Amazon QuickSight adalah layanan business intelligence untuk membuat dashboard, visualisasi, dan insight yang mudah dipahami stakeholder. Per 9 Oktober 2025, QuickSight berevolusi menjadi bagian dari **Amazon Quick Suite**, dan komponen BI intinya kini disebut "Quick Sight" (dua kata) dalam navigasi suite tersebut, berdampingan dengan komponen baru seperti Quick Research dan Quick Flows. Namun, blueprint dan soal CLF-C02 masih memakai istilah "QuickSight", jadi kenali kedua nama agar tidak bingung saat membaca materi lama maupun baru.
+
+<CardGrid cols={2}>
+  <Card><h4>Redshift vs Athena</h4><p>Redshift untuk data warehouse yang dikelola dan performa analitik terstruktur, Athena untuk SQL langsung ke data di S3 tanpa cluster.</p></Card>
+  <Card><h4>EMR vs Glue</h4><p>EMR untuk framework big data seperti Spark dan Hadoop, Glue untuk integrasi data serverless, ETL, crawler, dan katalog metadata.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🧪" label="Pola soal"><p>"Query data di S3 dengan SQL tanpa server" biasanya Athena. "Dashboard bisnis" biasanya QuickSight. "Petabyte-scale data warehouse" biasanya Redshift. "Spark atau Hadoop terkelola" biasanya EMR. "Search dan analisis log" biasanya OpenSearch.</p></Box>
+
+</Section>
+
+<Section num="09" id="glue-dms" title="Integrasi dan Migrasi Data: Glue, Kinesis, dan DMS" sub="Menggerakkan data dari sumber ke insight.">
+
+<p class="lead">Data tidak cukup disimpan. Data juga perlu ditemukan, dibersihkan, dipindahkan, diberi label, dan kadang diproses saat masih mengalir agar bisa dianalisis.</p>
+
+**AWS Glue** adalah layanan data integration serverless. AWS menjelaskan Glue sebagai layanan untuk menemukan, menyiapkan, dan mengintegrasikan data pada skala besar, termasuk Data Catalog, ETL, pipeline, dan koneksi ke banyak sumber data. Dalam data lake, Glue sering menjadi "daftar isi perpustakaan" yang memberi tahu Athena, Redshift, atau EMR di mana data berada dan seperti apa strukturnya. Glue juga punya Data Quality untuk memantau kualitas data di S3.
+
+**Amazon Kinesis** menangani data yang masih mengalir (streaming) secara real time atau near real time. Untuk CLF-C02, cukup kenali bahwa Kinesis dipakai saat data datang terus-menerus, seperti clickstream, log, atau telemetry IoT. Salah satu sub-layanannya, **Amazon Data Firehose** (dulu bernama Kinesis Data Firehose), dapat memuat data streaming ke S3, Redshift, OpenSearch Service, atau Splunk secara near real time. Catat juga bahwa "Kinesis Data Analytics" kini bernama **Amazon Managed Service for Apache Flink**.
+
+**AWS DMS** membantu migrasi database. AWS mendokumentasikan DMS sebagai layanan untuk memigrasikan relational database, data warehouse, NoSQL database, dan data store lain, baik ke AWS maupun antar kombinasi cloud dan on-premises. DMS juga dapat membantu schema conversion dalam proses migrasi tertentu.
+
+<h3>Alur data sederhana</h3>
+
+<Steps>
+  <Step><b>Ambil data dari sumber</b><p>Data berasal dari database operasional, file log, aplikasi, sistem on-premises, atau stream real time lewat Kinesis.</p></Step>
+  <Step><b>Simpan di data lake</b><p>Amazon S3 sering dipakai sebagai tempat data mentah dan data hasil olahan.</p></Step>
+  <Step><b>Katalog dan transformasi</b><p>AWS Glue crawler dan Data Catalog membantu membuat metadata, sementara job ETL membersihkan atau mengubah data.</p></Step>
+  <Step><b>Query dan analisis</b><p>Athena menjalankan SQL langsung ke S3, Redshift menjalankan data warehouse, EMR memproses big data, dan QuickSight membuat dashboard.</p></Step>
+</Steps>
+
+<Box variant="warn" icon="⚠️" label="Jebakan umum"><p>DMS bukan tool visualisasi, Glue bukan dashboard, Athena bukan penyimpanan data, Kinesis bukan database, dan QuickSight bukan database. Tiap layanan punya satu peran utama.</p></Box>
+
+</Section>
+
+<Section num="10" id="keamanan-biaya" title="Keamanan, Shared Responsibility, dan Biaya" sub="Database aman bukan hanya karena memakai layanan managed.">
+
+<p class="lead">Managed service mengurangi beban operasional, tetapi bukan berarti semua keputusan keamanan pindah ke AWS.</p>
+
+Dalam model shared responsibility, AWS mengamankan infrastruktur cloud, sedangkan pelanggan tetap bertanggung jawab atas konfigurasi, akses, data, enkripsi yang dipilih, kredensial, dan pola penggunaan. Untuk database dan analytics, area yang sering muncul di ujian adalah IAM, enkripsi, network access, backup, monitoring, dan biaya berbasis konsumsi.
+
+<CardGrid cols={2}>
+  <Card><h4>Akses</h4><p>Gunakan IAM untuk kontrol API, security group untuk akses jaringan database tertentu, dan least privilege untuk role aplikasi.</p></Card>
+  <Card><h4>Enkripsi</h4><p>Banyak layanan mendukung enkripsi at rest dengan AWS KMS dan enkripsi in transit, tetapi pelanggan tetap memilih dan mengaktifkan konfigurasi yang sesuai.</p></Card>
+  <Card><h4>Backup dan retention</h4><p>RDS mendukung automated backup dan snapshot, tetapi kebutuhan retention dan recovery objective tetap keputusan desain pelanggan.</p></Card>
+  <Card><h4>Monitoring</h4><p>Gunakan Amazon CloudWatch, log audit yang relevan, dan alert agar masalah performa atau akses tidak terlambat diketahui.</p></Card>
+</CardGrid>
+
+<h3>Biaya tingkat tinggi</h3>
+
+<ul>
+  <li>RDS dan Aurora dapat mengenakan biaya berdasarkan instance atau kapasitas, storage, I/O, backup tambahan, transfer data, dan opsi deployment.</li>
+  <li>DynamoDB dapat memakai model on-demand atau provisioned, dengan biaya terkait read, write, storage, backup, stream, dan replikasi global tables.</li>
+  <li>ElastiCache dipengaruhi node atau kapasitas cache, engine, deployment, dan traffic.</li>
+  <li>Athena umumnya dipengaruhi jumlah data yang dipindai per query, sehingga format kolom seperti Parquet dan partisi dapat mengurangi biaya.</li>
+  <li>Redshift dipengaruhi pilihan provisioned atau serverless, kapasitas, storage, dan durasi penggunaan.</li>
+  <li>QuickSight dipengaruhi edisi, user, kapasitas, fitur, dan pola penggunaan dashboard.</li>
+</ul>
+
+<Box variant="tip" icon="💸" label="Tips biaya"><p>Untuk ujian, pahami model biaya relatif: serverless sering membayar sesuai penggunaan, data warehouse membayar kapasitas analitik, dan cache membayar memori cepat yang dipakai. Angka harga selalu bisa berubah, jadi rujuk halaman pricing resmi AWS sebelum keputusan nyata.</p></Box>
+
+</Section>
+
+<Section num="11" id="hands-on" title="Hands-On Ringan dan Skenario Bisnis" sub="Walkthrough konseptual tanpa membuat tagihan tak perlu.">
+
+<p class="lead">Tujuan hands-on pemula bukan menghafal tombol, tetapi memahami alur keputusan dan konsekuensi layanan.</p>
+
+<h3>Walkthrough 1: RDS untuk aplikasi toko online</h3>
+
+<Steps>
+  <Step><b>Pilih engine</b><p>Pilih MySQL atau PostgreSQL jika aplikasi memakai SQL umum dan relasi tabel seperti users, orders, dan payments.</p></Step>
+  <Step><b>Pilih deployment</b><p>Untuk latihan, pahami Single-AZ. Untuk produksi, pertimbangkan Multi-AZ agar ketersediaan lebih baik dan failover otomatis.</p></Step>
+  <Step><b>Atur akses jaringan</b><p>Database sebaiknya berada di subnet privat dan hanya dapat diakses dari aplikasi yang perlu.</p></Step>
+  <Step><b>Aktifkan backup dan monitoring</b><p>Backup membantu pemulihan data, CloudWatch membantu melihat metrik dasar seperti CPU, storage, koneksi, dan latency.</p></Step>
+</Steps>
+
+<h3>Walkthrough 2: Query file log di S3 dengan Athena</h3>
+
+<Steps>
+  <Step><b>Simpan data di S3</b><p>Data log, CSV, JSON, atau Parquet diletakkan di bucket dengan struktur folder yang rapi.</p></Step>
+  <Step><b>Buat metadata</b><p>AWS Glue Data Catalog menyimpan informasi tabel, kolom, partisi, dan lokasi file.</p></Step>
+  <Step><b>Jalankan SQL di Athena</b><p>Athena membaca metadata lalu menjalankan query langsung ke data di S3 tanpa membuat cluster.</p></Step>
+  <Step><b>Visualisasikan hasil</b><p>QuickSight dapat membaca data atau hasil analitik untuk membuat dashboard bisnis.</p></Step>
+</Steps>
+
+<h3>Menjelaskan ke stakeholder bisnis</h3>
+
+Sampaikan dengan bahasa bisnis: "Kita memakai RDS untuk transaksi yang harus konsisten, DynamoDB untuk akses super cepat pada skala besar, ElastiCache untuk mengurangi antrean database, S3 plus Athena untuk analisis murah tanpa server, Redshift untuk gudang data perusahaan, dan QuickSight untuk dashboard manajemen." Hindari istilah teknis berlebihan; hubungkan tiap layanan ke hasil bisnis seperti kecepatan, keandalan, dan biaya.
+
+<Box variant="exam" icon="📝" label="Latihan mini"><p>Jika ada aplikasi global dengan user di beberapa benua, NoSQL, dan butuh read/write lokal di beberapa Region, jawabannya cenderung DynamoDB Global Tables, bukan RDS Read Replica.</p></Box>
+
+</Section>
+
+<Section num="12" id="ringkasan" title="Ringkasan & Tips Ujian" sub="Peta akhir untuk mengunci jawaban CLF-C02.">
+
+<p class="lead">Kunci bab ini adalah mencocokkan pola data dengan layanan, lalu membaca kata kunci soal dengan tenang.</p>
+
+<Recap title="Poin Penting">
+  <ul>
+    <li><strong>RDS</strong>: database relasional terkelola untuk enam engine: MySQL, PostgreSQL, SQL Server, Oracle, MariaDB, dan Db2.</li>
+    <li><strong>Aurora</strong>: engine relasional AWS yang kompatibel dengan MySQL dan PostgreSQL, storage tumbuh otomatis hingga sekitar 256 TiB.</li>
+    <li><strong>Multi-AZ DB instance</strong>: standby tidak melayani read. <strong>Multi-AZ DB cluster</strong>: dua reader bisa melayani read (MySQL/PostgreSQL).</li>
+    <li><strong>Aurora Replicas</strong> berbagi storage dengan writer (failover cepat); <strong>RDS Read Replicas</strong> asinkron dengan storage terpisah.</li>
+    <li><strong>ElastiCache</strong>: cache in-memory (Valkey, Redis OSS, Memcached) untuk latency rendah dan mengurangi beban database utama.</li>
+    <li><strong>DynamoDB</strong>: NoSQL key-value, fully managed, serverless, cocok untuk skala besar dan akses berdasarkan key.</li>
+    <li><strong>DynamoDB Global Tables</strong>: replikasi multi-Region, multi-active (read dan write di tiap replica).</li>
+    <li><strong>Redshift</strong>: data warehouse OLAP untuk analitik besar dan BI; Athena untuk SQL serverless langsung ke S3.</li>
+    <li><strong>EMR</strong>: big data framework seperti Spark dan Hadoop secara terkelola; OpenSearch untuk search dan analisis log.</li>
+    <li><strong>Glue</strong>: ETL, crawler, Data Catalog. <strong>Kinesis</strong>: data streaming. <strong>DMS</strong>: migrasi database.</li>
+    <li><strong>QuickSight</strong>: dashboard dan visualisasi BI (kini bagian dari Amazon Quick Suite, tetapi soal masih memakai nama QuickSight).</li>
+    <li><strong>Purpose-built</strong>: DocumentDB (dokumen), Neptune (graph), Timestream (time series), Keyspaces (Cassandra), MemoryDB (in-memory durable).</li>
+  </ul>
+</Recap>
+
+<h3>Peta domain CLF-C02</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Domain</th><th>Hubungan dengan modul ini</th><th>Yang perlu diingat</th></tr></thead>
+  <tbody>
+    <tr><td>Domain 1 Cloud Concepts</td><td>Memilih managed service mengurangi undifferentiated heavy lifting dan mendukung elastisitas.</td><td>Jelaskan manfaat cloud: managed, scalable, pay-as-you-go, global.</td></tr>
+    <tr><td>Domain 2 Security and Compliance</td><td>Akses database, enkripsi, backup, network control, dan shared responsibility.</td><td>AWS mengamankan cloud, pelanggan mengamankan data dan konfigurasi.</td></tr>
+    <tr><td>Domain 3 Cloud Technology and Services</td><td>Ini domain utama bab ini: RDS, Aurora, DynamoDB, ElastiCache, Redshift, EMR, Athena, OpenSearch, QuickSight, Glue, Kinesis, DMS, dan purpose-built databases.</td><td>Cocokkan kata kunci layanan dengan skenario.</td></tr>
+    <tr><td>Domain 4 Billing, Pricing, and Support</td><td>Biaya dipengaruhi kapasitas, storage, query, transfer, backup, user BI, dan opsi serverless atau provisioned.</td><td>Jangan menghafal harga, pahami driver biaya.</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Jebakan soal paling sering</h3>
+
+<ul>
+  <li>"Relational database managed" bukan DynamoDB, jawabannya RDS atau Aurora.</li>
+  <li>"Query S3 with SQL, no servers" bukan Redshift, jawabannya Athena.</li>
+  <li>"Dashboard untuk business users" bukan Glue, jawabannya QuickSight.</li>
+  <li>"ETL dan Data Catalog" bukan DMS, jawabannya Glue.</li>
+  <li>"Migrate database" bukan Glue, jawabannya DMS.</li>
+  <li>"Cache in-memory" bukan DynamoDB, jawabannya ElastiCache.</li>
+  <li>"Graph relationship" bukan DocumentDB, jawabannya Neptune.</li>
+  <li>"Time-stamped IoT metrics" bukan RDS default, jawabannya Timestream.</li>
+  <li>"Multi-active read dan write lintas Region untuk NoSQL" jawabannya DynamoDB Global Tables.</li>
+</ul>
+
+<h3>Referensi resmi untuk pendalaman</h3>
+
+<ul>
+  <li><a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html">AWS Certified Cloud Practitioner CLF-C02 Exam Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/clf-02-in-scope-services.html">In-Scope AWS Services for CLF-C02</a></li>
+  <li><a href="https://docs.aws.amazon.com/databases-on-aws-how-to-choose/">Choosing an AWS database service</a></li>
+  <li><a href="https://docs.aws.amazon.com/decision-guides/latest/analytics-on-aws-how-to-choose/analytics-on-aws-how-to-choose.html">Choosing an AWS analytics service</a></li>
+  <li><a href="https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html">Amazon RDS User Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html">Amazon RDS Multi-AZ deployments</a></li>
+  <li><a href="https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/CHAP_AuroraOverview.html">Amazon Aurora User Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html">Amazon DynamoDB Global Tables</a></li>
+  <li><a href="https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/WhatIs.html">Amazon ElastiCache User Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/athena/latest/ug/what-is.html">Amazon Athena User Guide</a></li>
+  <li><a href="https://aws.amazon.com/glue/">AWS Glue</a></li>
+  <li><a href="https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html">AWS Database Migration Service User Guide</a></li>
+</ul>
+
+<Box variant="tip" icon="✅" label="Kalimat penutup"><p>Untuk lulus CLF-C02, hafalkan fungsi layanan secara konseptual: database operasional menyimpan transaksi, cache mempercepat akses, analytics mencari insight, Glue menata data, Kinesis mengalirkan data, DMS memindahkan database, dan QuickSight menyampaikan hasil ke manusia.</p></Box>
+
+</Section>

@@ -1,0 +1,891 @@
+---
+title: "Modul Exam Readiness, Scenario Drills & Final Review - AWS Cloud Practitioner CLF-C02"
+badge: "EXM"
+topTitle: "Exam Readiness, Scenario Drills & Final Review"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Modul final untuk memetakan domain, melatih service picker, menghindari jebakan soal, dan menutup persiapan CLF-C02 dengan strategi yang rapi."
+order: 19
+target: "CLF-C02"
+readingTime: "~85 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Dari Belajar Pasif ke Siap Ujian" }
+  - { num: "02", id: "format-dan-peta-domain", title: "Format Ujian dan Peta Domain" }
+  - { num: "03", id: "cara-membaca-skenario", title: "Cara Membaca Skenario CLF-C02" }
+  - { num: "04", id: "service-picker-cepat", title: "Service Picker Cepat" }
+  - { num: "05", id: "drill-cloud-concepts", title: "Drill Domain 1: Cloud Concepts" }
+  - { num: "06", id: "drill-security-compliance", title: "Drill Domain 2: Security & Compliance" }
+  - { num: "07", id: "drill-technology-services", title: "Drill Domain 3: Cloud Technology & Services" }
+  - { num: "08", id: "drill-billing-support", title: "Drill Domain 4: Billing, Pricing & Support" }
+  - { num: "09", id: "strategi-multiple-response", title: "Strategi Multiple Response" }
+  - { num: "10", id: "simulasi-mini-ujian", title: "Simulasi Mini Ujian" }
+  - { num: "11", id: "logistik-hari-h", title: "Logistik Hari-H dan Strategi Waktu" }
+  - { num: "12", id: "review-akhir", title: "Rencana Review Akhir" }
+  - { num: "13", id: "kesalahan-umum", title: "Kesalahan Umum dan Jebakan Soal" }
+  - { num: "14", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul Exam Readiness, Scenario Drills & Final Review - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import ExamReadinessFig01 from "@figures/ExamReadinessFig01.astro";
+import ExamReadinessFig02 from "@figures/ExamReadinessFig02.astro";
+import ExamReadinessFig03 from "@figures/ExamReadinessFig03.astro";
+import ExamReadinessFig04 from "@figures/ExamReadinessFig04.astro";
+import ExamReadinessFig05 from "@figures/ExamReadinessFig05.astro";
+import ExamReadinessFig06 from "@figures/ExamReadinessFig06.astro";
+
+<Hero eyebrow="Modul &middot; Final Review" title="Exam Readiness<br /><em>CLF-C02</em>">
+  <p>Modul ini mengubah hafalan layanan menjadi kemampuan memilih jawaban terbaik di skenario ujian.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~85 menit baca</Chip>
+    <Chip icon="book">Keempat domain &middot; recap menyeluruh</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Dari Belajar Pasif ke Siap Ujian" sub="Final review bukan pesta kelulusan, tetapi latihan mengambil keputusan">
+
+<p class="lead">Bayangkan ujian CLF-C02 seperti menjadi resepsionis gedung AWS, kamu tidak perlu membangun lift, tetapi harus tahu lift mana yang tepat untuk tamu mana.</p>
+
+Di modul-modul sebelumnya kamu sudah mengenal konsep cloud, IAM, EC2, S3, database, networking, monitoring, security, migration, AI/ML, billing, dan ekosistem AWS. Modul ini tidak menambah katalog baru. Fokusnya adalah menyambungkan semua pengetahuan itu menjadi pola keputusan.
+
+Definisi sederhananya, **exam readiness** adalah kemampuan membaca kebutuhan bisnis, mengenali kata kunci, membuang opsi pengecoh, lalu memilih layanan atau konsep yang paling sesuai. Di CLF-C02, banyak soal tidak bertanya "apa definisi S3", tetapi "layanan apa yang cocok untuk menyimpan objek, mendukung website statis, atau arsip jangka panjang".
+
+<Box variant="analogy" icon="🧭" label="Analogi peta ujian"><p>Kalau semua modul sebelumnya adalah belajar nama jalan, modul ini adalah latihan memilih rute tercepat saat ada kemacetan, jalan tol, biaya parkir, dan batas kendaraan.</p></Box>
+
+<Figure><ExamReadinessFig01 /><Fragment slot="caption"><b>Gambar 1.</b> Alur berpikir untuk mengubah skenario soal menjadi pilihan jawaban yang masuk akal.</Fragment></Figure>
+
+</Section>
+
+<Section num="02" id="format-dan-peta-domain" title="Format Ujian dan Peta Domain" sub="Kenali medan sebelum berlari">
+
+<p class="lead">Strategi ujian dimulai dari memahami bobot, bukan dari menghafal semua layanan sama rata.</p>
+
+Menurut [AWS Exam Guide CLF-C02](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html), ujian menguji pengetahuan menyeluruh tentang AWS Cloud, bukan kemampuan coding, troubleshooting mendalam, atau desain arsitektur level Solutions Architect. Format resminya terdiri dari multiple choice dan multiple response, dengan 50 soal dinilai dan 15 soal tidak dinilai. Skor dilaporkan dalam skala 100 sampai 1000, dan nilai lulus minimum adalah 700.
+
+Menurut [halaman sertifikasi AWS Certified Cloud Practitioner](https://aws.amazon.com/certification/certified-cloud-practitioner/), overview ujian mencantumkan durasi 90 menit, 65 soal, format multiple choice atau multiple response, dan biaya 100 USD sebelum penyesuaian pajak, kurs, atau biaya lain yang bergantung lokasi. Untuk peserta Indonesia, selalu cek halaman resmi sebelum booking karena AWS juga mencantumkan catatan bahwa ujian berbahasa Indonesia akan dihentikan setelah 16 Juli 2026.
+
+<Figure><ExamReadinessFig02 /><Fragment slot="caption"><b>Gambar 2.</b> Blueprint CLF-C02: bobot empat domain, jumlah soal, durasi, skala skor, dan model penilaian compensatory.</Fragment></Figure>
+
+<h3>Fakta ujian yang sering ditanyakan</h3>
+
+Kenapa angka-angka ini penting? Karena beberapa soal CLF-C02 justru menanyakan format ujian itu sendiri, dan karena memahami mekanikanya mengubah cara kamu mengatur waktu. Dari 65 soal, hanya 50 yang dinilai, sisanya 15 soal **unscored** yang dipakai AWS untuk uji coba soal baru. Soal unscored tidak ditandai di layar dan tidak memengaruhi skormu, jadi perlakukan semua soal sama serius. Ada dua tipe soal: **multiple choice** (1 benar dan 3 pengecoh) serta **multiple response** (2 atau lebih benar dari 5 atau lebih opsi).
+
+<Box variant="tip" icon="✅" label="Tidak ada penalti menebak"><p>Soal yang tidak dijawab dihitung salah, dan tidak ada pengurangan nilai untuk jawaban keliru. Maka jangan pernah meninggalkan soal kosong. Kalau ragu, eliminasi yang jelas salah lalu tebak yang paling masuk akal.</p></Box>
+
+Penilaian memakai model **compensatory**, artinya kamu tidak perlu lulus per-domain. Yang dihitung adalah skor keseluruhan dalam skala 100 sampai 1000, dengan ambang lulus 700. Domain yang kuat bisa menutup domain yang lebih lemah, tetapi karena Domain 2 dan Domain 3 sangat besar, dua domain itu tetap menentukan nasibmu.
+
+Ujian ini sengaja **bukan** ujian arsitektur atau coding. Menurut [exam guide CLF-C02](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html), tugas yang out of scope untuk kandidat target mencakup coding, mendesain arsitektur cloud, troubleshooting, implementasi, dan load atau performance testing. Jadi kalau ada opsi yang menuntut desain teknis rumit, opsi itu biasanya bukan jawaban yang diharapkan.
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr>
+      <th>Domain</th>
+      <th>Bobot</th>
+      <th>Makna praktis</th>
+      <th>Cara belajar final</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Domain 1: Cloud Concepts</td>
+      <td>24%</td>
+      <td>Nilai cloud, cloud economics, CAF, Well-Architected, migrasi dasar.</td>
+      <td>Latih bahasa bisnis, bukan konfigurasi teknis.</td>
+    </tr>
+    <tr>
+      <td>Domain 2: Security and Compliance</td>
+      <td>30%</td>
+      <td>Shared responsibility, IAM, encryption, governance, compliance, keamanan layanan.</td>
+      <td>Prioritaskan perbedaan tanggung jawab AWS vs customer.</td>
+    </tr>
+    <tr>
+      <td>Domain 3: Cloud Technology and Services</td>
+      <td>34%</td>
+      <td>Compute, storage, database, network, monitoring, migration, AI/ML, analytics.</td>
+      <td>Latih service picker dan kata kunci skenario.</td>
+    </tr>
+    <tr>
+      <td>Domain 4: Billing, Pricing, and Support</td>
+      <td>12%</td>
+      <td>Pricing model, billing tools, budgets, support plan, marketplace.</td>
+      <td>Fokus alat mana untuk melihat, memprediksi, membatasi, dan mengoptimalkan biaya.</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<Box variant="exam" icon="🎯" label="Prioritas final"><p>Kalau waktu belajar tinggal sedikit, gandakan latihan Domain 2 dan Domain 3 karena keduanya bersama-sama mencakup porsi terbesar dari konten yang dinilai.</p></Box>
+
+</Section>
+
+<Section num="03" id="cara-membaca-skenario" title="Cara Membaca Skenario CLF-C02" sub="Satu soal biasanya menyembunyikan 2 sampai 4 sinyal">
+
+<p class="lead">Skenario ujian mirip pesan WhatsApp dari klien, pendek, tetapi berisi petunjuk biaya, keamanan, performa, atau operasional.</p>
+
+Jangan membaca soal seperti kamus. Baca seperti detektif. Cari siapa pemilik masalah, jenis data atau workload, batasan utama, dan kata kerja bisnisnya. Kata kerja seperti "monitor", "audit", "encrypt", "cache", "archive", "migrate", "connect", dan "estimate" biasanya lebih penting daripada nama layanan yang muncul di opsi.
+
+<Steps>
+  <Step><b>Tandai kata kerja</b><p>Contoh: "track API calls" mengarah ke CloudTrail, bukan CloudWatch metrics.</p></Step>
+  <Step><b>Tandai objeknya</b><p>Contoh: "object storage" mengarah ke S3, "relational database" mengarah ke RDS atau Aurora.</p></Step>
+  <Step><b>Tandai batasan utama</b><p>Contoh: "least operational overhead" biasanya mengarah ke managed service atau serverless.</p></Step>
+  <Step><b>Buang opsi yang terlalu teknis</b><p>Untuk CLF-C02, opsi yang meminta desain detail sering bukan fokus jika soal hanya meminta layanan paling sesuai.</p></Step>
+  <Step><b>Pilih jawaban yang menjawab kebutuhan, bukan yang terdengar paling canggih</b><p>Managed service sederhana sering lebih benar daripada solusi manual yang rumit.</p></Step>
+</Steps>
+
+<Box variant="warn" icon="⚠️" label="Jebakan membaca cepat"><p>Nama layanan yang familiar belum tentu benar. Kalau soal menyebut "log", belum tentu jawabannya CloudWatch, audit API call lebih cocok ke CloudTrail.</p></Box>
+
+</Section>
+
+<Section num="04" id="service-picker-cepat" title="Service Picker Cepat" sub="Kamus skenario untuk menit-menit terakhir">
+
+<p class="lead">Service picker adalah peta jalan cepat, bukan pengganti pemahaman, tetapi sangat membantu saat opsi terlihat mirip.</p>
+
+<CardGrid cols={3}>
+  <Card><h4>Compute</h4><p>EC2 untuk server virtual fleksibel, Lambda untuk event-driven tanpa mengelola server, ECS/EKS untuk container, Elastic Beanstalk untuk deploy aplikasi dengan kontrol lebih sederhana.</p></Card>
+  <Card><h4>Storage</h4><p>S3 untuk objek, EBS untuk block storage EC2, EFS untuk file system bersama, FSx untuk file system terkelola spesifik, Glacier class untuk arsip di S3.</p></Card>
+  <Card><h4>Database</h4><p>RDS untuk relational managed, Aurora untuk relational cloud-native kompatibel MySQL/PostgreSQL, DynamoDB untuk key-value/document serverless, Redshift untuk data warehouse.</p></Card>
+  <Card><h4>Networking</h4><p>VPC untuk jaringan privat, Route 53 untuk DNS, CloudFront untuk CDN, Direct Connect untuk koneksi dedicated, Site-to-Site VPN untuk koneksi terenkripsi via internet.</p></Card>
+  <Card><h4>Security</h4><p>IAM untuk akses, KMS untuk key management, Secrets Manager untuk secret rotation, WAF untuk web filtering, Shield untuk DDoS, GuardDuty untuk threat detection.</p></Card>
+  <Card><h4>Operations</h4><p>CloudWatch untuk metrics/logs/alarms, CloudTrail untuk audit API, Config untuk compliance konfigurasi, Systems Manager untuk operasi fleet, Trusted Advisor untuk rekomendasi akun.</p></Card>
+</CardGrid>
+
+<Figure><ExamReadinessFig03 /><Fragment slot="caption"><b>Gambar 3.</b> Decision tree service picker: dari kata kerja dan objek di soal, bercabang ke kategori, lalu ke layanan, dengan aturan tie-break paling managed.</Fragment></Figure>
+
+<p>Cara memakai decision tree ini: mulai dari kata kerja inti dan objek di soal, bukan dari nama layanan di opsi. Misalnya "run code on every upload" punya kata kerja "run" dan pemicu event, sehingga jatuh ke cabang Compute &rarr; Lambda. "Store user photos accessible over HTTP" punya objek "object" dan akses HTTP, sehingga jatuh ke Storage &rarr; S3. Saat dua layanan masih bersaing, pakai aturan tie-break: pilih yang paling managed dan paling sedikit overhead operasional.</p>
+
+<h3>Service picker berdasarkan kata kunci</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr>
+      <th>Kata kunci soal</th>
+      <th>Jawaban yang sering tepat</th>
+      <th>Bedakan dari</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Forecast biaya bulanan sebelum deploy</td>
+      <td>AWS Pricing Calculator</td>
+      <td>Cost Explorer untuk analisis biaya historis dan tren aktual.</td>
+    </tr>
+    <tr>
+      <td>Alert saat biaya mendekati batas</td>
+      <td>AWS Budgets</td>
+      <td>Cost Explorer tidak otomatis menjadi pagar biaya.</td>
+    </tr>
+    <tr>
+      <td>Siapa melakukan API call apa dan kapan</td>
+      <td>AWS CloudTrail</td>
+      <td>CloudWatch untuk metrics, logs aplikasi, alarms.</td>
+    </tr>
+    <tr>
+      <td>Deteksi ancaman dari log akun dan network</td>
+      <td>Amazon GuardDuty</td>
+      <td>Inspector untuk vulnerability scanning workload.</td>
+    </tr>
+    <tr>
+      <td>Data sensitif di S3 seperti PII</td>
+      <td>Amazon Macie</td>
+      <td>KMS mengenkripsi data, tetapi tidak mengklasifikasi PII.</td>
+    </tr>
+    <tr>
+      <td>Web app diserang request berbahaya layer 7</td>
+      <td>AWS WAF</td>
+      <td>Shield untuk DDoS protection.</td>
+    </tr>
+    <tr>
+      <td>Query file di S3 memakai SQL tanpa server</td>
+      <td>Amazon Athena</td>
+      <td>Redshift untuk data warehouse terkelola.</td>
+    </tr>
+    <tr>
+      <td>Desktop virtual untuk karyawan</td>
+      <td>Amazon WorkSpaces</td>
+      <td>AppStream 2.0 untuk streaming aplikasi.</td>
+    </tr>
+    <tr>
+      <td>Contact center cloud</td>
+      <td>Amazon Connect</td>
+      <td>SES untuk email, SNS untuk notifikasi pub/sub.</td>
+    </tr>
+    <tr>
+      <td>Transfer data besar secara fisik (offline)</td>
+      <td>AWS Snow Family</td>
+      <td>Transfer online lewat jaringan adalah pekerjaan lain, bukan perangkat fisik.</td>
+    </tr>
+    <tr>
+      <td>Asisten GenAI untuk tanya jawab dan bantu kerja</td>
+      <td>Amazon Q</td>
+      <td>Rekognition/Textract untuk analisis gambar dan dokumen, bukan asisten percakapan.</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<Box variant="warn" icon="📦" label="Catatan in-scope: Snow Family vs DataSync"><p>Snow Family adalah layanan in-scope yang ditegaskan exam guide untuk transfer fisik atau offline. DataSync (transfer online terkelola lewat jaringan) sering dipakai sebagai pembanding konsep, tetapi tidak tercantum di daftar layanan in-scope CLF-C02 resmi. Jadi saat soal meminta transfer fisik perangkat, jawablah Snow Family dengan percaya diri.</p></Box>
+
+<Box variant="exam" icon="🆕" label="Layanan baru yang layak dikenal"><p>Amazon Q (asisten GenAI) kini masuk daftar in-scope Machine Learning CLF-C02. Selain itu, Amazon SageMaker kini bernama [Amazon SageMaker AI](https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html); pakai nama baru bila muncul. Untuk Cloud Practitioner kamu cukup tahu Q adalah asisten percakapan, bukan layanan analisis gambar atau dokumen.</p></Box>
+
+<Box variant="tip" icon="💡" label="Tips service picker"><p>Untuk CLF-C02, jawaban terbaik sering adalah layanan yang paling managed, paling langsung menjawab use case, dan paling sedikit pekerjaan operasionalnya.</p></Box>
+
+</Section>
+
+<Section num="05" id="drill-cloud-concepts" title="Drill Domain 1: Cloud Concepts" sub="Nilai bisnis, model cloud, dan prinsip arsitektur">
+
+<p class="lead">Domain 1 menguji apakah kamu bisa menjelaskan kenapa cloud dipakai, bukan hanya layanan apa yang tersedia.</p>
+
+<h3>Pola soal yang sering muncul</h3>
+
+<CardGrid cols={2}>
+  <Card><h4>CapEx ke OpEx</h4><p>Cloud mengurangi kebutuhan investasi awal besar untuk hardware dan mengubahnya menjadi biaya penggunaan yang lebih fleksibel.</p></Card>
+  <Card><h4>Agility</h4><p>Tim bisa mencoba ide lebih cepat karena resource dapat dibuat dan dihapus tanpa procurement fisik panjang.</p></Card>
+  <Card><h4>Elasticity</h4><p>Kapasitas dapat naik turun mengikuti permintaan, bukan dipasang permanen untuk puncak trafik tahunan.</p></Card>
+  <Card><h4>Global reach</h4><p>Region, Availability Zone, edge location, dan layanan global membantu mendekatkan aplikasi ke pengguna.</p></Card>
+</CardGrid>
+
+<h3>Latihan skenario</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr>
+      <th>Skenario</th>
+      <th>Jawaban inti</th>
+      <th>Alasan</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Perusahaan ingin menghindari pembelian server untuk kampanye musiman.</td>
+      <td>Elasticity dan pay-as-you-go.</td>
+      <td>Kapasitas mengikuti kebutuhan sementara, bukan dibeli permanen.</td>
+    </tr>
+    <tr>
+      <td>Startup ingin meluncurkan aplikasi di beberapa negara tanpa membangun data center.</td>
+      <td>Global infrastructure AWS.</td>
+      <td>Region dan edge membantu ekspansi geografis lebih cepat.</td>
+    </tr>
+    <tr>
+      <td>Tim ingin menilai arsitektur dari aspek operasi, security, reliability, performance, cost, dan sustainability.</td>
+      <td>AWS Well-Architected Framework.</td>
+      <td>Enam pilar Well-Architected adalah bahasa evaluasi arsitektur AWS.</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<Box variant="exam" icon="📝" label="Jebakan Domain 1"><p>Kalau soal memakai bahasa bisnis seperti "reduce upfront cost", "increase agility", atau "global reach", jangan langsung mencari layanan teknis.</p></Box>
+
+</Section>
+
+<Section num="06" id="drill-security-compliance" title="Drill Domain 2: Security & Compliance" sub="Domain terbesar kedua dan sumber jebakan pemula">
+
+<p class="lead">Security di CLF-C02 seperti keamanan gedung apartemen, AWS menjaga fondasi dan fasilitas umum, customer mengatur kunci unit, penghuni, dan barang di dalamnya.</p>
+
+Domain 2 punya bobot 30 persen, jadi inilah tempat banyak poin diraih atau hilang. Akar dari hampir semua soal di sini adalah satu model: Shared Responsibility. AWS menjaga keamanan **of** the cloud (fondasi fisik, hardware, jaringan inti), customer menjaga keamanan **in** the cloud (data, identitas, konfigurasi). Garis pemisahnya bergeser tergantung tipe layanan, tetapi tiga hal selalu milik customer: data, akses, dan konfigurasi.
+
+<Figure><ExamReadinessFig06 /><Fragment slot="caption"><b>Gambar 4.</b> Garis tanggung jawab bergeser dari IaaS ke serverless, tetapi data, akses, dan konfigurasi selalu menjadi tanggung jawab customer.</Fragment></Figure>
+
+<h3>Shared responsibility yang wajib otomatis</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr>
+      <th>Area</th>
+      <th>Tanggung jawab AWS</th>
+      <th>Tanggung jawab customer</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Infrastructure</td>
+      <td>Keamanan data center, hardware, jaringan fisik, hypervisor untuk layanan relevan.</td>
+      <td>Konfigurasi resource, identitas, data, network rules, patching guest OS pada model tertentu.</td>
+    </tr>
+    <tr>
+      <td>Managed services</td>
+      <td>Lebih banyak operasi platform ditangani AWS.</td>
+      <td>Data, akses, konfigurasi, dan kepatuhan penggunaan tetap tanggung jawab customer.</td>
+    </tr>
+    <tr>
+      <td>IAM</td>
+      <td>Menyediakan layanan IAM dan kontrol keamanan.</td>
+      <td>Menerapkan least privilege, MFA, role, policy, dan rotasi kredensial yang benar.</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<h3>Drill cepat keamanan</h3>
+
+<CardGrid cols={3}>
+  <Card><h4>IAM</h4><p>Siapa boleh melakukan apa pada resource apa. Fokus ujian: user, group, role, policy, MFA, least privilege.</p></Card>
+  <Card><h4>KMS</h4><p>Mengelola kunci kriptografi untuk enkripsi layanan AWS. Jangan disamakan dengan Secrets Manager.</p></Card>
+  <Card><h4>Secrets Manager</h4><p>Menyimpan dan merotasi secret seperti password database atau API key.</p></Card>
+  <Card><h4>Artifact</h4><p>Mengakses laporan compliance AWS dan agreement tertentu untuk kebutuhan audit.</p></Card>
+  <Card><h4>GuardDuty</h4><p>Threat detection terkelola yang menganalisis sumber data seperti log akun dan jaringan.</p></Card>
+  <Card><h4>Security Hub</h4><p>Mengumpulkan temuan keamanan dan membantu melihat posture keamanan secara terpusat.</p></Card>
+</CardGrid>
+
+<Compare aLabel="KMS &middot; kelola kunci" bLabel="Secrets Manager &middot; simpan + rotasi rahasia" aTone="violet" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Mengelola kunci kriptografi (KMS key) untuk mengenkripsi data di banyak layanan AWS.</li><li>Fokus pada enkripsi: membuat, memutar, dan mengontrol akses ke kunci.</li><li>Kata kunci soal: "manage encryption keys", "encrypt data at rest".</li><li>Bukan tempat menyimpan password aplikasi siap pakai.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Menyimpan secret seperti password database, API key, dan kredensial.</li><li>Bisa MEROTASI secret secara otomatis dan diintegrasikan ke aplikasi via API.</li><li>Kata kunci soal: "store and rotate database password", "retrieve API key safely".</li><li>Di balik layar tetap memakai KMS untuk mengenkripsi secret yang disimpan.</li></ul></Fragment>
+</Compare>
+
+<h3>Latihan skenario</h3>
+
+<Steps>
+  <Step><b>Audit API call</b><p>Jika soal bertanya siapa memanggil API, kapan, dari mana, pilih CloudTrail.</p></Step>
+  <Step><b>Enkripsi dengan key management</b><p>Jika soal meminta mengelola kunci enkripsi, pilih KMS.</p></Step>
+  <Step><b>Data rahasia aplikasi</b><p>Jika soal meminta menyimpan password database dan rotasi secret, pilih Secrets Manager.</p></Step>
+  <Step><b>Laporan compliance</b><p>Jika auditor meminta dokumen compliance AWS, pilih AWS Artifact.</p></Step>
+</Steps>
+
+<Box variant="warn" icon="⚠️" label="Jebakan Domain 2"><p>Jangan menjawab "AWS bertanggung jawab atas semuanya" hanya karena layanan dikelola AWS. Customer tetap bertanggung jawab atas data, akses, dan konfigurasi.</p></Box>
+
+</Section>
+
+<Section num="07" id="drill-technology-services" title="Drill Domain 3: Cloud Technology & Services" sub="Bagian terbesar, latih pilihan layanan inti">
+
+<p class="lead">Domain 3 seperti supermarket AWS, soal tidak meminta kamu menghafal semua rak, tetapi memilih barang yang tepat untuk resep tertentu.</p>
+
+<h3>Kelompok layanan yang harus lincah dibedakan</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr>
+      <th>Kebutuhan</th>
+      <th>Layanan utama</th>
+      <th>Pengecoh umum</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Menjalankan aplikasi pada virtual machine</td>
+      <td>Amazon EC2</td>
+      <td>Lambda jika perlu serverless event-driven, bukan server penuh.</td>
+    </tr>
+    <tr>
+      <td>Menjalankan kode sebagai respons event tanpa server</td>
+      <td>AWS Lambda</td>
+      <td>EC2 jika perlu kontrol OS atau runtime lebih bebas.</td>
+    </tr>
+    <tr>
+      <td>Menyimpan object seperti gambar, log, backup</td>
+      <td>Amazon S3</td>
+      <td>EBS untuk block storage yang melekat ke EC2.</td>
+    </tr>
+    <tr>
+      <td>Database relational managed</td>
+      <td>Amazon RDS atau Amazon Aurora</td>
+      <td>DynamoDB untuk key-value/document non-relational.</td>
+    </tr>
+    <tr>
+      <td>NoSQL serverless skala besar</td>
+      <td>Amazon DynamoDB</td>
+      <td>RDS jika butuh SQL relational tradisional.</td>
+    </tr>
+    <tr>
+      <td>Distribusi konten global dengan caching edge</td>
+      <td>Amazon CloudFront</td>
+      <td>Route 53 untuk DNS, bukan CDN.</td>
+    </tr>
+    <tr>
+      <td>DNS dan domain routing</td>
+      <td>Amazon Route 53</td>
+      <td>CloudFront mempercepat konten, tidak menjadi DNS utama saja.</td>
+    </tr>
+    <tr>
+      <td>Monitoring metrics, logs, alarms</td>
+      <td>Amazon CloudWatch</td>
+      <td>CloudTrail untuk audit API activity.</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<h3>Drill layanan tambahan yang sering mudah tertukar</h3>
+
+<CardGrid cols={2}>
+  <Card><h4>SQS vs SNS</h4><p>SQS adalah antrean untuk decouple worker, SNS adalah pub/sub notification ke banyak subscriber.</p></Card>
+  <Card><h4>EventBridge vs Step Functions</h4><p>EventBridge menghubungkan event antar aplikasi, Step Functions mengorkestrasi workflow bertahap.</p></Card>
+  <Card><h4>DataSync vs Snow Family</h4><p>DataSync memindahkan data online secara terkelola, Snow Family membantu transfer besar secara perangkat fisik atau edge terbatas.</p></Card>
+  <Card><h4>Connect vs SES</h4><p>Connect untuk contact center, SES untuk email skala besar dan transactional email.</p></Card>
+  <Card><h4>Rekognition vs Textract</h4><p>Rekognition untuk analisis gambar/video, Textract untuk ekstraksi teks dan struktur dari dokumen.</p></Card>
+  <Card><h4>Transcribe vs Polly</h4><p>Transcribe mengubah suara menjadi teks, Polly mengubah teks menjadi suara.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Cara menang Domain 3"><p>Latih dari use case ke layanan, bukan dari layanan ke definisi. Ujian sering bertanya "which service should the company use".</p></Box>
+
+</Section>
+
+<Section num="08" id="drill-billing-support" title="Drill Domain 4: Billing, Pricing & Support" sub="Bobot kecil, tetapi relatif mudah jika alatnya jelas">
+
+<p class="lead">Billing di AWS seperti dashboard keuangan rumah, ada alat untuk memperkirakan sebelum membeli, melihat tagihan setelah memakai, memberi alarm, dan meminta bantuan.</p>
+
+Domain 4 hanya 12 persen, tetapi ini domain dengan rasio poin per menit belajar paling tinggi. Soalnya jarang menjebak; yang dibutuhkan cuma membedakan empat hal: bagaimana AWS menghitung harga (pricing model), alat mana untuk melihat atau memprediksi biaya, bagaimana membatasi biaya, dan paket support mana untuk kebutuhan mana. Kalau empat hal ini jelas, kamu hampir pasti memanen poin di sini.
+
+<h3>Pricing model: bagaimana AWS menghitung harga compute</h3>
+
+<p>Sebelum bicara alat, pahami dulu cara AWS menagih EC2 dan compute sejenis. Analogi sederhananya seperti menyewa mobil: ada sewa harian fleksibel, ada paket langganan tahunan yang lebih murah, dan ada kursi sisa pesawat yang sangat murah tetapi bisa diambil sewaktu-waktu.</p>
+
+<CardGrid cols={3}>
+  <Card><h4>On-Demand</h4><p>Bayar per detik atau per jam tanpa komitmen. Paling fleksibel, paling mahal per unit. Cocok untuk beban tak terduga atau jangka pendek.</p></Card>
+  <Card><h4>Reserved Instances</h4><p>Komitmen 1 atau 3 tahun untuk diskon besar dibanding On-Demand. Cocok untuk beban stabil yang bisa diprediksi.</p></Card>
+  <Card><h4>Savings Plans</h4><p>Komitmen jumlah dolar per jam selama 1 atau 3 tahun, lebih fleksibel lintas tipe instance dan layanan dibanding Reserved.</p></Card>
+  <Card><h4>Spot Instances</h4><p>Memanfaatkan kapasitas idle dengan diskon hingga sekitar 90 persen, tetapi bisa diambil AWS dengan notifikasi singkat. Cocok untuk beban yang tahan interupsi.</p></Card>
+  <Card><h4>Dedicated Hosts</h4><p>Server fisik yang didedikasikan untukmu, biasanya untuk lisensi software bound-to-hardware atau kebutuhan kepatuhan tertentu. Paling mahal.</p></Card>
+  <Card><h4>Free Tier</h4><p>Kuota gratis untuk eksplorasi awal. Sejak 15 Juli 2025, akun baru mendapat kredit hingga 200 USD untuk 6 bulan; akun lama tetap di model 12 bulan plus always-free.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="💲" label="Jebakan pricing model"><p>Kata kunci "stable, predictable workload, lowest cost" mengarah ke Reserved Instances atau Savings Plans, bukan On-Demand. Kata kunci "fault-tolerant, can be interrupted, cheapest" mengarah ke Spot. Kata kunci "no commitment, short term" mengarah ke On-Demand. Kata kunci "license bound to physical server" mengarah ke Dedicated Hosts.</p></Box>
+
+<Box variant="tip" icon="🎁" label="Catatan Free Tier 2025"><p>Menurut [AWS Free Tier update](https://aws.amazon.com/blogs/aws/aws-free-tier-update-new-customers-can-get-started-and-explore-aws-with-up-to-200-in-credits/), akun yang dibuat setelah 15 Juli 2025 memakai model kredit baru: 100 USD saat sign-up plus hingga 100 USD dari aktivitas, berlaku 6 bulan atau sampai kredit habis. Akun lama tetap di program legacy (12 bulan gratis, always free, trial jangka pendek). Untuk ujian, cukup tahu Free Tier ada untuk eksplorasi tanpa biaya, bukan menghafal angkanya.</p></Box>
+
+<h3>Alat biaya yang harus dibedakan</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr>
+      <th>Kebutuhan</th>
+      <th>Pilih</th>
+      <th>Kenapa</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Estimasi biaya sebelum membangun workload.</td>
+      <td>AWS Pricing Calculator</td>
+      <td>Dipakai untuk membuat estimasi berdasarkan layanan dan konfigurasi rencana.</td>
+    </tr>
+    <tr>
+      <td>Melihat biaya historis, tren, dan filter per layanan.</td>
+      <td>AWS Cost Explorer</td>
+      <td>Dipakai untuk analisis penggunaan dan biaya aktual.</td>
+    </tr>
+    <tr>
+      <td>Mendapat notifikasi saat biaya melewati threshold.</td>
+      <td>AWS Budgets</td>
+      <td>Dipakai untuk membuat budget dan alert.</td>
+    </tr>
+    <tr>
+      <td>Laporan granular untuk analisis lanjutan.</td>
+      <td>AWS Cost and Usage Report</td>
+      <td>Berisi data biaya dan penggunaan paling detail untuk analisis.</td>
+    </tr>
+    <tr>
+      <td>Mengelompokkan biaya per proyek atau tim.</td>
+      <td>Cost allocation tags</td>
+      <td>Tag membantu memetakan resource ke pemilik biaya.</td>
+    </tr>
+    <tr>
+      <td>Satu tagihan untuk banyak akun.</td>
+      <td>AWS Organizations consolidated billing</td>
+      <td>Memusatkan tagihan dan dapat membantu agregasi penggunaan.</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<Compare aLabel="Cost Explorer &middot; lihat ke belakang" bLabel="Pricing Calculator &middot; lihat ke depan" aTone="blue" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Menganalisis biaya dan penggunaan yang SUDAH terjadi (historis dan tren).</li><li>Bisa filter per layanan, per tag, per akun, dan melihat forecast dari pola lampau.</li><li>Kata kunci soal: "analyze past spend", "see last month cost", "trends".</li><li>Bukan alat untuk memberi alarm; itu tugas Budgets.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Mengestimasi biaya SEBELUM workload dibangun, berdasarkan konfigurasi rencana.</li><li>Tidak butuh akun berisi resource aktif; cukup masukkan asumsi kapasitas.</li><li>Kata kunci soal: "estimate before deploy", "forecast cost of a new architecture".</li><li>Bukan alat untuk biaya aktual yang sudah berjalan.</li></ul></Fragment>
+</Compare>
+
+<h3>Support plan dalam bahasa ujian</h3>
+
+<CardGrid cols={2}>
+  <Card><h4>Basic (gratis)</h4><p>Akses dokumentasi, whitepapers, support untuk account dan billing, dan permintaan service quota increase. Tidak ada technical support.</p></Card>
+  <Card><h4>Developer</h4><p>Cocok untuk eksperimen atau pengembangan awal saat butuh technical support terbatas via email pada jam kerja.</p></Card>
+  <Card><h4>Business</h4><p>Cocok untuk production workloads, membuka full set 500+ Trusted Advisor checks, dan support teknis 24/7 via chat, telepon, dan email.</p></Card>
+  <Card><h4>Enterprise</h4><p>Cocok untuk organisasi besar yang membutuhkan Technical Account Manager (TAM) dan dukungan paling komprehensif.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="🛟" label="Pembeda kunci support plan"><p>Untuk ujian, ingat dua pembeda yang sering ditanya: full set Trusted Advisor checks (500+) terbuka mulai paket Business, dan Technical Account Manager (TAM) eksklusif di paket Enterprise. Lihat [AWS Support plans](https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html).</p></Box>
+
+<Box variant="warn" icon="🗓️" label="Catatan: struktur support sedang berubah"><p>Exam guide CLF-C02 saat ini masih memakai struktur klasik Basic, Developer, Business, Enterprise, jadi jawaban di atas tetap benar untuk ujian. Tetapi di console AWS terbaru, paket Developer, Business, dan Enterprise On-Ramp dihentikan per 1 Januari 2027 dan diganti Business Support+ serta tier baru Enterprise/Unified Operations. Jangan bingung bila melihat nama berbeda saat praktik; untuk ujian pakai struktur klasik.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jebakan Domain 4"><p>Jangan pilih Pricing Calculator untuk melihat biaya bulan lalu, dan jangan pilih Cost Explorer untuk membuat alarm budget. Calculator memprediksi sebelum deploy, Cost Explorer menganalisis biaya yang sudah terjadi, Budgets memberi alarm saat melewati ambang.</p></Box>
+
+</Section>
+
+<Section num="09" id="strategi-multiple-response" title="Strategi Multiple Response" sub="Soal pilih dua atau pilih tiga butuh disiplin eliminasi">
+
+<p class="lead">Multiple response seperti memilih bahan resep, satu bahan tambahan yang salah bisa mengubah rasa seluruh jawaban.</p>
+
+Di soal multiple response, instruksi jumlah jawaban adalah bagian dari soal. Jika tertulis "Choose TWO", jangan memilih tiga walaupun tiga opsi terdengar bagus. Cari dua yang paling langsung menjawab kebutuhan. Opsi lain mungkin benar secara umum, tetapi tidak menjawab batasan utama.
+
+<Steps>
+  <Step><b>Baca jumlah jawaban dulu</b><p>Tandai "Choose TWO" atau "Choose THREE" sebelum membaca opsi.</p></Step>
+  <Step><b>Coret opsi yang beda domain</b><p>Jika soal tentang audit API, opsi CDN atau DNS bisa dicoret lebih awal.</p></Step>
+  <Step><b>Bedakan wajib vs bagus dimiliki</b><p>Jawaban benar biasanya memenuhi kebutuhan wajib, bukan hanya fitur tambahan.</p></Step>
+  <Step><b>Jangan menambah jawaban karena panik</b><p>Pilih jumlah yang diminta dan percayai eliminasi yang sudah kamu lakukan.</p></Step>
+  <Step><b>Flag jika ragu</b><p>Lewati sementara jika dua opsi terakhir masih seimbang, lalu kembali setelah ritme ujian stabil.</p></Step>
+</Steps>
+
+<h3>Contoh pola multiple response</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr>
+      <th>Instruksi</th>
+      <th>Pola pikir</th>
+      <th>Kesalahan umum</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Choose TWO layanan untuk decoupling aplikasi.</td>
+      <td>SQS dan SNS sering relevan, tergantung antrean atau pub/sub.</td>
+      <td>Memilih CloudTrail karena "log" terdengar aman, padahal bukan decoupling.</td>
+    </tr>
+    <tr>
+      <td>Choose TWO praktik IAM terbaik.</td>
+      <td>MFA, least privilege, role untuk service, rotasi kredensial.</td>
+      <td>Membuat access key untuk root user atau memakai policy terlalu luas.</td>
+    </tr>
+    <tr>
+      <td>Choose THREE layanan monitoring dan governance.</td>
+      <td>CloudWatch, CloudTrail, Config, Trusted Advisor, Systems Manager sesuai konteks.</td>
+      <td>Mencampur WAF atau Shield saat soal tidak berbicara web attack atau DDoS.</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<Box variant="tip" icon="💡" label="Taktik waktu"><p>Dengan 65 soal dalam 90 menit, gunakan target kasar sekitar 1 menit per soal dan sisakan waktu untuk soal yang di-flag.</p></Box>
+
+</Section>
+
+<Section num="10" id="simulasi-mini-ujian" title="Simulasi Mini Ujian" sub="Latihan asli buatan modul, bukan kutipan soal resmi AWS">
+
+<p class="lead">Gunakan bagian ini seperti sparring ringan, jawab dulu tanpa melihat pembahasan, lalu cocokkan pola pikirnya.</p>
+
+<h3>Set A: pilih satu jawaban terbaik</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr>
+      <th>No</th>
+      <th>Skenario</th>
+      <th>Jawaban</th>
+      <th>Pembahasan</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>Perusahaan ingin mengetahui user mana yang menghapus bucket policy melalui AWS API.</td>
+      <td>CloudTrail</td>
+      <td>CloudTrail merekam aktivitas API dan identitas pemanggil.</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Aplikasi perlu menyimpan file gambar pengguna dengan skala besar dan akses via HTTP.</td>
+      <td>S3</td>
+      <td>S3 adalah object storage yang cocok untuk file, gambar, backup, dan static assets.</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Tim ingin menjalankan kode saat file baru masuk ke S3 tanpa mengelola server.</td>
+      <td>Lambda</td>
+      <td>Lambda cocok untuk event-driven compute tanpa provisioning server.</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Manajemen ingin estimasi biaya sebelum memilih arsitektur AWS.</td>
+      <td>AWS Pricing Calculator</td>
+      <td>Pricing Calculator membantu estimasi sebelum deploy.</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Auditor meminta laporan compliance AWS seperti SOC atau ISO.</td>
+      <td>AWS Artifact</td>
+      <td>Artifact adalah tempat akses dokumen compliance dan agreement terkait.</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Perusahaan butuh DNS untuk domain aplikasi.</td>
+      <td>Route 53</td>
+      <td>Route 53 adalah layanan DNS AWS.</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<h3>Set B: pilih dua jawaban</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr>
+      <th>No</th>
+      <th>Skenario</th>
+      <th>Jawaban</th>
+      <th>Pembahasan</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>7</td>
+      <td>Tim ingin meningkatkan keamanan akun root dan user admin. Pilih dua praktik terbaik.</td>
+      <td>Aktifkan MFA, gunakan least privilege</td>
+      <td>MFA mengurangi risiko kredensial bocor, least privilege membatasi dampak akses.</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>Aplikasi microservices perlu komunikasi longgar. Satu pola antrean, satu pola publish ke banyak subscriber.</td>
+      <td>SQS, SNS</td>
+      <td>SQS untuk queue, SNS untuk pub/sub notification.</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>Organisasi ingin memantau konfigurasi resource dan mendapat riwayat API call.</td>
+      <td>AWS Config, CloudTrail</td>
+      <td>Config memantau konfigurasi dan compliance, CloudTrail mencatat aktivitas API.</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>Aplikasi global ingin mengurangi latency konten statis dan menggunakan DNS terkelola.</td>
+      <td>CloudFront, Route 53</td>
+      <td>CloudFront mempercepat distribusi konten edge, Route 53 mengelola DNS.</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<h3>Set C: pricing, billing, dan layanan yang mudah tertukar</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr>
+      <th>No</th>
+      <th>Skenario</th>
+      <th>Jawaban</th>
+      <th>Pembahasan</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>11</td>
+      <td>Workload produksi berjalan stabil sepanjang tahun dan tim ingin biaya compute serendah mungkin dengan komitmen.</td>
+      <td>Reserved Instances atau Savings Plans</td>
+      <td>Beban stabil yang bisa diprediksi memberi diskon besar lewat komitmen 1 atau 3 tahun.</td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td>Job batch tahan interupsi ingin biaya compute paling murah dan tidak masalah jika instance diambil sewaktu-waktu.</td>
+      <td>Spot Instances</td>
+      <td>Spot memanfaatkan kapasitas idle dengan diskon besar untuk beban fault-tolerant.</td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td>Tim ingin diberi tahu otomatis saat biaya bulanan mendekati 80 persen dari batas anggaran.</td>
+      <td>AWS Budgets</td>
+      <td>Budgets membuat ambang dan alert, bukan Cost Explorer yang hanya menganalisis.</td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td>Perusahaan ingin memindai data sensitif seperti PII di dalam bucket S3.</td>
+      <td>Amazon Macie</td>
+      <td>Macie mengklasifikasi data sensitif di S3, bukan Inspector yang memindai CVE workload.</td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td>Organisasi besar butuh akses ke Technical Account Manager dan dukungan paling komprehensif.</td>
+      <td>Enterprise Support</td>
+      <td>TAM hanya tersedia di paket Enterprise; Business membuka full Trusted Advisor checks.</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<Box variant="exam" icon="🧪" label="Cara memakai simulasi"><p>Agar latihan melatih recall sesungguhnya, tutup dulu kolom Jawaban dan Pembahasan dengan tangan atau kertas, jawab di kepala, baru cocokkan. Jika salah, jangan hanya catat jawaban benar; catat kata kunci yang kamu lewatkan, lalu masukkan ke daftar lemah pribadi.</p></Box>
+
+</Section>
+
+<Section num="11" id="logistik-hari-h" title="Logistik Hari-H dan Strategi Waktu" sub="Yang membuat gagal sering bukan materi, tetapi panik karena tidak siap teknis">
+
+<p class="lead">Logistik ujian seperti naik pesawat, materi adalah bekal di koper, tetapi tetap saja kamu butuh tiket benar, identitas cocok, dan datang tepat waktu agar bekal itu berguna.</p>
+
+Banyak orang sudah paham AWS, tetapi tersandung hal non-akademis: nama di ID tidak sama dengan nama di akun, ruangan tidak lolos pemeriksaan, atau kehabisan waktu karena terlalu lama di satu soal. Bagian ini menutup celah itu. Kamu bisa mengikuti CLF-C02 lewat dua jalur, dan masing-masing punya aturan main sendiri.
+
+<Figure><ExamReadinessFig05 /><Fragment slot="caption"><b>Gambar 5.</b> Dua jalur ujian (Pearson VUE test center dan online proctored OnVUE) beserta strategi dua-pass untuk membagi 90 menit.</Fragment></Figure>
+
+<h3>Dua jalur ujian</h3>
+
+<Compare aLabel="Pearson VUE &middot; test center" bLabel="Online proctored &middot; OnVUE" aTone="blue" bTone="violet" vs="atau">
+  <Fragment slot="a"><ul><li>Datang ke lokasi, komputer dan ruangan disediakan, pengawas hadir di tempat.</li><li>Barang dititip di loker; tidak boleh membawa HP atau catatan ke ruang ujian.</li><li>Cocok bila koneksi internet rumah tidak stabil atau ingin lingkungan netral.</li><li>Bawa identitas resmi sesuai aturan, nama harus persis sama dengan akun.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Ujian dari rumah dengan webcam dan mikrofon, diawasi proctor jarak jauh.</li><li>Wajib system check sebelum hari-H dan ruangan bersih tanpa orang lain.</li><li>Check-in lebih awal: foto ID, foto wajah, dan sapuan ruangan via kamera.</li><li>Tidak boleh bicara, menengok keluar layar, atau meninggalkan kursi tanpa izin.</li></ul></Fragment>
+</Compare>
+
+<Box variant="tip" icon="🪪" label="Syarat identitas dan check-in"><p>Pastikan nama di ID resmi sama persis dengan nama di akun AWS Certification. Untuk jalur online, jalankan system check dari komputer dan jaringan yang akan dipakai, beberapa hari sebelum jadwal, lalu check-in sekitar 30 menit lebih awal. Lihat detail di [halaman sertifikasi CLF-C02](https://aws.amazon.com/certification/certified-cloud-practitioner/).</p></Box>
+
+<h3>Strategi membagi 90 menit untuk 65 soal</h3>
+
+<p>Dengan 90 menit untuk 65 soal, anggaranmu sekitar 1 menit per soal, dengan sisa belasan menit untuk review. Cara teraman adalah dua-pass: lewati soal sulit dulu, jangan terjebak.</p>
+
+<Steps>
+  <Step><b>Pass 1: jawab cepat</b><p>Kerjakan semua soal yang langsung kamu tahu. Targetkan sekitar 40 sampai 45 soal selesai dalam paruh pertama waktu.</p></Step>
+  <Step><b>Flag yang ragu</b><p>Soal yang butuh berpikir lama jangan dipaksakan sekarang. Beri tanda flag, isi jawaban sementara, lalu lanjut.</p></Step>
+  <Step><b>Pass 2: review flag</b><p>Kembali ke soal yang di-flag dengan kepala lebih dingin. Sering kali soal lain memberi petunjuk untuk yang sebelumnya buntu.</p></Step>
+  <Step><b>Jangan ada yang kosong</b><p>Tidak ada penalti menebak dan soal tak terjawab dihitung salah, jadi pastikan semua terisi sebelum submit.</p></Step>
+</Steps>
+
+<Box variant="exam" icon="⏱️" label="Patokan tempo"><p>Cek jam saat sudah 30 soal: idealnya waktu terpakai belum melewati setengah. Jika satu soal menyita lebih dari sekitar 2 menit, flag dan lanjut. Hasil pass atau fail muncul di layar setelah selesai, sedangkan skor detail dan rincian per-domain menyusul lewat email atau AWS Certification account.</p></Box>
+
+</Section>
+
+<Section num="12" id="review-akhir" title="Rencana Review Akhir" sub="Checklist praktis sebelum booking atau sebelum hari ujian">
+
+<p class="lead">Review akhir yang baik bukan membaca ulang semuanya, tetapi menutup lubang yang paling mungkin membuatmu salah.</p>
+
+Menurut [AWS Certification exam preparation](https://aws.amazon.com/certification/certification-prep/), AWS menyediakan sumber seperti Official Practice Question Sets, Exam Prep Courses, labs, Cloud Quest, dan Official Practice Exams di AWS Skill Builder. Gunakan sumber resmi ini untuk memahami gaya soal, bukan untuk menghafal jawaban.
+
+<Steps>
+  <Step><b>Hari 1: baseline</b><p>Kerjakan satu set latihan, catat domain yang paling lemah, dan jangan melihat pembahasan sebelum selesai.</p></Step>
+  <Step><b>Hari 2: security dan technology</b><p>Fokus ulang Domain 2 dan Domain 3, terutama shared responsibility, IAM, monitoring, storage, database, networking, dan service picker.</p></Step>
+  <Step><b>Hari 3: billing dan cloud concepts</b><p>Review Pricing Calculator, Cost Explorer, Budgets, Organizations, Support Plans, Well-Architected, CAF, dan migrasi dasar.</p></Step>
+  <Step><b>Hari 4: skenario campuran</b><p>Kerjakan latihan campuran dengan timer dan pakai strategi flag untuk soal ragu.</p></Step>
+  <Step><b>Hari ujian: ringan dan tenang</b><p>Baca ringkasan, bukan seluruh modul. Hindari belajar fitur baru satu jam sebelum ujian.</p></Step>
+</Steps>
+
+<h3>Template catatan lemah</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr>
+      <th>Kesalahan</th>
+      <th>Kata kunci yang terlewat</th>
+      <th>Perbaikan</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Memilih CloudWatch untuk audit API.</td>
+      <td>"Who made API call"</td>
+      <td>Ingat CloudTrail untuk audit API.</td>
+    </tr>
+    <tr>
+      <td>Memilih Cost Explorer untuk estimasi sebelum deploy.</td>
+      <td>"Estimate before migration"</td>
+      <td>Ingat Pricing Calculator untuk estimasi awal.</td>
+    </tr>
+    <tr>
+      <td>Memilih RDS untuk key-value skala besar.</td>
+      <td>"serverless key-value"</td>
+      <td>Ingat DynamoDB.</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<Box variant="tip" icon="💡" label="Prinsip review"><p>Semakin dekat hari ujian, semakin penting latihan pengambilan keputusan. Jangan tenggelam di detail konfigurasi yang out of scope untuk Cloud Practitioner.</p></Box>
+
+</Section>
+
+<Section num="13" id="kesalahan-umum" title="Kesalahan Umum dan Jebakan Soal" sub="Pola salah yang mahal, tetapi mudah diperbaiki">
+
+<p class="lead">Sebagian kesalahan CLF-C02 bukan karena tidak tahu AWS, tetapi karena salah membaca kata kunci.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>CloudWatch vs CloudTrail</h4><p>CloudWatch untuk metrics, logs, alarm, dan observability. CloudTrail untuk audit aktivitas API.</p></Card>
+  <Card><h4>KMS vs Secrets Manager</h4><p>KMS mengelola kunci enkripsi. Secrets Manager menyimpan dan merotasi secret.</p></Card>
+  <Card><h4>WAF vs Shield</h4><p>WAF memfilter request web layer 7. Shield melindungi dari DDoS.</p></Card>
+  <Card><h4>S3 vs EBS vs EFS</h4><p>S3 untuk object storage, EBS untuk block storage EC2, EFS untuk file system bersama.</p></Card>
+  <Card><h4>RDS vs DynamoDB</h4><p>RDS untuk relational SQL, DynamoDB untuk NoSQL key-value/document serverless.</p></Card>
+  <Card><h4>Pricing Calculator vs Cost Explorer vs Budgets</h4><p>Calculator untuk estimasi, Cost Explorer untuk analisis biaya aktual, Budgets untuk alert batas biaya.</p></Card>
+  <Card><h4>Route 53 vs CloudFront</h4><p>Route 53 untuk DNS, CloudFront untuk CDN dan caching edge.</p></Card>
+  <Card><h4>Support vs Trusted Advisor</h4><p>Support plan menentukan level bantuan AWS, Trusted Advisor memberi rekomendasi akun berdasarkan checks.</p></Card>
+</CardGrid>
+
+<Figure><ExamReadinessFig04 /><Fragment slot="caption"><b>Gambar 6.</b> Kartu pasangan layanan yang sering tertukar beserta pembeda kunci yang bisa kamu pakai untuk membuang pengecoh saat ujian.</Fragment></Figure>
+
+<Box variant="exam" icon="🔬" label="GuardDuty vs Inspector vs Macie vs Detective"><p>Empat layanan keamanan ini paling sering tertukar. GuardDuty mendeteksi ancaman dari log akun, VPC, dan DNS. Inspector memindai kerentanan atau CVE pada workload (EC2, ECR, Lambda). Macie mengklasifikasi data sensitif atau PII di S3. Detective membantu investigasi dan root cause atas temuan. Kata kunci "sensitive data in S3" hampir selalu Macie, bukan Inspector.</p></Box>
+
+<h3>Jebakan bahasa soal</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr>
+      <th>Frasa soal</th>
+      <th>Makna tersembunyi</th>
+      <th>Arah jawaban</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Least operational overhead</td>
+      <td>Jangan pilih solusi manual jika ada managed/serverless service.</td>
+      <td>Lambda, DynamoDB, RDS, managed services.</td>
+    </tr>
+    <tr>
+      <td>Highly available across AZs</td>
+      <td>Butuh desain multi-AZ atau layanan yang dikelola lintas AZ.</td>
+      <td>ALB, Auto Scaling, RDS Multi-AZ, layanan managed.</td>
+    </tr>
+    <tr>
+      <td>Decouple components</td>
+      <td>Komponen tidak saling menunggu secara langsung.</td>
+      <td>SQS, SNS, EventBridge.</td>
+    </tr>
+    <tr>
+      <td>Compliance reports</td>
+      <td>Butuh dokumen audit resmi.</td>
+      <td>AWS Artifact.</td>
+    </tr>
+    <tr>
+      <td>Detect suspicious activity</td>
+      <td>Butuh threat detection.</td>
+      <td>GuardDuty.</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<Box variant="warn" icon="⚠️" label="Jangan over-engineer"><p>CLF-C02 bukan ujian Solutions Architect. Jika soal meminta konsep atau layanan, jangan memaksa jawaban arsitektur detail.</p></Box>
+
+</Section>
+
+<Section num="14" id="ringkasan" title="Ringkasan & Tips Ujian">
+
+<p class="lead">Kunci modul final ini adalah mengubah ingatan menjadi refleks memilih jawaban yang paling sesuai dengan kebutuhan bisnis.</p>
+
+<Recap title="Poin Penting">
+  <ul>
+    <li>Fakta ujian: 65 soal (50 dinilai + 15 unscored), 90 menit, skala 100 sampai 1000, lulus minimum 700, penilaian compensatory, dan tidak ada penalti menebak.</li>
+    <li>Domain 3 (34%) dan Domain 2 (30%) adalah prioritas terbesar, jadi latih layanan inti, service picker, IAM, shared responsibility, encryption, monitoring, governance, dan compliance.</li>
+    <li>Domain 1 (24%) menguji bahasa bisnis cloud seperti agility, elasticity, global reach, OpEx, CAF, dan Well-Architected.</li>
+    <li>Domain 4 (12%) relatif kecil, tetapi alat biaya dan pricing model mudah dijawab jika kamu membedakan On-Demand, Reserved, Savings Plans, Spot, Dedicated Hosts, plus Pricing Calculator, Cost Explorer, Budgets, Cost and Usage Report, Organizations, dan Support Plans.</li>
+    <li>Untuk multiple response, ikuti jumlah jawaban yang diminta, eliminasi opsi beda domain, dan pilih yang menjawab kebutuhan wajib.</li>
+    <li>Logistik hari-H ikut menentukan: nama ID cocok dengan akun, system check untuk jalur online, dan strategi dua-pass agar tidak kehabisan waktu.</li>
+    <li>Jangan hafalkan semua detail fitur. Hafalkan pola keputusan: kebutuhan &rarr; kata kunci &rarr; layanan paling tepat &rarr; buang pengecoh.</li>
+  </ul>
+</Recap>
+
+<h3>Pemetaan akhir ke domain CLF-C02</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr>
+      <th>Domain</th>
+      <th>Apa yang harus bisa kamu jelaskan</th>
+      <th>Latihan terakhir</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Domain 1: Cloud Concepts</td>
+      <td>Value proposition AWS Cloud, cloud economics, migration basics, CAF, Well-Architected.</td>
+      <td>Jelaskan cloud ke manajer non-teknis dalam 3 menit.</td>
+    </tr>
+    <tr>
+      <td>Domain 2: Security and Compliance</td>
+      <td>Shared responsibility, IAM, MFA, least privilege, KMS, security services, compliance resources.</td>
+      <td>Latih 20 skenario keamanan dan catat layanan yang tertukar.</td>
+    </tr>
+    <tr>
+      <td>Domain 3: Cloud Technology and Services</td>
+      <td>Compute, storage, database, networking, monitoring, integration, migration, AI/ML, analytics, edge.</td>
+      <td>Gunakan tabel service picker untuk menjawab "layanan mana untuk use case ini".</td>
+    </tr>
+    <tr>
+      <td>Domain 4: Billing, Pricing, and Support</td>
+      <td>Pricing models (On-Demand, Reserved, Savings Plans, Spot, Dedicated Hosts), Free Tier, billing tools, budget alert, consolidated billing, support plan, Marketplace.</td>
+      <td>Buat flashcard beda On-Demand vs Reserved vs Spot, dan Cost Explorer vs Budgets vs Pricing Calculator vs CUR.</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<Box variant="exam" icon="🏁" label="Pesan penutup"><p>Siap ujian bukan berarti tahu semua hal. Siap ujian berarti cukup tenang membaca skenario, cukup disiplin mengeliminasi, dan cukup paham untuk memilih jawaban paling AWS dan paling sesuai konteks.</p></Box>
+
+</Section>

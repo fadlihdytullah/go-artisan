@@ -5,10 +5,10 @@ import ArticleTOC from '../../components/ArticleTOC.astro';
 import MermaidZoom from '../../components/MermaidZoom.astro';
 
 export async function getStaticPaths() {
-  // Rute lesson dinamis: SEMUA 73 modul (termasuk go-luminas). Tidak ada
-  // pengecualian go-luminas di sini — itu khusus rute courses. Urutkan menurut
-  // `order` frontmatter agar konsisten dengan kurasi.
-  const mods = (await getCollection('modules')).sort(
+  // Rute lesson AWS dinamis: SEMUA modul koleksi `aws` (track terpisah dari 73
+  // modul Go Luminas dan dari `courses`). Urutkan menurut `order` frontmatter
+  // agar konsisten dengan urutan kurikulum 01..19.
+  const mods = (await getCollection('aws')).sort(
     (a, b) => a.data.order - b.data.order
   );
   return mods.map((mod) => ({
@@ -21,10 +21,10 @@ const { mod } = Astro.props;
 const { Content } = await render(mod);
 const d = mod.data;
 
-// Eyebrow — frame d4lirQ node bpX0n: "LESSON · ..." (mono, accent, uppercase).
+// Eyebrow — frame d4lirQ node bpX0n: "COURSE · ..." (mono, accent, uppercase).
 // `target` di frontmatter (bila ada) dipakai apa adanya dan di-upper-case lewat
-// CSS. Fallback ke "Lesson · {badge}" bila target kosong.
-const eyebrow = d.target ?? `Lesson · ${d.badge}`;
+// CSS. Fallback ke "Course · {badge}" bila target kosong.
+const eyebrow = d.target ?? `Course · ${d.badge}`;
 
 // Meta chips (frame node azTPF). Hanya `readingTime` yang tersedia sebagai data
 // nyata di frontmatter; chip "Spec/Default" pada frame bersifat khusus-konten

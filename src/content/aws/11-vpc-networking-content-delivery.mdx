@@ -1,0 +1,544 @@
+---
+title: "Modul VPC, Networking & Content Delivery - AWS Cloud Practitioner CLF-C02"
+badge: "NET"
+topTitle: "VPC, Networking & Content Delivery"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Memahami jaringan AWS, keamanan network, DNS, CDN, koneksi hybrid, dan layanan routing global pada level Cloud Practitioner."
+order: 11
+target: "CLF-C02"
+readingTime: "~75 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa Networking Penting?" }
+  - { num: "02", id: "peta-besar", title: "Peta Besar Layanan Networking" }
+  - { num: "03", id: "vpc-dasar", title: "VPC, Subnet, dan Route Table" }
+  - { num: "04", id: "public-private", title: "Public Subnet, Private Subnet, dan NAT" }
+  - { num: "05", id: "network-security", title: "Security Group vs Network ACL" }
+  - { num: "06", id: "endpoint-privatelink", title: "VPC Endpoint dan AWS PrivateLink" }
+  - { num: "07", id: "dns-route53", title: "DNS dengan Amazon Route 53" }
+  - { num: "08", id: "cdn-cloudfront", title: "CDN dengan Amazon CloudFront" }
+  - { num: "09", id: "peering-transit", title: "VPC Peering vs Transit Gateway" }
+  - { num: "10", id: "hybrid-connectivity", title: "VPN dan Direct Connect" }
+  - { num: "11", id: "global-application", title: "Global Accelerator dan API Gateway" }
+  - { num: "12", id: "skenario-hands-on", title: "Skenario dan Walkthrough Konseptual" }
+  - { num: "13", id: "kesalahan-jebakan", title: "Kesalahan Umum dan Jebakan Soal" }
+  - { num: "14", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul VPC, Networking & Content Delivery - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import VPCNetworkingFig01 from "@figures/VPCNetworkingFig01.astro";
+import VPCNetworkingFig02 from "@figures/VPCNetworkingFig02.astro";
+import VPCNetworkingFig03 from "@figures/VPCNetworkingFig03.astro";
+import VPCNetworkingFig04 from "@figures/VPCNetworkingFig04.astro";
+import VPCNetworkingFig05 from "@figures/VPCNetworkingFig05.astro";
+import VPCNetworkingFig06 from "@figures/VPCNetworkingFig06.astro";
+import VPCNetworkingFig07 from "@figures/VPCNetworkingFig07.astro";
+
+<Hero eyebrow="Modul &middot; Networking" title="VPC, Networking<br /><em>&amp; Content Delivery</em>">
+  <p>Bayangkan AWS seperti kota besar, VPC adalah komplek privat, Route 53 adalah buku alamat, CloudFront adalah cabang toko dekat pelanggan.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~75 menit baca</Chip>
+    <Chip icon="book">Domain 3 &middot; 34%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa Networking Penting?" sub="Jembatan antara resource, user, kantor, dan internet">
+
+<p class="lead">Aplikasi cloud tidak hidup sendirian, ia harus bisa dijangkau, diamankan, dan diarahkan dengan benar.</p>
+
+Analogi paling sederhana: sebuah toko online butuh alamat toko, jalan masuk, satpam, gudang belakang, kurir cepat, dan jalur khusus ke kantor pusat. Di AWS, peran itu tersebar ke beberapa layanan networking. **VPC** adalah area jaringan privat, **subnet** adalah blok kawasan, **route table** adalah papan arah, **security group** dan **NACL** adalah lapisan keamanan, **Route 53** adalah DNS, **CloudFront** adalah CDN, sedangkan **VPN** dan **Direct Connect** adalah jalur dari kantor atau data center ke AWS.
+
+Untuk CLF-C02, kamu tidak perlu menghafal desain routing sedalam Solutions Architect. Fokus utamanya adalah: tahu fungsi layanan, bisa memilih layanan yang tepat dari skenario, dan tidak tertukar antara DNS, CDN, private network, hybrid connection, dan network security. Inilah kenapa modul ini berkali-kali memakai pola "X vs Y". Soal networking di CLF-C02 jarang menguji syntax, tetapi sangat sering menguji apakah kamu bisa membedakan dua layanan yang sekilas mirip, misalnya security group vs NACL, CloudFront vs Global Accelerator, atau gateway endpoint vs interface endpoint.
+
+Kenapa networking jadi tulang punggung Domain 3? Karena hampir semua layanan AWS lain (EC2, RDS, Lambda di VPC, ECS) berdiri di atas jaringan. Salah pasang security group bisa membuat aplikasi tidak bisa diakses; salah taruh database di public subnet bisa membuka celah keamanan; salah pilih CloudFront padahal yang dibutuhkan static IP global bisa membuat solusi tidak jalan. Jadi memahami networking bukan sekadar menambah satu topik, tetapi memahami fondasi yang menopang topik lain.
+
+<Box variant="analogy" icon="🏙️" label="Analogi kota"><p>VPC seperti komplek perumahan berpagar, subnet seperti blok rumah, route table seperti rambu jalan, security group seperti kunci pintu tiap rumah, NACL seperti gerbang blok, Route 53 seperti buku alamat, dan CloudFront seperti cabang toko yang lebih dekat ke pembeli.</p></Box>
+
+<p>Menurut <a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html">Exam Guide CLF-C02</a>, layanan networking dan content delivery masuk Domain 3 (Cloud Technology and Services, 34%), domain dengan bobot terbesar. Tetapi modul ini juga menyentuh Domain 2 (security group, NACL, private subnet, endpoint policy) dan Domain 4 (biaya NAT Gateway, data transfer, dan model harga CloudFront), sehingga satu topik bisa menjawab beberapa domain sekaligus.</p>
+
+<Box variant="exam" icon="🎯" label="Fokus ujian"><p>Soal CLF-C02 biasanya menanyakan layanan mana yang cocok, bukan cara menulis route table kompleks atau menghitung CIDR secara detail. Latih dirimu mengubah kalimat soal menjadi satu kata kunci, lalu petakan kata kunci itu ke satu layanan.</p></Box>
+
+</Section>
+
+<Section num="02" id="peta-besar" title="Peta Besar Layanan Networking" sub="Kelompokkan dulu supaya tidak terasa penuh">
+
+<p class="lead">Networking AWS lebih mudah dipahami jika dibagi menjadi empat kelompok: fondasi jaringan, keamanan, edge, dan koneksi hybrid.</p>
+
+AWS memasukkan layanan networking dan content delivery seperti **Amazon VPC**, **Amazon Route 53**, **Amazon CloudFront**, **AWS Direct Connect**, **AWS VPN**, **AWS Site-to-Site VPN**, **AWS Client VPN**, **AWS PrivateLink**, **AWS Transit Gateway**, **AWS Global Accelerator**, dan **Amazon API Gateway** dalam cakupan CLF-C02. Artinya, pemula perlu mengenali tujuan layanan ini, bukan menguasai semua opsi lanjutan. Daftar resmi lengkap ada di [CLF-C02 In-Scope Services](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/clf-02-in-scope-services.html).
+
+<Box variant="tip" icon="🗂️" label="AWS VPN itu payung"><p>Di exam guide, AWS VPN, AWS Site-to-Site VPN, dan AWS Client VPN ditulis sebagai tiga entri terpisah. Ingat ini: <strong>AWS VPN</strong> adalah nama payung, sedangkan <strong>Site-to-Site VPN</strong> (kantor atau data center ke AWS) dan <strong>Client VPN</strong> (user remote ke VPC) adalah dua produk di bawahnya. Jadi jangan bingung jika ketiganya muncul sebagai pilihan terpisah.</p></Box>
+
+<CardGrid cols={2}>
+  <Card><h4>Fondasi jaringan</h4><p><strong>VPC</strong>, subnet, route table, internet gateway, NAT gateway, dan VPC endpoint membentuk jalan internal aplikasi.</p></Card>
+  <Card><h4>Keamanan jaringan</h4><p><strong>Security group</strong> dan <strong>NACL</strong> mengatur traffic yang boleh masuk dan keluar dari resource atau subnet.</p></Card>
+  <Card><h4>Edge dan delivery</h4><p><strong>Route 53</strong>, <strong>CloudFront</strong>, dan <strong>Global Accelerator</strong> membantu user global menemukan dan mengakses aplikasi dengan cepat.</p></Card>
+  <Card><h4>Koneksi hybrid</h4><p><strong>Site-to-Site VPN</strong>, <strong>Client VPN</strong>, <strong>Direct Connect</strong>, dan <strong>Transit Gateway</strong> menghubungkan kantor, data center, user remote, dan banyak VPC.</p></Card>
+</CardGrid>
+
+<Figure><VPCNetworkingFig02 /><Fragment slot="caption"><b>Gambar 1.</b> Peta mental layanan networking untuk CLF-C02, mulai dari DNS sampai koneksi hybrid.</Fragment></Figure>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Kebutuhan</th><th>Layanan yang paling sering dipilih</th><th>Ingat sebagai</th></tr></thead>
+  <tbody>
+    <tr><td>Jaringan privat untuk resource AWS</td><td>Amazon VPC</td><td>Komplek privat di cloud</td></tr>
+    <tr><td>Mengarahkan nama domain ke endpoint</td><td>Amazon Route 53</td><td>Buku alamat DNS</td></tr>
+    <tr><td>Cache konten dekat user global</td><td>Amazon CloudFront</td><td>Gudang cabang di dekat pelanggan</td></tr>
+    <tr><td>Koneksi privat ke layanan AWS atau SaaS</td><td>VPC Endpoint, AWS PrivateLink</td><td>Pintu khusus tanpa internet publik</td></tr>
+    <tr><td>Koneksi kantor ke AWS lewat internet terenkripsi</td><td>AWS Site-to-Site VPN</td><td>Terowongan aman lewat jalan umum</td></tr>
+    <tr><td>Koneksi dedicated ke AWS</td><td>AWS Direct Connect</td><td>Jalur serat optik khusus</td></tr>
+    <tr><td>Menghubungkan banyak VPC dan jaringan on-premises</td><td>AWS Transit Gateway</td><td>Terminal transit pusat</td></tr>
+    <tr><td>Mempercepat aplikasi TCP atau UDP global</td><td>AWS Global Accelerator</td><td>Pintu masuk global dengan anycast IP</td></tr>
+    <tr><td>Mengelola API publik atau private</td><td>Amazon API Gateway</td><td>Front door untuk API</td></tr>
+  </tbody>
+</table></div>
+
+<Figure><VPCNetworkingFig03 /><Fragment slot="caption"><b>Gambar 2.</b> Decision tree memilih layanan koneksi dan delivery, mulai dari kebutuhan mempercepat user, resolusi nama, hingga menghubungkan jaringan dan VPC.</Fragment></Figure>
+
+<Box variant="tip" icon="🧭" label="Cara baca decision tree"><p>Mulai dari pertanyaan kebutuhan utama, lalu ikuti cabangnya. Decision tree ini sengaja dibuat sesederhana pola soal: satu kebutuhan mengarah ke satu layanan dominan. Saat ragu di ujian, bayangkan kamu sedang menyusuri pohon ini.</p></Box>
+
+</Section>
+
+<Section num="03" id="vpc-dasar" title="VPC, Subnet, dan Route Table" sub="Fondasi private network di AWS">
+
+<p class="lead">VPC adalah jaringan virtual yang kamu definisikan sendiri di dalam AWS account.</p>
+
+**Amazon VPC** memungkinkan kamu menjalankan resource AWS di jaringan yang terisolasi secara logis. Kamu memilih rentang alamat IP, membagi jaringan menjadi subnet, mengatur rute, dan menempelkan kontrol keamanan. Untuk pemula, VPC bisa dianggap sebagai tanah kavling privat tempat kamu membangun rumah aplikasi.
+
+**Subnet** adalah potongan rentang IP di dalam VPC. Satu subnet selalu hidup di satu Availability Zone saja, ia tidak bisa membentang ke dua AZ. Ini penting karena arsitektur yang tahan gangguan menyebar resource ke lebih dari satu Availability Zone, jadi kamu biasanya membuat satu subnet per AZ. **Route table** menentukan ke mana traffic dari subnet diarahkan. Inilah inti yang sering jadi jebakan: yang membuat subnet "public" atau "private" bukan namanya, tetapi isi route table-nya. Jika route table punya rute ke internet gateway, subnet tersebut menjadi public subnet. Jika tidak punya rute langsung ke internet gateway, subnet tersebut adalah private subnet.
+
+Kenapa pembagian ini ada? Bayangkan kamu tidak ingin semua resource bisa dijangkau langsung dari internet. Dengan memisahkan subnet dan mengatur route table, kamu menentukan mana yang boleh "menghadap jalan raya" (public) dan mana yang harus "di ruang belakang" (private). Konsep ini menjadi pondasi keamanan jaringan di AWS.
+
+<Figure><VPCNetworkingFig01 /><Fragment slot="caption"><b>Gambar 3.</b> Contoh sederhana VPC dengan public subnet, private subnet, route table, internet gateway, endpoint, DNS, dan CDN.</Fragment></Figure>
+
+<CardGrid cols={3}>
+  <Card><h4>VPC</h4><p>Area jaringan privat milik account kamu di sebuah Region. Di sinilah banyak resource seperti EC2, RDS, dan load balancer ditempatkan.</p></Card>
+  <Card><h4>Subnet</h4><p>Bagian dari VPC untuk menaruh resource. Public subnet untuk komponen yang perlu menerima traffic internet, private subnet untuk komponen internal.</p></Card>
+  <Card><h4>Route table</h4><p>Daftar aturan arah traffic. Route table menjawab pertanyaan: tujuan IP ini harus lewat target mana?</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Cara mengingat"><p>VPC adalah komplek, subnet adalah blok, route table adalah papan arah, internet gateway adalah gerbang ke jalan raya internet.</p></Box>
+
+<h3>Komponen yang sering muncul di skenario</h3>
+
+<ul>
+  <li><strong>Internet Gateway</strong>, gerbang agar resource di public subnet bisa berkomunikasi dengan internet.</li>
+  <li><strong>NAT Gateway</strong>, jalan keluar untuk resource di private subnet menuju internet tanpa menerima koneksi masuk langsung dari internet.</li>
+  <li><strong>Route Table</strong>, pengarah traffic berdasarkan destination dan target.</li>
+  <li><strong>VPC Flow Logs</strong>, catatan metadata traffic IP yang berguna untuk observability dan troubleshooting.</li>
+</ul>
+
+<Box variant="exam" icon="🧠" label="Jebakan ujian"><p>Subnet disebut public bukan karena namanya mengandung kata public, tetapi karena route table subnet itu mengarah ke internet gateway dan resource terkait punya konfigurasi publik yang sesuai.</p></Box>
+
+</Section>
+
+<Section num="04" id="public-private" title="Public Subnet, Private Subnet, dan NAT" sub="Memisahkan pintu depan dan ruang belakang aplikasi">
+
+<p class="lead">Desain network yang umum: hanya komponen depan yang publik, komponen belakang tetap privat.</p>
+
+Bayangkan restoran. Area kasir boleh terlihat pelanggan, tetapi dapur, gudang, dan brankas tidak boleh langsung diakses dari jalan. Di AWS, load balancer bisa berada di public subnet untuk menerima traffic user, sedangkan EC2 application server dan database berada di private subnet.
+
+<Steps>
+  <Step><b>User mengakses domain</b><p>User mengetik domain, DNS mengarah ke CloudFront, load balancer, atau endpoint aplikasi.</p></Step>
+  <Step><b>Traffic masuk lewat komponen publik</b><p>Public subnet biasanya menampung Application Load Balancer atau bastion yang benar-benar diperlukan.</p></Step>
+  <Step><b>Aplikasi berjalan di private subnet</b><p>EC2, container, atau database tidak perlu punya public IP jika hanya melayani traffic internal.</p></Step>
+  <Step><b>Private resource keluar lewat NAT atau endpoint</b><p>Untuk update package atau akses layanan AWS, private subnet bisa memakai NAT gateway atau VPC endpoint sesuai kebutuhan.</p></Step>
+</Steps>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Istilah</th><th>Makna pemula</th><th>Contoh</th></tr></thead>
+  <tbody>
+    <tr><td>Public subnet</td><td>Subnet dengan rute menuju internet gateway</td><td>Application Load Balancer publik</td></tr>
+    <tr><td>Private subnet</td><td>Subnet tanpa rute langsung ke internet gateway</td><td>Application server, database, cache</td></tr>
+    <tr><td>NAT Gateway</td><td>Mengizinkan outbound dari private subnet ke internet</td><td>EC2 private subnet mengunduh update</td></tr>
+    <tr><td>Internet Gateway</td><td>Gerbang VPC ke internet</td><td>ALB publik menerima traffic HTTPS</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Internet Gateway vs NAT Gateway, beda arah traffic</h3>
+
+<p>Dua komponen ini paling sering tertukar karena sama-sama "menghubungkan ke internet". Bedanya ada di arah traffic. Internet Gateway adalah pintu dua arah untuk public subnet: traffic dari internet boleh masuk, traffic ke internet boleh keluar. NAT Gateway hanya satu arah: resource di private subnet boleh keluar ke internet (misalnya mengunduh update), tetapi internet tidak bisa memulai koneksi masuk ke resource itu.</p>
+
+<Compare aLabel="Internet Gateway &middot; dua arah" bLabel="NAT Gateway &middot; outbound saja" aTone="blue" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Dipasang di VPC, menjadi gerbang public subnet ke internet.</li><li>Mengizinkan koneksi masuk (inbound) maupun keluar (outbound).</li><li>Cocok untuk ALB publik atau resource yang memang harus dijangkau dari internet.</li><li>Tidak menambah biaya per-jam tersendiri untuk gateway-nya.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Dipasang di public subnet, melayani resource di private subnet.</li><li>Hanya mengizinkan koneksi keluar (outbound), tidak menerima inbound dari internet.</li><li>Cocok agar EC2 private bisa update package tanpa membuka diri ke internet.</li><li>Berbiaya per-jam ditambah per-GB data yang diproses, jadi perlu diperhitungkan.</li></ul></Fragment>
+</Compare>
+
+<Box variant="analogy" icon="🚪" label="Analogi pintu"><p>Internet Gateway seperti pintu depan toko yang bisa dilewati dua arah, pelanggan masuk dan keluar. NAT Gateway seperti pintu belakang yang hanya bisa dibuka dari dalam: karyawan boleh keluar mengambil barang, tetapi orang luar tidak bisa masuk lewat situ.</p></Box>
+
+<Box variant="tip" icon="💰" label="Catatan biaya NAT"><p>NAT Gateway berbiaya per-jam plus per-GB data yang diproses, jadi sering jadi pertimbangan cost. Salah satu trik hemat: untuk akses ke S3 atau DynamoDB, gateway endpoint (gratis) bisa menggantikan jalur lewat NAT Gateway. Selalu cek <a href="https://aws.amazon.com/vpc/pricing/">AWS Pricing</a> untuk angka terbaru, jangan menghafal nominalnya untuk ujian.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Kesalahan pemula"><p>Menaruh database di public subnet karena ingin mudah dites adalah pola berisiko. Untuk skenario ujian, database biasanya berada di private subnet.</p></Box>
+
+</Section>
+
+<Section num="05" id="network-security" title="Security Group vs Network ACL" sub="Kunci pintu resource vs gerbang subnet">
+
+<p class="lead">Security group dan NACL sama-sama firewall, tetapi bekerja di level yang berbeda.</p>
+
+**Security group** mengontrol traffic inbound dan outbound untuk resource seperti EC2 atau load balancer. Ia bersifat **stateful**, artinya jika request diizinkan keluar, response yang kembali otomatis diizinkan. **Network ACL** bekerja di level subnet. Ia bersifat **stateless**, artinya aturan inbound dan outbound harus dipikirkan dua arah.
+
+Kenapa "stateful" begitu penting? Karena membuat hidup lebih mudah. Pada security group, kamu cukup mengizinkan request keluar, maka jawabannya otomatis boleh kembali tanpa kamu menulis rule balikan. Pada NACL yang stateless, AWS tidak mengingat koneksi, jadi kamu harus eksplisit mengizinkan return traffic, biasanya pada rentang port ephemeral. Inilah sumber bug klasik pada NACL: lupa membuka return traffic, lalu koneksi terasa "setengah jalan".
+
+<Figure><VPCNetworkingFig04 /><Fragment slot="caption"><b>Gambar 4.</b> Traffic melewati Network ACL di batas subnet (stateless) lalu Security Group di batas instance (stateful), sebuah pola defense in depth.</Fragment></Figure>
+
+<CardGrid cols={2}>
+  <Card><h4>Security Group</h4><p>Menempel pada resource atau network interface. Cocok sebagai kontrol utama karena lebih dekat ke workload. Mengevaluasi semua rule sebelum memutuskan.</p></Card>
+  <Card><h4>Network ACL</h4><p>Menempel pada subnet. Cocok sebagai guardrail tambahan, misalnya menolak traffic dari rentang IP tertentu. Mengevaluasi rule berurutan dari nomor kecil ke besar sampai ada yang cocok.</p></Card>
+</CardGrid>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Perbandingan</th><th>Security Group</th><th>Network ACL</th></tr></thead>
+  <tbody>
+    <tr><td>Level</td><td>Resource atau network interface</td><td>Subnet</td></tr>
+    <tr><td>Sifat</td><td>Stateful</td><td>Stateless</td></tr>
+    <tr><td>Rule deny eksplisit</td><td>Tidak, hanya allow</td><td>Ada allow dan deny</td></tr>
+    <tr><td>Urutan rule</td><td>Semua rule dievaluasi sebagai izin</td><td>Dievaluasi berdasarkan nomor rule dari kecil ke besar</td></tr>
+    <tr><td>Penggunaan umum</td><td>Firewall utama workload</td><td>Lapisan tambahan di batas subnet</td></tr>
+  </tbody>
+</table></div>
+
+<Compare aLabel="Security Group &middot; stateful, level instance" bLabel="Network ACL &middot; stateless, level subnet" aTone="violet" bTone="red" vs="vs">
+  <Fragment slot="a"><ul><li>Beroperasi di level instance atau network interface (ENI).</li><li>Hanya punya rule allow, tidak ada rule deny eksplisit.</li><li>Mengevaluasi semua rule sebelum memutuskan, urutan tidak penting.</li><li>Stateful: return traffic otomatis diizinkan tanpa rule balikan.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Beroperasi di level subnet, melindungi semua resource di dalamnya.</li><li>Punya rule allow dan deny, jadi bisa memblokir IP tertentu.</li><li>Mengevaluasi rule berurutan dari nomor terkecil sampai ada yang cocok.</li><li>Stateless: return traffic harus diizinkan eksplisit (port ephemeral).</li></ul></Fragment>
+</Compare>
+
+<Box variant="analogy" icon="🚪" label="Analogi keamanan"><p>Security group seperti kunci pintu tiap rumah. NACL seperti pos satpam di gerbang blok. Rumah tetap harus punya kunci walaupun komplek punya satpam.</p></Box>
+
+<Box variant="tip" icon="🔍" label="Observasi di Console"><p>Untuk membiasakan diri, di AWS Console buka VPC &rarr; Subnets, pilih sebuah subnet, lalu cek tab Route table. Jika ada rute 0.0.0.0/0 menuju target igw-xxxx, subnet itu public. Di EC2 &rarr; Security Groups kamu bisa melihat hanya ada tab Inbound dan Outbound rules tanpa kolom deny, itu menegaskan sifat allow-only. Langkah baca ini aman dan tidak menambah biaya.</p></Box>
+
+<Box variant="exam" icon="🎯" label="Pola soal favorit"><p>Jika soal menanyakan firewall stateful di level instance, jawab security group. Jika menanyakan firewall stateless di level subnet dengan allow dan deny, jawab network ACL.</p></Box>
+
+</Section>
+
+<Section num="06" id="endpoint-privatelink" title="VPC Endpoint dan AWS PrivateLink" sub="Akses privat ke layanan tanpa lewat internet publik">
+
+<p class="lead">VPC endpoint adalah pintu privat dari VPC ke layanan, PrivateLink adalah teknologi koneksi privat untuk banyak skenario endpoint.</p>
+
+Tanpa endpoint, resource di private subnet sering perlu NAT gateway untuk mengakses layanan AWS seperti S3 melalui public endpoint. Dengan **VPC endpoint**, traffic bisa diarahkan secara privat dari VPC ke layanan yang didukung. Ini mengurangi kebutuhan melewati internet publik dan membantu kontrol keamanan.
+
+Ada dua istilah yang sering tertukar. **VPC endpoint** adalah resource yang kamu buat di VPC. **AWS PrivateLink** adalah teknologi yang memungkinkan resource di VPC terhubung ke layanan AWS memakai private IP, seolah-olah layanan tersebut di-host di dalam VPC kamu, tanpa internet gateway atau NAT device. PrivateLink dipakai oleh interface endpoint untuk menjangkau layanan AWS, layanan milik account lain, atau layanan partner secara privat.
+
+<CardGrid cols={2}>
+  <Card><h4>Gateway endpoint</h4><p>Dipakai untuk Amazon S3 dan DynamoDB. Route table akan mendapatkan rute ke endpoint, gratis tanpa biaya tambahan, dan tidak memakai AWS PrivateLink.</p></Card>
+  <Card><h4>Interface endpoint</h4><p>Memakai elastic network interface dengan private IP di subnet, memakai AWS PrivateLink, dan berbayar (per-jam per-AZ ditambah per-GB data processing).</p></Card>
+</CardGrid>
+
+<Figure><VPCNetworkingFig05 /><Fragment slot="caption"><b>Gambar 5.</b> Gateway endpoint (gratis, lewat route table, hanya S3 dan DynamoDB) dibandingkan interface endpoint (berbayar, lewat ENI dan private IP, memakai PrivateLink, banyak layanan).</Fragment></Figure>
+
+<Compare aLabel="Gateway endpoint" bLabel="Interface endpoint (PrivateLink)" aTone="teal" bTone="blue" vs="vs">
+  <Fragment slot="a"><ul><li>Hanya untuk Amazon S3 dan DynamoDB.</li><li>Gratis, tidak ada biaya tambahan.</li><li>Bekerja lewat entri di route table (prefix list).</li><li>Bukan teknologi PrivateLink.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Mendukung banyak layanan AWS dan layanan partner.</li><li>Berbayar per-jam per-AZ ditambah per-GB data processing.</li><li>Bekerja lewat elastic network interface dengan private IP di subnet.</li><li>Memakai teknologi AWS PrivateLink.</li></ul></Fragment>
+</Compare>
+
+<h3>Kapan dipakai?</h3>
+
+<ul>
+  <li>EC2 di private subnet perlu mengambil objek dari S3 tanpa NAT gateway.</li>
+  <li>Aplikasi internal perlu memanggil layanan AWS memakai private IP.</li>
+  <li>Perusahaan ingin mengekspos layanan antar VPC atau antar account tanpa membuka akses publik.</li>
+  <li>Tim keamanan ingin membatasi akses memakai endpoint policy, bucket policy, atau kondisi seperti VPC endpoint tertentu.</li>
+</ul>
+
+<Box variant="tip" icon="💡" label="Cara memilih"><p>Untuk S3 atau DynamoDB dari VPC yang sama, gateway endpoint sering menjadi jawaban ujian. Untuk banyak layanan AWS lain atau layanan partner, pikirkan interface endpoint dan PrivateLink.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jangan disamakan"><p>PrivateLink bukan VPN dan bukan Direct Connect. PrivateLink adalah koneksi privat ke layanan, sedangkan VPN dan Direct Connect menghubungkan network seperti kantor atau data center ke AWS.</p></Box>
+
+</Section>
+
+<Section num="07" id="dns-route53" title="DNS dengan Amazon Route 53" sub="Buku alamat untuk aplikasi cloud">
+
+<p class="lead">Route 53 membantu user menemukan endpoint aplikasi melalui nama domain yang mudah diingat.</p>
+
+**DNS** menerjemahkan nama seperti `www.example.com` menjadi alamat tujuan yang bisa dipakai jaringan. **[Amazon Route 53](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html)** adalah layanan DNS yang highly available dan scalable. Ia dapat dipakai untuk registrasi domain, DNS routing, dan health checking. Nama "53" mengacu pada port 53, port standar protokol DNS, sekaligus cara mudah mengingat bahwa ini layanan DNS. Di skenario ujian, Route 53 sering muncul saat aplikasi perlu diarahkan ke load balancer, CloudFront distribution, atau endpoint sehat berdasarkan kebijakan routing.
+
+<CardGrid cols={3}>
+  <Card><h4>Domain registration</h4><p>Mendaftarkan nama domain seperti `example.com` melalui Route 53 jika kebutuhan bisnis mengarah ke sana.</p></Card>
+  <Card><h4>DNS routing</h4><p>Mengarahkan nama domain ke resource AWS atau non-AWS menggunakan record DNS.</p></Card>
+  <Card><h4>Health checks</h4><p>Memantau endpoint dan membantu mengalihkan traffic dari resource yang tidak sehat.</p></Card>
+</CardGrid>
+
+<h3>Routing policy yang perlu dikenali</h3>
+
+<p>Route 53 punya delapan routing policy. Lima yang pertama paling sering muncul, tiga sisanya cukup kamu kenali namanya agar tidak salah jika muncul sebagai distractor. Daftar resmi ada di <a href="https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html">dokumentasi routing policy Route 53</a>.</p>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Routing policy</th><th>Kapan dipakai</th><th>Analogi</th></tr></thead>
+  <tbody>
+    <tr><td>Simple</td><td>Satu jawaban DNS sederhana</td><td>Satu alamat toko</td></tr>
+    <tr><td>Weighted</td><td>Membagi traffic berdasarkan persentase</td><td>Uji coba cabang baru dengan sebagian pelanggan</td></tr>
+    <tr><td>Latency</td><td>Mengarahkan user ke Region dengan latency lebih rendah</td><td>Pilih cabang tercepat</td></tr>
+    <tr><td>Failover</td><td>Primary dan secondary untuk ketahanan</td><td>Toko utama dan toko cadangan</td></tr>
+    <tr><td>Geolocation</td><td>Routing berdasarkan lokasi user</td><td>Pelanggan Indonesia diarahkan ke konten Indonesia</td></tr>
+    <tr><td>Geoproximity</td><td>Routing berdasarkan jarak geografis, bisa digeser dengan bias</td><td>Arahkan ke cabang terdekat, bisa diatur condong ke satu kota</td></tr>
+    <tr><td>Multivalue answer</td><td>Mengembalikan beberapa jawaban sehat sekaligus</td><td>Beri pelanggan beberapa alamat cabang yang buka</td></tr>
+    <tr><td>IP-based</td><td>Routing berdasarkan blok alamat IP klien (CIDR)</td><td>Arahkan pelanggan dari ISP tertentu ke jalur tertentu</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="exam" icon="🎯" label="Route 53 vs CloudFront"><p>Route 53 menjawab pertanyaan "domain ini menuju ke mana?", CloudFront menjawab "bagaimana konten dikirim lebih cepat dari lokasi edge?". Keduanya layanan global, tetapi Route 53 adalah DNS dan health check, bukan caching.</p></Box>
+
+</Section>
+
+<Section num="08" id="cdn-cloudfront" title="CDN dengan Amazon CloudFront" sub="Mendekatkan konten ke user">
+
+<p class="lead">CloudFront mempercepat distribusi konten dengan menyimpan salinan di edge location yang dekat dengan user.</p>
+
+Jika server aplikasi ada di satu Region, user yang jauh bisa merasakan latency lebih tinggi. **[Amazon CloudFront](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html)** adalah CDN yang mempercepat pengiriman konten statis dan dinamis seperti HTML, CSS, JavaScript, gambar, video, API, atau aplikasi. CloudFront memakai jaringan edge global. Saat user meminta konten, request diarahkan ke edge location dengan latency rendah. Jika konten ada di cache, user mendapat response lebih cepat dan origin menerima beban lebih ringan.
+
+Di balik edge location ada lapisan kedua bernama **Regional Edge Cache**, cache menengah berukuran lebih besar yang berada di antara edge location dan origin. Jika sebuah objek tidak ada di edge location tetapi masih tersimpan di Regional Edge Cache, CloudFront mengambilnya dari sana sebelum repot menghubungi origin. Detail ini opsional untuk CLF-C02, tetapi membantu kamu memahami kenapa cache hit rate CloudFront bisa tinggi.
+
+<Steps>
+  <Step><b>User meminta konten</b><p>Browser meminta file, API, atau halaman lewat domain yang mengarah ke CloudFront distribution.</p></Step>
+  <Step><b>Edge location mengecek cache</b><p>Jika objek masih valid di cache, CloudFront mengirim response langsung dari edge.</p></Step>
+  <Step><b>CloudFront mengambil dari origin</b><p>Jika cache miss, CloudFront mengambil konten dari origin seperti S3, ALB, EC2, atau HTTP server.</p></Step>
+  <Step><b>Konten berikutnya lebih cepat</b><p>Salinan yang cacheable disimpan sesuai aturan cache agar request berikutnya lebih efisien.</p></Step>
+</Steps>
+
+<CardGrid cols={2}>
+  <Card><h4>Origin</h4><p>Sumber konten, misalnya S3 bucket, Application Load Balancer, EC2, atau server HTTP lain.</p></Card>
+  <Card><h4>Distribution</h4><p>Konfigurasi CloudFront yang mengatur domain, origin, cache behavior, TLS, logging, dan aturan delivery.</p></Card>
+  <Card><h4>Edge location</h4><p>Lokasi jaringan global tempat CloudFront menerima request user dan menyajikan konten dengan latency rendah.</p></Card>
+  <Card><h4>Cache behavior</h4><p>Aturan yang menentukan path, metode HTTP, header, cookie, query string, TTL, dan origin yang dipakai.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Keamanan edge"><p>CloudFront sering dipasangkan dengan AWS WAF, AWS Shield (Standard otomatis aktif untuk proteksi DDoS), TLS certificate dari ACM, dan origin access control untuk membatasi akses langsung ke origin. Lihat juga modul Security untuk peran WAF dan Shield secara lebih dalam.</p></Box>
+
+<h3>OAC vs OAI, jangan bingung melihat materi lama</h3>
+
+<p>Untuk membatasi akses ke origin Amazon S3 agar hanya CloudFront yang boleh membaca bucket, ada dua mekanisme. <strong>Origin Access Control (OAC)</strong> adalah pendekatan terkini yang direkomendasikan AWS: mendukung semua Region, enkripsi SSE-KMS, dan request SigV4. <strong>Origin Access Identity (OAI)</strong> adalah metode legacy yang masih berfungsi pada distribusi lama, tetapi tidak lagi direkomendasikan. Jika kamu menemui istilah OAI di materi lama atau soal, ingat bahwa OAC adalah penggantinya. Detail ada di <a href="https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html">dokumentasi membatasi akses ke S3</a>.</p>
+
+<Box variant="tip" icon="🎁" label="Free tier dan model harga"><p>CloudFront punya free tier yang sekarang "always free" (tidak terbatas 12 bulan pertama): 1 TB data transfer out dan 10 juta HTTP/HTTPS request per bulan. Selain pay-as-you-go, AWS juga memperkenalkan <a href="https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/flat-rate-pricing-plan.html">flat-rate pricing plans</a> (Free, Pro, Business, Premium) yang menggabungkan CDN, AWS WAF, Route 53, TLS, dan kredit lain tanpa overage charge. Untuk ujian, cukup tahu bahwa CloudFront punya free tier besar dan beberapa model harga, bukan menghafal angkanya.</p></Box>
+
+<Box variant="exam" icon="🧠" label="Pola soal favorit"><p>Jika soal menekankan cache konten global, static website, video, file download, atau mengurangi latency pengiriman konten, CloudFront biasanya kandidat utama.</p></Box>
+
+</Section>
+
+<Section num="09" id="peering-transit" title="VPC Peering vs Transit Gateway" sub="Menghubungkan VPC, dari satu lawan satu hingga hub pusat">
+
+<p class="lead">Saat aplikasi tumbuh, satu VPC sering tidak cukup. Pertanyaannya: bagaimana banyak VPC saling bicara dengan rapi?</p>
+
+Bayangkan dua kantor yang ingin saling kirim dokumen. Cara termudah adalah membuat jalur langsung antara keduanya. Itulah **VPC Peering**: koneksi privat satu lawan satu antara dua VPC, sehingga resource di kedua VPC bisa berkomunikasi memakai private IP seolah berada di jaringan yang sama.
+
+Masalah muncul saat kantornya bertambah banyak. VPC Peering bersifat **non-transitif**. Jika VPC A ter-peering dengan B, dan A ter-peering dengan C, maka B tetap tidak bisa menjangkau C lewat A. Kamu harus membuat peering langsung B ke C. Untuk empat VPC yang semuanya perlu saling terhubung, kamu butuh enam koneksi (rumus n(n-1)/2), dan angkanya meledak seiring jumlah VPC. Inilah yang disebut topologi full mesh, rumit untuk dikelola.
+
+**[AWS Transit Gateway](https://docs.aws.amazon.com/vpc/latest/tgw/what-is-transit-gateway.html)** menyelesaikan kerumitan itu dengan menjadi hub pusat. Setiap VPC dan koneksi on-premises cukup attach satu kali ke hub, lalu Transit Gateway mengatur routing antar semuanya. Karena mendukung **transitive routing** (hub-and-spoke), VPC B bisa menjangkau VPC C melalui hub tanpa peering langsung. Satu hub menggantikan jaring koneksi yang ruwet.
+
+<Figure><VPCNetworkingFig06 /><Fragment slot="caption"><b>Gambar 6.</b> VPC Peering membutuhkan full mesh (4 VPC = 6 koneksi, non-transitif), sedangkan Transit Gateway memakai hub-and-spoke (tiap VPC cukup satu attachment, transitive).</Fragment></Figure>
+
+<Compare aLabel="VPC Peering &middot; satu lawan satu" bLabel="Transit Gateway &middot; hub-and-spoke" aTone="red" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Koneksi privat langsung antara dua VPC.</li><li>Non-transitif: B tidak bisa lewat A untuk menjangkau C.</li><li>Banyak VPC berarti full mesh yang sulit dikelola.</li><li>Cocok untuk jumlah VPC sedikit dan hubungan sederhana.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Hub pusat tempat banyak VPC dan on-premises attach.</li><li>Transitive routing: semua spoke bisa saling menjangkau lewat hub.</li><li>Tiap VPC cukup satu attachment, jauh lebih sederhana di skala besar.</li><li>Cocok untuk banyak VPC, banyak account, dan koneksi hybrid.</li></ul></Fragment>
+</Compare>
+
+<Box variant="analogy" icon="🚉" label="Analogi transportasi"><p>VPC Peering seperti membangun jalan langsung antara dua kota; kalau ada banyak kota, jalannya jadi banyak sekali. Transit Gateway seperti membangun satu stasiun pusat: tiap kota cukup punya satu jalur ke stasiun, lalu bisa pergi ke kota mana saja lewat sana.</p></Box>
+
+<Box variant="exam" icon="🎯" label="Pola soal favorit"><p>Dua VPC saja yang perlu terhubung privat: VPC Peering. Banyak VPC dan on-premises yang perlu hub terpusat dengan transitive routing: Transit Gateway. Kata kunci "non-transitif" dan "full mesh" mengarah ke peering; "hub", "cloud router", dan "simplify connectivity" mengarah ke Transit Gateway.</p></Box>
+
+</Section>
+
+<Section num="10" id="hybrid-connectivity" title="VPN dan Direct Connect" sub="Menghubungkan AWS dengan kantor, data center, dan user remote">
+
+<p class="lead">Hybrid connectivity berarti AWS tidak berdiri sendiri, tetapi tersambung ke jaringan perusahaan atau user remote.</p>
+
+**[AWS Site-to-Site VPN](https://docs.aws.amazon.com/vpn/latest/s2svpn/VPNTunnels.html)** membuat koneksi aman antara jaringan on-premises dan VPC melalui tunnel IPsec terenkripsi di atas internet publik. Cocok untuk setup cepat, backup koneksi, atau kebutuhan yang tidak menuntut jalur dedicated. Tiap koneksi menyediakan dua tunnel ke dua endpoint berbeda untuk high availability, jadi jika satu tunnel bermasalah, yang lain tetap melayani. **AWS Client VPN** dipakai untuk remote user, misalnya karyawan dari laptop yang perlu masuk ke resource VPC secara aman. Keduanya berada di bawah payung **AWS VPN**.
+
+**[AWS Direct Connect](https://aws.amazon.com/directconnect/)** menghubungkan jaringan internal ke AWS melalui koneksi privat dedicated di lokasi Direct Connect, tidak melewati internet publik. Karena jalurnya dedicated, performanya lebih konsisten dan latency lebih predictable. Untuk ujian, ingat kata kunci: koneksi dedicated, performa stabil, dan workload hybrid yang serius.
+
+<Box variant="warn" icon="🔓" label="Direct Connect tidak otomatis terenkripsi"><p>Jebakan yang sering muncul: Direct Connect <strong>tidak</strong> dienkripsi secara default, berbeda dari VPN yang selalu IPsec terenkripsi. Jalurnya memang privat dan tidak lewat internet, tetapi jika kamu butuh enkripsi, kamu menambahkannya sendiri, misalnya lewat MACsec (di koneksi berkecepatan tinggi tertentu) atau dengan menjalankan VPN di atas Direct Connect. Jangan asumsikan "privat berarti terenkripsi".</p></Box>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Layanan</th><th>Kapan dipakai</th><th>Kata kunci ujian</th></tr></thead>
+  <tbody>
+    <tr><td>Site-to-Site VPN</td><td>Kantor atau data center ke AWS lewat internet terenkripsi</td><td>Cepat, IPsec, encrypted tunnel, dua tunnel HA</td></tr>
+    <tr><td>Client VPN</td><td>User remote ke VPC</td><td>Karyawan remote, laptop, akses privat</td></tr>
+    <tr><td>Direct Connect</td><td>Koneksi dedicated dari jaringan perusahaan ke AWS</td><td>Dedicated, predictable, private, tidak lewat internet</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="analogy" icon="🚇" label="Analogi transportasi"><p>Site-to-Site VPN seperti jalur aman terenkripsi di jalan umum yang ramai, Client VPN seperti kartu akses pribadi untuk masuk gedung dari mana saja, Direct Connect seperti rel khusus milik perusahaan langsung ke AWS.</p></Box>
+
+<Box variant="exam" icon="🎯" label="VPN vs Direct Connect"><p>Jika soal menyebut koneksi cepat disiapkan dan terenkripsi lewat internet, pilih VPN. Jika menyebut dedicated private connection, performa konsisten, dan tidak lewat internet, pilih Direct Connect. Ingat: VPN terenkripsi otomatis, Direct Connect tidak.</p></Box>
+
+</Section>
+
+<Section num="11" id="global-application" title="Global Accelerator dan API Gateway" sub="Routing global dan front door API">
+
+<p class="lead">Tidak semua percepatan global berarti caching, kadang yang dibutuhkan adalah routing jaringan yang lebih optimal atau API front door.</p>
+
+**[AWS Global Accelerator](https://docs.aws.amazon.com/global-accelerator/latest/dg/introduction-how-it-works.html)** membantu meningkatkan availability dan performance aplikasi untuk user lokal maupun global. Ia mengalokasikan dua static anycast IPv4 (dari dua network zone independen) sebagai pintu masuk global, lalu mengarahkan traffic lewat AWS global network ke endpoint yang sehat dan optimal. Global Accelerator beroperasi di Layer 4 (TCP dan UDP) dan dilindungi AWS Shield Standard secara default. Cocok untuk aplikasi gaming (UDP), IoT (MQTT), VoIP, atau workload yang butuh IP statis global, failover regional cepat, dan traffic yang tidak bisa dicache.
+
+Kenapa static anycast IP penting? Karena beberapa skenario tidak bisa mengandalkan DNS yang berubah-ubah, misalnya whitelisting IP di firewall pelanggan atau aplikasi yang menyimpan IP secara hardcode. Dengan dua IP tetap, kamu punya entry point stabil sementara AWS mengatur jalur tercepat di belakang layar.
+
+<Figure><VPCNetworkingFig07 /><Fragment slot="caption"><b>Gambar 7.</b> CloudFront (Layer 7, caching konten di edge) dibandingkan Global Accelerator (Layer 4, optimasi network path dengan static anycast IP, tanpa caching).</Fragment></Figure>
+
+<Compare aLabel="CloudFront &middot; CDN, caching" bLabel="Global Accelerator &middot; network path" aTone="red" bTone="blue" vs="vs">
+  <Fragment slot="a"><ul><li>Layer 7 (HTTP dan HTTPS), berfokus pada konten.</li><li>Menyimpan salinan konten (caching) di edge location.</li><li>Cocok untuk gambar, video, file download, static website, API cacheable.</li><li>Domain CloudFront, bukan static IP tetap.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Layer 4 (TCP dan UDP), berfokus pada jalur jaringan.</li><li>Tidak menyimpan cache, hanya mengoptimalkan rute ke endpoint sehat.</li><li>Cocok untuk gaming, VoIP, IoT, dan traffic non-cacheable.</li><li>Memberi dua static anycast IP sebagai entry point global.</li></ul></Fragment>
+</Compare>
+
+**[Amazon API Gateway](https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html)** adalah layanan managed untuk membuat, memublikasikan, memelihara, memonitor, dan mengamankan API. Ia mendukung REST API, HTTP API, dan WebSocket API, lengkap dengan throttling, otentikasi, dan stages. Dalam peta networking CLF-C02, API Gateway berperan sebagai front door untuk API, sering terhubung ke AWS Lambda, service berbasis container, EC2, atau backend HTTP. Ia bukan load balancer umum dan bukan accelerator.
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Layanan</th><th>Masalah yang diselesaikan</th><th>Jangan tertukar dengan</th></tr></thead>
+  <tbody>
+    <tr><td>CloudFront</td><td>Cache dan delivery konten dari edge</td><td>Global Accelerator</td></tr>
+    <tr><td>Global Accelerator</td><td>Routing traffic global lewat AWS network dengan static anycast IP</td><td>Route 53 dan CloudFront</td></tr>
+    <tr><td>Route 53</td><td>DNS routing dan health check</td><td>CDN atau accelerator</td></tr>
+    <tr><td>API Gateway</td><td>Front door API, auth, throttling, stages, monitoring API</td><td>Load balancer umum</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="exam" icon="🧠" label="CloudFront vs Global Accelerator"><p>CloudFront unggul saat konten bisa dicache atau dioptimalkan di edge. Global Accelerator unggul saat aplikasi butuh static anycast IP, routing global, dan failover endpoint untuk traffic non-cacheable.</p></Box>
+
+</Section>
+
+<Section num="12" id="skenario-hands-on" title="Skenario dan Walkthrough Konseptual" sub="Latihan berpikir seperti arsitek cloud pemula">
+
+<p class="lead">Bagian ini bukan lab klik per klik, tetapi simulasi desain yang membantu kamu membaca soal skenario.</p>
+
+<h3>Skenario 1, aplikasi web sederhana</h3>
+
+<Steps>
+  <Step><b>Buat VPC di satu Region</b><p>Pilih rentang IP privat, lalu siapkan subnet di minimal dua Availability Zone untuk pola high availability.</p></Step>
+  <Step><b>Tempatkan ALB di public subnet</b><p>ALB menerima traffic HTTPS dari internet, sedangkan application server tetap berada di private subnet.</p></Step>
+  <Step><b>Tempatkan database di private subnet</b><p>Database tidak perlu public IP dan hanya menerima traffic dari security group aplikasi.</p></Step>
+  <Step><b>Gunakan Route 53 untuk domain</b><p>Record DNS mengarah ke CloudFront atau ALB sesuai desain akses publik.</p></Step>
+  <Step><b>Tambahkan CloudFront bila user global</b><p>CloudFront mengurangi latency dan beban origin, terutama untuk static assets dan konten yang cacheable.</p></Step>
+</Steps>
+
+<h3>Skenario 2, EC2 private subnet perlu akses S3</h3>
+
+<Steps>
+  <Step><b>Identifikasi kebutuhan traffic</b><p>EC2 private subnet perlu membaca file dari S3, tetapi tidak perlu menerima koneksi internet masuk.</p></Step>
+  <Step><b>Pilih gateway VPC endpoint</b><p>Untuk S3 dari VPC, gateway endpoint membantu akses privat tanpa internet gateway atau NAT device.</p></Step>
+  <Step><b>Periksa route table</b><p>Route ke prefix list S3 diarahkan ke gateway endpoint pada route table subnet terkait.</p></Step>
+  <Step><b>Batasi akses dengan policy</b><p>Gunakan IAM, bucket policy, dan endpoint policy untuk mempersempit akses sesuai kebutuhan.</p></Step>
+</Steps>
+
+<h3>Skenario 3, perusahaan punya data center</h3>
+
+<Steps>
+  <Step><b>Butuh cepat dan fleksibel</b><p>Pilih Site-to-Site VPN jika kebutuhan awal adalah koneksi aman dari data center ke VPC lewat internet, terenkripsi dan cepat disiapkan.</p></Step>
+  <Step><b>Butuh dedicated dan predictable</b><p>Pilih Direct Connect jika workload membutuhkan koneksi privat dedicated dengan performa lebih konsisten dan tidak lewat internet.</p></Step>
+  <Step><b>Banyak VPC dan banyak lokasi</b><p>Pertimbangkan Transit Gateway sebagai hub agar topologi tidak berubah menjadi banyak koneksi satu per satu seperti VPC Peering full mesh.</p></Step>
+</Steps>
+
+<h3>Skenario 4, dua VPC vs banyak VPC</h3>
+
+<Steps>
+  <Step><b>Hanya dua VPC perlu bicara</b><p>Buat VPC Peering satu lawan satu, lalu tambahkan rute ke CIDR VPC lawan di route table masing-masing.</p></Step>
+  <Step><b>Bertambah jadi banyak VPC</b><p>Begitu jumlah VPC bertambah dan semuanya perlu saling terhubung, full mesh peering jadi sulit. Beralih ke Transit Gateway sebagai hub.</p></Step>
+  <Step><b>Ingat sifat transitif</b><p>Peering non-transitif, jadi B tidak otomatis menjangkau C lewat A. Transit Gateway transitive, jadi semua spoke saling terhubung lewat hub.</p></Step>
+</Steps>
+
+<h3>Latihan observasi aman di Console</h3>
+
+<Steps>
+  <Step><b>Cek apakah subnet public</b><p>Buka VPC &rarr; Subnets, pilih subnet, lihat tab Route table. Ada rute 0.0.0.0/0 ke internet gateway berarti public; tidak ada berarti private.</p></Step>
+  <Step><b>Lihat sifat allow-only security group</b><p>Buka EC2 &rarr; Security Groups, perhatikan hanya ada Inbound dan Outbound rules tanpa kolom deny, menegaskan SG hanya bisa allow.</p></Step>
+  <Step><b>Bandingkan dengan NACL</b><p>Buka VPC &rarr; Network ACLs, lihat kolom Rule number dan Allow/Deny, menegaskan NACL stateless dengan urutan rule dan deny eksplisit.</p></Step>
+</Steps>
+
+<Recap title="Pola desain yang sehat"><ul><li>Komponen publik seminimal mungkin, biasanya load balancer atau CloudFront.</li><li>Workload dan database lebih aman di private subnet.</li><li>Gunakan security group sebagai kontrol utama dan NACL sebagai guardrail tambahan.</li><li>Gunakan endpoint untuk akses privat ke layanan AWS jika sesuai, gateway endpoint untuk S3 dan DynamoDB.</li><li>Gunakan Route 53 untuk DNS, CloudFront untuk CDN, Global Accelerator untuk routing global non-cacheable.</li><li>Dua VPC pakai peering, banyak VPC pakai Transit Gateway.</li></ul></Recap>
+
+</Section>
+
+<Section num="13" id="kesalahan-jebakan" title="Kesalahan Umum dan Jebakan Soal" sub="Hal yang sering membuat pemula salah pilih layanan">
+
+<p class="lead">Banyak jawaban salah muncul bukan karena tidak tahu layanan, tetapi karena mencampur fungsi layanan.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>DNS dianggap CDN</h4><p>Route 53 mengarahkan nama domain, tetapi tidak menyimpan cache konten seperti CloudFront.</p></Card>
+  <Card><h4>CDN dianggap private network</h4><p>CloudFront mempercepat delivery dari edge, tetapi bukan pengganti VPC, subnet, atau security group.</p></Card>
+  <Card><h4>Private subnet dianggap tidak bisa keluar sama sekali</h4><p>Private subnet bisa melakukan outbound melalui NAT gateway atau VPC endpoint, tergantung tujuan traffic.</p></Card>
+  <Card><h4>Security group dan NACL tertukar</h4><p>Security group stateful di level resource, NACL stateless di level subnet.</p></Card>
+  <Card><h4>PrivateLink dianggap VPN</h4><p>PrivateLink menghubungkan VPC ke LAYANAN secara privat, VPN dan Direct Connect menghubungkan JARINGAN seperti kantor atau data center ke VPC.</p></Card>
+  <Card><h4>Direct Connect dianggap selalu terenkripsi otomatis seperti VPN</h4><p>Direct Connect tidak dienkripsi secara default. VPN selalu IPsec terenkripsi, Direct Connect privat tetapi butuh MACsec atau VPN overlay jika ingin enkripsi.</p></Card>
+  <Card><h4>Internet Gateway dan NAT Gateway tertukar</h4><p>Internet Gateway dua arah untuk public subnet. NAT Gateway hanya outbound dari private subnet, tidak menerima koneksi masuk dari internet.</p></Card>
+  <Card><h4>VPC Peering dianggap transitif</h4><p>Peering non-transitif, B tidak bisa lewat A menjangkau C. Untuk banyak VPC dan transitive routing, pakai Transit Gateway sebagai hub.</p></Card>
+  <Card><h4>Gateway dan interface endpoint disamakan</h4><p>Gateway endpoint gratis, hanya S3 dan DynamoDB, lewat route table, bukan PrivateLink. Interface endpoint berbayar, banyak layanan, lewat ENI, memakai PrivateLink.</p></Card>
+  <Card><h4>OAI dianggap satu-satunya cara</h4><p>OAI adalah metode legacy untuk membatasi akses S3 dari CloudFront. Pendekatan terkini yang direkomendasikan adalah OAC.</p></Card>
+</CardGrid>
+
+<h3>Kata kunci soal dan jawaban cepat</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Kata kunci di soal</th><th>Arah jawaban</th><th>Kenapa</th></tr></thead>
+  <tbody>
+    <tr><td>Stateful firewall untuk EC2</td><td>Security group</td><td>Menempel ke resource dan otomatis mengizinkan response traffic</td></tr>
+    <tr><td>Stateless subnet firewall, allow dan deny</td><td>Network ACL</td><td>Bekerja di level subnet dan rule dievaluasi berurutan</td></tr>
+    <tr><td>Private access dari VPC ke S3</td><td>Gateway VPC endpoint</td><td>S3 mendukung gateway endpoint</td></tr>
+    <tr><td>Domain registration atau DNS routing</td><td>Route 53</td><td>Layanan DNS AWS</td></tr>
+    <tr><td>Cache global, static assets, video delivery</td><td>CloudFront</td><td>CDN global dengan edge location</td></tr>
+    <tr><td>Dedicated network connection ke AWS</td><td>Direct Connect</td><td>Koneksi privat dedicated dari jaringan perusahaan</td></tr>
+    <tr><td>Encrypted tunnel lewat internet</td><td>Site-to-Site VPN</td><td>Menghubungkan on-premises ke AWS melalui VPN</td></tr>
+    <tr><td>Dua VPC saling terhubung privat, satu lawan satu</td><td>VPC Peering</td><td>Koneksi langsung non-transitif antar dua VPC</td></tr>
+    <tr><td>Hub untuk banyak VPC dan on-premises, transitive</td><td>Transit Gateway</td><td>Cloud router terpusat hub-and-spoke</td></tr>
+    <tr><td>Static anycast IP global dan routing optimal TCP/UDP</td><td>Global Accelerator</td><td>Mengarahkan traffic lewat AWS global network tanpa caching</td></tr>
+    <tr><td>Front door untuk REST, HTTP, atau WebSocket API</td><td>API Gateway</td><td>Managed API service</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="warn" icon="⚠️" label="Jangan terlalu dalam"><p>Untuk CLF-C02, jangan habiskan waktu menghafal semua tipe route propagation, BGP detail, atau desain multi-account networking yang kompleks. Kenali fungsi dan pilihan layanan utama.</p></Box>
+
+</Section>
+
+<Section num="14" id="ringkasan" title="Ringkasan & Tips Ujian" sub="Peta cepat untuk mengingat sebelum latihan soal">
+
+<p class="lead">Networking di CLF-C02 adalah tentang memilih jalur, pintu, satpam, buku alamat, cabang cache, dan koneksi hybrid yang tepat.</p>
+
+<Recap title="Poin Penting"><ul><li><strong>Amazon VPC</strong> adalah jaringan virtual terisolasi untuk resource AWS.</li><li><strong>Subnet</strong> membagi VPC, satu subnet hidup di satu Availability Zone; public vs private ditentukan oleh route table, bukan namanya.</li><li><strong>Route table</strong> mengarahkan traffic ke target seperti internet gateway, NAT gateway, transit gateway, atau VPC endpoint.</li><li><strong>Internet Gateway</strong> dua arah untuk public subnet, <strong>NAT Gateway</strong> hanya outbound dari private subnet (berbiaya per-jam plus per-GB).</li><li><strong>Security group</strong> adalah firewall stateful di level instance, allow-only, semua rule dievaluasi.</li><li><strong>NACL</strong> adalah firewall stateless di level subnet, allow plus deny, rule dievaluasi berurutan by number.</li><li><strong>Gateway endpoint</strong> gratis untuk S3 dan DynamoDB lewat route table; <strong>interface endpoint</strong> berbayar lewat ENI memakai PrivateLink.</li><li><strong>AWS PrivateLink</strong> menghubungkan VPC ke LAYANAN secara privat tanpa public IP, internet gateway, atau NAT.</li><li><strong>Route 53</strong> adalah DNS, domain registration, routing policy (delapan jenis), dan health checking.</li><li><strong>CloudFront</strong> adalah CDN (Layer 7, caching di edge); pakai OAC untuk membatasi akses S3, free tier 1 TB out per bulan always free.</li><li><strong>Site-to-Site VPN</strong> tunnel IPsec terenkripsi lewat internet (dua tunnel HA); <strong>Direct Connect</strong> dedicated private connection, tidak terenkripsi default.</li><li><strong>VPC Peering</strong> satu lawan satu non-transitif; <strong>Transit Gateway</strong> hub-and-spoke transitive untuk banyak VPC dan on-premises.</li><li><strong>Global Accelerator</strong> memberi dua static anycast IP dan optimasi network path Layer 4 (TCP/UDP) tanpa caching.</li><li><strong>API Gateway</strong> adalah front door managed untuk REST, HTTP, dan WebSocket API.</li></ul></Recap>
+
+<h3>Pemetaan ke domain CLF-C02</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Domain</th><th>Relevansi modul</th><th>Yang harus kamu kuasai</th></tr></thead>
+  <tbody>
+    <tr><td>Domain 1, Cloud Concepts 24%</td><td>Memahami manfaat cloud seperti global reach, elasticity, high availability, dan hybrid model.</td><td>Kenapa CDN, Region, Availability Zone, dan koneksi hybrid membantu performa dan ketahanan.</td></tr>
+    <tr><td>Domain 2, Security and Compliance 30%</td><td>Network security adalah bagian besar dari keamanan cloud.</td><td>Shared responsibility, security group, NACL, private subnet, endpoint policy, dan prinsip least privilege network.</td></tr>
+    <tr><td>Domain 3, Cloud Technology and Services 34%</td><td>Ini domain paling langsung untuk layanan networking dan content delivery, bobot terbesar.</td><td>Fungsi VPC, subnet, Route 53, CloudFront, Direct Connect, VPN, PrivateLink, VPC Peering, Transit Gateway, Global Accelerator, dan API Gateway.</td></tr>
+    <tr><td>Domain 4, Billing, Pricing, and Support 12%</td><td>Beberapa pilihan network berdampak biaya, terutama data transfer, NAT gateway, endpoint, CloudFront, VPN, dan Direct Connect.</td><td>Jangan menghafal angka, pahami bahwa arsitektur network memengaruhi biaya dan perlu dicek di AWS Pricing saat implementasi nyata.</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Tips menjawab soal</h3>
+
+<ul>
+  <li>Jika soal bicara nama domain, pikirkan Route 53.</li>
+  <li>Jika soal bicara cache konten dekat user, pikirkan CloudFront.</li>
+  <li>Jika soal bicara private isolated network, pikirkan VPC.</li>
+  <li>Jika soal bicara firewall instance yang stateful, pikirkan security group.</li>
+  <li>Jika soal bicara subnet firewall yang stateless dan deny rule, pikirkan NACL.</li>
+  <li>Jika soal bicara akses privat ke S3 atau DynamoDB dari VPC, pikirkan gateway endpoint.</li>
+  <li>Jika soal bicara layanan privat tanpa public IP, pikirkan PrivateLink atau interface endpoint.</li>
+  <li>Jika soal bicara koneksi kantor ke AWS lewat internet terenkripsi, pikirkan Site-to-Site VPN.</li>
+  <li>Jika soal bicara koneksi dedicated, predictable, dan tidak lewat internet, pikirkan Direct Connect.</li>
+  <li>Jika soal bicara dua VPC saling terhubung satu lawan satu, pikirkan VPC Peering.</li>
+  <li>Jika soal bicara banyak VPC yang perlu hub pusat dan transitive routing, pikirkan Transit Gateway.</li>
+  <li>Jika soal bicara static anycast IP dan routing global aplikasi TCP atau UDP, pikirkan Global Accelerator.</li>
+  <li>Jika soal bicara front door untuk API, pikirkan API Gateway.</li>
+</ul>
+
+
+<h3>Sumber resmi untuk pendalaman</h3>
+
+<ul>
+  <li><a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html">AWS Certified Cloud Practitioner CLF-C02 Exam Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/clf-02-in-scope-services.html">CLF-C02 In-Scope AWS Services</a></li>
+  <li><a href="https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html">Amazon VPC Documentation</a></li>
+  <li><a href="https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html">Amazon Route 53 Documentation</a></li>
+  <li><a href="https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html">Amazon CloudFront Documentation</a></li>
+  <li><a href="https://docs.aws.amazon.com/vpc/latest/userguide/infrastructure-security.html">Amazon VPC Infrastructure Security (security group dan NACL)</a></li>
+  <li><a href="https://docs.aws.amazon.com/vpc/latest/privatelink/concepts.html">AWS PrivateLink dan VPC Endpoint</a></li>
+  <li><a href="https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html">Route 53 Routing Policies</a></li>
+  <li><a href="https://aws.amazon.com/directconnect/faqs/">AWS Direct Connect FAQs</a></li>
+  <li><a href="https://aws.amazon.com/global-accelerator/faqs/">AWS Global Accelerator FAQs</a></li>
+  <li><a href="https://docs.aws.amazon.com/decision-guides/latest/networking-on-aws-how-to-choose/choosing-networking-and-content-delivery-service.html">AWS Decision Guide, Networking and Content Delivery</a></li>
+</ul>
+
+<Box variant="exam" icon="🎯" label="Kalimat kunci terakhir"><p>DNS mencari alamat, CDN mendekatkan konten, VPC mengisolasi network, endpoint memprivatkan akses layanan, VPN dan Direct Connect menghubungkan jaringan, security group dan NACL menjaga pintu traffic.</p></Box>
+
+</Section>

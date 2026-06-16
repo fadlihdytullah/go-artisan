@@ -1,0 +1,62 @@
+<svg viewBox="0 0 760 400" xmlns="http://www.w3.org/2000/svg" font-family="Inter, ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <marker id="mla6arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#9c4a2f" />
+    </marker>
+    <marker id="mla6arrowo" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#bd5d3e" />
+    </marker>
+  </defs>
+  <rect x="16" y="16" width="728" height="368" rx="22" fill="#fbfaf5" stroke="#d9d4c4" stroke-width="2" />
+  <text x="380" y="48" text-anchor="middle" font-size="19" font-weight="700" fill="#241f17">Pipeline Analytics: dari Data Mentah ke Dashboard</text>
+  <text x="380" y="70" text-anchor="middle" font-size="12" fill="#6e6a5c">Jalur streaming (oranye), jalur batch (biru), dan jalur search (teal)</text>
+
+  <rect x="40" y="98" width="148" height="50" rx="12" fill="#bd5d3e" />
+  <text x="114" y="120" text-anchor="middle" font-size="12" font-weight="700" fill="#fbfaf5">Kinesis Data Streams</text>
+  <text x="114" y="137" text-anchor="middle" font-size="10" fill="#f0e3d8">ingest real-time</text>
+  <line x1="188" y1="123" x2="226" y2="123" stroke="#bd5d3e" stroke-width="3" marker-end="url(#mla6arrowo)" />
+  <rect x="232" y="98" width="148" height="50" rx="12" fill="#fbfaf5" stroke="#bd5d3e" stroke-width="2" />
+  <text x="306" y="120" text-anchor="middle" font-size="12" font-weight="700" fill="#241f17">Amazon Data Firehose</text>
+  <text x="306" y="137" text-anchor="middle" font-size="10" fill="#6e6a5c">deliver ke tujuan</text>
+  <line x1="380" y1="123" x2="420" y2="123" stroke="#bd5d3e" stroke-width="3" marker-end="url(#mla6arrowo)" />
+
+  <rect x="316" y="178" width="128" height="54" rx="14" fill="#241f17" />
+  <text x="380" y="202" text-anchor="middle" font-size="13" font-weight="700" fill="#bd5d3e">Amazon S3</text>
+  <text x="380" y="220" text-anchor="middle" font-size="10" fill="#fbfaf5">data lake (raw)</text>
+  <line x1="426" y1="148" x2="392" y2="174" stroke="#bd5d3e" stroke-width="3" marker-end="url(#mla6arrowo)" />
+
+  <line x1="316" y1="205" x2="232" y2="205" stroke="#9c4a2f" stroke-width="3" marker-end="url(#mla6arrow)" />
+  <rect x="80" y="178" width="148" height="54" rx="12" fill="#fbfaf5" stroke="#9c4a2f" stroke-width="2" />
+  <text x="154" y="200" text-anchor="middle" font-size="12" font-weight="700" fill="#241f17">AWS Glue</text>
+  <text x="154" y="218" text-anchor="middle" font-size="10" fill="#6e6a5c">katalog + ETL</text>
+
+  <line x1="154" y1="232" x2="154" y2="266" stroke="#9c4a2f" stroke-width="3" marker-end="url(#mla6arrow)" />
+  <line x1="92" y1="290" x2="612" y2="290" stroke="#9c4a2f" stroke-width="2.5" />
+
+  <line x1="154" y1="266" x2="154" y2="290" stroke="#9c4a2f" stroke-width="2.5" />
+  <line x1="320" y1="290" x2="320" y2="266" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#mla6arrow)" />
+  <line x1="486" y1="290" x2="486" y2="266" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#mla6arrow)" />
+
+  <rect x="92" y="296" width="124" height="48" rx="11" fill="#f0e3d8" stroke="#f0e3d8" stroke-width="2" />
+  <text x="154" y="318" text-anchor="middle" font-size="12" font-weight="700" fill="#241f17">Athena</text>
+  <text x="154" y="334" text-anchor="middle" font-size="10" fill="#6e6a5c">SQL ad hoc di S3</text>
+
+  <rect x="258" y="218" width="124" height="48" rx="11" fill="#e6f0e6" stroke="#e6f0e6" stroke-width="2" />
+  <text x="320" y="240" text-anchor="middle" font-size="12" font-weight="700" fill="#241f17">Amazon EMR</text>
+  <text x="320" y="256" text-anchor="middle" font-size="10" fill="#6e6a5c">Spark / Hadoop</text>
+
+  <rect x="424" y="218" width="124" height="48" rx="11" fill="#f0e3d8" stroke="#f0e3d8" stroke-width="2" />
+  <text x="486" y="240" text-anchor="middle" font-size="12" font-weight="700" fill="#241f17">Amazon Redshift</text>
+  <text x="486" y="256" text-anchor="middle" font-size="10" fill="#6e6a5c">data warehouse</text>
+
+  <line x1="486" y1="266" x2="486" y2="290" stroke="#9c4a2f" stroke-width="2.5" />
+  <line x1="612" y1="290" x2="612" y2="320" stroke="#9c4a2f" stroke-width="3" marker-end="url(#mla6arrow)" />
+  <rect x="540" y="324" width="144" height="48" rx="11" fill="#241f17" />
+  <text x="612" y="346" text-anchor="middle" font-size="12" font-weight="700" fill="#bd5d3e">QuickSight</text>
+  <text x="612" y="362" text-anchor="middle" font-size="10" fill="#fbfaf5">dashboard / BI</text>
+
+  <line x1="444" y1="205" x2="540" y2="205" stroke="#0a7d6e" stroke-width="3" marker-end="url(#mla6arrow)" />
+  <rect x="546" y="178" width="148" height="54" rx="12" fill="#fbfaf5" stroke="#0a7d6e" stroke-width="2" />
+  <text x="620" y="200" text-anchor="middle" font-size="12" font-weight="700" fill="#241f17">OpenSearch Service</text>
+  <text x="620" y="218" text-anchor="middle" font-size="10" fill="#6e6a5c">search / log analytics</text>
+</svg>

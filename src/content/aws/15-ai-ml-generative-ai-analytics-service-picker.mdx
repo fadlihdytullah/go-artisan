@@ -1,0 +1,524 @@
+---
+title: "Modul AI/ML, Generative AI & Analytics Service Picker - AWS Cloud Practitioner CLF-C02"
+badge: "MLA"
+topTitle: "AI/ML, Generative AI & Analytics Service Picker"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Panduan memilih layanan AI/ML, generative AI, dan analytics AWS sesuai use case CLF-C02."
+order: 15
+target: "CLF-C02"
+readingTime: "~75 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "AI/ML sebagai Kotak Peralatan Pintar" }
+  - { num: "02", id: "peta-mental", title: "Peta Mental: AI, ML, Generative AI, dan Analytics" }
+  - { num: "03", id: "service-picker-ai-siap-pakai", title: "Service Picker AI Siap Pakai" }
+  - { num: "04", id: "generative-ai-dan-amazon-q", title: "Generative AI dan Amazon Q" }
+  - { num: "05", id: "sagemaker-ai", title: "SageMaker AI untuk Platform ML" }
+  - { num: "06", id: "analytics-picker", title: "Analytics Picker: Kapan Pakai Apa?" }
+  - { num: "07", id: "cara-kerja-end-to-end", title: "Cara Kerja End-to-End" }
+  - { num: "08", id: "skenario-nyata", title: "Skenario Nyata dan Pilihan Layanan" }
+  - { num: "09", id: "hands-on-ringan", title: "Hands-on Ringan dan Walkthrough Konseptual" }
+  - { num: "10", id: "kesalahan-dan-jebakan", title: "Kesalahan Umum dan Jebakan Soal" }
+  - { num: "11", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul AI/ML, Generative AI & Analytics Service Picker - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import MlaFig01 from "@figures/MlaFig01.astro";
+import MlaFig02 from "@figures/MlaFig02.astro";
+import MlaFig03 from "@figures/MlaFig03.astro";
+import MlaFig04 from "@figures/MlaFig04.astro";
+import MlaFig05 from "@figures/MlaFig05.astro";
+import MlaFig06 from "@figures/MlaFig06.astro";
+import MlaFig07 from "@figures/MlaFig07.astro";
+import MlaFig08 from "@figures/MlaFig08.astro";
+
+<Hero eyebrow="Modul &middot; Machine Learning" title="AI/ML, Generative AI &amp; Analytics<br /><em>Service Picker</em>">
+  <p>Belajar memilih layanan AWS yang tepat untuk OCR, suara, teks, gambar, chatbot, pencarian dokumen, ML platform, dan analytics.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~75 menit baca</Chip>
+    <Chip icon="book">Domain 3 &middot; 34%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="AI/ML sebagai Kotak Peralatan Pintar" sub="Untuk CLF-C02, yang paling penting adalah tahu alat mana untuk pekerjaan apa.">
+
+<p class="lead">Bayangkan kamu punya bengkel modern: ada mesin pembaca dokumen, penerjemah, penyiar suara, kamera pintar, chatbot, mesin pencari dokumen, dan ruang kerja data scientist.</p>
+
+<p>Di AWS, layanan AI/ML bukan satu produk tunggal. Ia seperti rak alat. Kalau masalahnya gambar, pilih alat gambar. Kalau masalahnya suara, pilih alat suara. Kalau masalahnya dokumen, pilih alat dokumen. Kalau masalahnya membangun model sendiri, baru masuk ke platform ML seperti <strong>Amazon SageMaker AI</strong>.</p>
+
+<Box variant="analogy" icon="🧰" label="Analogi kotak alat"><p>Jangan pakai palu untuk semua masalah. Dalam ujian, jangan menjawab SageMaker AI untuk semua soal AI/ML. Banyak soal hanya butuh layanan siap pakai seperti Textract, Transcribe, Translate, Polly, Rekognition, Comprehend, Lex, Kendra, atau Amazon Q.</p></Box>
+
+<p>Modul ini fokus pada <strong>service picker</strong>, yaitu kemampuan memilih layanan. Ini sangat cocok untuk CLF-C02 karena exam guide menekankan kemampuan mengidentifikasi layanan AWS untuk use case umum, bukan menulis kode ML atau melatih model kompleks.</p>
+
+<p>Kenapa cara pikir kotak alat ini penting buatmu? Karena soal ujian jarang bertanya "jelaskan arsitektur model deep learning". Soal lebih sering memberi sebuah cerita bisnis (sebuah marketplace, sebuah call center, sebuah tim finance) lalu meminta kamu menunjuk satu layanan paling tepat. Begitu kamu terbiasa membaca input dan output dari cerita itu, pilihan ganda yang tadinya mirip semua langsung mengerucut. Inilah keterampilan inti yang dilatih sepanjang modul ini.</p>
+
+<Box variant="exam" icon="📌" label="Cakupan resmi CLF-C02 (penting)"><p>CLF-C02 hanya mencantumkan <strong>10 layanan Machine Learning</strong> (Comprehend, Kendra, Lex, Polly, Amazon Q, Rekognition, SageMaker AI, Textract, Transcribe, Translate) dan <strong>7 layanan Analytics</strong> (Athena, EMR, Glue, Kinesis, OpenSearch Service, QuickSight, Redshift). Amazon Bedrock, Personalize, Forecast, Fraud Detector, Lake Formation, dan MSK boleh kamu kenali sekilas, tetapi tidak termasuk daftar in-scope, jadi jangan dipelajari mendalam untuk ujian ini.</p></Box>
+
+<CardGrid cols={3}>
+  <Card><h4>Masukan berupa dokumen</h4><p>Pakai <strong>Amazon Textract</strong> untuk mengambil teks, tabel, dan form dari dokumen.</p></Card>
+  <Card><h4>Masukan berupa audio</h4><p>Pakai <strong>Amazon Transcribe</strong> untuk mengubah suara menjadi teks, atau <strong>Amazon Polly</strong> untuk mengubah teks menjadi suara.</p></Card>
+  <Card><h4>Masukan berupa gambar</h4><p>Pakai <strong>Amazon Rekognition</strong> untuk analisis gambar dan video, seperti label, objek, wajah, dan moderasi konten.</p></Card>
+</CardGrid>
+
+<Figure><MlaFig07 /><Fragment slot="caption"><b>Gambar 1.</b> Peta cakupan CLF-C02: 10 layanan ML dan 7 layanan Analytics yang wajib (hijau), versus layanan yang hanya perlu diketahui (abu-abu).</Fragment></Figure>
+
+<p>Rujukan resmi yang relevan untuk modul ini: <a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/clf-02-in-scope-services.html">In-Scope AWS Services CLF-C02</a>, <a href="https://docs.aws.amazon.com/decision-guides/latest/machine-learning-on-aws-how-to-choose/guide.html">Choosing an AWS machine learning service</a>, dan <a href="https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html">What is Amazon SageMaker AI?</a>.</p>
+
+</Section>
+
+<Section num="02" id="peta-mental" title="Peta Mental: AI, ML, Generative AI, dan Analytics" sub="Pisahkan dulu masalahnya: memahami, menghasilkan, memprediksi, atau menganalisis data.">
+
+<p class="lead">Sebelum memilih layanan, tanyakan: apakah saya ingin mengenali sesuatu, membuat sesuatu, melatih model, mencari jawaban, atau menganalisis data?</p>
+
+<CardGrid cols={2}>
+  <Card><h4>AI siap pakai</h4><p>Layanan dengan model yang sudah disiapkan AWS untuk tugas umum, seperti OCR, terjemahan, analisis sentimen, suara, gambar, dan chatbot berbasis intent.</p></Card>
+  <Card><h4>Machine Learning platform</h4><p>Lingkungan untuk membangun, melatih, menguji, dan menjalankan model sendiri. Untuk CLF-C02, kenali ini sebagai wilayah <strong>SageMaker AI</strong>.</p></Card>
+  <Card><h4>Generative AI</h4><p>AI yang dapat menghasilkan jawaban, ringkasan, teks, atau bantuan kerja berbasis prompt. Untuk modul ini, fokus ujian ada pada <strong>Amazon Q</strong> sebagai asisten generative AI.</p></Card>
+  <Card><h4>Analytics</h4><p>Layanan untuk mengolah, menanyakan, memvisualisasikan, atau mencari pola dari data, seperti Athena, Glue, Redshift, QuickSight, Kinesis, OpenSearch Service, dan EMR.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Pertanyaan pemilih layanan"><p>Kalau soal menyebut input dan output, cocokkan langsung. Gambar &rarr; Rekognition. PDF/form &rarr; Textract. Audio &rarr; Transcribe. Teks &rarr; Comprehend atau Translate. Teks ke audio &rarr; Polly. Chatbot intent &rarr; Lex.</p></Box>
+
+<h3>Empat keluarga masalah</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Jenis masalah</th><th>Contoh pertanyaan bisnis</th><th>Layanan yang sering cocok</th></tr></thead>
+  <tbody>
+    <tr><td>Mengenali</td><td>Apa isi gambar ini, apa isi dokumen ini, apa sentimen teks ini?</td><td>Rekognition, Textract, Comprehend</td></tr>
+    <tr><td>Mengubah format</td><td>Ubah suara ke teks, teks ke suara, bahasa A ke bahasa B.</td><td>Transcribe, Polly, Translate</td></tr>
+    <tr><td>Berinteraksi</td><td>Buat bot pemesanan, asisten dokumen internal, atau pencarian tanya jawab.</td><td>Lex, Amazon Q, Kendra</td></tr>
+    <tr><td>Menganalisis data</td><td>Query data di S3, buat dashboard, olah data besar, streaming log.</td><td>Athena, Glue, Redshift, QuickSight, Kinesis, EMR, OpenSearch Service</td></tr>
+  </tbody>
+</table></div>
+
+<Figure><MlaFig01 /><Fragment slot="caption"><b>Gambar 2.</b> Peta pilihan layanan AI/ML berdasarkan jenis input dan tujuan output.</Fragment></Figure>
+
+<p>Di ujian, kata kunci sering lebih penting daripada detail teknis. Kata <em>image</em>, <em>video</em>, <em>objects</em>, atau <em>content moderation</em> mengarah ke Rekognition. Kata <em>forms</em>, <em>tables</em>, <em>scanned document</em>, atau <em>invoice</em> mengarah ke Textract. Kata <em>speech</em> atau <em>audio</em> perlu dibaca hati-hati, apakah ingin menjadi teks atau menjadi suara.</p>
+
+<h3>Decision tree: dari satu pertanyaan ke satu layanan</h3>
+
+<p>Peta di atas bagus untuk gambaran besar, tetapi saat menghadapi soal kamu butuh alur yang lebih tegas: satu pertanyaan, satu cabang, satu jawaban. Pohon keputusan berikut menyusun pertanyaan paling membedakan lebih dulu (apa jenis input?), lalu menambahkan dua cabang lanjutan yang sering menentukan jawaban: apakah kamu butuh percakapan terstruktur, apakah kamu perlu membangun model sendiri, atau apakah kamu butuh asisten generative AI atas data perusahaan.</p>
+
+<Figure><MlaFig03 /><Fragment slot="caption"><b>Gambar 3.</b> Pohon keputusan AI/ML: mulai dari jenis input, lalu cabang ke Lex (percakapan), SageMaker AI (model custom), atau Amazon Q (asisten data).</Fragment></Figure>
+
+<Box variant="tip" icon="🌳" label="Cara pakai pohon keputusan"><p>Baca soal, jawab pertanyaan paling atas dulu (apa input-nya), baru turun ke cabang berikutnya. Sebagian besar soal CLF-C02 selesai hanya di baris pertama (gambar, dokumen, audio, teks), tanpa perlu turun jauh.</p></Box>
+
+</Section>
+
+<Section num="03" id="service-picker-ai-siap-pakai" title="Service Picker AI Siap Pakai" sub="Layanan ini cocok saat kamu ingin memakai kemampuan AI tanpa membangun model dari nol.">
+
+<p class="lead">AI siap pakai itu seperti memanggil spesialis: kamu kirim input, layanan mengembalikan hasil analisis.</p>
+
+<h3>Daftar cepat layanan AI/ML</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Layanan</th><th>Gunakan saat</th><th>Jangan tertukar dengan</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Amazon Rekognition</strong></td><td>Menganalisis gambar dan video, mendeteksi objek, label, wajah, teks di gambar, atau konten tidak pantas.</td><td>Textract, karena Textract khusus dokumen dan struktur seperti tabel/form.</td></tr>
+    <tr><td><strong>Amazon Textract</strong></td><td>Mengekstrak teks, handwriting, tabel, form, key-value, invoice, receipt, atau data dari dokumen.</td><td>Rekognition, karena Rekognition tidak fokus pada struktur dokumen bisnis.</td></tr>
+    <tr><td><strong>Amazon Comprehend</strong></td><td>Menganalisis teks, seperti sentimen, entitas, frasa kunci, bahasa dominan, topik, dan PII.</td><td>Translate, karena Translate mengubah bahasa, bukan memahami makna bisnis teks.</td></tr>
+    <tr><td><strong>Amazon Translate</strong></td><td>Menerjemahkan teks atau dokumen antar bahasa untuk aplikasi multibahasa.</td><td>Comprehend, karena Comprehend memahami isi teks, bukan menerjemahkan.</td></tr>
+    <tr><td><strong>Amazon Transcribe</strong></td><td>Mengubah audio atau percakapan menjadi teks.</td><td>Polly, karena Polly adalah arah sebaliknya.</td></tr>
+    <tr><td><strong>Amazon Polly</strong></td><td>Mengubah teks menjadi suara yang terdengar natural untuk aplikasi, pembaca artikel, atau IVR.</td><td>Transcribe, karena Transcribe mengubah suara menjadi teks.</td></tr>
+    <tr><td><strong>Amazon Lex</strong></td><td>Membangun chatbot atau voice bot berbasis intent, slot, dan alur percakapan.</td><td>Amazon Q, karena Q adalah asisten generative AI, bukan hanya bot intent tradisional.</td></tr>
+    <tr><td><strong>Amazon Kendra</strong></td><td>Membangun pencarian cerdas atas dokumen perusahaan dengan pemahaman bahasa natural.</td><td>OpenSearch Service, karena OpenSearch lebih umum untuk search, log analytics, dan observability.</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="exam" icon="📝" label="Kata kunci ujian"><p>Soal CLF-C02 sering meminta layanan paling managed dan paling langsung. Bila ada layanan siap pakai yang cocok, pilih itu sebelum memilih SageMaker AI.</p></Box>
+
+<h3>Rekognition: kamera pintar</h3>
+
+<p>Gunakan <strong><a href="https://docs.aws.amazon.com/rekognition/latest/dg/what-is.html">Amazon Rekognition</a></strong> ketika inputnya gambar atau video. Contoh nyata: marketplace ingin mendeteksi gambar produk yang melanggar kebijakan, aplikasi event ingin mengenali wajah peserta yang terdaftar, atau sistem keamanan ingin mencari objek tertentu pada video.</p>
+
+<Box variant="warn" icon="⚠️" label="Jebakan Rekognition"><p>Kalau soal menyebut dokumen PDF berisi tabel invoice, itu bukan Rekognition walaupun file itu bisa terlihat sebagai gambar. Kata tabel, form, invoice, receipt, dan key-value mengarah ke Textract.</p></Box>
+
+<h3>Textract: petugas input data super cepat</h3>
+
+<p><strong><a href="https://docs.aws.amazon.com/textract/latest/dg/what-is.html">Amazon Textract</a></strong> membantu membaca dokumen seperti manusia admin yang menyalin isi formulir, tetapi dilakukan secara otomatis. Ia cocok untuk proses klaim asuransi, KYC, invoice vendor, medical form, dan dokumen pajak.</p>
+
+<h3>Comprehend: pembaca makna teks</h3>
+
+<p><strong><a href="https://docs.aws.amazon.com/comprehend/latest/dg/what-is.html">Amazon Comprehend</a></strong> cocok untuk membaca teks dan menemukan makna, seperti apakah review pelanggan positif, siapa nama orang atau organisasi yang disebut, bahasa apa yang digunakan, atau apakah teks mengandung informasi pribadi (PII).</p>
+
+<Box variant="warn" icon="🪤" label="Comprehend vs Amazon Macie"><p>Ini distraktor lintas-domain yang sering muncul. Comprehend mendeteksi dan menyamarkan PII pada teks yang kamu kirim ke layanan (mis. isi dokumen atau pesan). <strong>Amazon Macie</strong> (layanan keamanan) menemukan data sensitif yang sudah tersimpan di bucket Amazon S3. Soal "temukan PII di seluruh bucket S3" mengarah ke Macie, bukan Comprehend. Soal "deteksi atau redaksi PII di dalam teks ini" mengarah ke Comprehend.</p></Box>
+
+<h3>Translate, Transcribe, dan Polly: trio pengubah bentuk bahasa</h3>
+
+<p><strong><a href="https://docs.aws.amazon.com/translate/latest/dg/what-is.html">Amazon Translate</a></strong> mengubah bahasa. <strong><a href="https://docs.aws.amazon.com/transcribe/latest/dg/what-is.html">Amazon Transcribe</a></strong> mengubah suara menjadi teks. <strong><a href="https://docs.aws.amazon.com/polly/latest/dg/what-is.html">Amazon Polly</a></strong> mengubah teks menjadi suara. Ingat arah panahnya karena ini sering menjadi jebakan, dan exam sering membalik arah ini.</p>
+
+<Figure><MlaFig04 /><Fragment slot="caption"><b>Gambar 4.</b> Arah panah trio bahasa: Transcribe audio &rarr; teks, Polly teks &rarr; audio, Translate bahasa A &rarr; bahasa B.</Fragment></Figure>
+
+<Box variant="analogy" icon="🎙️" label="Analogi studio rekaman"><p>Bayangkan studio podcast. Transcribe adalah juru ketik yang menyalin rekaman menjadi naskah. Polly adalah penyiar yang membaca naskah dengan suara natural. Translate adalah penerjemah yang mengganti bahasa naskah tanpa mengubah ceritanya. Tiga peran berbeda, tiga arah berbeda.</p></Box>
+
+<h3>Lex dan Kendra: percakapan dan pencarian</h3>
+
+<p><strong><a href="https://docs.aws.amazon.com/lexv2/latest/dg/what-is.html">Amazon Lex</a></strong> cocok untuk chatbot yang menanyakan niat pengguna dan mengumpulkan informasi, misalnya booking hotel, cek status pesanan, atau memilih menu IVR. <strong><a href="https://docs.aws.amazon.com/kendra/latest/dg/what-is-kendra.html">Amazon Kendra</a></strong> cocok ketika pengguna ingin mencari jawaban dari kumpulan dokumen internal, bukan sekadar keyword matching.</p>
+
+<Recap title="Pola cepat AI siap pakai"><ul><li>Gambar/video &rarr; Rekognition.</li><li>Dokumen/form/tabel &rarr; Textract.</li><li>Sentimen/entitas/frasa kunci/PII dalam teks &rarr; Comprehend.</li><li>Terjemahan &rarr; Translate.</li><li>Audio ke teks &rarr; Transcribe.</li><li>Teks ke suara &rarr; Polly.</li><li>Chatbot intent dan slot &rarr; Lex.</li><li>Pencarian cerdas dokumen &rarr; Kendra.</li></ul></Recap>
+
+</Section>
+
+<Section num="04" id="generative-ai-dan-amazon-q" title="Generative AI dan Amazon Q" sub="Amazon Q membantu pengguna bertanya, merangkum, membuat konten, dan menyelesaikan tugas dengan data perusahaan.">
+
+<p class="lead">Kalau AI siap pakai seperti alat spesialis, Amazon Q seperti asisten kerja yang bisa diajak bertanya dalam bahasa natural.</p>
+
+<p><strong><a href="https://aws.amazon.com/q/">Amazon Q</a></strong> adalah keluarga kemampuan generative AI dari AWS. Untuk pemula CLF-C02, bayangkan Amazon Q sebagai asisten yang membantu pengguna menemukan informasi, merangkum dokumen, menjawab pertanyaan, menulis konten, atau membantu pekerjaan developer dan bisnis, bergantung varian dan integrasinya.</p>
+
+<Box variant="analogy" icon="🤖" label="Analogi asisten kantor"><p>Kalau Kendra seperti mesin pencari dokumen, Amazon Q seperti rekan kerja yang membaca dokumen yang boleh ia akses, lalu menjawab pertanyaan dengan konteks dan bisa membantu melakukan tugas.</p></Box>
+
+<CardGrid cols={2}>
+  <Card><h4>Amazon Q Business</h4><p>Asisten generative AI untuk data perusahaan, dengan jawaban yang memperhatikan izin akses pengguna dan dapat menyertakan rujukan dari sumber perusahaan. Memakai subscription per user, tanpa free tier permanen.</p></Card>
+  <Card><h4>Amazon Q Developer</h4><p>Asisten untuk developer dan operator cloud, misalnya membantu memahami AWS, menulis kode, menjelaskan error, atau mempercepat pekerjaan teknis. Punya Free Tier permanen, lalu tier Pro per user.</p></Card>
+  <Card><h4>Amazon Q in QuickSight</h4><p>Kemampuan natural language di area analytics, misalnya bertanya tentang data dalam bahasa biasa lalu mendapat insight dan ringkasan langsung di dashboard.</p></Card>
+  <Card><h4>Amazon Q bukan sekadar search</h4><p>Search mengembalikan dokumen. Asisten generative AI dapat merangkum, menjelaskan, menyusun jawaban, dan membantu tindakan sesuai integrasi.</p></Card>
+</CardGrid>
+
+<Figure><MlaFig08 /><Fragment slot="caption"><b>Gambar 5.</b> Tiga konteks Amazon Q: Q Business untuk end users, Q Developer untuk builders (punya Free Tier), dan Q in QuickSight untuk natural language BI.</Fragment></Figure>
+
+<h3>Which Q? Petunjuk cepat di soal</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Petunjuk di soal</th><th>Varian</th><th>Cue pembeda</th></tr></thead>
+  <tbody>
+    <tr><td>Asisten internal untuk karyawan: HR, IT, kebijakan, knowledge base.</td><td>Q Business</td><td>End users, permission-aware, subscription per user, tanpa free tier.</td></tr>
+    <tr><td>Bantu developer menulis kode, menjelaskan error, atau tugas dev di IDE/CLI.</td><td>Q Developer</td><td>Builders, ada Free Tier permanen, tugas coding dan cloud.</td></tr>
+    <tr><td>Analis bertanya ke data pakai bahasa natural di dashboard.</td><td>Q in QuickSight</td><td>Natural language BI, ringkasan dan insight di QuickSight.</td></tr>
+  </tbody>
+</table></div>
+
+<Compare aLabel="Amazon Q Business &middot; untuk end users" bLabel="Amazon Q Developer &middot; untuk builders" aTone="violet" bTone="blue" vs="vs">
+  <Fragment slot="a"><ul><li>Pengguna sasaran: karyawan non-teknis yang bertanya tentang data perusahaan.</li><li>Jawaban permission-aware, menghormati izin akses tiap pengguna.</li><li>Pemakaian umum: HR, IT help desk, kebijakan, onboarding, knowledge base.</li><li>Model harga: subscription per user (Lite atau Pro), tanpa free tier permanen.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Pengguna sasaran: developer dan operator cloud di IDE, CLI, atau console.</li><li>Membantu menulis kode, menjelaskan error, dan menjalankan tugas dev agentic.</li><li>Pemakaian umum: percepat coding, pahami AWS, transformasi/upgrade kode.</li><li>Model harga: ada Free Tier permanen, lalu tier Pro per user.</li></ul></Fragment>
+</Compare>
+
+<h3>Kapan pilih Amazon Q?</h3>
+
+<ul>
+  <li><p>Ketika user ingin bertanya dalam bahasa natural kepada data atau dokumen perusahaan.</p></li>
+  <li><p>Ketika organisasi ingin asisten internal untuk HR, IT help desk, kebijakan perusahaan, knowledge base, atau produktivitas kerja.</p></li>
+  <li><p>Ketika kebutuhan bukan sekadar menemukan file, tetapi merangkum dan menjawab berdasarkan konteks.</p></li>
+  <li><p>Ketika jawaban harus mempertimbangkan izin akses pengguna, bukan semua orang melihat semua data.</p></li>
+</ul>
+
+<h3>Amazon Q vs Kendra vs Lex</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Kebutuhan</th><th>Pilih</th><th>Kenapa</th></tr></thead>
+  <tbody>
+    <tr><td>Pengguna ingin mencari jawaban dari dokumen dengan pencarian semantik.</td><td>Kendra</td><td>Fokus pada intelligent search dan retrieval dokumen.</td></tr>
+    <tr><td>Pengguna ingin asisten generative AI yang menjawab, merangkum, dan membantu tugas berbasis data perusahaan.</td><td>Amazon Q</td><td>Fokus pada asisten generative AI yang terhubung ke enterprise data.</td></tr>
+    <tr><td>Pengguna ingin bot percakapan terstruktur untuk memesan, memilih menu, atau mengisi slot informasi.</td><td>Lex</td><td>Fokus pada intent, slot, dan alur percakapan.</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="exam" icon="🎯" label="Tips ujian"><p>Kalau soal menyebut generative AI assistant untuk data perusahaan, pikirkan Amazon Q. Kalau soal menyebut intelligent search atas dokumen, pikirkan Kendra. Kalau soal menyebut chatbot dengan intent dan slot, pikirkan Lex.</p></Box>
+
+<h3>Tangga: search, intelligent search, lalu asisten</h3>
+
+<p>Ketiganya terlihat mirip karena sama-sama berurusan dengan dokumen, tetapi mereka berada di tangga yang berbeda. OpenSearch Service kuat untuk pencarian berbasis indeks dan analisis log. Kendra naik satu tingkat dengan pencarian cerdas yang memahami pertanyaan bahasa natural dan mengembalikan jawaban atau passage relevan. Amazon Q naik lagi: ia tidak hanya menemukan, tetapi merangkum, menjelaskan, dan menyusun jawaban. Menariknya, sejak Kendra punya GenAI Index, Kendra bisa menjadi retriever yang memberi bahan kepada Amazon Q.</p>
+
+<Figure><MlaFig05 /><Fragment slot="caption"><b>Gambar 6.</b> Tangga pemahaman: OpenSearch Service (cari) &rarr; Kendra (cari cerdas) &rarr; Amazon Q (jawab generative), dengan Kendra GenAI Index dapat menyuapi Amazon Q.</Fragment></Figure>
+
+<h3>Di mana posisi Amazon Bedrock?</h3>
+
+<p><strong>Amazon Bedrock</strong> adalah layanan untuk membangun aplikasi generative AI di atas foundation model (memilih model, menambah knowledge base, membuat agent). Ia kuat dan penting di dunia nyata, tetapi <strong>tidak termasuk daftar in-scope Machine Learning CLF-C02</strong>. Untuk ujian ini, fokus generative AI ada pada <strong>Amazon Q</strong> (asisten siap pakai) dan <strong>SageMaker AI</strong> (platform model). Bedrock yang mendalam adalah materi ujian AIF-C01 dan AIP-C01, bukan CLF-C02. Jadi bila Bedrock muncul sebagai pilihan jawaban di soal bergaya CLF-C02, ia biasanya distraktor.</p>
+
+</Section>
+
+<Section num="05" id="sagemaker-ai" title="SageMaker AI untuk Platform ML" sub="Pilih SageMaker AI ketika tim perlu membangun, melatih, dan menjalankan model ML sendiri.">
+
+<p class="lead">SageMaker AI adalah dapur profesional untuk data scientist, bukan sekadar blender otomatis untuk satu tugas.</p>
+
+<p><strong><a href="https://docs.aws.amazon.com/sagemaker/latest/dg/whatis.html">Amazon SageMaker AI</a></strong> adalah layanan fully managed untuk membangun, melatih, dan men-deploy model machine learning dan foundation model ke environment produksi yang dikelola AWS.</p>
+
+<Box variant="exam" icon="🏷️" label="Nuansa nama (3 Desember 2024)"><p>Pada 3 Desember 2024 AWS mengganti nama Amazon SageMaker menjadi <strong>Amazon SageMaker AI</strong> (rename ini tidak mengubah API, CLI, atau endpoint lama, jadi tetap kompatibel). Di hari yang sama AWS juga merilis "next generation of Amazon SageMaker", yaitu platform terpadu untuk data, analytics, dan AI (mencakup SageMaker Unified Studio, Lakehouse, Catalog, dan Bedrock). Untuk ujian: soal tentang membangun, melatih, atau men-deploy model menjawab <strong>SageMaker AI</strong> (layanan model), bukan SageMaker Unified Studio (platform terpadu).</p></Box>
+
+<Box variant="analogy" icon="🍳" label="Analogi dapur profesional"><p>Kalau Rekognition, Textract, dan Polly adalah makanan siap saji untuk kebutuhan spesifik, SageMaker AI adalah dapur lengkap untuk membuat resep model sendiri dari bahan data yang kamu punya.</p></Box>
+
+<CardGrid cols={3}>
+  <Card><h4>Build</h4><p>Data scientist dapat menyiapkan notebook, data, eksperimen, dan kode ML.</p></Card>
+  <Card><h4>Train</h4><p>Model dilatih memakai data dan compute yang sesuai, tanpa harus merakit server sendiri dari nol.</p></Card>
+  <Card><h4>Deploy</h4><p>Model dapat dijalankan sebagai endpoint atau alur produksi agar aplikasi bisa meminta prediksi.</p></Card>
+</CardGrid>
+
+<h3>Kapan SageMaker AI paling masuk akal?</h3>
+
+<ul>
+  <li><p>Perusahaan punya data unik dan ingin model yang disesuaikan, misalnya fraud detection khusus pola transaksi internal.</p></li>
+  <li><p>Tim perlu kontrol lebih besar atas pelatihan, eksperimen, model, deployment, dan MLOps.</p></li>
+  <li><p>Layanan AI siap pakai tidak cukup karena domainnya spesifik, misalnya prediksi risiko berdasarkan data industri tertentu.</p></li>
+  <li><p>Organisasi punya data scientist atau ML engineer yang memang akan mengelola siklus hidup model.</p></li>
+</ul>
+
+<h3>Kapan jangan pilih SageMaker AI?</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Use case</th><th>Jawaban yang lebih langsung</th><th>Alasan</th></tr></thead>
+  <tbody>
+    <tr><td>Mendeteksi objek dalam gambar produk.</td><td>Rekognition</td><td>Model computer vision siap pakai sudah cukup.</td></tr>
+    <tr><td>Mengambil data dari invoice PDF.</td><td>Textract</td><td>Fokus pada dokumen, tabel, form, dan key-value.</td></tr>
+    <tr><td>Menerjemahkan review pelanggan.</td><td>Translate</td><td>Tugasnya translation, bukan custom ML.</td></tr>
+    <tr><td>Mengubah rekaman call center menjadi teks.</td><td>Transcribe</td><td>Tugasnya automatic speech recognition.</td></tr>
+    <tr><td>Membuat bot pemesanan sederhana.</td><td>Lex</td><td>Intent dan slot lebih sesuai daripada membangun model sendiri.</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="exam" icon="🧠" label="Cara menjawab soal"><p>Pilih SageMaker AI jika soal menekankan membangun, melatih, tuning, deployment model sendiri, atau kebutuhan custom ML. Pilih layanan AI siap pakai jika soal menggambarkan tugas umum yang sudah disediakan AWS.</p></Box>
+
+</Section>
+
+<Section num="06" id="analytics-picker" title="Analytics Picker: Kapan Pakai Apa?" sub="Analytics dipakai ketika masalahnya bukan hanya AI, tetapi mengolah dan memahami data dalam skala bisnis.">
+
+<p class="lead">Kalau AI menjawab pertanyaan spesifik, analytics membantu melihat pola besar dari data yang terus bertambah.</p>
+
+<p>Dalam CLF-C02, layanan analytics yang perlu dikenal tepat <strong>7</strong>: <strong><a href="https://docs.aws.amazon.com/athena/latest/ug/what-is.html">Amazon Athena</a></strong>, <strong><a href="https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-what-is-emr.html">Amazon EMR</a></strong>, <strong><a href="https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html">AWS Glue</a></strong>, <strong><a href="https://docs.aws.amazon.com/streams/latest/dev/introduction.html">Amazon Kinesis</a></strong>, <strong><a href="https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html">Amazon OpenSearch Service</a></strong>, <strong><a href="https://docs.aws.amazon.com/quicksight/latest/user/welcome.html">Amazon QuickSight</a></strong>, dan <strong><a href="https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html">Amazon Redshift</a></strong>. Fokusnya adalah memahami kapan memilih masing-masing, bukan menghafal konfigurasi cluster.</p>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Layanan analytics</th><th>Gunakan saat</th><th>Analogi cepat</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Amazon Athena</strong></td><td>Ingin menjalankan query SQL langsung ke data di Amazon S3 tanpa menyiapkan server database.</td><td>Meja tanya jawab cepat untuk data lake.</td></tr>
+    <tr><td><strong>AWS Glue</strong></td><td>Ingin menemukan, mengatalogkan, membersihkan, mengubah, dan memindahkan data untuk analytics atau ML.</td><td>Petugas ETL dan katalog perpustakaan data.</td></tr>
+    <tr><td><strong>Amazon Redshift</strong></td><td>Butuh data warehouse terkelola untuk analisis data besar, dashboard, dan query bisnis yang berat.</td><td>Gudang data analitik perusahaan.</td></tr>
+    <tr><td><strong>Amazon QuickSight</strong></td><td>Ingin membuat dashboard, visualisasi, laporan, dan BI untuk pengguna bisnis.</td><td>Panel indikator bisnis.</td></tr>
+    <tr><td><strong>Amazon Kinesis</strong></td><td>Ingin mengumpulkan dan memproses data streaming hampir real-time, seperti clickstream, IoT, atau log aplikasi.</td><td>Sungai data yang terus mengalir.</td></tr>
+    <tr><td><strong>Amazon OpenSearch Service</strong></td><td>Butuh search, log analytics, observability, atau analisis data berbasis indeks.</td><td>Mesin pencari dan kaca pembesar log.</td></tr>
+    <tr><td><strong>Amazon EMR</strong></td><td>Butuh pemrosesan big data memakai framework seperti Apache Spark atau Hadoop.</td><td>Pabrik pemrosesan data skala besar.</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="tip" icon="📊" label="Urutan pikir analytics"><p>Data mentah di S3 bisa dikatalogkan oleh Glue, ditanya dengan Athena, diolah besar dengan EMR, dimasukkan ke Redshift untuk data warehouse, lalu divisualisasikan dengan QuickSight.</p></Box>
+
+<Figure><MlaFig06 /><Fragment slot="caption"><b>Gambar 7.</b> Pipeline analytics: jalur streaming (Kinesis &middot; Data Firehose), jalur batch (S3 &middot; Glue &middot; Athena/EMR/Redshift &middot; QuickSight), dan jalur search (OpenSearch Service).</Fragment></Figure>
+
+<h3>Kinesis dan Amazon Data Firehose</h3>
+
+<p>"Amazon Kinesis" adalah payung in-scope CLF-C02 untuk data streaming. Di bawahnya ada dua hal yang berguna kamu bedakan: <strong>Kinesis Data Streams</strong> untuk menangkap dan memproses data secara real-time, dan <strong>Amazon Data Firehose</strong> untuk mengirim (deliver) stream itu ke tujuan seperti S3, Redshift, atau OpenSearch Service. Catatan nama: sejak 9 Februari 2024, "Kinesis Data Firehose" berganti nama menjadi <strong>Amazon Data Firehose</strong> (hanya nama yang berubah). Pakai nama baru ini di materi 2026.</p>
+
+<h3>Athena vs Redshift: pasangan yang sering tertukar</h3>
+
+<p>Keduanya menjalankan SQL untuk analitik, tetapi modelnya berbeda. Athena serverless dan bayar per query langsung di atas data S3, ideal untuk pertanyaan ad hoc yang tidak rutin. Redshift adalah data warehouse terkelola yang kamu provisioning untuk beban BI berat dan berulang dalam skala besar.</p>
+
+<Compare aLabel="Amazon Athena &middot; serverless ad hoc" bLabel="Amazon Redshift &middot; data warehouse" aTone="teal" bTone="red" vs="vs">
+  <Fragment slot="a"><ul><li>Serverless, tanpa cluster yang perlu dikelola.</li><li>SQL langsung di atas data S3, tidak perlu memindahkan data dulu.</li><li>Model biaya: bayar per query (per data yang dipindai).</li><li>Cocok untuk analisis ad hoc, sesekali, atau eksplorasi cepat.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Data warehouse terkelola yang di-provisioning.</li><li>Data dimuat ke dalam warehouse untuk performa kueri yang konsisten.</li><li>Model biaya: kapasitas warehouse yang berjalan.</li><li>Cocok untuk BI berat, berulang, dan analitik skala besar.</li></ul></Fragment>
+</Compare>
+
+<Box variant="exam" icon="🎯" label="Cue Athena vs Redshift"><p>Soal yang menyebut serverless, ad hoc, pay-per-query, atau SQL langsung di S3 mengarah ke Athena. Soal yang menyebut data warehouse, BI workload berat, atau analitik skala besar yang berulang mengarah ke Redshift.</p></Box>
+
+<h3>Service picker analytics paling sering</h3>
+
+<CardGrid cols={2}>
+  <Card><h4>Query ad hoc data di S3</h4><p>Pilih Athena. Kata kunci: SQL, S3, serverless query, ad hoc analysis.</p></Card>
+  <Card><h4>ETL dan katalog data</h4><p>Pilih Glue. Kata kunci: crawl, catalog, transform, prepare, ETL.</p></Card>
+  <Card><h4>Data warehouse</h4><p>Pilih Redshift. Kata kunci: petabyte-scale warehouse, BI workload, analytical queries.</p></Card>
+  <Card><h4>Dashboard bisnis</h4><p>Pilih QuickSight. Kata kunci: visualization, dashboard, BI, reports.</p></Card>
+  <Card><h4>Streaming data</h4><p>Pilih Kinesis. Kata kunci: real-time stream, clickstream, logs, telemetry.</p></Card>
+  <Card><h4>Search dan log analytics</h4><p>Pilih OpenSearch Service. Kata kunci: indexing, full-text search, log search, observability.</p></Card>
+</CardGrid>
+
+</Section>
+
+<Section num="07" id="cara-kerja-end-to-end" title="Cara Kerja End-to-End" sub="Banyak solusi nyata menggabungkan AI/ML dan analytics dalam satu alur.">
+
+<p class="lead">Di dunia nyata, satu layanan jarang bekerja sendirian. Dokumen, audio, gambar, dan log biasanya masuk ke storage, diproses, lalu dianalisis.</p>
+
+<Figure><MlaFig02 /><Fragment slot="caption"><b>Gambar 8.</b> Contoh alur end-to-end: data masuk, AI mengekstrak makna, analytics mengolah pola, dashboard atau asisten membantu keputusan.</Fragment></Figure>
+
+<h3>Contoh alur klaim asuransi</h3>
+
+<Steps>
+  <Step><b>Dokumen masuk ke S3</b><p>Nasabah mengunggah foto formulir klaim, kuitansi, dan rekaman percakapan layanan pelanggan.</p></Step>
+  <Step><b>Textract membaca dokumen</b><p>Textract mengekstrak teks, tabel, dan key-value dari formulir atau kuitansi.</p></Step>
+  <Step><b>Comprehend memahami teks</b><p>Comprehend mendeteksi entitas, frasa penting, sentimen, atau data pribadi yang perlu dilindungi.</p></Step>
+  <Step><b>Transcribe memproses audio</b><p>Rekaman call center diubah menjadi teks agar bisa dicari dan dianalisis.</p></Step>
+  <Step><b>Glue menyiapkan data</b><p>Glue mengatalogkan dan membersihkan data agar siap dianalisis.</p></Step>
+  <Step><b>Athena atau Redshift menganalisis</b><p>Athena cocok untuk query langsung di S3, Redshift cocok untuk data warehouse dan analisis bisnis berat.</p></Step>
+  <Step><b>QuickSight menampilkan dashboard</b><p>Manajer melihat tren klaim, waktu proses, biaya, dan area risiko.</p></Step>
+</Steps>
+
+<Box variant="warn" icon="🔐" label="Keamanan tetap penting"><p>AI/ML tidak menghapus tanggung jawab keamanan. Perhatikan IAM, enkripsi, logging, data sensitif, izin akses, dan kepatuhan ketika memproses dokumen, audio, gambar, atau data pelanggan.</p></Box>
+
+<h3>Polanya sederhana</h3>
+
+<p>Masukan &rarr; ekstraksi atau pemahaman &rarr; penyimpanan &rarr; transformasi &rarr; query &rarr; visualisasi atau asisten. Kalau kamu bisa membaca alur ini, soal service picker akan terasa jauh lebih mudah.</p>
+
+</Section>
+
+<Section num="08" id="skenario-nyata" title="Skenario Nyata dan Pilihan Layanan" sub="Latih diri dengan membaca kebutuhan bisnis, lalu pilih layanan paling langsung.">
+
+<p class="lead">Bagian ini adalah latihan membaca soal. Fokus pada kata kunci, bukan pada nama layanan yang terdengar paling canggih.</p>
+
+<h3>Skenario 1: Marketplace skincare ingin moderasi gambar produk</h3>
+
+<p>Tim marketplace ingin mendeteksi gambar tidak pantas, gambar produk palsu, dan objek tertentu pada foto listing. Pilihan paling tepat adalah <strong>Amazon Rekognition</strong>, karena inputnya gambar dan tujuannya computer vision.</p>
+
+<h3>Skenario 2: Finance ingin mengambil data dari invoice vendor</h3>
+
+<p>Invoice berisi nomor invoice, tanggal, total, tabel item, dan data vendor. Pilihan paling tepat adalah <strong>Amazon Textract</strong>, karena fokusnya ekstraksi dokumen, form, tabel, dan key-value.</p>
+
+<h3>Skenario 3: Customer support ingin tahu sentimen review</h3>
+
+<p>Review produk dalam bentuk teks perlu diberi label positif, negatif, netral, atau mixed. Pilihan paling tepat adalah <strong>Amazon Comprehend</strong>, karena fokusnya natural language processing dan sentiment analysis.</p>
+
+<h3>Skenario 4: Call center ingin membuat transkrip percakapan</h3>
+
+<p>Rekaman audio pelanggan perlu diubah menjadi teks. Pilihan paling tepat adalah <strong>Amazon Transcribe</strong>. Setelah menjadi teks, kamu bisa memakai Comprehend untuk memahami sentimen atau entitas.</p>
+
+<h3>Skenario 5: Aplikasi belajar ingin membacakan artikel</h3>
+
+<p>Artikel teks ingin diubah menjadi suara agar lebih aksesibel. Pilihan paling tepat adalah <strong>Amazon Polly</strong>, karena output yang diinginkan adalah speech.</p>
+
+<h3>Skenario 6: Perusahaan ingin chatbot untuk booking jadwal</h3>
+
+<p>Bot perlu bertanya tanggal, jam, lokasi, dan tujuan meeting. Pilihan paling tepat adalah <strong>Amazon Lex</strong>, karena ada intent dan slot yang jelas.</p>
+
+<h3>Skenario 7: Karyawan ingin bertanya ke dokumen internal</h3>
+
+<p>Jika kebutuhannya pencarian cerdas atas dokumen, pilih <strong>Amazon Kendra</strong>. Jika kebutuhannya asisten generative AI yang menjawab, merangkum, dan membantu tugas berbasis data perusahaan, pilih <strong>Amazon Q</strong>.</p>
+
+<h3>Skenario 8: Data analyst ingin query log di S3</h3>
+
+<p>Log aplikasi sudah tersimpan di Amazon S3 dan analyst ingin menjalankan SQL ad hoc. Pilihan paling tepat adalah <strong>Amazon Athena</strong>, sering dibantu <strong>AWS Glue Data Catalog</strong> untuk metadata.</p>
+
+<h3>Skenario 9: Manajemen ingin dashboard penjualan</h3>
+
+<p>Data sudah siap dianalisis dan pengguna bisnis ingin dashboard interaktif. Pilihan paling tepat adalah <strong>Amazon QuickSight</strong>. Jika datanya besar dan kompleks sebagai warehouse, <strong>Amazon Redshift</strong> dapat menjadi sumber analitiknya.</p>
+
+<Box variant="exam" icon="✅" label="Latihan mental"><p>Setiap skenario punya kata benda penting: gambar, dokumen, audio, teks, chatbot, pencarian, dashboard, streaming, warehouse. Kata benda itu biasanya mengarahkan jawaban.</p></Box>
+
+</Section>
+
+<Section num="09" id="hands-on-ringan" title="Hands-on Ringan dan Walkthrough Konseptual" sub="Tujuannya membangun intuisi, bukan membuat proyek produksi.">
+
+<p class="lead">Hands-on terbaik untuk pemula adalah mencoba beberapa layanan melalui console dengan input kecil dan memahami outputnya.</p>
+
+<Box variant="warn" icon="💸" label="Catatan biaya"><p>Sebelum mencoba layanan apa pun, selalu cek halaman pricing resmi, region yang dipakai, dan hapus resource atau data uji setelah selesai. Jangan menghafal angka harga untuk ujian kecuali diminta sumber resmi terbaru.</p></Box>
+
+<Box variant="exam" icon="🧾" label="Kesadaran model biaya (Domain 4)"><p>Kamu tidak perlu hafal angka, tetapi kenali polanya. Layanan AI menagih per satuan pemakaian: per karakter teks (Comprehend, Translate, Polly), per menit audio (Transcribe), per halaman dokumen (Textract), atau per gambar/menit video (Rekognition). Untuk asisten: <strong>Amazon Q Developer punya Free Tier permanen</strong>, sedangkan <strong>Amazon Q Business tidak punya free tier</strong> dan ditagih subscription per user. Pola ini cukup untuk soal billing CLF-C02.</p></Box>
+
+<h3>Walkthrough 1: Bedakan Rekognition dan Textract</h3>
+
+<Steps>
+  <Step><b>Siapkan dua contoh input</b><p>Satu foto produk, satu gambar invoice atau formulir sederhana.</p></Step>
+  <Step><b>Bayangkan foto produk masuk ke Rekognition</b><p>Output yang dicari adalah label objek, scene, atau moderasi konten.</p></Step>
+  <Step><b>Bayangkan invoice masuk ke Textract</b><p>Output yang dicari adalah teks, tabel, field, dan pasangan key-value.</p></Step>
+  <Step><b>Tulis perbedaan dalam satu kalimat</b><p>Rekognition memahami visual umum, Textract memahami struktur dokumen.</p></Step>
+</Steps>
+
+<h3>Walkthrough 2: Rangkai bahasa pelanggan</h3>
+
+<Steps>
+  <Step><b>Mulai dari review pelanggan</b><p>Review berbahasa asing masuk sebagai teks mentah.</p></Step>
+  <Step><b>Gunakan Translate</b><p>Terjemahkan teks ke bahasa kerja tim support.</p></Step>
+  <Step><b>Gunakan Comprehend</b><p>Deteksi sentimen, entitas, frasa kunci, atau PII dari teks.</p></Step>
+  <Step><b>Gunakan Polly bila perlu</b><p>Ubah ringkasan teks menjadi audio untuk fitur aksesibilitas atau notifikasi suara.</p></Step>
+</Steps>
+
+<h3>Walkthrough 3: Bangun alur analytics sederhana</h3>
+
+<Steps>
+  <Step><b>Data mentah di S3</b><p>Anggap file CSV penjualan disimpan di bucket S3.</p></Step>
+  <Step><b>Glue membuat metadata</b><p>Crawler Glue menemukan skema dan menyimpan definisi tabel di Data Catalog.</p></Step>
+  <Step><b>Athena menjalankan SQL</b><p>Analyst menanyakan total penjualan per kategori tanpa membuat database server.</p></Step>
+  <Step><b>QuickSight membuat dashboard</b><p>Hasil analisis divisualisasikan agar mudah dipahami manajemen.</p></Step>
+</Steps>
+
+<h3>Checklist observasi</h3>
+
+<ul>
+  <li><p>Apa input utamanya: teks, audio, gambar, dokumen, atau data tabular?</p></li>
+  <li><p>Apa output yang diinginkan: label, transkrip, terjemahan, suara, sentimen, dashboard, atau prediksi?</p></li>
+  <li><p>Apakah cukup memakai AI siap pakai, atau perlu membangun model sendiri?</p></li>
+  <li><p>Apakah data sensitif perlu enkripsi, kontrol akses, audit, atau masking?</p></li>
+  <li><p>Apakah workload hanya batch, streaming, pencarian, dashboard, atau data warehouse?</p></li>
+</ul>
+
+</Section>
+
+<Section num="10" id="kesalahan-dan-jebakan" title="Kesalahan Umum dan Jebakan Soal" sub="Mayoritas kesalahan pemula berasal dari memilih layanan yang terlalu besar atau salah arah input-output.">
+
+<p class="lead">Jebakan utama: semua yang berbau AI dijawab SageMaker AI. Padahal CLF-C02 lebih sering menguji pemilihan layanan siap pakai.</p>
+
+<h3>Kesalahan umum pemula</h3>
+
+<CardGrid cols={2}>
+  <Card><h4>Memilih SageMaker AI untuk semua AI</h4><p>Gunakan SageMaker AI untuk custom ML. Untuk tugas umum, pilih layanan siap pakai yang lebih langsung.</p></Card>
+  <Card><h4>Tertukar Transcribe dan Polly</h4><p>Transcribe adalah audio ke teks. Polly adalah teks ke audio.</p></Card>
+  <Card><h4>Tertukar Rekognition dan Textract</h4><p>Rekognition untuk gambar/video umum. Textract untuk dokumen, form, tabel, dan key-value.</p></Card>
+  <Card><h4>Tertukar Comprehend dan Translate</h4><p>Comprehend memahami teks. Translate menerjemahkan teks.</p></Card>
+  <Card><h4>Tertukar Lex dan Amazon Q</h4><p>Lex untuk bot intent/slot. Amazon Q untuk asisten generative AI berbasis konteks dan data.</p></Card>
+  <Card><h4>Tertukar Athena dan Redshift</h4><p>Athena query langsung data di S3. Redshift adalah data warehouse terkelola untuk analitik skala besar.</p></Card>
+  <Card><h4>Tertukar Comprehend dan Macie</h4><p>Comprehend deteksi/redaksi PII dalam teks yang kamu kirim. Macie temukan data sensitif yang tersimpan di S3.</p></Card>
+  <Card><h4>Memilih Bedrock di soal CLF-C02</h4><p>Bedrock bukan in-scope CLF-C02. Untuk generative AI, jawaban yang dimaksud biasanya Amazon Q atau SageMaker AI.</p></Card>
+  <Card><h4>Tertukar Kendra dan OpenSearch</h4><p>Kendra intelligent search untuk tanya jawab dokumen. OpenSearch full-text search, log analytics, dan observability.</p></Card>
+</CardGrid>
+
+<h3>Jebakan pilihan jawaban</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Kata di soal</th><th>Jawaban cenderung benar</th><th>Distractor yang sering menggoda</th></tr></thead>
+  <tbody>
+    <tr><td>Detect unsafe images, labels, faces, objects</td><td>Rekognition</td><td>SageMaker AI</td></tr>
+    <tr><td>Extract tables from scanned forms</td><td>Textract</td><td>Rekognition</td></tr>
+    <tr><td>Customer sentiment from text</td><td>Comprehend</td><td>Translate</td></tr>
+    <tr><td>Translate content to another language</td><td>Translate</td><td>Comprehend</td></tr>
+    <tr><td>Convert call recording to text</td><td>Transcribe</td><td>Polly</td></tr>
+    <tr><td>Convert article text to spoken audio</td><td>Polly</td><td>Transcribe</td></tr>
+    <tr><td>Chatbot with intents and slots</td><td>Lex</td><td>Amazon Q</td></tr>
+    <tr><td>Enterprise assistant that answers from company data</td><td>Amazon Q</td><td>Lex</td></tr>
+    <tr><td>SQL query on S3 data</td><td>Athena</td><td>Redshift</td></tr>
+    <tr><td>Business dashboard and BI</td><td>QuickSight</td><td>Glue</td></tr>
+    <tr><td>Discover PII across S3 buckets</td><td>Macie</td><td>Comprehend</td></tr>
+    <tr><td>Detect or redact PII inside this text</td><td>Comprehend</td><td>Macie</td></tr>
+    <tr><td>Intelligent search Q&amp;A over documents</td><td>Kendra</td><td>OpenSearch Service</td></tr>
+    <tr><td>Build/train/deploy a custom ML model</td><td>SageMaker AI</td><td>Rekognition</td></tr>
+    <tr><td>Build GenAI app on foundation models</td><td>Bedrock (bukan in-scope)</td><td>Amazon Q</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="exam" icon="🎯" label="Strategi eliminasi"><p>Eliminasi jawaban yang terlalu teknis bila soal meminta solusi managed dan siap pakai. Untuk CLF-C02, layanan yang paling sederhana dan tepat guna sering menjadi jawaban terbaik.</p></Box>
+
+<h3>Jebakan keamanan dan biaya</h3>
+
+<ul>
+  <li><p>AI/ML tetap membutuhkan IAM permission yang benar. Jangan memberi akses data lebih luas dari kebutuhan.</p></li>
+  <li><p>Dokumen, audio, dan gambar pelanggan bisa berisi data sensitif. Pertimbangkan enkripsi, logging, data retention, dan masking.</p></li>
+  <li><p>Beberapa layanan menagih berdasarkan karakter, durasi audio, halaman dokumen, request, compute, storage, indeks, atau user subscription. Untuk praktik, selalu cek pricing resmi.</p></li>
+  <li><p>Region dan ketersediaan fitur bisa berbeda. Jangan mengklaim semua fitur tersedia di semua region tanpa verifikasi.</p></li>
+</ul>
+
+</Section>
+
+<Section num="11" id="ringkasan" title="Ringkasan &amp; Tips Ujian" sub="Pegang pola input-output, lalu petakan ke domain CLF-C02.">
+
+<p class="lead">Untuk lulus bagian AI/ML dan analytics di CLF-C02, kamu tidak perlu menjadi data scientist. Kamu perlu menjadi pemilih alat yang rapi.</p>
+
+<Recap title="Poin Penting"><ul><li><strong>Rekognition</strong> untuk gambar dan video.</li><li><strong>Textract</strong> untuk OCR dokumen, form, tabel, dan key-value.</li><li><strong>Comprehend</strong> untuk memahami teks, seperti sentimen, entitas, frasa kunci, bahasa, dan PII (ingat Macie untuk PII di S3).</li><li><strong>Translate</strong> untuk menerjemahkan teks antar bahasa.</li><li><strong>Transcribe</strong> untuk audio menjadi teks, <strong>Polly</strong> untuk teks menjadi suara (ingat arah panahnya).</li><li><strong>Lex</strong> untuk chatbot berbasis intent dan slot.</li><li><strong>Kendra</strong> untuk pencarian cerdas dokumen, beda dari OpenSearch Service yang untuk full-text search dan log analytics.</li><li><strong>Amazon Q</strong> untuk asisten generative AI: Q Business (end users, permission-aware), Q Developer (builders, ada Free Tier), Q in QuickSight (natural language BI).</li><li><strong>SageMaker AI</strong> untuk membangun, melatih, dan menjalankan model ML custom (nama baru sejak Des 2024 untuk Amazon SageMaker).</li><li><strong>Athena, EMR, Glue, Kinesis, OpenSearch Service, QuickSight, dan Redshift</strong> adalah 7 layanan analytics in-scope; pilih berdasarkan pola data dan tujuan analisis.</li><li><strong>Bedrock, Personalize, Forecast, Fraud Detector, Lake Formation, dan MSK</strong> bukan in-scope CLF-C02, cukup dikenali sekilas.</li></ul></Recap>
+
+<h3>Pemetaan ke domain CLF-C02</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Domain</th><th>Bobot</th><th>Kaitan dengan modul ini</th></tr></thead>
+  <tbody>
+    <tr><td>Domain 1: Cloud Concepts</td><td>24%</td><td>AI siap pakai menunjukkan value cloud: tidak perlu membangun model dan infrastruktur dari nol.</td></tr>
+    <tr><td>Domain 2: Security and Compliance</td><td>30%</td><td>Data AI/ML bisa sensitif. Pahami IAM, enkripsi, audit, privacy, dan shared responsibility saat memproses data pelanggan.</td></tr>
+    <tr><td>Domain 3: Cloud Technology and Services</td><td>34%</td><td>Ini domain paling relevan untuk service picker AI/ML dan analytics. Hafalkan use case, bukan detail implementasi.</td></tr>
+    <tr><td>Domain 4: Billing, Pricing, and Support</td><td>12%</td><td>Pahami bahwa model biaya berbeda per layanan, seperti request, karakter, durasi, halaman, compute, storage, indeks, atau pengguna.</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Rumus cepat 30 detik</h3>
+
+<Steps>
+  <Step><b>Baca input</b><p>Apakah inputnya gambar, video, dokumen, audio, teks, data stream, data S3, atau data warehouse?</p></Step>
+  <Step><b>Baca output</b><p>Apakah ingin label, teks, suara, terjemahan, sentimen, pencarian, jawaban generative AI, dashboard, atau prediksi?</p></Step>
+  <Step><b>Pilih layanan paling langsung</b><p>Jangan memilih SageMaker AI bila layanan siap pakai sudah menyelesaikan masalah.</p></Step>
+  <Step><b>Cek konteks keamanan dan biaya</b><p>Perhatikan data sensitif, izin akses, region, logging, dan model penagihan.</p></Step>
+</Steps>
+
+<Box variant="exam" icon="🏁" label="Tips terakhir"><p>Di CLF-C02, jawaban terbaik biasanya bukan yang paling canggih, tetapi yang paling sesuai dengan kata kunci use case, paling managed, dan paling sederhana untuk kebutuhan bisnis.</p></Box>
+
+</Section>

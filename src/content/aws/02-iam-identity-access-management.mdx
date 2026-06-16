@@ -1,0 +1,372 @@
+---
+title: "Modul IAM - AWS Cloud Practitioner CLF-C02"
+badge: "IAM"
+topTitle: "Identity and Access Management"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Memahami IAM sebagai sistem identitas, izin, MFA, access key, role, evaluasi policy, dan praktik keamanan dasar AWS."
+order: 2
+target: "CLF-C02"
+readingTime: "~75 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "IAM sebagai Kunci Gedung AWS" }
+  - { num: "02", id: "konsep-utama", title: "Konsep Utama IAM" }
+  - { num: "03", id: "users-groups-policies", title: "Users, Groups, dan Policies" }
+  - { num: "04", id: "mfa-root-user", title: "MFA dan Root User" }
+  - { num: "05", id: "cli-access-keys-cloudshell", title: "CLI, Access Keys, SDK, dan CloudShell" }
+  - { num: "06", id: "iam-roles", title: "IAM Roles dan Kredensial Sementara" }
+  - { num: "07", id: "cara-kerja-iam", title: "Cara Kerja IAM Saat Request Datang" }
+  - { num: "08", id: "hands-on-konseptual", title: "Hands-on Konseptual" }
+  - { num: "09", id: "security-tools", title: "Security Tools untuk IAM" }
+  - { num: "10", id: "kesalahan-umum", title: "Kesalahan Umum Pemula" }
+  - { num: "11", id: "jebakan-ujian", title: "Jebakan Soal CLF-C02" }
+  - { num: "12", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul IAM - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import IAMFig01 from "@figures/IAMFig01.astro";
+import IAMFig02 from "@figures/IAMFig02.astro";
+import IAMFig03 from "@figures/IAMFig03.astro";
+import IAMFig04 from "@figures/IAMFig04.astro";
+import IAMFig05 from "@figures/IAMFig05.astro";
+
+<Hero eyebrow="Modul &middot; Security" title="AWS <em>IAM</em><br />Identity and Access Management">
+  <p>IAM adalah sistem kunci, kartu akses, dan petugas keamanan untuk akun AWS: ia menentukan siapa boleh masuk, boleh melakukan apa, dan ke ruangan mana.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~75 menit baca</Chip>
+    <Chip icon="book">Domain 2 &middot; 30%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="IAM sebagai Kunci Gedung AWS" sub="Mulai dari analogi sebelum masuk definisi.">
+
+<p class="lead">Bayangkan akun AWS seperti gedung besar berisi ruang server, brankas data, ruang tagihan, dan panel kontrol.</p>
+
+Di gedung biasa, tidak semua orang boleh masuk ke semua ruangan. Resepsionis boleh melihat daftar tamu, teknisi boleh masuk ruang mesin, tim keuangan boleh masuk ruang tagihan, tetapi tamu tidak boleh membuka brankas. **IAM**, singkatan dari **AWS Identity and Access Management**, melakukan hal yang sama untuk AWS: menentukan siapa yang boleh masuk, apa yang boleh dilakukan, dan ke resource mana akses itu berlaku.
+
+IAM bukan layanan untuk menyimpan data aplikasi. IAM adalah layanan keamanan inti untuk mengelola **identitas** dan **izin**. Di level CLF-C02, kamu tidak perlu menjadi ahli menulis policy kompleks, tetapi kamu harus bisa membaca skenario dan memilih pola akses yang aman.
+
+<Box variant="analogy" icon="🔑" label="Analogi cepat"><p>Root user seperti pemilik gedung yang punya semua kunci. IAM user seperti kartu pegawai. Group seperti departemen. Policy seperti daftar pintu yang boleh dibuka. Role seperti kartu akses sementara untuk tamu atau mesin.</p></Box>
+
+Dua sifat IAM yang penting kamu ingat sejak awal: IAM adalah layanan **global**, bukan regional, sehingga user, group, role, dan policy yang kamu buat berlaku di seluruh Region tanpa perlu menyalinnya satu per satu. IAM juga **gratis**, tidak ada biaya tambahan untuk memakai layanan IAM itu sendiri. AWS menyebutnya secara eksplisit: IAM ditawarkan tanpa biaya tambahan. Lihat sumber resmi: <a href="https://aws.amazon.com/iam/faqs/">AWS IAM FAQs</a>.
+
+AWS menempatkan IAM sangat penting karena domain **Security and Compliance** memiliki bobot besar di CLF-C02. Exam guide resmi CLF-C02 menempatkan domain Security and Compliance sebesar 30% dan Cloud Technology and Services sebesar 34%, jadi IAM sering muncul sebagai fondasi untuk banyak soal keamanan dan layanan.
+
+<Box variant="tip" icon="🧭" label="Cara membaca modul ini"><p>Setiap section bergerak dari analogi, ke definisi, ke contoh nyata, lalu ke jebakan ujian. Jangan menghafal istilah secara mentah; pahami "kenapa" tiap pola dipilih, karena soal CLF-C02 hampir selalu berbentuk skenario, bukan definisi kamus.</p></Box>
+
+</Section>
+
+<Section num="02" id="konsep-utama" title="Konsep Utama IAM" sub="Istilah yang wajib hafal sebelum praktik.">
+
+<p class="lead">IAM terdiri dari beberapa benda kecil yang bekerja bersama, seperti sistem akses kantor modern.</p>
+
+<CardGrid cols={3}>
+  <Card><h4>Root user</h4><p>Identitas awal akun AWS dengan akses penuh ke semua resource dan pengaturan akun.</p></Card>
+  <Card><h4>IAM user</h4><p>Identitas jangka panjang di dalam akun AWS, biasanya untuk use case spesifik yang belum memakai federasi.</p></Card>
+  <Card><h4>IAM group</h4><p>Kumpulan IAM user agar policy bisa ditempel ke banyak user sekaligus.</p></Card>
+  <Card><h4>IAM policy</h4><p>Dokumen izin yang menjelaskan action apa yang diizinkan atau ditolak pada resource tertentu.</p></Card>
+  <Card><h4>IAM role</h4><p>Identitas yang dapat diasumsikan untuk mendapatkan kredensial sementara, bukan password permanen.</p></Card>
+  <Card><h4>MFA</h4><p>Multi-factor authentication menambahkan faktor kedua selain password, misalnya aplikasi autentikator atau security key.</p></Card>
+</CardGrid>
+
+Definisi paling sederhana: **authentication** menjawab "siapa kamu?", sedangkan **authorization** menjawab "kamu boleh melakukan apa?". IAM mengelola keduanya, tetapi inti ujian sering menanyakan authorization melalui policy, role, dan prinsip least privilege.
+
+Satu istilah lagi yang menyatukan semuanya adalah **principal**. Principal adalah entitas yang melakukan request ke AWS: bisa root user, IAM user, IAM role yang sedang diasumsikan, atau federated user. Saat kamu membaca soal, ubah kalimatnya menjadi pertanyaan IAM: principal mana yang bertindak, action apa yang diminta, dan ke resource mana, lalu apakah ada policy yang mengizinkan tanpa ada yang menolak.
+
+<Box variant="exam" icon="🎯" label="Fokus ujian"><p>Untuk CLF-C02, hafalkan perbedaan user, group, policy, role, MFA, dan root user, lalu ingat dua sifat IAM: global dan gratis. Banyak soal berbentuk skenario pendek, bukan definisi kamus.</p></Box>
+
+</Section>
+
+<Section num="03" id="users-groups-policies" title="Users, Groups, dan Policies" sub="Tiga komponen yang sering muncul di awal belajar IAM.">
+
+<p class="lead">User adalah orang atau beban kerja, group adalah departemen, policy adalah aturan akses tertulis.</p>
+
+<h3>User</h3>
+
+IAM user merepresentasikan identitas di akun AWS dan memiliki kredensial jangka panjang, misalnya password untuk console atau access key untuk akses programatik. AWS best practices saat ini mendorong penggunaan **federation** dan **IAM Identity Center** untuk manusia, lalu IAM user hanya untuk use case spesifik yang belum didukung federated users. Namun, untuk belajar dasar IAM, user tetap penting karena menjelaskan cara izin bekerja secara paling gamblang.
+
+<h3>Group</h3>
+
+Group memudahkan administrasi. Daripada menempel policy `ReadOnlyAccess` ke 20 user satu per satu, kamu membuat group `Auditor`, lalu menempel policy ke group itu. Saat user baru masuk tim audit, cukup masukkan ke group dan ia langsung mewarisi semua izinnya. Saat ia pindah tim, cukup keluarkan dari group. Inilah kenapa group membuat izin mudah dirawat: kamu mengelola izin di satu tempat, bukan di tiap orang.
+
+Ada beberapa aturan group yang sering jadi jebakan. Group **bukan identitas yang bisa login**, ia hanya wadah. Group **tidak bisa berisi group lain** (tidak ada nested group). Satu user **boleh menjadi anggota banyak group** sekaligus, dan izinnya adalah gabungan dari semua group plus policy yang menempel langsung padanya.
+
+<Figure><IAMFig02 /><Fragment slot="caption"><b>Gambar 1.</b> User dimasukkan ke dalam group; policy menempel ke group (diwarisi semua anggotanya) atau langsung ke role yang diasumsikan layanan.</Fragment></Figure>
+
+<h3>Policy</h3>
+
+Policy adalah dokumen izin berformat JSON. Prinsip utamanya adalah **least privilege**, yaitu memberi izin minimum yang dibutuhkan untuk menyelesaikan tugas, tidak lebih. Policy yang terlalu luas seperti `AdministratorAccess` untuk semua orang terlihat praktis di awal, tetapi berbahaya di dunia nyata dan hampir selalu menjadi jawaban yang salah di ujian.
+
+Kenapa least privilege bukan sekadar slogan? Karena setiap izin yang kamu berikan adalah pintu yang bisa disalahgunakan, baik oleh penyerang yang mencuri kredensial maupun oleh kesalahan tangan sendiri. Jika seorang auditor hanya butuh membaca, lalu kredensialnya bocor, kerusakan terbatas pada "bisa dilihat". Jika auditor itu punya `AdministratorAccess`, kebocoran yang sama bisa menghapus seluruh akun. Least privilege memperkecil "ledakan" saat sesuatu salah, bukan menyusahkan pekerjaan sehari-hari.
+
+<Box variant="tip" icon="💡" label="Cara membaca policy tanpa takut JSON"><p>Setiap statement policy menjawab tiga pertanyaan: efeknya Allow atau Deny, action apa yang diatur, dan ke resource mana izin itu berlaku.</p></Box>
+
+<h4>Contoh JSON policy singkat</h4>
+
+Berikut satu policy yang mengizinkan membaca objek dari satu bucket S3 saja. Perhatikan kurung kurawal yang menandai awal dan akhir dokumen.
+
+<pre><code>{`{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::laporan-keuangan/*"
+    }
+  ]
+}`}</code></pre>
+
+Mari bedah baris per baris agar JSON tidak terasa menakutkan:
+
+<Steps>
+  <Step><b>Version</b><p>`"2012-10-17"` adalah versi bahasa policy yang dipakai AWS, hampir selalu nilai ini; anggap saja stempel format, bukan tanggal yang perlu kamu ubah.</p></Step>
+  <Step><b>Statement</b><p>Daftar aturan. Satu policy bisa berisi banyak statement; di sini hanya ada satu, dibungkus dalam tanda kurung siku.</p></Step>
+  <Step><b>Effect</b><p>`"Allow"` berarti mengizinkan. Bila diganti `"Deny"`, statement ini justru menolak, dan deny selalu menang melawan allow mana pun.</p></Step>
+  <Step><b>Action</b><p>`"s3:GetObject"` adalah operasi API yang diatur, yaitu membaca isi satu objek S3. Format selalu `layanan:Aksi`.</p></Step>
+  <Step><b>Resource</b><p>`"arn:aws:s3:::laporan-keuangan/*"` adalah ARN target: semua objek di bucket `laporan-keuangan`, bukan semua bucket. Tanda bintang membatasi izin hanya ke isi bucket itu.</p></Step>
+</Steps>
+
+<Figure><IAMFig05 /><Fragment slot="caption"><b>Gambar 2.</b> Tiga jawaban inti tiap statement policy: Effect (boleh atau tidak), Action (aksi apa), dan Resource (ke benda mana).</Fragment></Figure>
+
+Inilah least privilege dalam wujud nyata: policy di atas hanya membolehkan `s3:GetObject` pada satu bucket. Ia tidak bisa menghapus objek (`s3:DeleteObject`), tidak bisa menyentuh bucket lain, dan tidak bisa membuat user IAM. Jika kebutuhan auditor cuma membaca, izin yang lebih besar dari ini adalah risiko tanpa manfaat.
+
+<Box variant="warn" icon="⚠️" label="Jebakan pemula"><p>Group bukan identitas yang bisa login, dan role bukan group. Group mengelompokkan user dan policy diwariskan ke anggotanya; sedangkan role diasumsikan untuk mendapatkan kredensial sementara, bukan untuk dijadikan tempat menampung user.</p></Box>
+
+</Section>
+
+<Section num="04" id="mfa-root-user" title="MFA dan Root User" sub="Kunci utama harus disimpan paling aman.">
+
+<p class="lead">Root user adalah pemilik seluruh gedung, jadi jangan dipakai untuk kegiatan harian.</p>
+
+Saat akun AWS pertama dibuat, root user memiliki akses penuh ke semua layanan dan resource, termasuk hal yang tidak bisa didelegasikan ke IAM user biasa seperti menutup akun atau mengubah AWS Support plan. AWS merekomendasikan root user **tidak dipakai untuk tugas harian**. Gunakan root user hanya untuk tugas tertentu yang memang memerlukan root, lalu amankan dengan password kuat dan MFA. Lihat sumber resmi: <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/root-user-best-practices.html">AWS, Root user best practices</a>.
+
+MFA menambahkan lapisan keamanan kedua. Password adalah **sesuatu yang kamu tahu**, sedangkan perangkat MFA adalah **sesuatu yang kamu punya**. Jika password bocor, penyerang tetap perlu faktor kedua yang ada secara fisik di tangan pemilik akun, sehingga kebocoran satu faktor saja tidak cukup untuk masuk.
+
+<Figure><IAMFig04 /><Fragment slot="caption"><b>Gambar 3.</b> MFA menggabungkan dua faktor: sesuatu yang kamu tahu (password) dan sesuatu yang kamu punya (passkey, aplikasi TOTP, atau hardware token); keduanya diperlukan untuk membuka satu pintu.</Fragment></Figure>
+
+<Box variant="tip" icon="🛡️" label="Praktik aman"><p>Aktifkan MFA untuk root user, jangan buat access key untuk root user, dan gunakan akun administratif terpisah dengan izin yang dibatasi untuk pekerjaan sehari-hari.</p></Box>
+
+<h3>Tipe MFA yang tersedia 2026</h3>
+
+AWS kini mendukung tiga jenis perangkat MFA: **passkey dan security key** berbasis FIDO (misalnya YubiKey atau passkey bawaan perangkat), **aplikasi autentikator virtual** yang menghasilkan kode TOTP (misalnya Google Authenticator, Authy, atau Duo), dan **hardware TOTP token** fisik. Root user dan IAM user dapat mendaftarkan hingga **delapan MFA device** dari tipe mana pun, sehingga akun tidak terkunci hanya karena satu perangkat hilang. Lihat sumber resmi: <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa.html">AWS, Using MFA in AWS</a>.
+
+<Box variant="warn" icon="⚠️" label="SMS sudah tidak ada"><p>MFA berbasis SMS sudah dihentikan AWS untuk IAM. Jika ada materi lama yang menyebut "kirim kode lewat SMS" sebagai opsi MFA, abaikan; pilih passkey, aplikasi autentikator, atau hardware token.</p></Box>
+
+<h3>Simultaneous sign-in</h3>
+
+Di AWS Console, beberapa identitas bisa masuk di browser berbeda, profil browser berbeda, atau mode incognito. Dalam praktik belajar, ini membantu membandingkan pengalaman root user, admin, dan user terbatas secara berdampingan. Namun di pekerjaan nyata, jangan berbagi kredensial. Setiap orang harus punya identitas sendiri agar audit trail jelas dan bisa ditelusuri di CloudTrail.
+
+<Box variant="exam" icon="🎯" label="Pola soal"><p>Jika pertanyaan menanyakan cara mengamankan akun AWS paling awal, jawaban yang sering benar adalah aktifkan MFA pada root user dan hindari penggunaan root untuk tugas harian.</p></Box>
+
+</Section>
+
+<Section num="05" id="cli-access-keys-cloudshell" title="CLI, Access Keys, SDK, dan CloudShell" sub="Cara program dan terminal berbicara dengan AWS.">
+
+<p class="lead">Console seperti dashboard mobil, CLI seperti perintah langsung ke mesin, SDK seperti library untuk aplikasi.</p>
+
+AWS Management Console dipakai lewat browser. **AWS CLI** dipakai lewat terminal. **AWS SDK** dipakai oleh kode aplikasi. Ketiganya pada akhirnya memanggil API AWS yang sama, dan agar CLI atau SDK boleh memanggil API itu, mereka membutuhkan kredensial.
+
+Access key adalah kredensial **jangka panjang** untuk menandatangani request programatik ke AWS CLI, AWS API, atau AWS SDK. Ia terdiri dari access key ID (semacam username) dan secret access key (semacam password). Karena access key jangka panjang berisiko bocor dan tidak otomatis kedaluwarsa, AWS merekomendasikan penggunaan role dan kredensial sementara bila memungkinkan.
+
+<CardGrid cols={2}>
+  <Card><h4>AWS CLI</h4><p>Cocok untuk admin yang ingin menjalankan perintah seperti membuat bucket, melihat instance, atau mengunduh laporan.</p></Card>
+  <Card><h4>AWS SDK</h4><p>Cocok untuk aplikasi yang perlu memanggil layanan AWS dari bahasa pemrograman seperti Python, JavaScript, Java, atau Go.</p></Card>
+  <Card><h4>Access key</h4><p>Berisi access key ID dan secret access key. Secret hanya bisa dilihat sekali saat dibuat, jadi perlakukan seperti password.</p></Card>
+  <Card><h4>AWS CloudShell</h4><p>Shell berbasis browser di AWS Console yang sudah memiliki AWS CLI dan memakai kredensial dari sesi console, tanpa perlu access key.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Jangan lakukan"><p>Jangan menaruh access key di GitHub, file publik, screenshot, atau chat. Jika bocor, nonaktifkan dan rotasi segera; lebih baik lagi, hindari access key statis dan pakai role.</p></Box>
+
+<h3>Perintah yang aman untuk latihan</h3>
+
+<pre><code>aws sts get-caller-identity
+aws iam get-user
+aws iam list-account-aliases</code></pre>
+
+Perintah `aws sts get-caller-identity` berguna untuk memastikan identitas apa yang sedang dipakai CLI: ia mengembalikan account ID, user ID, dan ARN. Ini seperti melihat kartu akses yang sedang kamu pegang sebelum membuka pintu, sehingga kamu tidak salah mengira sedang memakai user terbatas padahal sebenarnya sedang sebagai admin.
+
+</Section>
+
+<Section num="06" id="iam-roles" title="IAM Roles dan Kredensial Sementara" sub="Pola akses yang paling sering benar untuk layanan AWS.">
+
+<p class="lead">Role seperti kartu akses tamu yang berlaku sementara dan otomatis dicabut saat waktunya habis.</p>
+
+IAM role tidak memiliki password atau access key permanen seperti user. Role **diasumsikan** (assume) oleh principal, misalnya layanan AWS, aplikasi, federated user, atau akun AWS lain. Setiap role punya dua bagian: **trust policy** yang menentukan siapa boleh mengasumsikannya, dan **permissions policy** yang menentukan apa yang boleh dilakukan setelah diasumsikan. Setelah role diasumsikan, **AWS Security Token Service (STS)** memberikan kredensial sementara dengan masa berlaku terbatas, lalu kredensial itu hangus sendiri.
+
+Kenapa kredensial sementara lebih aman? Karena ia kedaluwarsa otomatis. Access key statis akan terus berlaku sampai seseorang ingat untuk mencabutnya; bila bocor hari ini dan baru ketahuan tiga bulan lagi, penyerang punya tiga bulan akses. Kredensial sementara dari STS hidup hanya dalam hitungan jam, jadi jendela penyalahgunaannya jauh lebih sempit. Sebagai gambaran, `AssumeRole` default-nya sekitar 1 jam (dapat dikonfigurasi hingga 12 jam tergantung pengaturan role), sementara token sesi seperti `GetSessionToken` default 12 jam dengan maksimum 36 jam. Untuk CLF-C02 kamu tidak perlu menghafal angka pastinya; cukup ingat polanya: **sementara dan berumur pendek lebih aman daripada permanen**.
+
+Contoh paling penting: aplikasi di EC2 perlu membaca objek dari S3. Pemula mungkin ingin menyimpan access key di dalam server. Pola AWS yang lebih aman adalah membuat IAM role dengan izin S3 yang dibutuhkan, lalu menempelkan role itu ke EC2. AWS SDK dan CLI di instance dapat mengambil kredensial sementara secara otomatis melalui instance metadata, sehingga **tidak ada access key yang pernah ditulis di kode atau di disk server**.
+
+<Figure><IAMFig01 /><Fragment slot="caption"><b>Gambar 4.</b> IAM mengevaluasi principal, policy, dan resource. Role membantu layanan atau federated user memakai kredensial sementara tanpa menyimpan access key jangka panjang.</Fragment></Figure>
+
+<Compare aLabel="IAM User &middot; kredensial jangka panjang" bLabel="IAM Role &middot; kredensial sementara" aTone="muted" bTone="blue">
+  <Fragment slot="a"><ul><li>Punya kredensial tetap: password dan/atau access key.</li><li>Kredensial berlaku terus sampai dicabut manual.</li><li>Cocok untuk identitas manusia atau use case yang belum pakai federasi.</li><li>Risiko lebih besar bila access key bocor dan lupa dirotasi.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Tidak punya kredensial tetap; diasumsikan saat dibutuhkan.</li><li>STS memberi kredensial sementara yang kedaluwarsa otomatis.</li><li>Pilihan utama untuk layanan AWS dan akses lintas akun.</li><li>Tidak ada access key untuk disimpan, bocor, atau dirotasi.</li></ul></Fragment>
+</Compare>
+
+<Box variant="exam" icon="🎯" label="Ingat untuk ujian"><p>Jika layanan AWS perlu mengakses layanan AWS lain, jawaban yang paling sering benar adalah gunakan IAM role, bukan access key statis. "Service to service" hampir selalu memetakan ke "role".</p></Box>
+
+<h3>Contoh skenario nyata</h3>
+
+<CardGrid cols={2}>
+  <Card><h4>EC2 membaca S3</h4><p>Gunakan IAM role untuk EC2 dengan izin baca ke bucket tertentu, lalu lampirkan role ke instance.</p></Card>
+  <Card><h4>Lambda menulis log</h4><p>Gunakan execution role agar Lambda bisa menulis ke CloudWatch Logs tanpa kredensial tertanam.</p></Card>
+  <Card><h4>Akun lain membaca data</h4><p>Gunakan cross-account role yang trust policy-nya mengizinkan akun terpercaya untuk assume.</p></Card>
+  <Card><h4>Karyawan login via IdP</h4><p>Gunakan federation atau IAM Identity Center agar manusia memakai kredensial sementara, bukan IAM user manual.</p></Card>
+</CardGrid>
+
+</Section>
+
+<Section num="07" id="cara-kerja-iam" title="Cara Kerja IAM Saat Request Datang" sub="Alur sederhana dari login sampai izin diputuskan.">
+
+<p class="lead">Setiap request AWS melewati pertanyaan dasar: siapa, mau apa, ke resource mana, dan apakah diizinkan.</p>
+
+Saat sebuah request sampai ke AWS, IAM tidak menebak. Ia menjalankan urutan evaluasi yang sama setiap kali. Memahami urutan ini membuat banyak soal CLF-C02 langsung jelas, karena jawaban yang benar biasanya mengikuti aturan ini, bukan intuisi.
+
+<Steps>
+  <Step><b>Principal mengirim request</b><p>Principal bisa berupa IAM user, role yang sedang diasumsikan, federated user, atau layanan AWS. Request membawa konteks: action apa dan resource mana.</p></Step>
+  <Step><b>AWS memeriksa autentikasi</b><p>AWS memastikan identitas valid melalui password, MFA, access key, token sesi, atau mekanisme federasi sebelum melihat izin.</p></Step>
+  <Step><b>AWS mengevaluasi semua policy yang relevan</b><p>IAM mengumpulkan identity-based policy, resource-based policy, permission boundary, dan service control policy organisasi bila ada.</p></Step>
+  <Step><b>AWS membuat keputusan</b><p>Mulai dari default deny. Bila ada explicit deny di policy mana pun, request langsung ditolak. Bila tidak ada deny dan ada minimal satu allow yang cocok, request diizinkan.</p></Step>
+</Steps>
+
+Ada tiga aturan emas yang menjelaskan keputusan akhir, dan ketiganya layak kamu hafal:
+
+<CardGrid cols={3}>
+  <Card><h4>1. Default deny</h4><p>Secara bawaan semua request ditolak. Tanpa izin yang diberikan secara eksplisit, jawabannya selalu tidak (implicit deny).</p></Card>
+  <Card><h4>2. Allow membuka</h4><p>Sebuah allow dari minimal satu policy yang relevan diperlukan untuk mengubah default deny menjadi izin.</p></Card>
+  <Card><h4>3. Explicit deny menang</h4><p>Satu deny eksplisit di policy mana pun mengalahkan semua allow. Tidak ada allow yang bisa membatalkan deny.</p></Card>
+</CardGrid>
+
+<Figure><IAMFig03 /><Fragment slot="caption"><b>Gambar 5.</b> Alur evaluasi izin: cek explicit deny dulu (langsung tolak bila ada), lalu cek apakah ada allow yang cocok; tanpa allow, request jatuh ke default deny.</Fragment></Figure>
+
+Untuk CLF-C02, kamu cukup memahami tiga aturan ini. Detail evaluasi policy yang sangat dalam, seperti urutan tepat resource policy versus permission boundary, lebih cocok untuk level Associate atau Specialty. Yang penting kamu ingat: **default deny**, **butuh allow**, dan **explicit deny mengalahkan allow**. Lihat sumber resmi: <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html">AWS, Policy evaluation logic</a>.
+
+<Box variant="analogy" icon="🚪" label="Analogi pintu kantor"><p>Bayangkan kartu akses yang harus diaktifkan dulu agar pintu terbuka (default-nya terkunci). Satu aturan berkata "boleh masuk ruang rapat", tetapi aturan keamanan gedung berkata "dilarang masuk setelah jam 10 malam"; larangan eksplisit menang, dan pintu tetap terkunci.</p></Box>
+
+</Section>
+
+<Section num="08" id="hands-on-konseptual" title="Hands-on Konseptual" sub="Walkthrough ringan tanpa harus menghafal semua klik console.">
+
+<p class="lead">Tujuan hands-on IAM bukan klik cepat, tetapi memahami pola aman yang akan kamu pilih di ujian.</p>
+
+<h3>Latihan 1, buat user baca-saja</h3>
+
+<Steps>
+  <Step><b>Buat group `ReadOnly`</b><p>Bayangkan group ini untuk auditor yang hanya perlu melihat resource tanpa mengubahnya.</p></Step>
+  <Step><b>Attach policy baca-saja</b><p>Gunakan managed policy yang sesuai untuk latihan, lalu pahami bahwa produksi sering butuh policy lebih spesifik seperti contoh JSON di section 03.</p></Step>
+  <Step><b>Buat IAM user latihan</b><p>Tambahkan user ke group, lalu uji apakah user bisa melihat resource tetapi tidak bisa menghapusnya.</p></Step>
+  <Step><b>Aktifkan MFA</b><p>Tambahkan MFA untuk menunjukkan bahwa login console lebih aman daripada hanya password.</p></Step>
+</Steps>
+
+<h3>Latihan 2, pakai CloudShell untuk mengecek identitas</h3>
+
+<Steps>
+  <Step><b>Buka CloudShell</b><p>Gunakan CloudShell dari AWS Console sehingga tidak perlu memasang CLI di laptop.</p></Step>
+  <Step><b>Jalankan `aws sts get-caller-identity`</b><p>Perhatikan account, user ID, dan ARN untuk memahami identitas aktif.</p></Step>
+  <Step><b>Bandingkan dengan user lain</b><p>Masuk dengan user berbeda di profil browser lain, lalu lihat perbedaan hasilnya.</p></Step>
+</Steps>
+
+<h3>Latihan 3, role untuk layanan</h3>
+
+<Steps>
+  <Step><b>Buat role untuk EC2 atau Lambda</b><p>Pilih trusted entity berupa layanan AWS yang akan memakai role; ini mengisi trust policy.</p></Step>
+  <Step><b>Tambahkan izin minimum</b><p>Misalnya hanya membaca bucket tertentu seperti contoh `s3:GetObject`, bukan akses penuh ke semua S3.</p></Step>
+  <Step><b>Tempelkan role ke layanan</b><p>Layanan mendapat kredensial sementara dari STS tanpa menyimpan access key di kode.</p></Step>
+</Steps>
+
+<Box variant="tip" icon="💡" label="Tujuan belajar"><p>Setelah latihan, kamu harus bisa menjelaskan kenapa role lebih aman daripada access key statis untuk layanan AWS, dan kenapa least privilege memperkecil dampak saat kredensial bocor.</p></Box>
+
+</Section>
+
+<Section num="09" id="security-tools" title="Security Tools untuk IAM" sub="Alat audit ringan yang sering disebut di materi AWS dasar.">
+
+<p class="lead">IAM bukan hanya membuat user dan policy, tetapi juga memeriksa apakah akses sudah aman dan tidak berlebihan.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>IAM Credential Report</h4><p>Laporan level akun yang mencantumkan status kredensial semua user: password, access key, dan MFA. Dapat dibuat maksimum sekali tiap 4 jam.</p></Card>
+  <Card><h4>IAM Access Analyzer</h4><p>Membantu menemukan akses eksternal yang tidak diinginkan, akses yang tidak terpakai, serta memvalidasi dan memeriksa policy.</p></Card>
+  <Card><h4>Last accessed information</h4><p>Menunjukkan kapan layanan terakhir dipakai oleh sebuah identitas, agar izin yang tidak pernah dipakai bisa dipangkas.</p></Card>
+  <Card><h4>AWS CloudTrail</h4><p>Merekam aktivitas API sehingga tim bisa menelusuri siapa melakukan apa, kapan, dan dari mana di akun AWS.</p></Card>
+</CardGrid>
+
+Credential report sangat berguna untuk pertanyaan audit dasar. Misalnya, "bagaimana melihat IAM user mana yang belum mengaktifkan MFA?" Jawaban yang masuk akal adalah menggunakan IAM credential report, yang merangkum status MFA, password, dan access key tiap user dalam satu file.
+
+<h3>IAM Access Analyzer: gratis atau berbayar?</h3>
+
+IAM Access Analyzer punya beberapa fungsi dengan model biaya berbeda, dan ini sering membingungkan saat melihat tagihan. **External access analyzer** (menemukan resource yang bisa diakses dari luar akun) dan **policy validation** bersifat **gratis**. Sementara itu, **unused access analyzer** (menandai izin yang tidak pernah dipakai) berbayar sekitar 0,20 USD per IAM role atau user per bulan, dan **internal access analyzer** berbayar sekitar 9 USD per resource yang dipantau per Region per bulan. Untuk CLF-C02 kamu tidak perlu hafal angkanya; cukup ingat bahwa Access Analyzer **tidak sepenuhnya gratis** dan IAM inti-nya yang gratis. Lihat sumber resmi: <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/what-is-access-analyzer.html">AWS, IAM Access Analyzer</a> dan <a href="https://aws.amazon.com/iam/access-analyzer/pricing/">harga Access Analyzer</a>.
+
+<Box variant="exam" icon="🎯" label="Pola soal"><p>Jika soal menanyakan laporan status password, access key, dan MFA untuk semua IAM user dalam satu akun, ingat IAM Credential Report. Jika soal menanyakan "siapa di luar akun yang bisa mengakses resource saya", ingat IAM Access Analyzer.</p></Box>
+
+</Section>
+
+<Section num="10" id="kesalahan-umum" title="Kesalahan Umum Pemula" sub="Yang terlihat praktis, tetapi sering tidak aman.">
+
+<p class="lead">Kesalahan IAM biasanya bukan karena AWS rumit, tetapi karena izin dibuat terlalu lebar sejak awal.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Memakai root untuk harian</h4><p>Root user terlalu kuat untuk operasi biasa. Gunakan identitas admin terpisah dan simpan root untuk tugas khusus.</p></Card>
+  <Card><h4>Memberi admin ke semua orang</h4><p>AdministratorAccess memang cepat, tetapi melanggar least privilege dan memperbesar dampak kesalahan atau kebocoran.</p></Card>
+  <Card><h4>Menyimpan access key di kode</h4><p>Access key yang masuk repository bisa disalahgunakan. Gunakan role dan secret management yang tepat.</p></Card>
+  <Card><h4>Tidak mengaktifkan MFA</h4><p>Password saja tidak cukup untuk akun penting, terutama root dan identitas administratif.</p></Card>
+  <Card><h4>Membuat user untuk aplikasi di EC2</h4><p>Untuk EC2, Lambda, dan layanan AWS lain, role biasanya lebih tepat daripada user dengan access key.</p></Card>
+  <Card><h4>Tidak meninjau izin lama</h4><p>Izin yang tidak pernah dipakai tetap menjadi risiko. Gunakan last accessed info dan Access Analyzer untuk mengurangi permukaan serangan.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Prinsip sederhana"><p>Jika kamu ragu, mulai dari izin kecil, uji, lalu tambah seperlunya. Jangan mulai dari izin besar lalu berharap nanti dirapikan; "nanti" jarang datang.</p></Box>
+
+<h3>Best practice modern 2026</h3>
+
+AWS kini menekankan beberapa pergeseran. Untuk **manusia**, pakai IAM Identity Center atau federation, bukan membuat IAM user manual satu per satu. Untuk **workload dan layanan AWS**, pakai IAM role, bukan access key jangka panjang. Bila kamu memakai AWS Organizations, ada fitur **centralized root access** yang memungkinkan management account menghapus kredensial root (password, access key, MFA) dari member account, bahkan akun baru di Organizations kini bisa dibuat tanpa kredensial root sama sekali. Untuk CLF-C02, cukup tahu arah besarnya: kurangi kredensial jangka panjang, hindari root, dan pakai identitas terpusat.
+
+</Section>
+
+<Section num="11" id="jebakan-ujian" title="Jebakan Soal CLF-C02" sub="Cara membedakan opsi yang mirip.">
+
+<p class="lead">Soal IAM sering terasa mudah, tetapi opsi salahnya dibuat mirip dengan praktik nyata yang buruk.</p>
+
+<Recap title="Pola jebakan yang sering muncul"><ul><li><strong>User vs role:</strong> jika akses untuk layanan AWS, pilih role. Jika akses manusia dalam jumlah banyak, pikirkan federation atau IAM Identity Center.</li><li><strong>Root vs admin:</strong> root bukan untuk tugas harian. Admin user atau role tetap harus dibatasi sesuai kebutuhan.</li><li><strong>Password vs MFA:</strong> password kuat bagus, tetapi MFA adalah kontrol tambahan yang sangat dianjurkan, terutama untuk root.</li><li><strong>Access key vs temporary credentials:</strong> access key adalah kredensial jangka panjang, sementara role menghasilkan kredensial sementara dari STS.</li><li><strong>Policy luas vs least privilege:</strong> jawaban aman biasanya memberi izin minimum, bukan wildcard luas seperti AdministratorAccess.</li><li><strong>Explicit deny vs allow:</strong> bila ada deny eksplisit, ia menang; tidak ada allow yang bisa membatalkannya.</li></ul></Recap>
+
+<h3>Contoh gaya pertanyaan</h3>
+
+<Box variant="exam" icon="🧪" label="Skenario 1"><p>Aplikasi di EC2 harus membaca bucket S3 tertentu. Pilih IAM role untuk EC2 dengan izin baca ke bucket tersebut, bukan menyimpan access key dalam file konfigurasi.</p></Box>
+
+<Box variant="exam" icon="🧪" label="Skenario 2"><p>Perusahaan ingin tahu user mana yang belum memakai MFA. Pilih IAM Credential Report, bukan billing report atau Trusted Advisor sebagai jawaban utama untuk status kredensial user.</p></Box>
+
+<Box variant="exam" icon="🧪" label="Skenario 3"><p>Tim ingin memberi akses sementara ke akun lain. Pilih IAM role cross-account, bukan membagikan password atau access key.</p></Box>
+
+<Box variant="exam" icon="🧪" label="Skenario 4"><p>Sebuah policy mengizinkan `s3:*` tetapi ada policy lain dengan explicit deny pada `s3:DeleteObject`. Hasilnya: user tetap tidak bisa menghapus objek, karena explicit deny mengalahkan allow.</p></Box>
+
+</Section>
+
+<Section num="12" id="ringkasan" title="Ringkasan & Tips Ujian" sub="Peta ingatan cepat sebelum lanjut ke modul berikutnya.">
+
+<p class="lead">IAM adalah fondasi keamanan AWS, jadi pahami pola aksesnya, bukan hanya hafal nama fiturnya.</p>
+
+<Recap title="Poin Penting"><ul><li>IAM mengatur authentication dan authorization untuk identitas dan resource AWS; ia layanan global dan gratis.</li><li>Root user punya akses penuh, harus diamankan dengan MFA, dan tidak digunakan untuk tugas harian.</li><li>Group memudahkan pemberian policy ke banyak IAM user, tetapi group bukan identitas yang login dan tidak bisa nested.</li><li>Policy menentukan izin lewat Effect, Action, dan Resource, dengan prinsip least privilege, yaitu izin minimum yang dibutuhkan.</li><li>Role memberikan kredensial sementara dari STS dan menjadi pilihan aman untuk layanan AWS yang mengakses layanan lain.</li><li>Access key adalah kredensial jangka panjang untuk akses programatik, jadi gunakan hati-hati dan pilih temporary credentials bila memungkinkan.</li><li>Evaluasi izin: default deny, butuh allow, dan explicit deny selalu mengalahkan allow.</li><li>MFA menggabungkan sesuatu yang kamu tahu dan sesuatu yang kamu punya; hingga delapan device per identitas, tanpa SMS.</li><li>Credential report mengaudit status password, access key, dan MFA; Access Analyzer menemukan akses eksternal (gratis) dan akses tak terpakai (berbayar).</li></ul></Recap>
+
+<h3>Pemetaan ke domain CLF-C02</h3>
+
+<CardGrid cols={2}>
+  <Card><h4>Domain 2, Security and Compliance, 30%</h4><p>IAM, MFA, least privilege, root user, evaluasi policy, credential report, dan role adalah materi inti domain ini.</p></Card>
+  <Card><h4>Domain 3, Cloud Technology and Services, 34%</h4><p>Role sering muncul saat layanan seperti EC2, Lambda, S3, dan CloudWatch perlu saling mengakses secara aman.</p></Card>
+  <Card><h4>Domain 1, Cloud Concepts, 24%</h4><p>Shared responsibility dan keamanan sebagai manfaat cloud sering memakai IAM sebagai contoh praktis.</p></Card>
+  <Card><h4>Domain 4, Billing, Pricing, and Support, 12%</h4><p>Akses billing tetap perlu izin IAM yang sesuai, jadi root bukan jawaban harian untuk melihat biaya.</p></Card>
+</CardGrid>
+
+<h3>Tips ujian cepat</h3>
+
+<ul>
+  <li>Jika melihat kata "AWS service needs access to another AWS service", pikirkan **IAM role**.</li>
+  <li>Jika melihat kata "human users at scale", pikirkan **federation** atau **IAM Identity Center**, bukan membuat banyak IAM user manual.</li>
+  <li>Jika melihat kata "root user", cari jawaban tentang **MFA**, **tidak dipakai harian**, dan **tidak membuat access key root**.</li>
+  <li>Jika melihat kata "minimum permissions", jawabannya mengarah ke **least privilege**.</li>
+  <li>Jika melihat kata "status MFA dan access key semua user", ingat **IAM Credential Report**.</li>
+  <li>Jika ada **explicit deny** dan **allow** bertemu, deny menang.</li>
+</ul>
+
+<Box variant="exam" icon="🎯" label="Kalimat kunci"><p>Untuk pemula CLF-C02, IAM bisa diringkas sebagai "siapa boleh melakukan apa, pada resource mana, dengan bukti akses yang seaman mungkin", dengan default deny sampai ada allow yang jelas.</p></Box>
+
+</Section>

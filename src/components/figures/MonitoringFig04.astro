@@ -1,0 +1,48 @@
+<svg viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg" font-family="Inter, ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <marker id="mon4arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9c4a2f" />
+    </marker>
+  </defs>
+  <text x="380" y="28" text-anchor="middle" font-size="17" fill="#241f17" font-weight="700">Dari telemetry ke tindakan otomatis</text>
+
+  <rect x="24" y="64" width="138" height="120" rx="14" fill="#241f17" />
+  <text x="93" y="92" text-anchor="middle" font-size="13" fill="#bd5d3e" font-weight="700">Sumber</text>
+  <text x="93" y="116" text-anchor="middle" font-size="11" fill="#d9d4c4">EC2, Lambda, RDS</text>
+  <text x="93" y="134" text-anchor="middle" font-size="11" fill="#d9d4c4">DynamoDB, SQS</text>
+  <text x="93" y="158" text-anchor="middle" font-size="11" fill="#d9d4c4">+ CloudWatch Agent</text>
+  <text x="93" y="176" text-anchor="middle" font-size="10" fill="#c6c0ac">(metrik &amp; log)</text>
+
+  <rect x="200" y="56" width="150" height="64" rx="14" fill="#f0e3d8" stroke="#9c4a2f" stroke-width="2" />
+  <text x="275" y="82" text-anchor="middle" font-size="13" fill="#9c4a2f" font-weight="700">CloudWatch</text>
+  <text x="275" y="102" text-anchor="middle" font-size="11" fill="#6e6a5c">Metrics &amp; Logs</text>
+  <rect x="200" y="132" width="150" height="60" rx="14" fill="#f0e3d8" stroke="#bd5d3e" stroke-width="2" />
+  <text x="275" y="158" text-anchor="middle" font-size="13" fill="#9c4a2f" font-weight="700">Alarm</text>
+  <text x="275" y="178" text-anchor="middle" font-size="11" fill="#6e6a5c">threshold terlampaui</text>
+
+  <rect x="392" y="92" width="150" height="64" rx="14" fill="#ece6f3" stroke="#6a5aa6" stroke-width="2" />
+  <text x="467" y="118" text-anchor="middle" font-size="13" fill="#6a5aa6" font-weight="700">SNS / EventBridge</text>
+  <text x="467" y="138" text-anchor="middle" font-size="11" fill="#6e6a5c">notifikasi &amp; routing</text>
+
+  <rect x="584" y="44" width="152" height="56" rx="14" fill="#e1f1ec" stroke="#0a7d6e" stroke-width="2" />
+  <text x="660" y="68" text-anchor="middle" font-size="12" fill="#0a7d6e" font-weight="700">Notifikasi tim</text>
+  <text x="660" y="87" text-anchor="middle" font-size="11" fill="#6e6a5c">email, chat, on-call</text>
+  <rect x="584" y="112" width="152" height="56" rx="14" fill="#e1f1ec" stroke="#0a7d6e" stroke-width="2" />
+  <text x="660" y="136" text-anchor="middle" font-size="12" fill="#0a7d6e" font-weight="700">Auto Scaling</text>
+  <text x="660" y="155" text-anchor="middle" font-size="11" fill="#6e6a5c">tambah kapasitas</text>
+  <rect x="584" y="180" width="152" height="56" rx="14" fill="#e1f1ec" stroke="#0a7d6e" stroke-width="2" />
+  <text x="660" y="204" text-anchor="middle" font-size="12" fill="#0a7d6e" font-weight="700">Lambda / SSM</text>
+  <text x="660" y="223" text-anchor="middle" font-size="11" fill="#6e6a5c">remediation otomatis</text>
+
+  <line x1="162" y1="100" x2="200" y2="92" stroke="#9c4a2f" stroke-width="3" marker-end="url(#mon4arrow)" />
+  <line x1="162" y1="148" x2="200" y2="158" stroke="#9c4a2f" stroke-width="3" marker-end="url(#mon4arrow)" />
+  <line x1="275" y1="120" x2="275" y2="132" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#mon4arrow)" />
+  <text x="290" y="128" text-anchor="start" font-size="10" fill="#6e6a5c">evaluasi</text>
+  <line x1="350" y1="160" x2="392" y2="130" stroke="#9c4a2f" stroke-width="3" marker-end="url(#mon4arrow)" />
+  <line x1="542" y1="116" x2="584" y2="80" stroke="#9c4a2f" stroke-width="3" marker-end="url(#mon4arrow)" />
+  <line x1="542" y1="124" x2="584" y2="138" stroke="#9c4a2f" stroke-width="3" marker-end="url(#mon4arrow)" />
+  <line x1="542" y1="140" x2="584" y2="200" stroke="#9c4a2f" stroke-width="3" marker-end="url(#mon4arrow)" />
+
+  <rect x="120" y="288" width="520" height="44" rx="22" fill="#fbfaf5" stroke="#d9d4c4" stroke-width="2" />
+  <text x="380" y="315" text-anchor="middle" font-size="13" fill="#241f17" font-weight="700">Observe &rarr; Alarm &rarr; Notify/Route &rarr; Act</text>
+</svg>

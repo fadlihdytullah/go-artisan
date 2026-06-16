@@ -1,0 +1,424 @@
+---
+title: "Modul Migration, Hybrid Cloud & Edge - AWS Cloud Practitioner CLF-C02"
+badge: "MIG"
+topTitle: "Migration, Hybrid Cloud & Edge"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Memahami strategi migrasi, layanan migration picker, hybrid storage, dan edge AWS untuk skenario CLF-C02."
+order: 16
+target: "CLF-C02"
+readingTime: "~85 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Migrasi seperti pindah rumah" }
+  - { num: "02", id: "kenapa-penting", title: "Kenapa migrasi penting di CLF-C02" }
+  - { num: "03", id: "strategi-migrasi", title: "Tujuh R strategi migrasi" }
+  - { num: "04", id: "alur-migrasi", title: "Alur besar migrasi" }
+  - { num: "05", id: "service-picker-aplikasi", title: "Service picker untuk aplikasi" }
+  - { num: "06", id: "database-migration", title: "Database migration, DMS dan SCT" }
+  - { num: "07", id: "online-offline-transfer", title: "Transfer data, online vs offline" }
+  - { num: "08", id: "hybrid-storage", title: "Hybrid storage dengan Storage Gateway" }
+  - { num: "09", id: "hybrid-edge", title: "Hybrid Cloud dan Edge" }
+  - { num: "10", id: "skenario-walkthrough", title: "Skenario nyata dan walkthrough" }
+  - { num: "11", id: "walkthrough-konseptual", title: "Walkthrough konseptual yang aman" }
+  - { num: "12", id: "jebakan-umum", title: "Kesalahan umum dan jebakan soal" }
+  - { num: "13", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul Migration, Hybrid Cloud & Edge - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import MigFig01 from "@figures/MigFig01.astro";
+import MigFig02 from "@figures/MigFig02.astro";
+import MigFig03 from "@figures/MigFig03.astro";
+import MigFig04 from "@figures/MigFig04.astro";
+import MigFig05 from "@figures/MigFig05.astro";
+import MigFig06 from "@figures/MigFig06.astro";
+import MigFig07 from "@figures/MigFig07.astro";
+import MigFig08 from "@figures/MigFig08.astro";
+
+<Hero eyebrow="Modul &middot; Migration" title="Migration, Hybrid Cloud &amp; Edge<br /><em>CLF-C02</em>">
+  <p>Pindah ke AWS bukan sekadar memindahkan server, tetapi memilih cara pindah yang paling masuk akal untuk aplikasi, data, biaya, risiko, dan lokasi pengguna.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~85 menit baca</Chip>
+    <Chip icon="book">Domain 3 &middot; 34%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Migrasi seperti pindah rumah" sub="Analogi dulu, baru layanan AWS.">
+
+<p class="lead">Bayangkan perusahaan seperti keluarga yang ingin pindah rumah dari rumah lama ke apartemen modern, tidak semua barang harus diperlakukan sama.</p>
+
+Ada barang yang langsung dibawa apa adanya, seperti lemari dan meja. Ada barang yang diganti karena lebih murah membeli baru. Ada barang yang ditinggalkan karena sudah tidak dipakai. Ada pula barang yang tetap di rumah lama karena belum siap dipindahkan. Migrasi cloud juga begitu, setiap aplikasi punya nasib berbeda.
+
+Dalam konteks AWS, migrasi berarti memindahkan atau menata ulang aplikasi, database, data, dan operasi dari lingkungan lama ke AWS Cloud. Lingkungan lama bisa data center sendiri, colocation, cloud lain, atau cabang perusahaan. Untuk CLF-C02, yang penting bukan menjalankan cutover teknis, tetapi memahami **strategi**, **alasan bisnis**, dan **layanan mana untuk pekerjaan apa**.
+
+<Box variant="analogy" icon="🏠" label="Analogi utama"><p>Server adalah barang rumah, database adalah arsip penting, jaringan adalah akses jalan, dan cutover adalah hari pindahan saat pengguna mulai memakai alamat baru.</p></Box>
+
+Kenapa pembedaan ini penting untukmu? Karena soal CLF-C02 jarang bertanya "bagaimana cara teknis memindahkan VM ini", tetapi sering bertanya "perusahaan punya kondisi X, layanan atau strategi mana yang paling tepat". Begitu kamu memetakan tiap kata kunci skenario ke satu jawaban inti (discovery, business case, rehost, pindah data database, konversi schema, transfer data besar, akses file lokal, atau infrastruktur AWS di site), pilihan ganda yang tadinya membingungkan jadi jauh lebih mudah dieliminasi.
+
+<CardGrid cols={3}>
+  <Card><h4>Strategi</h4><p>Menentukan apakah aplikasi dibawa apa adanya, dioptimalkan, diganti, ditahan, atau dimatikan. Ini bahasa keputusan, bukan nama layanan.</p></Card>
+  <Card><h4>Alat migrasi</h4><p>Membantu discovery, business case, rehost server, memindahkan database, dan melacak progres migrasi.</p></Card>
+  <Card><h4>Hybrid dan edge</h4><p>Menghubungkan lokasi on-premises dengan AWS saat data, latency, atau aturan bisnis belum bisa sepenuhnya cloud.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="🧭" label="Cara membaca modul ini"><p>Sebagian besar materi yang diuji ada di Domain 3, yaitu memilih layanan yang tepat untuk skenario. Bagian strategi R menyentuh Domain 1, dan Migration Evaluator menyentuh Domain 4. Jadikan service picker sebagai inti latihanmu.</p></Box>
+
+</Section>
+
+<Section num="02" id="kenapa-penting" title="Kenapa migrasi penting di CLF-C02" sub="Topik ini menyentuh Domain 1 dan Domain 3.">
+
+<p class="lead">CLF-C02 menguji apakah kamu bisa menjelaskan manfaat migrasi dan memilih layanan AWS yang cocok untuk skenario umum.</p>
+
+Panduan ujian resmi CLF-C02 menyebut empat domain dengan bobot tetap, yaitu Domain 1 Cloud Concepts 24%, Domain 2 Security and Compliance 30%, Domain 3 Cloud Technology and Services 34%, dan Domain 4 Billing, Pricing, and Support 12%. Ujian terdiri dari 65 soal (50 dinilai), skor skala 100 sampai 1000, dan nilai lulus 700. Untuk topik migrasi, bobot terbesar ada di Domain 3, karena di situlah kamu memilih layanan untuk skenario. Lihat [AWS Certified Cloud Practitioner exam guide](https://docs.aws.amazon.com/aws-certification/latest/examguides/cloud-practitioner-02.html) dan [daftar in-scope services CLF-C02](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/clf-02-in-scope-services.html).
+
+Untuk modul ini, layanan yang resmi in-scope dan perlu kamu kuasai adalah **AWS Migration Hub**, **AWS Application Discovery Service**, **Migration Evaluator**, **AWS Application Migration Service**, **AWS Database Migration Service**, **AWS Schema Conversion Tool**, **AWS Snow Family**, **AWS Storage Gateway**, dan **AWS Outposts**. Daftar in-scope resmi menaruh tujuh layanan pertama di kategori Migration and Transfer, lalu Storage Gateway di kategori Storage, dan Outposts di kategori Compute.
+
+<Box variant="warn" icon="🔎" label="Yang TIDAK in-scope (tapi sering tertukar)"><p>AWS DataSync, AWS Transfer Family, AWS Local Zones, dan AWS Wavelength tidak ada di daftar in-scope CLF-C02 resmi. Kita tetap membahasnya supaya kamu bisa membedakannya dari layanan in-scope, tetapi jangan menghabiskan waktu menghafal detailnya. Beberapa blog persiapan keliru mengklaim Local Zones dan Wavelength diuji, jadi berpegang pada daftar resmi.</p></Box>
+
+<Box variant="exam" icon="🎯" label="Fokus ujian"><p>Ujian jarang meminta konfigurasi detail. Ujian lebih sering memberi skenario, lalu menanyakan layanan atau strategi yang paling tepat.</p></Box>
+
+<Recap title="Peta domain CLF-C02"><ul><li><strong>Domain 1:</strong> alasan migrasi, strategi migrasi, cloud economics, agility, dan menghindari investasi data center besar.</li><li><strong>Domain 2:</strong> keamanan data saat migrasi, enkripsi, akses, kepatuhan, dan shared responsibility.</li><li><strong>Domain 3:</strong> service picker untuk Migration Hub, MGN, DMS, SCT, Snow Family, Storage Gateway, dan Outposts.</li><li><strong>Domain 4:</strong> business case, estimasi biaya, Migration Evaluator, Pricing Calculator, dan cara menghindari overprovisioning.</li></ul></Recap>
+
+</Section>
+
+<Section num="03" id="strategi-migrasi" title="Tujuh R strategi migrasi" sub="Cara mengelompokkan aplikasi sebelum pindah.">
+
+<p class="lead">Strategi migrasi adalah label keputusan, bukan nama layanan.</p>
+
+Kembali ke analogi pindah rumah. Sebelum memesan truk, keluarga memilah barang satu per satu, mana yang dibawa, mana yang diganti, mana yang dibuang. Tujuh R adalah cara AWS memilah aplikasi dengan pertanyaan yang sama, hanya istilahnya formal.
+
+[AWS Prescriptive Guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html) menjelaskan **tujuh R** untuk migrasi, yaitu Retire, Retain, Rehost, Relocate, Repurchase, Replatform, dan Refactor (atau re-architect). Penting: Relocate adalah anggota penuh dari tujuh R, bukan tambahan opsional. Sebagian materi lama menyebut "6R klasik plus Relocate", tetapi panduan resmi memperlakukan ketujuhnya setara. Untuk ujian, kenali semuanya dan pahami posisi Relocate.
+
+<CardGrid cols={2}>
+  <Card><h4>Retire</h4><p>Dimatikan karena tidak lagi dipakai (aplikasi zombie atau idle), sehingga biaya dan risiko operasional berkurang.</p></Card>
+  <Card><h4>Retain</h4><p>Tetap di sumber untuk sementara, misalnya karena kepatuhan, dependensi, baru saja di-upgrade, atau butuh hardware khusus.</p></Card>
+  <Card><h4>Rehost</h4><p>Lift and shift, tanpa perubahan aplikasi. Dipindah apa adanya ke AWS, cocok saat ingin cepat keluar dari data center. Diotomatiskan oleh MGN.</p></Card>
+  <Card><h4>Relocate</h4><p>Pindahkan server, instance, atau objek pada level hypervisor (misalnya VMware Cloud on AWS) atau ke VPC, Region, atau akun lain, tanpa membeli hardware baru, menulis ulang aplikasi, atau mengubah operasi.</p></Card>
+  <Card><h4>Repurchase</h4><p>Drop and shop. Sistem lama diganti produk SaaS atau solusi berbeda, misalnya CRM lama diganti aplikasi SaaS.</p></Card>
+  <Card><h4>Replatform</h4><p>Lift, tinker, and shift. Aplikasi tetap mirip, tetapi sebagian komponen dioptimalkan, misalnya SQL Server pindah ke Amazon RDS.</p></Card>
+  <Card><h4>Refactor</h4><p>Re-architect. Aplikasi diubah besar agar cloud-native, misalnya monolith dipecah menjadi microservices atau serverless.</p></Card>
+</CardGrid>
+
+<Figure><MigFig03 /><Fragment slot="caption"><b>Gambar 1.</b> Pohon keputusan tujuh R, dari pertanyaan "masih dipakai?" sampai "seberapa banyak aplikasi diubah?", lengkap dengan layanan yang cocok di tiap cabang.</Fragment></Figure>
+
+<Box variant="analogy" icon="🧳" label="Tiga R yang paling tertukar"><p>Bayangkan sofa lama. Rehost berarti mengangkat sofa apa adanya ke apartemen baru. Replatform berarti mengganti kakinya supaya muat lift, tetapi sofanya sama. Refactor berarti membongkar sofa jadi beberapa kursi modular yang lebih cocok dengan ruangan baru.</p></Box>
+
+<Compare aLabel="Rehost &middot; lift and shift" bLabel="Replatform &middot; lift, tinker, and shift" aTone="blue" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Tidak ada perubahan aplikasi, dipindah apa adanya.</li><li>Paling cepat, cocok untuk exit data center bertenggat.</li><li>Diotomatiskan oleh AWS Application Migration Service (MGN).</li><li>Keyword soal: "no changes", "as is", "quickly".</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Optimasi kecil tanpa mengubah inti aplikasi.</li><li>Contoh klasik: database self-managed pindah ke Amazon RDS.</li><li>Menghapus beban operasional tanpa re-architecture penuh.</li><li>Keyword soal: "minor optimization", "managed database".</li></ul></Fragment>
+</Compare>
+
+<Box variant="exam" icon="🧠" label="Cara mengingat"><p>Retire matikan, Retain tahan dulu, Rehost angkat apa adanya, Relocate pindah level hypervisor, Repurchase ganti produk, Replatform optimasi kecil, Refactor ubah arsitektur. Jangan tukar Replatform (kecil) dengan Refactor (besar).</p></Box>
+
+</Section>
+
+<Section num="04" id="alur-migrasi" title="Alur besar migrasi" sub="Assess, plan, migrate, validate, modernize.">
+
+<p class="lead">Migrasi yang sehat dimulai dari memahami lingkungan lama sebelum menyentuh server produksi.</p>
+
+Secara tingkat tinggi, migrasi berjalan seperti proyek pindahan kantor. Pertama inventarisasi barang, lalu kelompokkan mana yang pindah dulu, pilih kendaraan pindahan, lakukan pemindahan, cek apakah kantor baru berfungsi, lalu rapikan agar lebih efisien. Di AWS, fase ini dibantu oleh discovery tools, business case tools, migration tracking, server migration, database migration, transfer perangkat fisik, dan hybrid services.
+
+<Figure><MigFig01 /><Fragment slot="caption"><b>Gambar 2.</b> Alur mental migrasi untuk CLF-C02, dari discovery sampai modernisasi.</Fragment></Figure>
+
+<Steps>
+  <Step><b>Assess</b><p>Gunakan inventaris aplikasi, dependensi, biaya, dan risiko untuk memahami apa yang dimiliki perusahaan saat ini.</p></Step>
+  <Step><b>Plan</b><p>Kelompokkan server dan database menjadi aplikasi, pilih strategi R, urutkan wave, dan buat business case.</p></Step>
+  <Step><b>Migrate</b><p>Gunakan layanan yang cocok, misalnya Application Migration Service untuk rehost server, DMS untuk database, atau Snow Family untuk transfer data besar.</p></Step>
+  <Step><b>Validate</b><p>Uji aplikasi di AWS, cek performa, keamanan, backup, monitoring, dan rencana rollback sebelum cutover.</p></Step>
+  <Step><b>Modernize</b><p>Setelah stabil, lakukan optimasi bertahap seperti memakai managed database, autoscaling, serverless, atau observability yang lebih baik.</p></Step>
+</Steps>
+
+<Box variant="warn" icon="⚠️" label="Jangan lompat ke alat"><p>Pemula sering langsung memilih layanan migrasi tanpa tahu masalahnya. Di ujian, baca dulu apakah skenarionya tentang discovery, estimasi biaya, server, database, data besar, atau hybrid.</p></Box>
+
+</Section>
+
+<Section num="05" id="service-picker-aplikasi" title="Service picker untuk aplikasi" sub="Discovery, business case, tracking, dan rehost server.">
+
+<p class="lead">Empat layanan ini sering terlihat mirip, tetapi pekerjaannya berbeda.</p>
+
+**AWS Migration Hub** adalah dashboard koordinasi. Ia menyediakan satu tempat untuk discovery, planning, dan tracking status migrasi aplikasi. Dokumentasi AWS menjelaskan bahwa Migration Hub dapat menampilkan koneksi dan status server maupun database dalam aplikasi yang sedang dimigrasikan, terlepas dari tool migrasi yang dipakai. Lihat [AWS Migration Hub documentation](https://docs.aws.amazon.com/migrationhub/latest/ug/whatishub.html).
+
+**AWS Application Discovery Service** adalah alat untuk mengumpulkan data penggunaan dan konfigurasi server on-premises. Data seperti performa, konfigurasi, dan koneksi jaringan membantu menentukan dependensi antar server dan mengelompokkan server menjadi aplikasi. Lihat [Application Discovery Service documentation](https://docs.aws.amazon.com/application-discovery/latest/userguide/what-is-appdiscovery.html).
+
+**Migration Evaluator** membantu membuat business case berbasis data. Ia memproyeksikan biaya cloud masa depan berdasarkan baseline lingkungan saat ini, provisioning, utilization, dan lisensi. Lihat [Migration Evaluator features](https://aws.amazon.com/migration-evaluator/features/) dan [Migration Evaluator pricing](https://aws.amazon.com/migration-evaluator/pricing/) untuk ketentuan terbaru.
+
+**AWS Application Migration Service** atau **MGN** adalah layanan rehost otomatis untuk memindahkan server fisik, virtual, atau cloud ke AWS. MGN mereplikasi source server ke akun AWS secara block-level, lalu meluncurkan server di AWS saat siap, sehingga downtime cutover minimal. MGN adalah penerus (next generation) dari CloudEndure Migration yang diakuisisi AWS, sekaligus menggantikan AWS Server Migration Service (SMS). AWS mendorong pengguna CloudEndure dan SMS untuk beralih ke MGN, dan inilah alasan MGN menjadi alat rehost yang direkomendasikan saat ini. Lihat [Application Migration Service documentation](https://docs.aws.amazon.com/mgn/latest/ug/what-is-mgn.html) dan [kapan memilih MGN](https://aws.amazon.com/application-migration-service/when-to-choose-aws-mgn/).
+
+Kenapa rehost lewat MGN bisa nyaris tanpa downtime? Kuncinya ada di kata **block-level** dan **continuous replication**. Bukannya menyalin file satu per satu lalu mematikan server lama, MGN memasang agen ringan di server sumber, lalu menyalin blok disk ke staging area di AWS secara terus-menerus sambil server lama tetap melayani pengguna. Saat semua sudah sinkron, kamu memicu cutover, dan barulah server di AWS mengambil alih. Jeda yang dirasakan pengguna hanya sebatas peralihan terakhir, bukan seluruh durasi penyalinan.
+
+<Box variant="analogy" icon="🚚" label="Pindahan tanpa menutup toko"><p>Bayangkan memindahkan toko ke gedung baru tanpa pernah menutup yang lama. Setiap kali ada barang masuk atau berubah di toko lama, kurir langsung menyalinnya ke gedung baru. Pelanggan tetap belanja di toko lama sampai gedung baru benar-benar identik, lalu kamu cukup mengganti papan alamat dalam hitungan menit. Itulah cara kerja continuous block-level replication MGN.</p></Box>
+
+<Figure><MigFig08 /><Fragment slot="caption"><b>Gambar 3.</b> Cara MGN rehost server dengan downtime minimal, dari pemasangan agen, replikasi block-level berkelanjutan, uji di test instance, sampai cutover ke EC2 produksi.</Fragment></Figure>
+
+<Figure><MigFig04 /><Fragment slot="caption"><b>Gambar 4.</b> Matriks service picker Migration and Transfer (hanya layanan in-scope), memetakan tiap layanan ke tugas, keyword, dan fase migrasi.</Fragment></Figure>
+
+<CardGrid cols={2}>
+  <Card><h4>Migration Hub</h4><p>Pakai saat soal menekankan satu tempat untuk melacak banyak migrasi aplikasi.</p></Card>
+  <Card><h4>Application Discovery Service</h4><p>Pakai saat soal menekankan mengumpulkan data server on-premises dan dependensi aplikasi.</p></Card>
+  <Card><h4>Migration Evaluator</h4><p>Pakai saat soal menekankan business case, TCO, projected AWS cost, dan keputusan finansial sebelum migrasi.</p></Card>
+  <Card><h4>Application Migration Service</h4><p>Pakai saat soal menekankan rehost server cepat dari fisik, virtual, atau cloud lain ke AWS.</p></Card>
+</CardGrid>
+
+<Compare aLabel="Application Discovery Service &middot; temukan" bLabel="Application Migration Service &middot; pindahkan" aTone="blue" bTone="red" vs="vs">
+  <Fragment slot="a"><ul><li>Mengumpulkan inventory server on-premises plus dependensi dan performa.</li><li>Memetakan server menjadi aplikasi sebelum kamu memutuskan strategi.</li><li>Fase assess, hasilnya memberi makan Migration Hub.</li><li>Keyword soal: "discover servers", "dependencies", "inventory".</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Benar-benar mereplikasi dan meluncurkan server di AWS (rehost).</li><li>Penerus CloudEndure Migration, menggantikan AWS SMS.</li><li>Fase migrate, dipakai setelah strategi dipilih.</li><li>Keyword soal: "lift and shift", "rehost servers".</li></ul></Fragment>
+</Compare>
+
+<Box variant="exam" icon="📝" label="Jebakan service picker"><p>Kalau keyword soal adalah tracking, pilih Migration Hub. Kalau keyword adalah collect inventory atau dependencies, pilih Application Discovery Service. Kalau keyword adalah business case atau TCO, pilih Migration Evaluator. Kalau keyword adalah lift-and-shift server, pilih Application Migration Service. Jangan pilih MGN hanya karena ada kata "migrasi".</p></Box>
+
+</Section>
+
+<Section num="06" id="database-migration" title="Database migration, DMS dan SCT" sub="Data bergerak, skema berubah.">
+
+<p class="lead">Migrasi database punya dua masalah utama, memindahkan data dan menyesuaikan struktur database.</p>
+
+**AWS Database Migration Service** atau **AWS DMS** membantu memigrasikan data database. DMS bisa dipakai untuk one-time migration atau replikasi perubahan berkelanjutan agar source dan target tetap sinkron selama masa transisi. Secara sederhana, DMS adalah mesin replikasi di AWS yang membaca dari source, lalu menulis ke target. Lihat [AWS DMS documentation](https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html).
+
+**AWS Schema Conversion Tool** atau **AWS SCT** membantu mengonversi schema database dari satu engine ke engine lain. Contoh, perusahaan ingin pindah dari database komersial on-premises ke Amazon Aurora PostgreSQL. Data bisa dipindahkan oleh DMS, tetapi struktur tabel, stored procedure, function, dan SQL tertentu mungkin perlu dikonversi. Lihat [AWS SCT documentation](https://docs.aws.amazon.com/SchemaConversionTool/latest/userguide/CHAP_Welcome.html).
+
+Ada juga **DMS Schema Conversion**, layanan dalam AWS DMS yang dapat menilai dan mengonversi schema ke target engine yang kompatibel. Untuk CLF-C02, cukup pahami pola besarnya, **DMS untuk migrasi data**, **SCT atau DMS Schema Conversion untuk konversi schema**, terutama saat source dan target engine berbeda.
+
+<Box variant="analogy" icon="📦" label="Data vs wadah"><p>Bayangkan pindahan arsip. DMS adalah jasa kurir yang memindahkan isi map ke kantor baru, bahkan sambil terus menyalin map baru sampai hari pindahan (ongoing replication). SCT adalah penerjemah yang mengubah format map lama agar pas dengan lemari arsip baru saat mereknya berbeda. Map sama merek tidak perlu penerjemah, cukup kurir.</p></Box>
+
+<Compare aLabel="AWS DMS &middot; memindahkan DATA" bLabel="SCT / DMS Schema Conversion &middot; konversi SKEMA" aTone="blue" bTone="violet" vs="vs">
+  <Fragment slot="a"><ul><li>Membaca dari source dan menulis ke target sebagai mesin replikasi.</li><li>Mendukung one-time migration plus ongoing replication untuk downtime minimal.</li><li>Cukup sendiri saat source dan target engine sama (homogen).</li><li>Keyword soal: "migrate data", "ongoing replication", "minimal downtime".</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Mengubah struktur tabel, stored procedure, function, dan SQL antar engine.</li><li>Dipakai saat engine berbeda (heterogen), misalnya Oracle ke Aurora PostgreSQL.</li><li>Dijalankan dulu untuk schema, baru DMS memindahkan datanya.</li><li>Keyword soal: "convert schema", "different database engine".</li></ul></Fragment>
+</Compare>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Skenario</th><th>Layanan yang cocok</th><th>Kenapa</th></tr></thead>
+  <tbody><tr><td>Oracle ke Oracle di AWS</td><td>AWS DMS</td><td>Engine sama, fokus utama biasanya memindahkan data.</td></tr><tr><td>Oracle ke Aurora PostgreSQL</td><td>AWS SCT dan AWS DMS</td><td>Schema perlu dikonversi, lalu data dipindahkan.</td></tr><tr><td>Data warehouse ke Amazon Redshift</td><td>AWS SCT dan layanan migrasi data terkait</td><td>Perlu analisis schema, ETL, dan target warehouse.</td></tr><tr><td>Minim downtime database</td><td>AWS DMS ongoing replication</td><td>Perubahan dapat direplikasi sampai waktu cutover.</td></tr></tbody>
+</table></div>
+
+<Box variant="warn" icon="⚠️" label="Jangan tertukar"><p>DMS bukan alat utama untuk menemukan semua server aplikasi. Application Discovery Service untuk discovery server, DMS untuk database migration.</p></Box>
+
+</Section>
+
+<Section num="07" id="online-offline-transfer" title="Transfer data, online vs offline" sub="Lewat jaringan, atau lewat perangkat fisik yang dikirim.">
+
+<p class="lead">Bayangkan mengirim 500 kotak buku ke kota lain. Kalau jalan tol lancar, kirim lewat kurir harian. Kalau jalannya rusak parah, lebih cepat menyewa truk dan mengantarnya sendiri.</p>
+
+Itulah inti pilihan transfer data. Saat bandwidth memadai, kirim data lewat jaringan (online). Saat data sangat besar dan koneksi terbatas, mahal, atau tidak ada, kirim perangkat fisik lewat pos (offline). AWS sekarang menempatkan transfer online sebagai pilihan default, dan transfer fisik sebagai jalan untuk kasus bandwidth terbatas.
+
+<h3>Jalur online: DataSync (di luar in-scope)</h3>
+
+**AWS DataSync** adalah layanan transfer data online yang menyalin data besar antara storage on-premises (NFS, SMB, HDFS, object storage) dan layanan AWS (Amazon S3, EFS, FSx), serta antar layanan AWS, lewat internet atau Direct Connect sampai sekitar 10 Gbps, dengan penjadwalan, enkripsi, dan verifikasi bawaan. DataSync adalah pasangan online dari Snow yang offline. Catatan penting: DataSync tidak ada di daftar in-scope CLF-C02, jadi cukup kenali perannya sebagai kontras. Lihat [AWS DataSync](https://aws.amazon.com/datasync/).
+
+**AWS Transfer Family** adalah layanan transfer file terkelola penuh lewat SFTP, FTPS, FTP, AS2, dan transfer berbasis web browser, menyimpan data di Amazon S3 atau Amazon EFS. Ini cocok saat mitra eksternal mengirim file lewat protokol SFTP tradisional. Transfer Family juga tidak in-scope CLF-C02. Lihat [AWS Transfer Family](https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html).
+
+<h3>Jalur offline: AWS Snow Family (in-scope)</h3>
+
+**AWS Snow Family** adalah keluarga perangkat fisik yang dikirim ke lokasimu untuk transfer data dan edge computing saat koneksi terbatas, mahal, atau tidak stabil. Perangkat punya storage dan compute onboard, bisa memproses data lokal, menjalankan edge workload, lalu data dipindahkan ke atau dari AWS dengan mengirim balik perangkatnya. Lihat [AWS Snowball Edge documentation](https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html).
+
+<Box variant="warn" icon="🗓️" label="Snow Family sudah banyak berubah (2024 dan 2025)"><p>Materi lama sering keliru di sini. <b>Snowmobile</b> (truk kontainer 45 kaki untuk skala exabyte) sudah dipensiunkan AWS sekitar 2024. <b>Snowcone</b> dihentikan, tidak bisa dipesan lagi sejak 12 November 2024. Lineup perangkat aktif kini hanya dua, yaitu <b>Snowball Edge Storage Optimized 210TB</b> (NVMe, hingga sekitar 1,5 GB/s) dan <b>Snowball Edge Compute Optimized 104 vCPU</b> (416GB RAM, 28TB NVMe). Sejak 7 November 2025, Snowball Edge hanya tersedia untuk pelanggan yang sudah ada (existing customers).</p></Box>
+
+Karena perubahan itu, untuk akun baru AWS kini mengarahkan ke alternatif: **AWS DataSync** untuk transfer online, **AWS Data Transfer Terminal** untuk drop-off fisik, **AWS Outposts** untuk edge compute, atau solusi AWS Partner. **AWS Data Transfer Terminal** (diumumkan re:Invent 2024, awalnya di Los Angeles dan New York) adalah lokasi fisik aman tempat kamu membawa perangkat storage dan mengunggah langsung ke AWS sampai 400 Gbps lewat slot waktu reservasi. Data Transfer Terminal juga tidak in-scope CLF-C02, tetapi bagus diketahui sebagai opsi baru.
+
+<Figure><MigFig05 /><Fragment slot="caption"><b>Gambar 5.</b> Pohon keputusan pemindahan data berdasarkan kebutuhan akses lokal, bandwidth, dan ukuran data, dengan penanda mana yang in-scope CLF-C02.</Fragment></Figure>
+
+<Compare aLabel="DataSync &middot; online (lewat jaringan)" bLabel="Snow Family &middot; offline (perangkat fisik)" aTone="teal" bTone="muted" vs="vs">
+  <Fragment slot="a"><ul><li>Transfer lewat internet atau Direct Connect, tanpa perangkat dikirim.</li><li>Cocok saat bandwidth memadai dan data bisa mengalir berkala.</li><li>Penjadwalan, enkripsi, dan verifikasi bawaan, default AWS sekarang.</li><li>Catatan: tidak in-scope CLF-C02, hanya untuk membedakan.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Perangkat rugged dikirim, data disalin lokal, lalu perangkat dikirim balik.</li><li>Cocok saat data sangat besar dan koneksi terbatas atau tidak ada.</li><li>Bisa edge compute di lokasi terpencil sambil menunggu transfer.</li><li>In-scope CLF-C02, tetapi kini existing customers only (Nov 2025).</li></ul></Fragment>
+</Compare>
+
+<Box variant="exam" icon="🎯" label="Keyword ujian"><p>"Large data, poor or no connectivity" tetap mengarah ke Snow Family. "Online transfer over the network" mengarah ke DataSync (di luar in-scope, tetapi sering dijadikan distraktor). "Managed SFTP/FTPS endpoint" mengarah ke Transfer Family. Hanya Snow Family yang resmi in-scope di antara ketiganya.</p></Box>
+
+</Section>
+
+<Section num="08" id="hybrid-storage" title="Hybrid storage dengan Storage Gateway" sub="Ketika aplikasi lokal masih butuh akses file, blok, atau tape.">
+
+<p class="lead">Tidak semua aplikasi langsung bisa meninggalkan file share lokal. Sebagian masih menulis ke folder jaringan atau tape backup setiap hari.</p>
+
+**AWS Storage Gateway** adalah jembatan storage hybrid. Aplikasi on-premises tetap mengakses storage secara lokal lewat protokol yang biasa mereka pakai, sementara data sebenarnya disimpan di backend AWS. Ada cache lokal supaya akses sehari-hari tetap cepat. Ini berbeda dari DataSync (yang memindahkan data sekali jalan) dan Transfer Family (endpoint SFTP); Storage Gateway adalah satu-satunya jawaban hybrid storage yang in-scope. Lihat [AWS Storage Gateway documentation](https://docs.aws.amazon.com/storagegateway/) dan [daftar fitur Storage Gateway](https://aws.amazon.com/storagegateway/features/).
+
+<Box variant="analogy" icon="🚪" label="Pintu ajaib ke gudang besar"><p>Bayangkan lemari kecil di kantormu yang isinya selalu yang sering dipakai. Di belakangnya ada pintu ke gudang raksasa di AWS. Kamu membuka lemari seperti biasa, tetapi barang yang jarang dipakai sebenarnya tersimpan di gudang dan diambil saat perlu. Storage Gateway adalah lemari plus pintu itu.</p></Box>
+
+Storage Gateway punya empat tipe, dibedakan oleh protokol yang dipakai aplikasi lokal dan backend AWS tujuannya.
+
+<Figure><MigFig07 /><Fragment slot="caption"><b>Gambar 6.</b> Empat tipe Storage Gateway, memetakan protokol on-premises (NFS, SMB, iSCSI, virtual tape) ke backend AWS (S3, FSx for Windows, S3 Glacier).</Fragment></Figure>
+
+<CardGrid cols={2}>
+  <Card><h4>Amazon S3 File Gateway</h4><p>Aplikasi mengakses file lewat NFS atau SMB, file disimpan sebagai objek di Amazon S3.</p></Card>
+  <Card><h4>Amazon FSx File Gateway</h4><p>Aplikasi mengakses file share Windows lewat SMB, didukung oleh Amazon FSx for Windows File Server dengan cache lokal.</p></Card>
+  <Card><h4>Volume Gateway</h4><p>Menyediakan block storage lewat iSCSI, dengan snapshot tersimpan di AWS. Dua mode: cached dan stored.</p></Card>
+  <Card><h4>Tape Gateway</h4><p>Virtual tape library (VTL) yang menggantikan tape backup fisik, menyimpan virtual tape di Amazon S3 dan S3 Glacier.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💾" label="Volume Gateway: cached vs stored"><p>Mode <b>cached</b> menaruh data utama di AWS dan hanya menyimpan cache yang sering diakses secara lokal, hemat ruang on-premises. Mode <b>stored</b> menaruh data utama secara lokal untuk akses berlatensi rendah, lalu menyimpan snapshot backup ke AWS.</p></Box>
+
+<Box variant="exam" icon="🎯" label="Keyword ujian"><p>"Replace physical tape backup" hampir selalu mengarah ke Tape Gateway. "On-prem app still needs local file access with cloud backend" mengarah ke S3 File Gateway atau FSx File Gateway. "Block storage over iSCSI" mengarah ke Volume Gateway. Jangan pilih Snow Family kalau kebutuhan utamanya akses harian ke file share.</p></Box>
+
+</Section>
+
+<Section num="09" id="hybrid-edge" title="Hybrid Cloud dan Edge" sub="Ketika sebagian workload tetap perlu dekat dengan lokasi fisik.">
+
+<p class="lead">Hybrid cloud berarti sebagian sistem berjalan di AWS Region, sebagian tetap dekat dengan data center, pabrik, toko, kapal, rumah sakit, atau cabang.</p>
+
+**AWS Outposts** adalah layanan fully managed yang memperluas infrastruktur, layanan, API, dan tools AWS ke lokasi pelanggan. Outposts cocok saat organisasi ingin pengalaman AWS yang konsisten, tetapi workload perlu local compute dan storage karena tiga pemicu utama: latency rendah (single-digit ms), data residency (data harus tetap di lokasi), dan pemrosesan data lokal. Outposts hadir dalam dua form factor, yaitu Outposts racks (42U, dapat diskalakan dari 1 sampai 96 rack) dan Outposts servers (1U atau 2U untuk ruang kecil atau edge). Lihat [AWS Outposts documentation](https://docs.aws.amazon.com/outposts/latest/userguide/what-is-outposts.html) dan [halaman produk Outposts](https://aws.amazon.com/outposts/).
+
+<Box variant="analogy" icon="🏢" label="Cabang AWS di gedungmu"><p>Bayangkan AWS membuka cabang mininya langsung di ruang server kantormu. Rak hardware-nya milik AWS, dirawat AWS, dan dipakai dengan API yang sama persis seperti Region biasa, tetapi fisiknya ada di lantai bawah gedungmu. Pegawai pabrik atau rumah sakit memakai aplikasi yang merespons dalam hitungan milidetik karena datanya tidak perlu pergi jauh, sementara hasil ringkasannya tetap bisa dikirim ke Region pusat untuk analitik. Itulah Outposts.</p></Box>
+
+Kenapa ada dua form factor? Karena kebutuhan ruang dan skala berbeda. **Outposts racks** adalah lemari penuh 42U yang cocok untuk data center dengan banyak workload dan kebutuhan kapasitas besar, bisa ditumpuk dari 1 sampai 96 rack. **Outposts servers** adalah unit 1U atau 2U yang muat di rak jaringan biasa, cocok untuk lokasi sempit seperti toko ritel, cabang, atau site edge yang hanya butuh sedikit compute lokal.
+
+<Compare aLabel="Outposts racks &middot; 42U" bLabel="Outposts servers &middot; 1U/2U" aTone="blue" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Lemari penuh, kapasitas besar, skala 1 sampai 96 rack.</li><li>Untuk data center dengan banyak workload sekaligus.</li><li>Butuh ruang, daya, dan pendinginan kelas data center.</li><li>Keyword soal: "large on-prem capacity", "many workloads on site".</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Unit kecil 1U atau 2U, muat di rak jaringan standar.</li><li>Untuk toko ritel, cabang, atau lokasi edge berukuran kecil.</li><li>Compute dan storage lokal terbatas, footprint minimal.</li><li>Keyword soal: "small space", "branch / retail / edge location".</li></ul></Fragment>
+</Compare>
+
+Edge dan hybrid bukan berarti anti-cloud. Justru keduanya sering menjadi jembatan. Data bisa diproses lokal untuk respons cepat, lalu hasilnya dikirim ke AWS untuk analitik, arsip, machine learning, atau disaster recovery. Salah satu cara terbaik memahami pilihan ini adalah membayangkan spektrum, dari pusat cloud sampai tepi jaringan.
+
+<Figure><MigFig06 /><Fragment slot="caption"><b>Gambar 7.</b> Spektrum hybrid dan edge, dari AWS Region ke Local Zones, Wavelength, Outposts, lalu Snow Family, dengan pemicu utama dan status in-scope tiap layanan.</Fragment></Figure>
+
+<h3>Outposts in-scope, Local Zones dan Wavelength tidak</h3>
+
+Untuk melengkapi gambaran, dua layanan edge lain sering disebut walau tidak in-scope CLF-C02. **AWS Local Zones** memperluas Region ke area metro atau kota untuk latency single-digit sampai low-double-digit ms bagi aplikasi sensitif latency. **AWS Wavelength** menanam compute dan storage AWS di dalam jaringan 5G operator telekomunikasi untuk latency ultra-rendah ke perangkat mobile dan 5G, misalnya AR/VR, kendaraan terhubung, dan video real-time. Lihat [AWS Wavelength](https://aws.amazon.com/wavelength/). Keduanya bagus dipahami, tetapi yang resmi diuji hanyalah Outposts.
+
+Bedanya gampang diingat lewat siapa yang dilayani. Local Zones mendekatkan AWS ke pengguna di sebuah kota lewat jaringan internet biasa, sedangkan Wavelength mendekatkan AWS ke pengguna yang tersambung lewat jaringan seluler 5G operator telekomunikasi. Keduanya milik dan dikelola AWS, jadi kamu tidak menaruh hardware sendiri seperti pada Outposts.
+
+<Compare aLabel="Local Zones &middot; dekat ke kota" bLabel="Wavelength &middot; dalam jaringan 5G" aTone="teal" bTone="blue" vs="vs">
+  <Fragment slot="a"><ul><li>Lokasi AWS di area metro besar, latency single-digit sampai low-double-digit ms.</li><li>Diakses lewat internet biasa, untuk gaming, media, atau aplikasi desktop sensitif latency.</li><li>Milik dan dikelola AWS, bukan hardware pelangganmu.</li><li>Catatan: tidak in-scope CLF-C02.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Compute dan storage AWS ditanam di dalam jaringan 5G operator telekomunikasi.</li><li>Untuk perangkat mobile dan 5G: AR/VR, kendaraan terhubung, video real-time.</li><li>Trafik tidak perlu keluar dari jaringan operator untuk mencapai AWS.</li><li>Catatan: tidak in-scope CLF-C02.</li></ul></Fragment>
+</Compare>
+
+<Figure><MigFig02 /><Fragment slot="caption"><b>Gambar 8.</b> Hubungan sederhana antara on-premises, hybrid storage, edge device, Outposts, dan AWS Region.</Fragment></Figure>
+
+<CardGrid cols={3}>
+  <Card><h4>Outposts (in-scope)</h4><p>AWS infrastructure di lokasi pelanggan, cocok untuk low latency, data residency, dan operasi konsisten dengan AWS di site permanen.</p></Card>
+  <Card><h4>Snow Family (in-scope)</h4><p>Perangkat rugged untuk transfer data atau edge compute, cocok saat jaringan terbatas, lokasi terpencil, atau sementara dan terputus.</p></Card>
+  <Card><h4>Storage Gateway (in-scope)</h4><p>Jembatan storage, cocok saat aplikasi lokal masih memakai protokol storage tradisional dengan backend AWS.</p></Card>
+</CardGrid>
+
+<Compare aLabel="Outposts &middot; AWS di site permanen" bLabel="Snow Family &middot; edge sementara dan rugged" aTone="red" bTone="muted" vs="vs">
+  <Fragment slot="a"><ul><li>Hardware AWS fully managed dipasang tetap di data center pelanggan.</li><li>Pemicu: low latency, data residency, pemrosesan lokal konsisten.</li><li>Dua form factor: racks (42U) dan servers (1U/2U).</li><li>Keyword soal: "AWS infrastructure on premises", "consistent hybrid".</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Perangkat rugged sementara untuk lokasi terpencil atau terputus.</li><li>Pemicu: bandwidth terbatas, operasi disconnected, transfer offline.</li><li>Dikirim, dipakai, lalu dikembalikan, bukan instalasi permanen.</li><li>Keyword soal: "remote site", "no reliable connectivity", "rugged".</li></ul></Fragment>
+</Compare>
+
+<Box variant="warn" icon="⚠️" label="Batas kedalaman CLF-C02"><p>Kamu tidak perlu mendesain topologi Outposts detail. Cukup tahu kapan memilih Outposts dibanding Snow Family atau Storage Gateway, dan ingat Local Zones serta Wavelength tidak resmi diuji.</p></Box>
+
+</Section>
+
+<Section num="10" id="skenario-walkthrough" title="Skenario nyata dan walkthrough" sub="Latihan berpikir seperti soal ujian.">
+
+<p class="lead">Cara terbaik belajar migration picker adalah membaca skenario dan mencari keyword bisnisnya.</p>
+
+<h3>Skenario 1, keluar dari data center dalam 6 bulan</h3>
+
+Perusahaan memiliki banyak VM on-premises dan ingin cepat pindah ke AWS dengan perubahan aplikasi minimal. Tim belum tahu dependensi antar server. Mulai dari Application Discovery Service untuk inventory dan dependency mapping, gunakan Migration Hub untuk grouping dan tracking, lalu gunakan Application Migration Service untuk rehost server secara lift-and-shift.
+
+<h3>Skenario 2, database komersial ingin diganti ke Aurora PostgreSQL</h3>
+
+Perusahaan ingin mengurangi biaya lisensi dan pindah ke database open-source compatible. Gunakan AWS SCT atau DMS Schema Conversion untuk menilai dan mengonversi schema, lalu AWS DMS untuk memindahkan data dan mereplikasi perubahan sampai cutover.
+
+<h3>Skenario 3, kantor cabang punya file share dan ingin backup ke AWS</h3>
+
+Aplikasi lokal masih memakai SMB atau NFS. Jangan langsung pilih Snow Family kalau kebutuhan utamanya akses harian ke file share. Gunakan AWS Storage Gateway, terutama File Gateway, agar aplikasi lokal tetap mengakses file dan data tersimpan di storage AWS.
+
+<h3>Skenario 4, lokasi pertambangan dengan koneksi lemah</h3>
+
+Sensor menghasilkan data besar, jaringan tidak stabil, dan sebagian pemrosesan harus terjadi lokal. Snow Family cocok untuk edge compute dan transfer data fisik ke AWS. Jika lokasi permanen butuh AWS infrastructure konsisten di site, pertimbangkan Outposts.
+
+<h3>Skenario 5, transfer 200TB sekali jalan dengan bandwidth bagus</h3>
+
+Perusahaan punya 200TB arsip dan koneksi Direct Connect cepat, tidak butuh akses lokal lagi. Untuk soal CLF-C02 klasik dengan "large offline transfer, poor connectivity", jawabannya Snow Family. Tetapi di praktik 2026, kalau bandwidth memadai, AWS merekomendasikan AWS DataSync (online), dan untuk akun baru Snowball Edge sudah existing customers only sejak 7 November 2025. Pahami keduanya: keyword "no or poor connectivity" tetap Snow Family, keyword "online over the network" mengarah DataSync.
+
+<Steps>
+  <Step><b>Baca keyword</b><p>Cari kata seperti discovery, business case, lift-and-shift, database, schema, data besar, file share, latency, atau edge.</p></Step>
+  <Step><b>Pilih kategori</b><p>Tentukan apakah masalahnya strategi, aplikasi, database, transfer data, hybrid storage, atau edge compute.</p></Step>
+  <Step><b>Cocokkan layanan</b><p>Pilih layanan yang paling langsung menjawab kebutuhan, bukan layanan paling populer.</p></Step>
+  <Step><b>Eliminasi distraktor</b><p>Buang pilihan yang benar secara umum tetapi tidak menjawab keyword utama skenario.</p></Step>
+</Steps>
+
+</Section>
+
+<Section num="11" id="walkthrough-konseptual" title="Walkthrough konseptual yang aman" sub="Latihan memahami alur tanpa harus membuat resource berbiaya.">
+
+<p class="lead">Tujuan latihan ini adalah membentuk model mental, bukan mengejar konfigurasi production. Semua langkah bisa kamu pahami hanya dengan membaca console dan dokumentasi, tanpa menimbulkan tagihan.</p>
+
+Migrasi nyata melibatkan banyak izin, jaringan, dan biaya, jadi untuk belajar CLF-C02 kamu tidak perlu benar-benar memindahkan server. Yang penting adalah mengenali bentuk tiap alur, supaya saat soal menyebut sepotong langkah, kamu langsung tahu layanan apa yang sedang dibicarakan.
+
+<h3>Latihan A, membaca rencana rehost dengan MGN</h3>
+
+<Steps>
+  <Step><b>Mulai dari discovery</b><p>Bayangkan kamu sudah punya daftar server dari Application Discovery Service dan grouping di Migration Hub. Tanyakan: server mana yang membentuk satu aplikasi?</p></Step>
+  <Step><b>Pasang replication agent</b><p>Pahami bahwa MGN bekerja dengan agen ringan di server sumber yang menyalin blok disk ke staging area di AWS secara terus-menerus, sementara server lama tetap online.</p></Step>
+  <Step><b>Uji dengan test instance</b><p>Sebelum cutover, MGN bisa meluncurkan test instance dari salinan yang sudah sinkron untuk memastikan aplikasi jalan, tanpa mengganggu produksi.</p></Step>
+  <Step><b>Lakukan cutover</b><p>Saat siap, cutover memindahkan beban ke EC2 produksi. Inilah satu-satunya jeda yang dirasakan pengguna, bukan seluruh durasi penyalinan.</p></Step>
+</Steps>
+
+<h3>Latihan B, membaca alur migrasi database dengan DMS dan SCT</h3>
+
+<Steps>
+  <Step><b>Cek engine source dan target</b><p>Tanyakan apakah engine sama (Oracle ke Oracle) atau berbeda (Oracle ke Aurora PostgreSQL). Jawaban ini menentukan apakah perlu konversi schema.</p></Step>
+  <Step><b>Konversi schema bila beda engine</b><p>Jika engine berbeda, jalankan AWS SCT atau DMS Schema Conversion dulu untuk mengubah tabel, stored procedure, dan SQL agar cocok dengan target.</p></Step>
+  <Step><b>Buat replication task DMS</b><p>Tentukan source endpoint, target endpoint, dan tipe migrasi. Untuk downtime minimal, pilih full load plus ongoing replication (change data capture).</p></Step>
+  <Step><b>Validasi dan cutover</b><p>Setelah data sinkron dan tervalidasi, arahkan aplikasi ke database baru, lalu hentikan task DMS bila tidak lagi diperlukan.</p></Step>
+</Steps>
+
+<h3>Latihan C, membaca pilihan transfer data besar</h3>
+
+<Steps>
+  <Step><b>Tanya kebutuhan akses lokal</b><p>Jika aplikasi lokal masih perlu akses file harian, jawabannya Storage Gateway, bukan transfer sekali jalan. Hentikan di sini bila itu kasusnya.</p></Step>
+  <Step><b>Tanya bandwidth</b><p>Jika koneksi memadai, AWS DataSync dapat menjadwalkan, mengenkripsi, dan memverifikasi transfer online ke S3, EFS, atau FSx (di luar in-scope, tetapi default praktik 2026).</p></Step>
+  <Step><b>Tanya konektivitas dan lokasi</b><p>Jika bandwidth buruk atau tidak ada, pikirkan Snow Family (offline) atau Data Transfer Terminal (drop-off fisik dekat LA/NY). Ingat Snowball Edge kini existing customers only.</p></Step>
+  <Step><b>Cocokkan ke keyword soal</b><p>Latih diri menerjemahkan kalimat skenario ke satu cabang pohon keputusan, lalu pilih layanan yang in-scope bila soal memintanya.</p></Step>
+</Steps>
+
+<h3>Latihan D, membaca skenario hybrid edge</h3>
+
+<Steps>
+  <Step><b>Identifikasi pemicu</b><p>Apakah masalahnya latency rendah, data residency, pemrosesan lokal, atau operasi tanpa koneksi? Pemicu ini menentukan layanan.</p></Step>
+  <Step><b>Permanen atau sementara?</b><p>Site permanen yang butuh AWS konsisten mengarah ke Outposts. Lokasi terpencil, sementara, atau terputus mengarah ke Snow Family.</p></Step>
+  <Step><b>Pilih form factor Outposts</b><p>Banyak workload dan kapasitas besar mengarah ke Outposts racks (42U). Ruang sempit seperti cabang atau ritel mengarah ke Outposts servers (1U/2U).</p></Step>
+  <Step><b>Pastikan in-scope</b><p>Jika soal menyebut Local Zones atau Wavelength sebagai jawaban, ingat keduanya tidak resmi diuji; Outposts adalah jawaban hybrid in-scope.</p></Step>
+</Steps>
+
+<Box variant="tip" icon="🧹" label="Kebiasaan baik"><p>Kalau kamu memang mencoba di akun nyata, selalu sertakan langkah cleanup: hentikan replication task, hapus replication server, dan matikan resource uji. Banyak tagihan pemula datang dari resource yang lupa dimatikan, bukan dari materi belajarnya.</p></Box>
+
+</Section>
+
+<Section num="12" id="jebakan-umum" title="Kesalahan umum dan jebakan soal" sub="Bagian ini membantu menghindari pilihan yang terdengar benar tetapi salah konteks.">
+
+<p class="lead">Sebagian besar jebakan migration di CLF-C02 muncul karena nama layanan terdengar mirip.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Migration Hub bukan alat replikasi server</h4><p>Migration Hub melacak dan mengelompokkan progres. Untuk rehost server, pikirkan Application Migration Service.</p></Card>
+  <Card><h4>Application Discovery Service bukan DMS</h4><p>Discovery Service mengumpulkan data server dan dependensi. DMS memigrasikan data database.</p></Card>
+  <Card><h4>Migration Evaluator bukan Pricing Calculator umum</h4><p>Migration Evaluator fokus pada business case migrasi berdasarkan kondisi on-premises. Pricing Calculator membuat estimasi biaya untuk arsitektur AWS, dan Compute Optimizer untuk right-sizing resource yang sudah jalan.</p></Card>
+  <Card><h4>SCT bukan pengganti DMS</h4><p>SCT membantu konversi schema. DMS memindahkan dan mereplikasi data. Engine sama cukup DMS, engine beda pakai SCT dulu baru DMS.</p></Card>
+  <Card><h4>Snow Family bukan CDN</h4><p>Snow Family memindahkan atau memproses data dengan perangkat fisik. CDN untuk caching konten adalah CloudFront.</p></Card>
+  <Card><h4>Outposts bukan sekadar storage gateway</h4><p>Outposts membawa infrastruktur AWS ke lokasi pelanggan. Storage Gateway hanya menjembatani storage on-premises dengan AWS.</p></Card>
+  <Card><h4>DataSync bukan Storage Gateway</h4><p>DataSync memindahkan data online sekali jalan. Storage Gateway membiarkan aplikasi lokal terus mengakses storage sambil backend di AWS. Hanya Storage Gateway yang in-scope.</p></Card>
+  <Card><h4>7 R, bukan 6 R</h4><p>AWS Prescriptive Guidance resmi menyebut tujuh R dengan Relocate sebagai anggota penuh, bukan tambahan. Jangan lupakan Relocate (level hypervisor).</p></Card>
+  <Card><h4>Snow Family device lineup sudah berubah</h4><p>Snowmobile dipensiunkan, Snowcone dihentikan, kini hanya dua Snowball Edge (Storage 210TB dan Compute 104 vCPU), existing customers only sejak Nov 2025.</p></Card>
+  <Card><h4>Local Zones dan Wavelength tidak in-scope</h4><p>Beberapa blog persiapan keliru memasukkan keduanya. Daftar resmi hanya menaruh Outposts (Compute) dan Storage Gateway (Storage) plus Snow Family (Migration).</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🧩" label="Pola distraktor"><p>Jika soal menyebut banyak aplikasi dan ingin satu dashboard status, jangan pilih MGN hanya karena ada kata migrasi. Jawaban paling tepat adalah Migration Hub.</p></Box>
+
+<Box variant="tip" icon="💡" label="Praktik vs ujian"><p>Di praktik, migrasi besar sering memakai banyak layanan sekaligus. Di ujian, pilih layanan yang paling tepat untuk kebutuhan yang paling eksplisit di soal.</p></Box>
+
+</Section>
+
+<Section num="13" id="ringkasan" title="Ringkasan & Tips Ujian" sub="Peta cepat sebelum latihan soal.">
+
+<p class="lead">Modul ini membantu kamu mengenali strategi migrasi dan memilih layanan AWS untuk aplikasi, database, data besar, hybrid storage, dan edge.</p>
+
+<Recap title="Poin Penting"><ul><li><strong>Tujuh R:</strong> Retire, Retain, Rehost, Relocate, Repurchase, Replatform, Refactor. Relocate adalah anggota penuh (level hypervisor), bukan tambahan opsional.</li><li><strong>Migration Hub:</strong> satu tempat untuk discovery, planning, grouping, dan tracking migrasi aplikasi.</li><li><strong>Application Discovery Service:</strong> mengumpulkan data server on-premises, performa, konfigurasi, dan dependensi.</li><li><strong>Migration Evaluator:</strong> membantu business case, TCO, baseline, projected AWS cost, dan keputusan finansial migrasi.</li><li><strong>Application Migration Service (MGN):</strong> rehost atau lift-and-shift server fisik, virtual, atau cloud ke AWS. Penerus CloudEndure Migration, menggantikan AWS SMS.</li><li><strong>DMS:</strong> memindahkan DATA database, termasuk one-time migration dan ongoing replication.</li><li><strong>SCT atau DMS Schema Conversion:</strong> mengonversi SKEMA saat berpindah engine database.</li><li><strong>Online vs offline:</strong> DataSync (online, di luar in-scope) vs Snow Family (offline, in-scope) vs Data Transfer Terminal (drop-off fisik, di luar in-scope).</li><li><strong>Snow Family:</strong> kini hanya dua Snowball Edge (Storage 210TB dan Compute 104 vCPU); Snowmobile dipensiunkan, Snowcone dihentikan; existing customers only sejak Nov 2025.</li><li><strong>Storage Gateway:</strong> empat tipe (S3 File, FSx File, Volume cached/stored, Tape) untuk akses lokal dengan backend AWS.</li><li><strong>Outposts:</strong> infrastruktur AWS fully managed di lokasi pelanggan (racks 42U atau servers 1U/2U) untuk low latency, data residency, dan pemrosesan lokal. Local Zones dan Wavelength tidak in-scope.</li></ul></Recap>
+
+<h3>Pemetaan ke domain CLF-C02</h3>
+
+<ul><li><strong>Domain 1, Cloud Concepts 24%:</strong> pahami manfaat migrasi, tujuh R strategi, agility, cloud economics, dan alasan bisnis pindah ke AWS.</li><li><strong>Domain 2, Security and Compliance 30%:</strong> ingat data migrasi tetap perlu enkripsi, kontrol akses, logging, dan kepatuhan. Pelanggan tetap bertanggung jawab atas konfigurasi dan data.</li><li><strong>Domain 3, Cloud Technology and Services 34% (bobot terbesar untuk modul ini):</strong> kuasai service picker migration, MGN, DMS, SCT, Snow Family, Storage Gateway, dan Outposts.</li><li><strong>Domain 4, Billing, Pricing, and Support 12%:</strong> kaitkan Migration Evaluator dengan business case dan estimasi finansial sebelum migrasi.</li></ul>
+
+<h3>Tips ujian cepat</h3>
+
+<ul><li>Keyword <strong>business case</strong> atau <strong>TCO</strong> biasanya mengarah ke Migration Evaluator.</li><li>Keyword <strong>discover servers</strong>, <strong>dependencies</strong>, atau <strong>inventory</strong> biasanya mengarah ke Application Discovery Service.</li><li>Keyword <strong>single place to track migration</strong> biasanya mengarah ke Migration Hub.</li><li>Keyword <strong>lift-and-shift servers</strong> biasanya mengarah ke Application Migration Service (MGN).</li><li>Keyword <strong>database replication</strong> atau <strong>minimal downtime database</strong> biasanya mengarah ke AWS DMS.</li><li>Keyword <strong>convert database schema</strong> atau <strong>different engine</strong> biasanya mengarah ke AWS SCT atau DMS Schema Conversion.</li><li>Keyword <strong>large offline data transfer</strong>, <strong>poor connectivity</strong>, atau <strong>rugged device</strong> biasanya mengarah ke AWS Snow Family.</li><li>Keyword <strong>online transfer over the network</strong> mengarah ke DataSync (di luar in-scope, sering jadi distraktor).</li><li>Keyword <strong>replace physical tape backup</strong> mengarah ke Tape Gateway; <strong>on-prem file access with cloud storage</strong> mengarah ke S3 atau FSx File Gateway.</li><li>Keyword <strong>AWS infrastructure on premises</strong> atau <strong>data residency</strong> biasanya mengarah ke AWS Outposts.</li></ul>
+
+<Box variant="exam" icon="✅" label="Kalimat kunci"><p>Jangan hafalkan layanan sebagai daftar. Hafalkan pasangan masalah dan solusi, karena CLF-C02 menguji pengenalan skenario.</p></Box>
+
+<h3>Referensi resmi</h3>
+
+<ul><li><a href="https://docs.aws.amazon.com/aws-certification/latest/examguides/cloud-practitioner-02.html">AWS Certified Cloud Practitioner CLF-C02 Exam Guide</a></li><li><a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/clf-02-in-scope-services.html">CLF-C02 In-Scope AWS Services</a></li><li><a href="https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html">AWS Prescriptive Guidance, Migration strategies (7 Rs)</a></li><li><a href="https://docs.aws.amazon.com/migrationhub/latest/ug/whatishub.html">AWS Migration Hub User Guide</a></li><li><a href="https://docs.aws.amazon.com/application-discovery/latest/userguide/what-is-appdiscovery.html">AWS Application Discovery Service User Guide</a></li><li><a href="https://aws.amazon.com/application-migration-service/when-to-choose-aws-mgn/">When to choose AWS Application Migration Service (MGN)</a></li><li><a href="https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html">AWS Database Migration Service User Guide</a></li><li><a href="https://docs.aws.amazon.com/SchemaConversionTool/latest/userguide/CHAP_Welcome.html">AWS Schema Conversion Tool User Guide</a></li><li><a href="https://docs.aws.amazon.com/snowball/latest/developer-guide/whatisedge.html">AWS Snowball Edge Developer Guide</a></li><li><a href="https://aws.amazon.com/blogs/storage/aws-snow-device-updates/">AWS Snow device updates (2024 dan 2025)</a></li><li><a href="https://aws.amazon.com/datasync/">AWS DataSync (di luar in-scope)</a></li><li><a href="https://docs.aws.amazon.com/transfer/latest/userguide/what-is-aws-transfer-family.html">AWS Transfer Family (di luar in-scope)</a></li><li><a href="https://aws.amazon.com/storagegateway/features/">AWS Storage Gateway features</a></li><li><a href="https://aws.amazon.com/outposts/">AWS Outposts product page</a></li><li><a href="https://aws.amazon.com/wavelength/">AWS Wavelength dan Local Zones (di luar in-scope)</a></li></ul>
+
+</Section>

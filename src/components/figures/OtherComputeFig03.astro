@@ -1,0 +1,37 @@
+<svg viewBox="0 0 760 372" xmlns="http://www.w3.org/2000/svg" font-family="Inter, ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <marker id="arrow3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9c4a2f" />
+    </marker>
+    <marker id="arrow3b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#c6c0ac" />
+    </marker>
+  </defs>
+  <rect x="24" y="24" width="712" height="324" rx="24" fill="#fbfaf5" stroke="#d9d4c4" stroke-width="2" />
+  <text x="380" y="56" text-anchor="middle" font-size="18" fill="#241f17" font-weight="700">Alur kerja container: build, push, lalu jalankan</text>
+  <rect x="48" y="92" width="148" height="84" rx="16" fill="#241f17" />
+  <text x="122" y="125" text-anchor="middle" font-size="14" fill="#bd5d3e" font-weight="700">1. Build image</text>
+  <text x="122" y="148" text-anchor="middle" font-size="12" fill="#fbfaf5">app + dependensi</text>
+  <text x="122" y="166" text-anchor="middle" font-size="12" fill="#fbfaf5">di mesin developer</text>
+  <rect x="248" y="92" width="148" height="84" rx="16" fill="#fbfaf5" stroke="#d9d4c4" stroke-width="2" />
+  <text x="322" y="125" text-anchor="middle" font-size="14" fill="#241f17" font-weight="700">2. Push ke ECR</text>
+  <text x="322" y="148" text-anchor="middle" font-size="12" fill="#6e6a5c">registry image</text>
+  <text x="322" y="166" text-anchor="middle" font-size="12" fill="#6e6a5c">private / public</text>
+  <rect x="448" y="92" width="264" height="84" rx="16" fill="#fbfaf5" stroke="#d9d4c4" stroke-width="2" />
+  <text x="580" y="121" text-anchor="middle" font-size="14" fill="#241f17" font-weight="700">3. Orkestrasi: ECS atau EKS</text>
+  <text x="580" y="144" text-anchor="middle" font-size="12" fill="#6e6a5c">tarik image, jalankan task / pod,</text>
+  <text x="580" y="162" text-anchor="middle" font-size="12" fill="#6e6a5c">ganti yang gagal, atur traffic</text>
+  <line x1="196" y1="134" x2="248" y2="134" stroke="#9c4a2f" stroke-width="3" marker-end="url(#arrow3)" />
+  <line x1="396" y1="134" x2="448" y2="134" stroke="#9c4a2f" stroke-width="3" marker-end="url(#arrow3)" />
+  <text x="380" y="220" text-anchor="middle" font-size="13" fill="#241f17" font-weight="700">Pilih tempat container benar-benar berjalan (launch type)</text>
+  <rect x="170" y="244" width="184" height="80" rx="16" fill="#bd5d3e" />
+  <text x="262" y="276" text-anchor="middle" font-size="14" fill="#fbfaf5" font-weight="700">Fargate</text>
+  <text x="262" y="298" text-anchor="middle" font-size="12" fill="#fbfaf5">tanpa kelola server</text>
+  <text x="262" y="315" text-anchor="middle" font-size="12" fill="#fbfaf5">bayar per task</text>
+  <rect x="406" y="244" width="184" height="80" rx="16" fill="#fbfaf5" stroke="#d9d4c4" stroke-width="2" />
+  <text x="498" y="276" text-anchor="middle" font-size="14" fill="#241f17" font-weight="700">EC2 launch type</text>
+  <text x="498" y="298" text-anchor="middle" font-size="12" fill="#6e6a5c">kamu kelola host EC2</text>
+  <text x="498" y="315" text-anchor="middle" font-size="12" fill="#6e6a5c">kontrol lebih rinci</text>
+  <line x1="520" y1="176" x2="320" y2="244" stroke="#c6c0ac" stroke-width="2" marker-end="url(#arrow3b)" />
+  <line x1="600" y1="176" x2="498" y2="244" stroke="#c6c0ac" stroke-width="2" marker-end="url(#arrow3b)" />
+</svg>

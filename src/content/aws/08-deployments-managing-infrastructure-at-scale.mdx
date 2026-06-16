@@ -1,0 +1,406 @@
+---
+title: "Modul Deployments & Managing Infrastructure at Scale - AWS Cloud Practitioner CLF-C02"
+badge: "DPL"
+topTitle: "Deployments & Managing Infrastructure at Scale"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Pelajari IaC, deployment otomatis, CI/CD, Elastic Beanstalk, dan Systems Manager untuk mengelola AWS dalam skala besar."
+order: 8
+target: "CLF-C02"
+readingTime: "~70 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Mengapa Infrastruktur Perlu Dikelola sebagai Sistem" }
+  - { num: "02", id: "iac", title: "Infrastructure as Code (IaC)" }
+  - { num: "03", id: "cloudformation", title: "AWS CloudFormation" }
+  - { num: "04", id: "cdk", title: "AWS Cloud Development Kit (CDK)" }
+  - { num: "05", id: "elastic-beanstalk", title: "AWS Elastic Beanstalk" }
+  - { num: "06", id: "cicd", title: "CodeCommit, CodeBuild, CodeDeploy, dan CodePipeline" }
+  - { num: "07", id: "deployment-strategies", title: "Strategi Deployment Aman" }
+  - { num: "08", id: "systems-manager", title: "AWS Systems Manager (SSM)" }
+  - { num: "09", id: "hands-on", title: "Walkthrough Konseptual" }
+  - { num: "10", id: "security-cost", title: "Keamanan, Operasi, dan Biaya" }
+  - { num: "11", id: "jebakan", title: "Kesalahan Umum dan Jebakan Soal" }
+  - { num: "12", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul Deployments & Managing Infrastructure at Scale - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import DeployScaleFig01 from "@figures/DeployScaleFig01.astro";
+import DeployScaleFig02 from "@figures/DeployScaleFig02.astro";
+import DeployScaleFig03 from "@figures/DeployScaleFig03.astro";
+import DeployScaleFig04 from "@figures/DeployScaleFig04.astro";
+
+<Hero eyebrow="Modul &middot; Deployment & Operasi" title="Deployments &amp; Managing Infrastructure<br /><em>at Scale</em>">
+  <p>Mengelola AWS dalam skala besar mirip mengelola dapur restoran ramai, resep, alur kerja, dan kontrol kualitas harus konsisten.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~70 menit baca</Chip>
+    <Chip icon="book">Domain 3 &middot; 34%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Mengapa Infrastruktur Perlu Dikelola sebagai Sistem" sub="Dari klik manual menuju proses yang bisa diulang, diaudit, dan dipulihkan.">
+
+<p class="lead">Bayangkan kamu membuka 50 cabang kafe, resep kopi tidak boleh bergantung pada ingatan barista satu orang.</p>
+
+Di AWS, masalah yang sama muncul ketika tim membuat VPC, EC2, load balancer, database, permission, dan pipeline secara manual. Klik manual terasa cepat untuk percobaan, tetapi sulit diulang, sulit diaudit, dan mudah berbeda antara development, staging, dan production.
+
+Modul ini membahas dua sisi besar: <strong>deployment</strong>, yaitu cara merilis aplikasi atau perubahan infrastruktur, dan <strong>managing infrastructure at scale</strong>, yaitu cara mengelola banyak resource secara konsisten. Fokus CLF-C02 bukan menulis template rumit, tetapi mengenali layanan mana yang cocok untuk kebutuhan tertentu.
+
+Kenapa pembedaan ini penting untukmu? Karena soal ujian jarang bertanya "tulis YAML ini", tetapi sering bertanya "layanan apa yang paling tepat untuk skenario X". Begitu kamu memetakan tiap layanan ke satu kata kerja inti (provision, define-with-code, run-web-app, build, deploy, orchestrate, operate), pilihan ganda yang tadinya membingungkan menjadi jauh lebih mudah dieliminasi.
+
+<Box variant="analogy" icon="☕" label="Analogi besar"><p>CloudFormation adalah resep dapur, CDK adalah cara menulis resep memakai bahasa chef, CodePipeline adalah ban berjalan, CodeBuild adalah oven pengujian, CodeDeploy adalah pelayan yang mengantar menu baru, Elastic Beanstalk adalah paket restoran siap pakai, dan Systems Manager adalah ruang kontrol untuk semua cabang.</p></Box>
+
+Bayangkan dampak klik manual saat skala membesar. Satu environment dengan 10 resource masih bisa diingat satu orang. Tetapi tiga environment (development, staging, production) dikali puluhan resource dikali beberapa Region menghasilkan ratusan keputusan kecil yang mudah berbeda satu sama lain. Perbedaan kecil itulah yang menjadi sumber bug "jalan di laptop saya tetapi gagal di production". IaC dan CI/CD ada untuk menghapus celah itu, bukan sekadar mempercepat.
+
+Menurut <a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html">Exam Guide CLF-C02</a>, kandidat perlu memahami nilai AWS Cloud, shared responsibility, keamanan, biaya, core services, dan pemilihan layanan untuk use case umum. Topik deployment dan operasi skala besar terutama masuk Domain 3, tetapi juga menyentuh Domain 2 (least privilege, akses aman, audit) dan Domain 4 (biaya layanan pengelola vs biaya resource yang dikelola).
+
+<Recap title="Gambaran awal"><ul><li>IaC membuat infrastruktur bisa didefinisikan sebagai file, bukan sekadar klik console.</li><li>CI/CD membantu perubahan aplikasi bergerak dari source code sampai production secara otomatis dan terkontrol.</li><li>Systems Manager membantu operasi harian, seperti patching, command, session, inventory, dan parameter.</li></ul></Recap>
+
+</Section>
+
+<Section num="02" id="iac" title="Infrastructure as Code (IaC)" sub="Mengubah infrastruktur menjadi blueprint yang bisa disimpan di Git.">
+
+<p class="lead">IaC seperti denah rumah, tukang yang berbeda tetap bisa membangun bentuk yang sama karena rujukannya jelas.</p>
+
+Infrastructure as Code adalah praktik mendefinisikan resource cloud dalam file deklaratif atau kode pemrograman. Alih-alih membuat security group, subnet, bucket, atau load balancer satu per satu, kamu menuliskan keadaan yang diinginkan lalu tool akan membuat atau memperbaruinya.
+
+Mengapa penting? Karena cloud memudahkan membuat resource, tetapi kemudahan itu bisa menjadi kacau bila tidak ada standar. Dengan IaC, tim bisa melakukan review, versioning, rollback, dan audit perubahan. Ini sama seperti kode aplikasi yang disimpan di repository.
+
+<CardGrid cols={3}>
+  <Card><h4>Repeatable</h4><p>Environment development, staging, dan production bisa dibuat dari blueprint yang sama dengan parameter berbeda.</p></Card>
+  <Card><h4>Auditable</h4><p>Perubahan terlihat di Git atau change set, sehingga tim tahu siapa mengubah apa dan kapan.</p></Card>
+  <Card><h4>Recoverable</h4><p>Jika resource rusak atau perlu dibuat ulang di Region lain, blueprint menjadi titik awal pemulihan.</p></Card>
+</CardGrid>
+
+<Figure><DeployScaleFig01 /><Fragment slot="caption"><b>Gambar 1.</b> CDK dapat menghasilkan template CloudFormation, lalu CloudFormation membuat stack AWS sesuai blueprint.</Fragment></Figure>
+
+<Box variant="exam" icon="🧠" label="Pola soal CLF-C02"><p>Jika soal menyebut membuat dan mengelola resource AWS secara konsisten sebagai code, jawabannya cenderung CloudFormation atau CDK, bukan Elastic Beanstalk atau Systems Manager.</p></Box>
+
+<h3>Kapan IaC dipakai?</h3>
+
+IaC cocok ketika resource perlu dibuat berulang, environment perlu distandarkan, perubahan perlu ditinjau, atau compliance menuntut jejak audit. Untuk percobaan satu kali, console boleh dipakai, tetapi untuk workload tim dan production, IaC lebih aman.
+
+<h3>Komponen mental model</h3>
+
+<CardGrid cols={2}>
+  <Card><h4>Template atau kode</h4><p>File yang menjelaskan resource, konfigurasi, dependency, parameter, dan output.</p></Card>
+  <Card><h4>Engine provisioning</h4><p>Layanan yang membaca blueprint lalu membuat, mengubah, atau menghapus resource.</p></Card>
+  <Card><h4>State atau stack</h4><p>Catatan resource yang dikelola bersama sebagai satu unit perubahan.</p></Card>
+  <Card><h4>Review dan rollback</h4><p>Proses memeriksa dampak perubahan dan kembali ke kondisi aman bila gagal.</p></Card>
+</CardGrid>
+
+</Section>
+
+<Section num="03" id="cloudformation" title="AWS CloudFormation" sub="Layanan native AWS untuk membuat dan mengelola stack resource.">
+
+<p class="lead">CloudFormation seperti kontraktor resmi AWS yang membaca blueprint dan membangun resource sesuai urutan yang benar.</p>
+
+<a href="https://docs.aws.amazon.com/cloudformation/">AWS CloudFormation</a> membantu kamu memodelkan dan menyiapkan resource AWS dengan memperlakukan infrastruktur sebagai kode. Kamu menulis template, biasanya YAML atau JSON, lalu CloudFormation membuat <strong>stack</strong>, yaitu kumpulan resource yang dikelola sebagai satu unit.
+
+CloudFormation bersifat deklaratif. Kamu tidak perlu menulis langkah imperatif seperti buat VPC dulu, lalu subnet, lalu route table. Kamu mendeskripsikan hasil akhir, CloudFormation memahami dependency banyak resource dan melakukan provisioning. Inilah perbedaan inti yang sering diuji: deklaratif berarti kamu menyatakan "apa yang diinginkan", bukan "langkah-langkah membuatnya". Jika provisioning gagal di tengah jalan, CloudFormation otomatis melakukan rollback ke kondisi terakhir yang stabil, sehingga kamu tidak meninggalkan resource setengah jadi yang membingungkan.
+
+Templatenya bisa ditulis dalam format YAML atau JSON; keduanya didukung dan menghasilkan hasil yang sama, jadi tim biasanya memilih YAML karena lebih ringkas dan mudah dibaca.
+
+<Steps>
+  <Step><b>Tulis template</b><p>Definisikan resource, parameter, output, dan dependency yang diperlukan.</p></Step>
+  <Step><b>Buat stack</b><p>Upload template ke CloudFormation dan berikan nilai parameter.</p></Step>
+  <Step><b>Review perubahan</b><p>Gunakan change set untuk melihat resource apa yang akan dibuat, diubah, atau dihapus.</p></Step>
+  <Step><b>Update atau delete stack</b><p>Kelola resource sebagai satu unit agar tidak tercecer dan mudah dibersihkan.</p></Step>
+</Steps>
+
+<Box variant="tip" icon="💡" label="Istilah penting"><p><strong>Template</strong> adalah blueprint, <strong>stack</strong> adalah hasil bangunan, <strong>change set</strong> adalah daftar rencana renovasi sebelum benar-benar dijalankan.</p></Box>
+
+<h3>Fitur yang sering muncul di ujian</h3>
+
+<CardGrid cols={2}>
+  <Card><h4>Stack</h4><p>Kumpulan resource yang dibuat dan dikelola bersama sebagai satu unit; hapus stack maka semua resource di dalamnya ikut dibersihkan rapi.</p></Card>
+  <Card><h4>Change set</h4><p>Preview perubahan sebelum update stack dijalankan; kamu melihat resource mana yang akan dibuat, diubah, atau diganti sebelum benar-benar dieksekusi.</p></Card>
+  <Card><h4>Drift detection</h4><p>Mendeteksi perbedaan antara konfigurasi template dan resource aktual yang mungkin diubah manual di luar CloudFormation, sehingga kamu tahu environment sudah menyimpang dari blueprint.</p></Card>
+  <Card><h4>StackSets</h4><p>Deploy satu stack ke beberapa akun dan Region sekaligus dalam satu operasi, cocok untuk standardisasi guardrail di skala organisasi.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="🔍" label="Change set vs drift detection"><p>Keduanya sering tertukar di soal. Change set menjawab "apa yang akan terjadi jika saya update" (lihat ke depan, sebelum perubahan); drift detection menjawab "apakah resource saya sudah berbeda dari template" (lihat ke belakang, setelah ada perubahan manual).</p></Box>
+
+<h3>Kapan memilih CloudFormation?</h3>
+
+Pilih CloudFormation ketika soal menekankan IaC native AWS, template deklaratif, provisioning resource secara konsisten, atau deployment lintas akun dan Region dengan StackSets. Untuk level Cloud Practitioner, kamu tidak perlu hafal semua syntax, tetapi perlu tahu perannya.
+
+<Box variant="warn" icon="⚠️" label="Jebakan biaya"><p>CloudFormation bukan berarti semua resource gratis, kamu tetap membayar resource yang dibuat, misalnya EC2, load balancer, NAT Gateway, atau RDS.</p></Box>
+
+<a href="https://aws.amazon.com/cloudformation/pricing/">Halaman pricing CloudFormation</a> menyatakan tidak ada biaya tambahan untuk resource provider dengan namespace AWS::* dan Alexa::*. Yang berbiaya hanyalah resource provider pihak ketiga atau registry extension: 1.000 handler operation pertama per bulan gratis, selanjutnya ada tarif per handler operation, ditambah biaya bila durasi handler melampaui ambang tertentu. Harga dapat berubah, jadi cek halaman resmi untuk angka terbaru. Untuk ujian, ingat prinsipnya: CloudFormation sebagai IaC tool gratis untuk resource AWS, tetapi resource yang dibuat tetap berbiaya.
+
+</Section>
+
+<Section num="04" id="cdk" title="AWS Cloud Development Kit (CDK)" sub="Menulis infrastruktur memakai bahasa pemrograman yang familiar.">
+
+<p class="lead">Jika CloudFormation adalah formulir blueprint, CDK adalah aplikasi desain yang membantu membuat blueprint itu dengan kode.</p>
+
+<a href="https://docs.aws.amazon.com/cdk/v2/guide/home.html">AWS CDK</a> adalah framework open source untuk mendefinisikan infrastruktur cloud dalam kode dan memprovisioningnya melalui CloudFormation. CDK v2 mendukung enam bahasa yang semuanya sudah GA: TypeScript, JavaScript, Python, Java, C#/.NET, dan Go. Di balik layar, CDK memakai teknologi bernama JSII untuk menghasilkan binding semua bahasa itu dari satu basis kode TypeScript, jadi fitur antarbahasa relatif konsisten.
+
+Poin krusial yang sering keliru dipahami: CDK bukan engine provisioning tersendiri. CDK tidak berbicara langsung ke API tiap layanan AWS. Sebaliknya, CDK melakukan <strong>synth</strong> (synthesize), yaitu menghasilkan template CloudFormation dari kodemu, lalu CloudFormation-lah yang membuat resource. Jadi semua jaminan CloudFormation (rollback, change set, drift detection, manajemen stack) tetap kamu dapatkan walau menulisnya dengan kode.
+
+CDK memakai konsep <strong>construct</strong>, yaitu building block reusable. Misalnya, sebuah construct bisa mewakili bucket S3, Lambda function, atau pola lebih besar seperti aplikasi serverless dengan API Gateway dan Lambda. Karena ditulis dalam bahasa pemrograman umum, kamu bisa memakai loop, kondisi, dan fungsi untuk menghasilkan banyak resource serupa tanpa menyalin-tempel ratusan baris template.
+
+<Steps>
+  <Step><b>Developer menulis app CDK</b><p>Infrastruktur didefinisikan dengan bahasa pemrograman umum.</p></Step>
+  <Step><b>CDK melakukan synth</b><p>CDK menghasilkan template CloudFormation dari kode tersebut.</p></Step>
+  <Step><b>CloudFormation deploy</b><p>Template dipakai untuk membuat atau memperbarui stack di AWS.</p></Step>
+</Steps>
+
+<Box variant="analogy" icon="🧱" label="Construct sebagai LEGO"><p>Daripada membuat setiap bata satu per satu, construct memberi blok siap pakai yang bisa disusun ulang dan dibagikan antar proyek.</p></Box>
+
+<h3>CloudFormation vs CDK</h3>
+
+<p>Keduanya menghasilkan resource yang sama lewat CloudFormation; bedanya ada pada cara kamu menuliskan keinginanmu. CloudFormation memakai template deklaratif murni, sedangkan CDK memakai kode yang men-synth menjadi template itu.</p>
+
+<Compare aLabel="CloudFormation &middot; template deklaratif" bLabel="CDK &middot; kode yang men-synth ke CloudFormation" aTone="blue" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Kamu menulis YAML atau JSON yang menyatakan resource akhir secara langsung.</li><li>Tidak butuh keahlian bahasa pemrograman, cocok untuk tim ops dan template standar.</li><li>Apa yang ada di template persis itulah yang dibuat, tanpa lapisan abstraksi.</li><li>Native AWS, tidak ada langkah synth, template adalah artefak utama.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Kamu menulis TypeScript, Python, Java, C#, Go, atau JavaScript lalu jalankan synth.</li><li>Bisa memakai loop, kondisi, fungsi, dan construct reusable untuk mengurangi pengulangan.</li><li>Cocok untuk tim developer yang ingin pola infrastruktur dapat dibagi antar proyek.</li><li>Tetap men-deploy lewat CloudFormation, jadi rollback dan change set tetap berlaku.</li></ul></Fragment>
+</Compare>
+
+<Box variant="exam" icon="🧠" label="Tips ujian"><p>CDK bukan pengganti total CloudFormation. CDK justru men-synth menjadi CloudFormation template untuk deployment. Kalimat soal "define infrastructure using familiar programming languages" mengarah ke CDK; "provision resources from declarative templates" mengarah ke CloudFormation.</p></Box>
+
+</Section>
+
+<Section num="05" id="elastic-beanstalk" title="AWS Elastic Beanstalk" sub="Platform aplikasi yang mengelola infrastruktur dasar untuk developer.">
+
+<p class="lead">Elastic Beanstalk seperti menyewa dapur siap pakai, kamu membawa resep aplikasi, AWS menyiapkan kompor, kulkas, dan area servis.</p>
+
+<a href="https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/Welcome.html">AWS Elastic Beanstalk</a> membantu deploy aplikasi web ke AWS tanpa mengelola semua detail infrastruktur dari nol. Kamu upload kode aplikasi, memilih platform, lalu Elastic Beanstalk dapat memprovisioning EC2, load balancing, health monitoring, dan scaling environment.
+
+Elastic Beanstalk mendukung beberapa platform seperti Go, Java, .NET, Node.js, PHP, Python, Ruby, dan Docker. Ia cocok untuk developer yang ingin cepat menjalankan aplikasi web dengan kontrol yang masih lebih terlihat dibanding layanan serverless penuh.
+
+Kelebihan utamanya adalah keseimbangan: kamu tetap melihat dan bisa mengakses EC2 instance, load balancer, dan Auto Scaling Group yang dibuat, tetapi tidak perlu merangkainya manual. Saat traffic naik, Beanstalk menambah instance; saat sepi, ia menguranginya. Jika kamu butuh kontrol detail di kemudian hari, kamu masih bisa menyesuaikan konfigurasi underlying tanpa membuang aplikasi.
+
+<Box variant="warn" icon="🗓️" label="Platform AL2 segera dipensiunkan"><p>Platform berbasis Amazon Linux 2023 (AL2023) aktif dirilis pada awal 2026 dan menjadi pilihan default ke depan. Semua platform berbasis Amazon Linux 2 (AL2) dijadwalkan dipensiunkan paling lambat 30 Juni 2026, jadi aplikasi lama sebaiknya bermigrasi ke AL2023. Ini detail operasional, bukan poin hafalan ujian, tetapi penting untuk praktik nyata.</p></Box>
+
+<CardGrid cols={3}>
+  <Card><h4>Application</h4><p>Wadah logis untuk versi aplikasi, environment, dan konfigurasi.</p></Card>
+  <Card><h4>Environment</h4><p>Tempat aplikasi berjalan, misalnya web server environment atau worker environment.</p></Card>
+  <Card><h4>Platform</h4><p>Runtime dan stack yang dipakai, seperti Node.js, Python, Java, .NET, atau Docker.</p></Card>
+</CardGrid>
+
+<h3>Kapan memilih Elastic Beanstalk?</h3>
+
+Pilih Elastic Beanstalk saat soal menyebut developer ingin deploy aplikasi web dengan cepat, tetap memakai resource seperti EC2 dan load balancer, tetapi tidak ingin mengonfigurasi semuanya manual. Elastic Beanstalk bukan container orchestrator penuh seperti ECS, bukan IaC engine seperti CloudFormation, dan bukan pipeline CI/CD seperti CodePipeline.
+
+<Box variant="warn" icon="⚠️" label="Jebakan biaya"><p><a href="https://aws.amazon.com/elasticbeanstalk/pricing/">Elastic Beanstalk tidak mengenakan biaya tambahan</a>, tetapi resource yang dibuatnya, seperti EC2, S3, dan load balancer, tetap dikenakan biaya sesuai pemakaian.</p></Box>
+
+</Section>
+
+<Section num="06" id="cicd" title="CodeCommit, CodeBuild, CodeDeploy, dan CodePipeline" sub="Rangkaian layanan developer tools untuk merilis perubahan secara otomatis.">
+
+<p class="lead">CI/CD seperti jalur produksi pabrik, bahan mentah masuk, diuji, dikemas, lalu dikirim ke pelanggan dengan pemeriksaan di setiap tahap.</p>
+
+CI/CD membantu tim merilis software lebih cepat dan lebih aman. <strong>Continuous Integration</strong> berfokus pada build dan test setiap perubahan kode segera setelah di-push, sehingga bug ketahuan dini saat masih murah diperbaiki. <strong>Continuous Delivery</strong> berfokus pada menyiapkan rilis agar dapat dikirim ke environment tujuan dengan proses otomatis dan dapat diulang, mengurangi langkah manual yang rawan salah.
+
+Cara mengingat peran tiap layanan Code* paling mudah lewat satu kata kerja: CodeCommit menyimpan (store), CodeBuild membangun (build), CodeDeploy mengirim (deploy), CodePipeline mengorkestrasi (orchestrate). CodePipeline adalah konduktor orkestra; ia tidak membangun atau men-deploy sendiri, melainkan memanggil CodeBuild dan CodeDeploy pada tahap yang tepat, dan bisa memanggil tool pihak ketiga juga.
+
+<Figure><DeployScaleFig02 /><Fragment slot="caption"><b>Gambar 2.</b> CodePipeline mengorkestrasi source, build, dan deploy, sedangkan tiap tahap bisa memakai layanan AWS atau tool pihak ketiga.</Fragment></Figure>
+
+<CardGrid cols={2}>
+  <Card><h4>AWS CodeCommit</h4><p>Repository Git terkelola di AWS. Berdasarkan blog resmi AWS DevOps, layanan ini kembali tersedia untuk pelanggan baru (returns to GA) pada 24 November 2025.</p></Card>
+  <Card><h4>AWS CodeBuild</h4><p>Layanan build terkelola yang mengompilasi source code, menjalankan unit test, dan menghasilkan artifact siap deploy berdasarkan buildspec.</p></Card>
+  <Card><h4>AWS CodeDeploy</h4><p>Layanan deployment otomatis untuk tiga compute platform: EC2/On-Premises, AWS Lambda, dan Amazon ECS.</p></Card>
+  <Card><h4>AWS CodePipeline</h4><p>Layanan continuous delivery untuk memodelkan, memvisualisasikan, dan mengotomatisasi langkah rilis software dari source sampai production.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="🟢" label="Status CodeCommit"><p>CodeCommit sempat ditutup untuk pelanggan baru, lalu kembali GA pada 24 November 2025. Catatan: halaman pricing-nya sempat belum diperbarui dan masih menampilkan teks lama, jadi rujukan status yang benar adalah blog resmi AWS DevOps, bukan halaman pricing.</p></Box>
+
+<h3>Peran masing-masing layanan</h3>
+
+<Steps>
+  <Step><b>Source</b><p>Kode disimpan di CodeCommit, GitHub, GitLab, Bitbucket, atau sumber lain yang terhubung lewat integrasi.</p></Step>
+  <Step><b>Build dan test</b><p>CodeBuild menjalankan perintah dari buildspec, misalnya install dependency, test, dan package.</p></Step>
+  <Step><b>Deploy</b><p>CodeDeploy atau Elastic Beanstalk mengirim versi aplikasi baru ke target.</p></Step>
+  <Step><b>Orkestrasi</b><p>CodePipeline menyusun semua tahap agar berjalan otomatis saat perubahan terjadi.</p></Step>
+</Steps>
+
+<Box variant="tip" icon="🔌" label="CodeConnections, bukan CodeStar Connections"><p>Sejak 29 Maret 2024, AWS mengganti nama AWS CodeStar Connections menjadi <a href="https://aws.amazon.com/about-aws/whats-new/2024/03/aws-codeconnections-formerly-codestar-connections/">AWS CodeConnections</a> untuk koneksi ke provider Git seperti GitHub, GitLab, dan Bitbucket. ARN lama (codestar-connections) masih didukung, tetapi materi modern memakai nama baru ini.</p></Box>
+
+<Box variant="exam" icon="🧠" label="Tips ujian"><p>Jika pertanyaan menyebut pipeline end-to-end, pilih CodePipeline. Jika hanya build dan test, pilih CodeBuild. Jika hanya deployment aplikasi ke EC2, Lambda, atau ECS, pilih CodeDeploy.</p></Box>
+
+</Section>
+
+<Section num="07" id="deployment-strategies" title="Strategi Deployment Aman" sub="Melepas versi baru tanpa membuat seluruh pelanggan ikut menjadi tester dadakan.">
+
+<p class="lead">Deployment aman mirip mengganti menu restoran, jangan langsung mengganti semua cabang jika satu resep belum terbukti enak.</p>
+
+Strategi deployment menentukan bagaimana versi baru masuk ke environment. Inti yang membedakan semua strategi sederhana saja: berapa banyak traffic yang menyentuh versi baru, dan seberapa cepat. Makin sedikit traffic yang terkena di awal, makin kecil radius ledakan jika versi baru ternyata bermasalah. Di level Cloud Practitioner, kamu tidak perlu menghafal konfigurasi detail, tetapi perlu memahami pola risiko dan kapan dipakai.
+
+<Figure><DeployScaleFig04 /><Fragment slot="caption"><b>Gambar 3.</b> Empat strategi deployment dibedakan oleh porsi traffic ke versi baru seiring waktu: in-place mengganti sekaligus, rolling per batch, blue/green tukar penuh saat cutover, canary menaikkan bertahap.</Fragment></Figure>
+
+<CardGrid cols={2}>
+  <Card><h4>In-place</h4><p>Versi baru menggantikan versi lama pada resource yang sama. Sederhana, tetapi ada jeda saat instance diperbarui dan rollback bisa lebih menegangkan karena versi lama sudah ditimpa.</p></Card>
+  <Card><h4>Rolling</h4><p>Instance diperbarui bertahap per batch. Sebagian kapasitas tetap melayani traffic saat sebagian lain diperbarui, sehingga tidak ada downtime total tetapi sempat berjalan dua versi sekaligus.</p></Card>
+  <Card><h4>Blue/green</h4><p>Environment baru (green) dibuat terpisah berdampingan dengan yang lama (blue); traffic dipindah penuh setelah versi baru siap. Rollback cepat karena cukup mengalihkan traffic kembali ke blue.</p></Card>
+  <Card><h4>Canary</h4><p>Sebagian kecil traffic diarahkan ke versi baru lebih dulu (misalnya 10%), dipantau, lalu dinaikkan bertahap jika metrik sehat. Risiko paling terkontrol, tetapi prosesnya paling lambat.</p></Card>
+</CardGrid>
+
+<Compare aLabel="Blue/Green &middot; tukar penuh sekali cutover" bLabel="Canary &middot; naikkan traffic bertahap" aTone="blue" bTone="violet" vs="vs">
+  <Fragment slot="a"><ul><li>Dua environment penuh berjalan berdampingan, lalu traffic dialihkan 0 ke 100 persen sekaligus.</li><li>Rollback sangat cepat: arahkan traffic kembali ke environment lama yang masih utuh.</li><li>Butuh kapasitas ganda sementara, jadi biaya sesaat lebih tinggi.</li><li>Cocok saat kamu ingin titik balik yang tegas dan pemulihan instan.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Satu environment, porsi traffic ke versi baru dinaikkan sedikit demi sedikit.</li><li>Masalah terdeteksi saat hanya sebagian kecil pengguna terkena, radius ledakan kecil.</li><li>Tidak butuh kapasitas ganda penuh, tetapi proses rilis lebih lama.</li><li>Cocok saat kamu ingin memvalidasi metrik nyata sebelum rollout penuh.</li></ul></Fragment>
+</Compare>
+
+<h3>Strategi mana untuk platform mana</h3>
+
+<a href="https://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html">CodeDeploy</a> mendukung tiga compute platform, dan strategi yang tersedia berbeda untuk tiap platform. Detail ini sering diuji di CLF-C02 karena menyangkut batasan platform.
+
+<CardGrid cols={2}>
+  <Card><h4>EC2/On-Premises</h4><p>Mendukung in-place dan blue/green. Catatan penting: in-place eksklusif untuk platform ini, dan blue/green di sini hanya bekerja dengan EC2 instances, bukan on-premises instances.</p></Card>
+  <Card><h4>AWS Lambda & Amazon ECS</h4><p>Tidak mendukung in-place. Keduanya memakai blue/green dengan traffic shifting: canary, linear, atau all-at-once untuk memindahkan traffic ke versi baru.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🧠" label="Jebakan batasan platform"><p>Ingat dua batasan yang sering muncul: in-place HANYA tersedia untuk EC2/On-Premises (Lambda dan ECS tidak bisa in-place), dan blue/green pada EC2/On-Premises HANYA bekerja dengan EC2 instances, bukan on-premises. Dalam soal, kata kunci automated deployment, deployment group, application revision, dan rollback sering mengarah ke CodeDeploy.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jangan salah pilih"><p>Auto Scaling Group menambah atau mengurangi kapasitas mengikuti beban. CodeDeploy mengelola rilis versi aplikasi. Keduanya bisa bekerja bersama, tetapi menjawab masalah yang berbeda: berapa banyak instance vs versi apa yang berjalan di instance itu.</p></Box>
+
+</Section>
+
+<Section num="08" id="systems-manager" title="AWS Systems Manager (SSM)" sub="Ruang kontrol untuk mengelola server dan resource dalam skala besar.">
+
+<p class="lead">Systems Manager seperti pusat komando gedung, kamu bisa melihat perangkat, mengirim instruksi, membuka akses aman, dan menjalankan perawatan rutin.</p>
+
+<a href="https://docs.aws.amazon.com/systems-manager/latest/userguide/what-is-systems-manager.html">AWS Systems Manager</a> membantu melihat, mengelola, dan mengoperasikan nodes secara terpusat di AWS, on-premises, dan lingkungan multicloud. Node perlu menjadi <strong>managed node</strong>, biasanya dengan SSM Agent terpasang dan izin IAM yang tepat.
+
+<Figure><DeployScaleFig03 /><Fragment slot="caption"><b>Gambar 4.</b> Systems Manager menjadi lapisan operasi terpusat untuk node AWS, on-premises, dan multicloud.</Fragment></Figure>
+
+<CardGrid cols={2}>
+  <Card><h4>Run Command</h4><p>Menjalankan perintah jarak jauh pada managed nodes tanpa login manual satu per satu.</p></Card>
+  <Card><h4>Session Manager</h4><p>Membuka sesi shell aman tanpa harus membuka port SSH inbound ke internet.</p></Card>
+  <Card><h4>Patch Manager</h4><p>Mengotomatisasi patch operating system dan aplikasi sesuai maintenance window.</p></Card>
+  <Card><h4>Parameter Store</h4><p>Menyimpan parameter konfigurasi dan secret sederhana yang dapat direferensikan aplikasi.</p></Card>
+  <Card><h4>Automation</h4><p>Menjalankan runbook operasional, misalnya membuat AMI, restart service, atau remediasi standar.</p></Card>
+  <Card><h4>Inventory</h4><p>Mengumpulkan informasi software, konfigurasi, dan metadata instance untuk visibility.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🧠" label="Pola soal CLF-C02"><p>Jika soal menyebut mengelola banyak EC2, menjalankan command jarak jauh, patching, atau akses shell tanpa SSH inbound, Systems Manager adalah kandidat kuat. Untuk akses aman tanpa membuka port, jawabannya Session Manager, bukan bastion host atau SSH publik.</p></Box>
+
+<h3>Apa yang gratis dan apa yang berbiaya</h3>
+
+<p>Banyak kemampuan inti Systems Manager gratis untuk EC2, sehingga sering menjadi jawaban hemat biaya di soal. Untuk ujian, cukup ingat pola besar ini, bukan angka pastinya.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Gratis untuk EC2</h4><p>Run Command, Session Manager, Patch Manager, dan Inventory tidak mengenakan biaya tambahan untuk EC2. Parameter Store tier Standard juga gratis.</p></Card>
+  <Card><h4>Berbiaya</h4><p>Parameter Store tier Advanced berbayar per parameter per bulan; Automation berbayar per step yang dieksekusi dan per detik eksekusi aws:executeScript. Angka dapat berubah, cek halaman pricing resmi.</p></Card>
+</CardGrid>
+
+<h3>SSM Agent dan IAM role</h3>
+
+SSM Agent berjalan di node dan berkomunikasi dengan Systems Manager. Untuk EC2, biasanya instance memerlukan IAM role yang memberi izin komunikasi ke Systems Manager. Ini contoh bagus shared responsibility: AWS menyediakan layanan, tetapi pelanggan tetap bertanggung jawab memasang agent bila perlu, memberi izin yang benar, dan menjaga patch policy.
+
+</Section>
+
+<Section num="09" id="hands-on" title="Walkthrough Konseptual" sub="Latihan ringan yang aman dipahami tanpa harus membuat resource mahal.">
+
+<p class="lead">Tujuan walkthrough ini adalah memahami alur, bukan mengejar konfigurasi production yang kompleks.</p>
+
+<h3>Latihan A, membaca stack CloudFormation</h3>
+
+<Steps>
+  <Step><b>Buka template sederhana</b><p>Cari bagian Parameters, Resources, dan Outputs untuk melihat input, resource yang dibuat, dan informasi hasil.</p></Step>
+  <Step><b>Bayangkan resource graph</b><p>Tanyakan resource mana bergantung pada resource lain, misalnya EC2 perlu security group.</p></Step>
+  <Step><b>Preview change set</b><p>Sebelum update stack, pahami apakah perubahan akan menambah, mengubah, mengganti, atau menghapus resource.</p></Step>
+  <Step><b>Cleanup stack</b><p>Delete stack setelah latihan agar resource tidak tertinggal dan menimbulkan biaya.</p></Step>
+</Steps>
+
+<h3>Latihan B, membaca pipeline CI/CD</h3>
+
+<Steps>
+  <Step><b>Source stage</b><p>Identifikasi dari mana kode berasal, misalnya CodeCommit atau GitHub lewat CodeConnections.</p></Step>
+  <Step><b>Build stage</b><p>Periksa artifact apa yang dihasilkan CodeBuild setelah test dan packaging.</p></Step>
+  <Step><b>Deploy stage</b><p>Tentukan target deployment, misalnya Elastic Beanstalk environment, EC2 group lewat CodeDeploy, Lambda, atau ECS. Ingat: in-place hanya untuk EC2/On-Premises, sedangkan Lambda dan ECS memakai blue/green dengan traffic shifting.</p></Step>
+  <Step><b>Pilih strategi rilis</b><p>Tentukan apakah rilis aman dengan blue/green (tukar penuh, rollback instan) atau canary (naikkan traffic bertahap sambil pantau metrik), sesuai toleransi risiko aplikasi.</p></Step>
+  <Step><b>Approval dan rollback</b><p>Bayangkan titik manual approval untuk production dan alarm CloudWatch apa yang memicu rollback otomatis bila versi baru bermasalah.</p></Step>
+</Steps>
+
+<h3>Latihan C, membaca Systems Manager</h3>
+
+<Steps>
+  <Step><b>Periksa managed node</b><p>Pastikan node muncul sebagai managed, artinya agent dan izin dasar bekerja.</p></Step>
+  <Step><b>Jalankan command aman</b><p>Gunakan Run Command untuk perintah baca sederhana, bukan mengubah konfigurasi.</p></Step>
+  <Step><b>Buka sesi tanpa SSH publik</b><p>Pahami bagaimana Session Manager mengurangi kebutuhan bastion host dan port inbound.</p></Step>
+  <Step><b>Rencanakan patch window</b><p>Kelompokkan node berdasarkan environment agar patching tidak menabrak jam sibuk.</p></Step>
+</Steps>
+
+<Box variant="tip" icon="🧹" label="Kebiasaan baik"><p>Setiap latihan AWS harus punya langkah cleanup. Banyak tagihan pemula datang dari resource yang lupa dimatikan, bukan dari materi belajarnya.</p></Box>
+
+</Section>
+
+<Section num="10" id="security-cost" title="Keamanan, Operasi, dan Biaya" sub="Deployment cepat harus tetap aman, terukur, dan tidak mengejutkan tagihan.">
+
+<p class="lead">Otomatisasi mempercepat pekerjaan baik dan buruk, karena itu guardrail harus dibuat sebelum kecepatannya dinaikkan.</p>
+
+<h3>Keamanan deployment</h3>
+
+<CardGrid cols={2}>
+  <Card><h4>Least privilege</h4><p>Role untuk CloudFormation, CodeBuild, CodeDeploy, dan Systems Manager harus punya izin sesuai tugasnya, bukan izin admin permanen.</p></Card>
+  <Card><h4>Secret management</h4><p>Jangan menaruh password di template, build log, atau repository. Gunakan layanan seperti Parameter Store atau AWS Secrets Manager sesuai kebutuhan.</p></Card>
+  <Card><h4>Audit trail</h4><p>Gunakan CloudTrail, log pipeline, event deployment, dan riwayat stack untuk menelusuri perubahan.</p></Card>
+  <Card><h4>Approval gate</h4><p>Untuk production, pipeline bisa memakai manual approval agar perubahan berisiko tidak langsung masuk.</p></Card>
+</CardGrid>
+
+<h3>Operasi skala besar</h3>
+
+Pada skala kecil, satu admin bisa login ke satu server. Pada skala besar, pola itu tidak aman dan tidak efisien. Systems Manager membantu menjalankan command, patching, session, dan automation secara terpusat. CloudFormation dan CDK membantu memastikan environment dibuat dengan pola yang sama.
+
+<h3>Biaya dan lifecycle</h3>
+
+CloudFormation dan Elastic Beanstalk sering muncul dalam soal biaya. Intinya, layanan orkestrasi dapat tidak menambah biaya langsung untuk penggunaan dasar tertentu, tetapi resource yang dibuatnya tetap berbiaya. Karena itu, tag, cleanup, budget alert, dan review resource harus menjadi bagian dari proses deployment.
+
+<Box variant="exam" icon="🧠" label="Domain CLF-C02"><p>Topik ini menyentuh Domain 4 karena kandidat harus memahami biaya, pricing, dan billing practices, terutama perbedaan antara biaya layanan pengelola dan biaya resource yang dikelola.</p></Box>
+
+</Section>
+
+<Section num="11" id="jebakan" title="Kesalahan Umum dan Jebakan Soal" sub="Hal-hal kecil yang sering membuat pemula memilih layanan yang salah.">
+
+<p class="lead">Dalam ujian, kata kunci kecil sering menjadi pembeda antara jawaban yang mirip.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>CloudFormation vs Elastic Beanstalk</h4><p>CloudFormation mengelola resource sebagai IaC. Elastic Beanstalk mengelola deployment aplikasi web dan environment pendukung.</p></Card>
+  <Card><h4>CodeBuild vs CodeDeploy</h4><p>CodeBuild membangun dan menguji artifact. CodeDeploy mengirim artifact ke target runtime.</p></Card>
+  <Card><h4>CodePipeline vs semua layanan Code</h4><p>CodePipeline adalah orkestrator tahapan. Ia dapat memanggil CodeBuild, CodeDeploy, dan integrasi lain.</p></Card>
+  <Card><h4>Systems Manager vs CloudWatch</h4><p>Systems Manager menjalankan operasi dan manajemen node. CloudWatch memantau metrik, log, alarm, dan event.</p></Card>
+  <Card><h4>Session Manager vs SSH publik</h4><p>Session Manager membantu akses aman tanpa membuka port SSH inbound ke internet.</p></Card>
+  <Card><h4>CDK vs CloudFormation</h4><p>CDK menulis infrastruktur dengan bahasa pemrograman, lalu menghasilkan CloudFormation untuk provisioning.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Status layanan dan materi lama"><p>Materi lama kadang menyebut CodeStar. Untuk konteks modern, ingat bahwa CodeConnections adalah nama baru untuk CodeStar Connections, dan pipeline modern biasanya dibahas lewat CodePipeline, CodeBuild, CodeDeploy, serta integrasi source.</p></Box>
+
+<h3>Jebakan kalimat soal</h3>
+
+<Steps>
+  <Step><b>"Define infrastructure using programming languages"</b><p>Ini mengarah ke AWS CDK, bukan sekadar CloudFormation template.</p></Step>
+  <Step><b>"Provision AWS resources using templates"</b><p>Ini mengarah ke AWS CloudFormation.</p></Step>
+  <Step><b>"Deploy web app quickly without managing infrastructure details"</b><p>Ini mengarah ke AWS Elastic Beanstalk.</p></Step>
+  <Step><b>"Automate build and unit tests"</b><p>Ini mengarah ke AWS CodeBuild.</p></Step>
+  <Step><b>"Automate release workflow stages"</b><p>Ini mengarah ke AWS CodePipeline.</p></Step>
+  <Step><b>"Run commands or patch instances at scale"</b><p>Ini mengarah ke AWS Systems Manager.</p></Step>
+  <Step><b>"Shift a small percentage of traffic to the new version first"</b><p>Ini menggambarkan canary deployment, bukan blue/green yang menukar traffic penuh sekaligus.</p></Step>
+  <Step><b>"Spin up a parallel environment and switch over"</b><p>Ini menggambarkan blue/green deployment, dengan rollback cepat ke environment lama.</p></Step>
+</Steps>
+
+</Section>
+
+<Section num="12" id="ringkasan" title="Ringkasan & Tips Ujian" sub="Peta cepat layanan deployment dan manajemen skala besar untuk CLF-C02.">
+
+<p class="lead">Untuk lulus, hafalkan peran layanan, bukan detail syntax.</p>
+
+<Recap title="Poin Penting"><ul><li><strong>IaC</strong> membuat infrastruktur konsisten, repeatable, auditable, dan cocok untuk review.</li><li><strong>CloudFormation</strong> adalah layanan native AWS untuk provisioning resource dari template YAML atau JSON; kuasai stack, change set, drift detection, dan StackSets.</li><li><strong>CDK</strong> memungkinkan infrastruktur ditulis memakai bahasa pemrograman (enam bahasa) lalu di-synth menjadi CloudFormation untuk deployment.</li><li><strong>Elastic Beanstalk</strong> mempercepat deployment aplikasi web dengan mengelola resource pendukung seperti EC2, load balancer, health monitoring, dan scaling.</li><li><strong>CodePipeline</strong> mengorkestrasi workflow rilis, <strong>CodeBuild</strong> build dan test, <strong>CodeDeploy</strong> deployment otomatis, <strong>CodeCommit</strong> repository Git terkelola (kembali GA 24 November 2025).</li><li><strong>Strategi deployment</strong>: in-place hanya EC2/On-Premises; rolling per batch; blue/green tukar penuh dengan rollback instan; canary naik bertahap; Lambda dan ECS memakai blue/green dengan traffic shifting.</li><li><strong>Systems Manager</strong> membantu operasi node skala besar, termasuk Run Command, Session Manager, Patch Manager, Automation, Inventory, dan Parameter Store; banyak kemampuan intinya gratis untuk EC2.</li></ul></Recap>
+
+<h3>Pemetaan ke domain CLF-C02</h3>
+
+<CardGrid cols={2}>
+  <Card><h4>Domain 1, Cloud Concepts</h4><p>Pahami manfaat otomatisasi, elasticity, repeatability, agility, dan mengapa cloud mempercepat eksperimen.</p></Card>
+  <Card><h4>Domain 2, Security & Compliance</h4><p>Ingat least privilege, audit trail, shared responsibility, patching, secret management, dan akses aman tanpa SSH publik.</p></Card>
+  <Card><h4>Domain 3, Cloud Technology & Services</h4><p>Ini domain utama modul, fokus pada pemilihan CloudFormation, CDK, Elastic Beanstalk, CodeBuild, CodeDeploy, CodePipeline, dan Systems Manager.</p></Card>
+  <Card><h4>Domain 4, Billing, Pricing & Support</h4><p>Bedakan layanan pengelola dari resource yang dibuat, dan ingat resource tetap bisa menimbulkan biaya walau dibuat otomatis.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Strategi menjawab"><p>Baca kata kerja di soal: provision berarti CloudFormation, define with programming language berarti CDK, build berarti CodeBuild, deploy berarti CodeDeploy atau Elastic Beanstalk, orchestrate release berarti CodePipeline, operate nodes berarti Systems Manager. Untuk strategi rilis: parallel environment lalu switch berarti blue/green, shift small percentage first berarti canary, replace on same resource berarti in-place.</p></Box>
+
+<Box variant="tip" icon="💡" label="Kalimat hafalan"><p>CloudFormation membangun resource, CDK menulis blueprint dengan kode, Beanstalk menjalankan aplikasi web, CodePipeline mengalirkan rilis, Systems Manager merawat armada.</p></Box>
+
+</Section>

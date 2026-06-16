@@ -1,0 +1,379 @@
+---
+title: "Modul Elastic Load Balancing & Auto Scaling Groups - AWS Cloud Practitioner CLF-C02"
+badge: "ELB"
+topTitle: "Elastic Load Balancing & Auto Scaling Groups"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Pelajari cara ELB membagi traffic dan ASG menambah atau mengurangi kapasitas agar aplikasi tetap tersedia, responsif, dan hemat biaya."
+order: 4
+target: "CLF-C02"
+readingTime: "~70 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Restoran Ramai, Banyak Pintu, dan Tim Dapur" }
+  - { num: "02", id: "ha-scalability-elasticity", title: "High Availability, Scalability, dan Elasticity" }
+  - { num: "03", id: "apa-itu-elb", title: "Apa itu Elastic Load Balancing?" }
+  - { num: "04", id: "jenis-load-balancer", title: "Jenis Load Balancer di AWS" }
+  - { num: "05", id: "application-load-balancer", title: "Application Load Balancer dari Dekat" }
+  - { num: "06", id: "apa-itu-asg", title: "Apa itu Auto Scaling Group?" }
+  - { num: "07", id: "elb-asg-bersama", title: "Cara ELB dan ASG Bekerja Bersama" }
+  - { num: "08", id: "hands-on-konseptual", title: "Hands-on Konseptual: ALB + ASG" }
+  - { num: "09", id: "strategi-scaling", title: "Strategi Auto Scaling" }
+  - { num: "10", id: "kesalahan-jebakan", title: "Kesalahan Umum & Jebakan CLF-C02" }
+  - { num: "11", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul Elastic Load Balancing & Auto Scaling Groups - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import ElbAsgFig01 from "@figures/ElbAsgFig01.astro";
+import ElbAsgFig02 from "@figures/ElbAsgFig02.astro";
+import ElbAsgFig03 from "@figures/ElbAsgFig03.astro";
+import ElbAsgFig04 from "@figures/ElbAsgFig04.astro";
+
+<Hero eyebrow="Modul &middot; Compute & Networking" title="Elastic Load Balancing &amp;<br /><em>Auto Scaling Groups</em>">
+  <p>Belajar menjaga aplikasi tetap hidup saat traffic naik, server rusak, atau pengguna datang dari banyak arah.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~70 menit baca</Chip>
+    <Chip icon="book">Domain 3 &middot; 34%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Restoran Ramai, Banyak Pintu, dan Tim Dapur" sub="Analogi dulu agar konsep HA dan scaling terasa nyata.">
+
+<p class="lead">Bayangkan aplikasi web seperti restoran populer yang tiba-tiba ramai saat jam makan siang.</p>
+
+Jika semua pelanggan hanya masuk lewat satu pintu dan dilayani satu dapur, antrean panjang akan muncul. Jika dapur itu bermasalah, seluruh restoran berhenti. Solusinya bukan hanya membuat pintu lebih besar, tetapi menambah beberapa pintu, beberapa dapur, dan petugas penerima tamu yang membagi pelanggan ke dapur yang masih sehat.
+
+Di AWS, petugas penerima tamu itu mirip **Elastic Load Balancing (ELB)**. Ia menerima request pengguna lalu mengarahkannya ke target yang sehat, misalnya beberapa EC2 instance. Tim manajer dapur yang menambah atau mengurangi jumlah koki sesuai ramai sepinya restoran mirip **Auto Scaling Group (ASG)**. ASG menjaga jumlah EC2 instance sesuai kebutuhan, mengganti yang rusak, dan membantu biaya tetap masuk akal.
+
+<Box variant="analogy" icon="🍽️" label="Analogi cepat"><p>ELB seperti resepsionis yang membagi pelanggan ke meja yang tersedia, ASG seperti manajer yang menambah staf saat ramai dan mengurangi staf saat sepi.</p></Box>
+
+Mengapa dua hal ini selalu muncul bersama? Karena keduanya memecahkan dua masalah yang berbeda namun saling melengkapi. ELB menjawab pertanyaan "request ini harus dikirim ke mesin yang mana?", sedangkan ASG menjawab "berapa banyak mesin yang harus hidup saat ini?". Resepsionis tanpa staf yang cukup akan kewalahan, dan staf yang banyak tanpa resepsionis akan duduk menganggur tanpa tahu siapa yang harus dilayani. Itu sebabnya pola ELB + ASG menjadi resep standar aplikasi web yang tahan banting.
+
+Modul ini penting untuk CLF-C02 karena menyentuh nilai utama cloud, yaitu aplikasi yang lebih tersedia, dapat bertumbuh mengikuti permintaan, dan tidak perlu membayar kapasitas berlebih sepanjang waktu. Sebagian besar materi di sini termasuk Domain 3, Cloud Technology and Services (34% soal), dengan sentuhan Domain 1 (konsep HA dan elasticity) dan Domain 2 (security group dan shared responsibility). Rujukan resmi utama: [AWS Exam Guide CLF-C02](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html), [Elastic Load Balancing Documentation](https://docs.aws.amazon.com/elasticloadbalancing/), dan [Amazon EC2 Auto Scaling Documentation](https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html).
+
+<Box variant="tip" icon="🧭" label="Cara membaca modul ini"><p>Setiap section dimulai dari analogi, lalu definisi, lalu contoh nyata, lalu jebakan ujian. Jika satu istilah terasa asing, lanjutkan dulu, biasanya analogi di section berikutnya akan menyambungnya.</p></Box>
+
+</Section>
+
+<Section num="02" id="ha-scalability-elasticity" title="High Availability, Scalability, dan Elasticity" sub="Tiga kata yang sering terdengar mirip, tetapi maknanya berbeda.">
+
+<p class="lead">Sebelum membahas ELB dan ASG, pisahkan dulu tiga konsep inti yang sering muncul di soal.</p>
+
+<CardGrid cols={3}>
+  <Card><h4>High Availability</h4><p>Aplikasi tetap bisa diakses walau sebagian komponen gagal, biasanya dengan menyebar resource ke lebih dari satu Availability Zone.</p></Card>
+  <Card><h4>Scalability</h4><p>Kemampuan sistem menangani beban lebih besar, bisa dengan mesin lebih kuat atau jumlah mesin lebih banyak.</p></Card>
+  <Card><h4>Elasticity</h4><p>Kemampuan menambah dan mengurangi kapasitas secara otomatis atau cepat sesuai kebutuhan aktual.</p></Card>
+</CardGrid>
+
+**High Availability (HA)** fokus pada bertahan saat ada gangguan. Jika satu EC2 instance atau satu Availability Zone bermasalah, aplikasi tidak langsung mati karena ada instance lain di tempat lain. Untuk pemula, pikirkan HA sebagai rencana cadangan yang sudah aktif, bukan rencana darurat yang baru dicari saat masalah terjadi. Kuncinya ada pada redundansi: kalau hanya ada satu salinan, tidak ada cadangan saat salinan itu jatuh.
+
+**Scalability** fokus pada kemampuan tumbuh. Ada dua pola besar. **Vertical scaling** (scale up) berarti menaikkan ukuran mesin, misalnya dari instance kecil ke instance lebih besar, mirip mengganti motor dengan truk agar muat lebih banyak. **Horizontal scaling** (scale out) berarti menambah jumlah mesin, misalnya dari dua EC2 instance menjadi empat, mirip menambah armada motor. ELB dan ASG dirancang untuk pola horizontal scaling, karena menambah banyak mesin kecil yang identik lebih tahan gangguan daripada bergantung pada satu mesin besar yang menjadi titik kegagalan tunggal.
+
+**Elasticity** fokus pada pas dengan kebutuhan. Saat traffic naik, kapasitas bertambah otomatis. Saat traffic turun, kapasitas berkurang otomatis. Perhatikan kata "otomatis" dan "naik turun" itu, di situlah elasticity berbeda dari scalability. Scalability cukup berarti "bisa diperbesar", sedangkan elasticity berarti "menyesuaikan diri, naik dan turun, tanpa campur tangan manual". Inilah alasan cloud sering lebih efisien daripada membeli server untuk skenario teramai sepanjang tahun, kamu tidak membayar kapasitas puncak saat sedang sepi.
+
+<Box variant="exam" icon="🎯" label="Fokus ujian"><p>Untuk CLF-C02, kunci pembedanya: HA berarti tetap tersedia saat ada gangguan, scalability berarti mampu membesar, elasticity berarti kapasitas naik dan turun otomatis mengikuti permintaan. Frasa "automatically scale up and down" hampir selalu mengarah ke elasticity.</p></Box>
+
+</Section>
+
+<Section num="03" id="apa-itu-elb" title="Apa itu Elastic Load Balancing?" sub="Satu titik masuk untuk banyak target di belakangnya.">
+
+<p class="lead">Elastic Load Balancing adalah layanan terkelola yang membagi traffic masuk ke beberapa target yang sehat di satu atau lebih Availability Zone.</p>
+
+Secara sederhana, pengguna tidak perlu tahu ada berapa server di belakang aplikasi. Mereka mengakses satu nama DNS load balancer. ELB menerima traffic, memeriksa target yang tersedia, lalu meneruskan request ke target yang sehat. Target dapat berupa EC2 instance, container, alamat IP, atau Lambda, tergantung tipe load balancer. Karena ELB adalah layanan terkelola, AWS yang menjaga ketersediaan dan skala load balancer itu sendiri, sehingga kamu tidak perlu mengelola server load balancer secara manual.
+
+Menurut dokumentasi AWS, ELB mendistribusikan incoming traffic ke berbagai target dalam satu atau lebih Availability Zone, memantau kesehatan target, dan mengirim traffic hanya ke target yang sehat. Ini membuat ELB menjadi komponen penting untuk aplikasi yang membutuhkan ketersediaan dan skalabilitas. Karena ELB hidup di banyak AZ sekaligus, ia juga ikut menyediakan high availability di lapisan pintu masuk, bukan hanya di lapisan server.
+
+<h3>Komponen inti ELB</h3>
+
+<CardGrid cols={2}>
+  <Card><h4>Load balancer</h4><p>Titik masuk yang menerima traffic dari client dan meneruskannya ke target, diakses lewat satu nama DNS.</p></Card>
+  <Card><h4>Listener</h4><p>Memeriksa koneksi masuk sesuai protokol dan port yang dikonfigurasi, misalnya HTTP 80 atau HTTPS 443.</p></Card>
+  <Card><h4>Rule</h4><p>Kondisi dan aksi per listener yang dievaluasi berdasarkan prioritas, menentukan target group mana yang menerima request.</p></Card>
+  <Card><h4>Target group</h4><p>Kumpulan target tujuan dengan health check sendiri, misalnya beberapa EC2 instance yang menjalankan aplikasi yang sama.</p></Card>
+</CardGrid>
+
+Cara mudah merangkainya: listener adalah pintu yang dijaga (port mana yang dibuka), rule adalah aturan di pintu itu (request seperti apa diarahkan ke mana), dan target group adalah ruangan tujuan berisi server. Satu load balancer bisa punya beberapa listener, satu listener bisa punya beberapa rule, dan satu rule mengarah ke satu target group. Health check dikonfigurasi di level target group, bukan di level load balancer, jadi tiap kelompok server bisa punya kriteria sehat yang berbeda.
+
+<h3>Kenapa ELB penting?</h3>
+
+Tanpa ELB, pengguna mungkin diarahkan langsung ke satu EC2 instance. Jika instance itu mati, pengguna gagal mengakses aplikasi, dan kamu harus mengganti alamat IP atau DNS secara manual saat menambah server. Dengan ELB, traffic otomatis dialihkan ke instance sehat saat satu instance jatuh, dan kamu bisa menambah atau melepas target di belakangnya tanpa mengubah alamat akses pengguna. ELB juga menjadi tempat yang nyaman untuk menaruh sertifikat TLS dan menyatukan logging traffic.
+
+<Box variant="tip" icon="💡" label="Cara mengingat"><p>ELB bukan tempat menjalankan aplikasi, ELB adalah pintu masuk pintar yang memilih target sehat untuk menerima request. Aplikasimu tetap berjalan di EC2, container, atau Lambda di belakangnya.</p></Box>
+
+</Section>
+
+<Section num="04" id="jenis-load-balancer" title="Jenis Load Balancer di AWS" sub="Pilih berdasarkan jenis traffic dan kebutuhan aplikasi.">
+
+<p class="lead">AWS memiliki beberapa jenis load balancer, dan CLF-C02 biasanya menguji kapan masing-masing digunakan secara garis besar.</p>
+
+Cara tercepat memahami perbedaannya adalah lewat lapisan jaringan tempat ia bekerja, sering disebut OSI layer. Layer 7 (application layer) memahami isi request seperti URL dan header HTTP, sementara Layer 4 (transport layer) hanya melihat koneksi, port, dan paket tanpa membaca isinya. Semakin tinggi layer, semakin pintar routing-nya, tetapi semakin rendah layer, semakin cepat dan ringan pemrosesannya.
+
+<CardGrid cols={2}>
+  <Card><h4>Application Load Balancer (ALB)</h4><p>Beroperasi di Layer 7, mendukung HTTP, HTTPS, dan gRPC. Cocok untuk aplikasi web modern dengan path-based routing, host-based routing, dan microservices.</p></Card>
+  <Card><h4>Network Load Balancer (NLB)</h4><p>Beroperasi di Layer 4, mendukung TCP, UDP, TLS, TCP_UDP, QUIC, dan TCP_QUIC. Cocok saat butuh performa sangat tinggi, latensi rendah, dan IP statis per AZ.</p></Card>
+  <Card><h4>Gateway Load Balancer (GWLB)</h4><p>Beroperasi sebagai gateway Layer 3 plus Layer 4. Dipakai untuk men-deploy, menskalakan, dan mengelola appliance virtual seperti firewall atau IDS/IPS.</p></Card>
+  <Card><h4>Classic Load Balancer (CLB)</h4><p>Generasi lama ELB yang bekerja di Layer 4 dan Layer 7. Masih tersedia, tetapi AWS merekomendasikan migrasi ke ALB atau NLB.</p></Card>
+</CardGrid>
+
+ALB bekerja di layer aplikasi, sehingga bisa melihat informasi request HTTP, misalnya path `/api`, host `admin.example.com`, atau header tertentu. Karena itu ALB cocok saat satu load balancer perlu mengarahkan traffic ke layanan berbeda berdasarkan isi request. ALB juga bisa meneruskan request ke fungsi Lambda, bukan hanya ke EC2.
+
+NLB bekerja lebih dekat ke level jaringan. Ia cocok untuk koneksi TCP, UDP, atau TLS yang membutuhkan throughput tinggi dan latensi rendah, dan mampu menangani jutaan request per detik. Karena tidak membaca isi request, NLB jauh lebih ringan dan bisa memberi IP statis per Availability Zone serta penetapan Elastic IP, sesuatu yang tidak ditawarkan ALB. Pada level Cloud Practitioner, cukup pahami bahwa NLB bukan untuk routing path HTTP yang kaya seperti ALB.
+
+GWLB sering muncul dalam skenario keamanan jaringan. Jika soal menyebut virtual appliance, firewall pihak ketiga, sistem inspeksi traffic (IDS/IPS), atau appliance fleet yang perlu diskalakan, pikirkan Gateway Load Balancer. GWLB bekerja sebagai gateway di Layer 3 yang meneruskan paket ke armada appliance, lalu menyeimbangkannya di Layer 4.
+
+<Figure><ElbAsgFig03 /><Fragment slot="caption"><b>Gambar 1.</b> Pohon keputusan memilih tipe load balancer: traffic HTTP atau HTTPS mengarah ke ALB, traffic TCP/UDP/TLS performa tinggi ke NLB, dan kebutuhan inspeksi paket lewat appliance ke GWLB.</Fragment></Figure>
+
+<h3>ALB vs NLB, perbandingan yang paling sering ditanya</h3>
+
+Dua tipe ini paling sering muncul di soal, dan paling sering tertukar. ALB pintar tetapi sedikit lebih "berat" karena membaca isi request, sedangkan NLB cepat dan ringan tetapi tidak memahami konten HTTP. Pegang perbedaan layer-nya, dari situ semua perbedaan lain mengalir.
+
+<Compare aLabel="ALB &middot; Layer 7 (HTTP/HTTPS)" bLabel="NLB &middot; Layer 4 (TCP/UDP/TLS)" aTone="violet" bTone="blue" vs="vs">
+  <Fragment slot="a"><ul><li>Bekerja di application layer, membaca isi request HTTP.</li><li>Routing berbasis path, host, header, dan query string.</li><li>Protokol HTTP, HTTPS, dan gRPC.</li><li>Target bisa EC2, IP, atau Lambda; cocok untuk web dan microservices.</li><li>Algoritma routing round robin atau least outstanding requests.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Bekerja di transport layer, hanya melihat koneksi dan port.</li><li>Latensi sangat rendah, mampu jutaan request per detik.</li><li>Protokol TCP, UDP, TLS, TCP_UDP, QUIC, dan TCP_QUIC.</li><li>Mendukung IP statis per AZ dan Elastic IP.</li><li>Cocok untuk game, IoT, streaming, dan workload non-HTTP.</li></ul></Fragment>
+</Compare>
+
+<Box variant="exam" icon="🧠" label="Pola soal"><p>Web HTTP dengan routing berdasarkan path biasanya ALB, traffic TCP/UDP performa tinggi atau butuh IP statis biasanya NLB, appliance keamanan jaringan biasanya GWLB. Jika soal menyebut "previous generation" atau "migrate from", itu sinyal Classic Load Balancer.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Soal Classic Load Balancer"><p>Hindari menyebut CLB sebagai sudah "deprecated dengan tanggal EOL". Pernyataan resmi AWS adalah CLB merupakan generasi lama (previous generation) dan AWS merekomendasikan migrasi ke ALB atau NLB. CLB juga bekerja di Layer 4 dan Layer 7, jadi jangan disamakan begitu saja dengan ALB murni Layer 7 atau NLB murni Layer 4.</p></Box>
+
+</Section>
+
+<Section num="05" id="application-load-balancer" title="Application Load Balancer dari Dekat" sub="ALB adalah tipe ELB yang paling sering dipakai untuk aplikasi web.">
+
+<p class="lead">ALB menerima request HTTP atau HTTPS, mengevaluasi listener rules berdasarkan prioritas, lalu meneruskan request ke target group yang sesuai.</p>
+
+Bayangkan sebuah situs e-commerce. Request ke `/catalog` diarahkan ke service katalog, request ke `/checkout` diarahkan ke service pembayaran, dan request ke `/admin` diarahkan ke service admin. Dengan ALB, pola ini dapat dibuat menggunakan rule yang membaca isi request. Inilah yang membuat ALB cocok untuk microservices: satu pintu masuk, banyak layanan di belakang, dipisahkan oleh aturan routing, bukan oleh banyak load balancer terpisah.
+
+<Steps>
+  <Step><b>Client mengakses DNS ALB</b><p>Pengguna membuka aplikasi lewat domain yang mengarah ke load balancer, bukan ke IP EC2.</p></Step>
+  <Step><b>Listener menerima koneksi</b><p>Listener memeriksa koneksi masuk sesuai protokol dan port, misalnya HTTP 80 atau HTTPS 443.</p></Step>
+  <Step><b>Rule dievaluasi berdasarkan prioritas</b><p>ALB memilih aksi sesuai urutan prioritas rule, misalnya path `/api` masuk ke target group API.</p></Step>
+  <Step><b>Target sehat dipilih</b><p>ALB hanya meneruskan request ke target yang lolos health check di target group tujuan.</p></Step>
+</Steps>
+
+<h3>Algoritma routing</h3>
+
+Setelah rule menentukan target group, ALB harus memilih target spesifik di dalamnya. ALB mendukung dua algoritma yang diatur di level target group. **Round robin** (default) membagi request bergiliran secara merata ke tiap target. **Least outstanding requests** mengirim request baru ke target yang sedang menangani paling sedikit request yang belum selesai, berguna saat durasi request sangat bervariasi sehingga beban tidak menumpuk di satu target. Untuk CLF-C02, cukup ingat bahwa ALB tidak hanya round robin, ada alternatif least outstanding requests.
+
+<h3>Health check</h3>
+
+Health check adalah pemeriksaan berkala untuk memastikan target masih bisa melayani request, dan dikonfigurasi per target group. Misalnya ALB memanggil endpoint `/health` secara berkala. Jika endpoint gagal berulang kali melewati ambang yang ditentukan, target ditandai unhealthy dan tidak lagi menerima traffic sampai pulih. Inilah mekanisme yang membuat satu instance rusak tidak menyeret seluruh aplikasi.
+
+<h3>TLS termination</h3>
+
+Pada HTTPS listener, ALB dapat menangani sertifikat SSL/TLS di sisi load balancer. Ini sering disebut TLS termination atau SSL offload. Aplikasi di belakangnya dapat lebih fokus pada logika bisnis, sementara ALB menangani bagian koneksi aman dari client dan beban kriptografi. Sertifikat biasanya dikelola lewat AWS Certificate Manager (ACM), sehingga perpanjangan sertifikat tidak perlu dilakukan manual.
+
+<Box variant="warn" icon="⚠️" label="Jebakan pemula"><p>Security group ALB dan security group EC2 harus selaras. ALB perlu boleh menerima traffic dari internet (atau dari client yang sesuai), sedangkan EC2 cukup menerima traffic dari security group ALB, bukan dari seluruh internet.</p></Box>
+
+</Section>
+
+<Section num="06" id="apa-itu-asg" title="Apa itu Auto Scaling Group?" sub="ASG menjaga jumlah EC2 instance sesuai kapasitas yang diinginkan.">
+
+<p class="lead">Auto Scaling Group adalah kelompok EC2 instance yang dikelola sebagai satu unit untuk menjaga kapasitas, kesehatan, dan scaling.</p>
+
+ASG menggunakan **launch template** sebagai resep membuat instance baru. Resep ini dapat berisi AMI, instance type, security group, key pair, user data, dan konfigurasi lain yang dibutuhkan instance. Saat ASG perlu menambah instance, ia menggunakan resep tersebut agar setiap instance baru konsisten dan identik. Tanpa resep standar, setiap server baru bisa berbeda konfigurasi dan menyebabkan bug yang sulit dilacak.
+
+<h3>Launch template vs launch configuration</h3>
+
+Dahulu ada dua cara mendefinisikan resep instance: launch template (baru, direkomendasikan) dan launch configuration (lama). Untuk CLF-C02, ingat bahwa **launch template adalah pilihan modern dan satu-satunya pilihan untuk fitur baru**. Launch configuration sudah sangat dibatasi, dan akun yang dibuat sejak 1 Oktober 2024 tidak dapat membuat launch configuration dengan cara apa pun. AWS merekomendasikan migrasi dari launch configuration ke launch template. Lihat [Launch templates](https://docs.aws.amazon.com/autoscaling/ec2/userguide/launch-templates.html) dan [Launch configurations](https://docs.aws.amazon.com/autoscaling/ec2/userguide/launch-configurations.html).
+
+<CardGrid cols={3}>
+  <Card><h4>Minimum capacity</h4><p>Batas bawah, jumlah instance paling sedikit yang harus selalu dipertahankan ASG.</p></Card>
+  <Card><h4>Desired capacity</h4><p>Jumlah instance aktif yang sedang dijaga ASG saat ini, di antara minimum dan maximum.</p></Card>
+  <Card><h4>Maximum capacity</h4><p>Batas atas jumlah instance, agar scaling tidak bertambah tanpa kendali dan biaya tetap terkontrol.</p></Card>
+</CardGrid>
+
+Jika desired capacity adalah tiga, ASG berusaha menjaga tiga instance berjalan. Jika satu instance gagal health check, ASG menghentikannya dan meluncurkan pengganti agar tetap tiga. Jika scaling policy menaikkan desired capacity menjadi lima, ASG menambah instance baru sampai jumlah yang diinginkan tercapai, tetapi tidak akan pernah melampaui maximum. Sebaliknya, scale-in tidak akan menurunkan instance di bawah minimum. Minimum dan maximum adalah pagar pengaman, desired adalah angka yang dijaga di antara keduanya.
+
+<Figure><ElbAsgFig04 /><Fragment slot="caption"><b>Gambar 2.</b> Perilaku ASG: saat CPU naik ASG scale-out menambah instance (tetap di bawah maximum), saat CPU turun ASG scale-in mengurangi instance (tetap di atas minimum), dan saat ada instance unhealthy ASG menggantinya agar desired capacity terjaga.</Fragment></Figure>
+
+<h3>Health check dan penggantian instance</h3>
+
+ASG mendukung dua sumber health check. **EC2 health check** memeriksa status instance dari sisi infrastruktur EC2. **ELB health check** memakai hasil health check dari load balancer, sehingga instance yang aplikasinya rusak (walau instance-nya menyala) tetap dianggap unhealthy. Jika ASG mendeteksi instance unhealthy, ia menghentikannya dan meluncurkan pengganti untuk mempertahankan desired capacity, tanpa perlu intervensi manual. Inilah yang membuat aplikasi bisa "menyembuhkan diri".
+
+<h3>ASG bukan load balancer</h3>
+
+ASG mengatur jumlah instance, bukan membagi request pengguna. Untuk aplikasi web yang melayani traffic publik, ASG biasanya dipasangkan dengan ELB. ELB membagi traffic ke target sehat, ASG menjaga jumlah instance yang tersedia di belakangnya. Ini perbedaan yang paling sering jadi jebakan ujian, jadi tanamkan baik-baik.
+
+<Box variant="analogy" icon="👷" label="Analogi"><p>Launch template seperti resep standar dapur, ASG seperti manajer yang memastikan jumlah koki sesuai jadwal dan kondisi restoran, lalu cepat memanggil koki pengganti saat ada yang sakit.</p></Box>
+
+<Box variant="tip" icon="💡" label="Soal biaya yang menyenangkan"><p>EC2 Auto Scaling tidak dikenakan biaya tambahan untuk layanannya sendiri. Kamu hanya membayar resource AWS yang dipakai, seperti EC2 instance, EBS volume, dan CloudWatch alarm. Lihat [Amazon EC2 Auto Scaling](https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html).</p></Box>
+
+</Section>
+
+<Section num="07" id="elb-asg-bersama" title="Cara ELB dan ASG Bekerja Bersama" sub="ELB melihat target sehat, ASG menjaga target tetap cukup.">
+
+<p class="lead">Kombinasi ELB dan ASG adalah pola klasik untuk aplikasi web yang tersedia dan elastis.</p>
+
+<Figure><ElbAsgFig01 /><Fragment slot="caption"><b>Gambar 3.</b> ALB menerima traffic pengguna, meneruskannya ke target group, dan ASG menjaga EC2 instance tersebar di beberapa Availability Zone.</Fragment></Figure>
+
+Alur tingkat tinggi biasanya seperti ini. Pengguna mengakses DNS ALB. ALB menerima request dan memilih target group. Target group berisi EC2 instance yang didaftarkan oleh ASG. Health check memastikan hanya instance sehat yang menerima request. CloudWatch metric, seperti CPU utilization atau request per target, dapat memicu ASG menambah atau mengurangi instance.
+
+<h3>Pendaftaran otomatis ke target group</h3>
+
+Inilah bagian yang membuat keduanya begitu rapi bekerja bersama. Saat ASG yang terhubung ke ALB atau NLB meluncurkan instance baru, instance itu otomatis didaftarkan ke target group, dan saat instance diterminasi, ia otomatis dideregister. Kamu tidak perlu mendaftarkan atau melepas target secara manual setiap kali kapasitas berubah. ASG mengurus jumlah, target group mengurus keanggotaan, dan ELB mengurus distribusi traffic, semuanya tanpa langkah manual berulang.
+
+<Steps>
+  <Step><b>Traffic masuk ke ALB</b><p>Pengguna tidak langsung mengakses IP EC2, tetapi masuk melalui load balancer.</p></Step>
+  <Step><b>ALB memilih target sehat</b><p>Target yang tidak lolos health check tidak menerima request baru.</p></Step>
+  <Step><b>Metric dipantau</b><p>CloudWatch mengamati sinyal seperti CPU utilization atau jumlah request per target.</p></Step>
+  <Step><b>ASG menyesuaikan kapasitas</b><p>Jika beban naik instance ditambah lalu otomatis didaftarkan ke target group, jika beban turun instance dikurangi lalu dideregister.</p></Step>
+</Steps>
+
+<Figure><ElbAsgFig02 /><Fragment slot="caption"><b>Gambar 4.</b> Scaling loop sederhana: monitor metric, bandingkan dengan policy, ubah desired capacity, lalu daftarkan target sehat ke load balancer.</Fragment></Figure>
+
+<Box variant="tip" icon="💡" label="Inti praktik"><p>Gunakan ELB untuk distribusi traffic dan health-based routing, gunakan ASG untuk kapasitas EC2 dan penggantian instance yang tidak sehat. Sebar keduanya di beberapa AZ agar high availability benar-benar tercapai.</p></Box>
+
+</Section>
+
+<Section num="08" id="hands-on-konseptual" title="Hands-on Konseptual: ALB + ASG" sub="Walkthrough ringan tanpa masuk terlalu dalam ke konfigurasi Solutions Architect.">
+
+<p class="lead">Tujuan walkthrough ini adalah memahami alur, bukan menghafal semua tombol console.</p>
+
+<Steps>
+  <Step><b>Buat launch template</b><p>Tentukan AMI, instance type, security group, dan user data sederhana untuk menjalankan web server. Pilih launch template, bukan launch configuration yang sudah dibatasi.</p></Step>
+  <Step><b>Buat target group</b><p>Pilih tipe target instance, protokol HTTP, port aplikasi, dan endpoint health check seperti `/health` atau `/`.</p></Step>
+  <Step><b>Buat Application Load Balancer</b><p>Pilih minimal dua subnet di Availability Zone berbeda agar desain lebih tersedia.</p></Step>
+  <Step><b>Tambahkan listener</b><p>Gunakan listener HTTP atau HTTPS dan arahkan default action ke target group.</p></Step>
+  <Step><b>Buat Auto Scaling Group</b><p>Hubungkan ASG ke launch template, pilih subnet di beberapa AZ, set minimum, desired, dan maximum capacity, lalu attach ke target group ALB.</p></Step>
+  <Step><b>Pasang scaling policy</b><p>Mulai dari target tracking sederhana, misalnya menjaga rata-rata CPU pada target tertentu atau request per target.</p></Step>
+  <Step><b>Uji alur</b><p>Akses DNS ALB, lalu hentikan salah satu instance untuk melihat ASG mengganti instance dan ALB menghindari target tidak sehat.</p></Step>
+</Steps>
+
+<h3>Checklist mental saat hands-on</h3>
+
+<ul>
+  <li>ALB berada di subnet yang tepat dan dapat diakses sesuai kebutuhan, internet-facing atau internal.</li>
+  <li>Security group ALB mengizinkan traffic dari client, security group EC2 mengizinkan traffic dari ALB.</li>
+  <li>Health check path benar, cepat dijawab, dan tidak bergantung pada komponen yang tidak perlu.</li>
+  <li>ASG memakai subnet di beberapa Availability Zone untuk mendukung high availability.</li>
+  <li>ASG di-attach ke target group sehingga instance baru otomatis terdaftar dan instance lama otomatis dilepas.</li>
+  <li>Minimum, desired, dan maximum capacity masuk akal untuk skenario latihan.</li>
+</ul>
+
+<Box variant="warn" icon="⚠️" label="Biaya"><p>Hands-on dengan EC2, ALB, dan traffic dapat menimbulkan biaya, selalu hapus resource latihan setelah selesai dan cek Billing Dashboard. ELB ditagih per jam load balancer aktif plus per kapasitas yang diproses, cek [halaman pricing ELB](https://aws.amazon.com/elasticloadbalancing/pricing/) untuk angka terkini.</p></Box>
+
+</Section>
+
+<Section num="09" id="strategi-scaling" title="Strategi Auto Scaling" sub="Dari manual sampai prediktif, pahami kapan masing-masing masuk akal.">
+
+<p class="lead">EC2 Auto Scaling menyediakan empat kategori scaling, dari paling sederhana sampai paling cerdas.</p>
+
+Penting membedakan kategori dengan sub-tipenya. Ada empat kategori: manual scaling, scheduled scaling, dynamic scaling, dan predictive scaling. Dynamic scaling sendiri terdiri dari tiga sub-tipe: target tracking, step scaling, dan simple scaling. Jangan mencampur kategori dengan sub-tipe saat membaca soal.
+
+<CardGrid cols={2}>
+  <Card><h4>Manual scaling</h4><p>Kamu mengubah desired capacity sendiri, cocok untuk latihan atau perubahan sementara yang diketahui operator.</p></Card>
+  <Card><h4>Scheduled scaling</h4><p>ASG mengubah kapasitas pada waktu terjadwal, cocok jika pola traffic sudah pasti, misalnya jam kerja, akhir bulan, atau event rutin.</p></Card>
+  <Card><h4>Dynamic scaling</h4><p>ASG bereaksi terhadap metric saat itu juga lewat CloudWatch, mencakup target tracking, step scaling, dan simple scaling.</p></Card>
+  <Card><h4>Predictive scaling</h4><p>ASG memakai data histori load untuk memperkirakan kebutuhan dan menambah kapasitas sebelum lonjakan terjadi.</p></Card>
+</CardGrid>
+
+<h3>Dynamic scaling: target tracking</h3>
+
+Target tracking adalah strategi yang paling mudah dipahami dan direkomendasikan AWS sebagai titik awal. Kamu memberi satu target, misalnya rata-rata CPU sekitar nilai tertentu, lalu ASG menambah atau mengurangi instance agar metric mendekati target itu. Dokumentasi AWS memakai analogi thermostat, seperti AC yang menjaga suhu ruangan tetap dekat dengan angka yang kamu pilih, kamu set target, sisanya diurus otomatis.
+
+<h3>Dynamic scaling: step scaling dan simple scaling</h3>
+
+Step scaling dan simple scaling menggunakan CloudWatch alarm. **Simple scaling** melakukan satu penyesuaian tunggal saat alarm menyala, lalu menunggu cooldown period sebelum bereaksi lagi. **Step scaling** memberi kontrol lebih rinci dengan step adjustment sesuai seberapa besar pelanggaran ambang: lonjakan kecil menambah sedikit instance, lonjakan besar menambah lebih banyak. Step scaling tidak menunggu cooldown kaku seperti simple scaling, sehingga lebih responsif terhadap lonjakan tajam.
+
+<h3>Predictive scaling</h3>
+
+Predictive scaling menganalisis data histori load untuk mendeteksi pola harian atau mingguan, lalu proaktif menambah kapasitas sebelum lonjakan yang diperkirakan terjadi. Ini berbeda dari dynamic scaling yang bersifat reaktif (menunggu metric naik dulu baru bertindak). Predictive scaling sangat cocok untuk workload cyclical, misalnya traffic yang selalu melonjak setiap pagi hari kerja. Keduanya sering dipakai bersama: predictive untuk menyiapkan kapasitas dasar sesuai pola, dynamic untuk menangani lonjakan tak terduga di atasnya.
+
+<h3>Kapan memilih yang mana?</h3>
+
+<CardGrid cols={3}>
+  <Card><h4>Target tracking</h4><p>Pilihan default. Cocok saat ada satu metric utama (CPU, request per target) yang ingin dijaga di sekitar nilai tertentu tanpa repot.</p></Card>
+  <Card><h4>Scheduled scaling</h4><p>Cocok saat pola beban sudah pasti dan terjadwal, misalnya naikkan kapasitas tiap Senin pagi atau saat flash sale yang waktunya diketahui.</p></Card>
+  <Card><h4>Predictive scaling</h4><p>Cocok saat beban berpola siklis tetapi waktunya tidak ingin di-hardcode, biarkan AWS mempelajari histori dan menyiapkan kapasitas lebih awal.</p></Card>
+</CardGrid>
+
+Logika memilihnya begini. Jika kamu tahu persis kapan beban naik, scheduled scaling paling sederhana dan pasti. Jika kamu tidak tahu kapan tepatnya tetapi tahu ada pola berulang, predictive scaling membiarkan AWS menebak dari histori. Jika kamu hanya ingin menjaga sebuah metric tetap di target tanpa memikirkan jadwal, target tracking yang paling pas. Untuk lonjakan tak terduga di luar pola, dynamic scaling (target tracking atau step scaling) yang menangani secara reaktif.
+
+<h3>Cooldown dan warmup</h3>
+
+Instance baru butuh waktu untuk siap menerima beban. Jika ASG terlalu cepat mengambil keputusan sebelum instance siap, sistem bisa menambah atau mengurangi kapasitas secara berlebihan dan berosilasi. Karena itu konsep cooldown, instance warmup, dan health check grace period penting di praktik, walau pada CLF-C02 cukup dipahami sebagai mekanisme agar scaling tidak panik dan tidak bereaksi berlebihan.
+
+<Box variant="exam" icon="🎯" label="Fokus ujian"><p>Jika soal meminta scaling sederhana berdasarkan target metric, pilih target tracking. Jika pola beban sudah terjadwal pasti, pilih scheduled scaling. Jika soal menyebut "memprediksi" atau "pola historis" untuk menyiapkan kapasitas lebih awal, pilih predictive scaling. Ingat empat kategori, dan dynamic punya tiga sub-tipe.</p></Box>
+
+</Section>
+
+<Section num="10" id="kesalahan-jebakan" title="Kesalahan Umum & Jebakan CLF-C02" sub="Bagian ini mengubah pengalaman praktik menjadi pola jawab ujian.">
+
+<p class="lead">Banyak jawaban salah terjadi karena mencampur fungsi ELB, ASG, Route 53, dan CloudFront.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>ELB disangka mengganti instance</h4><p>ELB mengarahkan traffic ke target sehat, sedangkan ASG yang meluncurkan pengganti instance unhealthy.</p></Card>
+  <Card><h4>ASG disangka membagi traffic</h4><p>ASG menjaga kapasitas EC2, tetapi tidak menjadi titik masuk request pengguna, itu tugas ELB.</p></Card>
+  <Card><h4>ALB dipilih untuk semua traffic</h4><p>ALB cocok untuk HTTP dan HTTPS, sedangkan TCP atau UDP performa tinggi lebih dekat ke NLB.</p></Card>
+  <Card><h4>Health check terlalu sempit</h4><p>Health check yang salah bisa menandai instance sehat sebagai gagal atau membiarkan aplikasi rusak tetap menerima traffic.</p></Card>
+  <Card><h4>Mencampur kategori dan sub-tipe scaling</h4><p>Manual, scheduled, dynamic, dan predictive adalah kategori; target tracking, step, dan simple adalah sub-tipe dynamic.</p></Card>
+  <Card><h4>Menganggap ASG berbayar</h4><p>Layanan EC2 Auto Scaling gratis, yang berbayar adalah EC2, EBS, dan CloudWatch alarm yang dipakai.</p></Card>
+</CardGrid>
+
+<h3>Jebakan pilihan layanan</h3>
+
+<ul>
+  <li>Jika soal menyebut membagi traffic HTTP ke beberapa EC2 instance di beberapa Availability Zone, pikirkan ALB.</li>
+  <li>Jika soal menyebut menjaga jumlah EC2 instance otomatis sesuai demand, pikirkan ASG.</li>
+  <li>Jika soal menyebut DNS, domain, dan routing pengguna ke endpoint, pikirkan Route 53, bukan ASG.</li>
+  <li>Jika soal menyebut caching konten global di edge location, pikirkan CloudFront, bukan ELB.</li>
+  <li>Jika soal menyebut firewall appliance atau inspection appliance yang perlu diskalakan, pikirkan Gateway Load Balancer.</li>
+  <li>Jika soal menyebut butuh IP statis atau Elastic IP untuk load balancer performa tinggi, pikirkan NLB.</li>
+</ul>
+
+<h3>Jebakan keamanan</h3>
+
+ELB dan ASG tetap berada dalam shared responsibility model. AWS mengelola infrastruktur layanan, tetapi pelanggan tetap mengatur security group, subnet, sertifikat, kebijakan akses, patching aplikasi di EC2, dan desain yang benar. Untuk ujian, jangan memilih jawaban yang membuat EC2 backend terbuka langsung ke internet bila cukup menerima traffic dari load balancer.
+
+<Box variant="warn" icon="🚫" label="Kesalahan mahal"><p>Membiarkan instance backend menerima traffic publik dari mana saja dapat melemahkan keamanan, gunakan security group yang membatasi akses backend hanya dari security group ALB bila sesuai desain.</p></Box>
+
+</Section>
+
+<Section num="11" id="ringkasan" title="Ringkasan & Tips Ujian" sub="Peta cepat untuk mengingat Chapter 04 sebelum latihan soal.">
+
+<p class="lead">ELB dan ASG adalah pasangan penting untuk aplikasi EC2 yang tersedia, dapat diskalakan, dan lebih elastis.</p>
+
+<Recap title="Poin Penting">
+  <ul>
+    <li>High Availability berarti aplikasi tetap tersedia saat sebagian komponen gagal, biasanya dengan multi-AZ.</li>
+    <li>Scalability berarti sistem mampu menangani beban lebih besar, horizontal scaling berarti menambah jumlah instance.</li>
+    <li>Elasticity berarti kapasitas naik dan turun otomatis sesuai kebutuhan agar performa dan biaya lebih seimbang.</li>
+    <li>ELB menerima traffic masuk, memeriksa kesehatan target, dan meneruskan request ke target yang sehat lewat listener, rule, dan target group.</li>
+    <li>ALB di Layer 7 cocok untuk HTTP, HTTPS, dan gRPC dengan routing berbasis path, host, dan header; NLB di Layer 4 cocok untuk TCP, UDP, TLS, dan QUIC performa tinggi dengan IP statis.</li>
+    <li>GWLB cocok untuk appliance virtual seperti firewall atau IDS/IPS; CLB adalah generasi lama yang disarankan untuk dimigrasi ke ALB atau NLB.</li>
+    <li>ASG menjaga kapasitas EC2 lewat minimum, desired, maximum, launch template, health check (EC2 atau ELB), dan scaling policies.</li>
+    <li>Empat kategori scaling: manual, scheduled, dynamic (target tracking, step, simple), dan predictive; layanan ASG sendiri gratis.</li>
+    <li>Instance yang diluncurkan ASG yang terhubung ke ALB atau NLB otomatis terdaftar ke target group, dan otomatis dideregister saat diterminasi.</li>
+  </ul>
+</Recap>
+
+<h3>Pemetaan ke domain CLF-C02</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr><th>Domain</th><th>Kaitan dengan modul</th><th>Yang perlu diingat</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>D1 Cloud Concepts 24%</td><td>HA, scalability, elasticity, manfaat cloud.</td><td>Jelaskan nilai bisnis: aplikasi lebih tahan gangguan dan kapasitas lebih fleksibel.</td></tr>
+    <tr><td>D2 Security & Compliance 30%</td><td>Security group, public versus private subnet, TLS termination, shared responsibility.</td><td>AWS mengelola layanan, pelanggan tetap mengatur akses jaringan dan konfigurasi aman.</td></tr>
+    <tr><td>D3 Cloud Technology & Services 34%</td><td>ELB, ALB, NLB, GWLB, CLB, ASG, CloudWatch, EC2, Availability Zone.</td><td>Ini bagian paling teknis, fokus pada layer, fungsi layanan, dan skenario pemilihan.</td></tr>
+    <tr><td>D4 Billing, Pricing & Support 12%</td><td>Elasticity mengurangi kapasitas idle, ASG gratis, ELB pay-per-use.</td><td>Jangan menghafal angka harga, pahami pay-as-you-go dan cek Billing Dashboard.</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Tips menjawab soal</h3>
+
+<ul>
+  <li>Jika ada kata "distribute traffic" dan "healthy targets", jawabannya sering mengarah ke Elastic Load Balancing.</li>
+  <li>Jika ada kata "automatically add or remove EC2 instances", jawabannya sering mengarah ke Auto Scaling Group.</li>
+  <li>Jika aplikasi web butuh routing `/api` dan `/images` ke service berbeda, pilih Application Load Balancer.</li>
+  <li>Jika traffic bukan HTTP dan butuh performa jaringan tinggi atau IP statis, pertimbangkan Network Load Balancer.</li>
+  <li>Jika ingin tetap tersedia saat satu instance rusak, kombinasikan health check, multi-AZ, ELB, dan ASG.</li>
+  <li>Jika soal menekankan biaya saat traffic turun, cari konsep elasticity atau scale-in.</li>
+</ul>
+
+<Box variant="exam" icon="✅" label="Kalimat hafalan"><p>Untuk aplikasi EC2 yang menerima traffic web, ALB menjadi pintu masuk sehat di Layer 7, ASG menjaga jumlah instance lewat min/desired/max, CloudWatch memberi sinyal scaling.</p></Box>
+
+</Section>

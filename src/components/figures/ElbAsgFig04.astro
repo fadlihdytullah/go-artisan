@@ -1,0 +1,43 @@
+<svg viewBox="0 0 760 430" xmlns="http://www.w3.org/2000/svg" font-family="Inter, ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <marker id="arrow4" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#9c4a2f" />
+    </marker>
+  </defs>
+  <rect x="24" y="24" width="712" height="382" rx="22" fill="#fbfaf5" stroke="#d9d4c4" stroke-width="2" />
+  <text x="380" y="56" text-anchor="middle" font-size="18" fill="#241f17" font-weight="700">Perilaku ASG: Min, Desired, Max</text>
+  <line x1="80" y1="92" x2="700" y2="92" stroke="#c6c0ac" stroke-width="1.5" stroke-dasharray="5 5" />
+  <text x="708" y="96" text-anchor="end" font-size="11" fill="#c14a39" font-weight="700">Maximum = 6</text>
+  <line x1="80" y1="300" x2="700" y2="300" stroke="#c6c0ac" stroke-width="1.5" stroke-dasharray="5 5" />
+  <text x="708" y="318" text-anchor="end" font-size="11" fill="#2f7d4f" font-weight="700">Minimum = 2</text>
+  <text x="110" y="392" text-anchor="middle" font-size="12" fill="#6e6a5c" font-weight="700">Normal</text>
+  <rect x="78" y="244" width="64" height="48" rx="8" fill="#bd5d3e" />
+  <rect x="78" y="192" width="64" height="48" rx="8" fill="#bd5d3e" />
+  <rect x="78" y="140" width="64" height="48" rx="8" fill="#bd5d3e" />
+  <text x="110" y="172" text-anchor="middle" font-size="13" fill="#fbfaf5" font-weight="700">3</text>
+  <text x="110" y="332" text-anchor="middle" font-size="10" fill="#6e6a5c">desired = 3</text>
+  <path d="M 152 230 L 200 230" stroke="#9c4a2f" stroke-width="2.5" fill="none" marker-end="url(#arrow4)" />
+  <text x="176" y="222" text-anchor="middle" font-size="10" fill="#9c4a2f" font-weight="700">CPU naik</text>
+  <text x="282" y="392" text-anchor="middle" font-size="12" fill="#6e6a5c" font-weight="700">Scale-out</text>
+  <rect x="250" y="244" width="64" height="48" rx="8" fill="#bd5d3e" />
+  <rect x="250" y="192" width="64" height="48" rx="8" fill="#bd5d3e" />
+  <rect x="250" y="140" width="64" height="48" rx="8" fill="#bd5d3e" />
+  <rect x="250" y="100" width="64" height="36" rx="8" fill="#bd5d3e" stroke="#c14a39" stroke-width="2" stroke-dasharray="4 3" />
+  <text x="282" y="124" text-anchor="middle" font-size="12" fill="#fbfaf5" font-weight="700">+2</text>
+  <text x="282" y="332" text-anchor="middle" font-size="10" fill="#6e6a5c">desired = 5</text>
+  <path d="M 324 230 L 372 230" stroke="#9c4a2f" stroke-width="2.5" fill="none" marker-end="url(#arrow4)" />
+  <text x="348" y="222" text-anchor="middle" font-size="10" fill="#9c4a2f" font-weight="700">CPU turun</text>
+  <text x="454" y="392" text-anchor="middle" font-size="12" fill="#6e6a5c" font-weight="700">Scale-in</text>
+  <rect x="422" y="244" width="64" height="48" rx="8" fill="#bd5d3e" />
+  <rect x="422" y="192" width="64" height="48" rx="8" fill="#bd5d3e" />
+  <text x="454" y="224" text-anchor="middle" font-size="13" fill="#fbfaf5" font-weight="700">2</text>
+  <text x="454" y="332" text-anchor="middle" font-size="10" fill="#6e6a5c">desired = 2</text>
+  <path d="M 496 230 L 544 230" stroke="#c14a39" stroke-width="2.5" fill="none" marker-end="url(#arrow4)" />
+  <text x="520" y="222" text-anchor="middle" font-size="10" fill="#c14a39" font-weight="700">1 unhealthy</text>
+  <text x="636" y="392" text-anchor="middle" font-size="12" fill="#6e6a5c" font-weight="700">Ganti instance</text>
+  <rect x="604" y="244" width="64" height="48" rx="8" fill="#bd5d3e" />
+  <rect x="604" y="192" width="64" height="48" rx="8" fill="#2f7d4f" stroke="#2f7d4f" stroke-width="2" stroke-dasharray="4 3" />
+  <text x="636" y="222" text-anchor="middle" font-size="11" fill="#fbfaf5" font-weight="700">baru</text>
+  <text x="636" y="332" text-anchor="middle" font-size="10" fill="#6e6a5c">desired tetap 2</text>
+  <text x="380" y="358" text-anchor="middle" font-size="11" fill="#6e6a5c">Health check gagal &rarr; instance lama diterminasi, pengganti diluncurkan agar desired terjaga</text>
+</svg>

@@ -1,0 +1,52 @@
+<svg viewBox="0 0 760 380" xmlns="http://www.w3.org/2000/svg" font-family="Inter, ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <marker id="vpcCfArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#bd5d3e" />
+    </marker>
+    <marker id="vpcGaArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9c4a2f" />
+    </marker>
+  </defs>
+  <rect x="20" y="20" width="720" height="340" rx="18" fill="#fbfaf5" stroke="#d9d4c4" stroke-width="2" />
+  <text x="380" y="50" text-anchor="middle" font-size="18" fill="#241f17" font-weight="700">CloudFront vs Global Accelerator</text>
+
+  <rect x="45" y="74" width="330" height="258" rx="14" fill="#f0e3d8" stroke="#bd5d3e" stroke-width="2" />
+  <text x="210" y="100" text-anchor="middle" font-size="15" fill="#c14a39" font-weight="700">CloudFront</text>
+  <text x="210" y="120" text-anchor="middle" font-size="11.5" fill="#6e6a5c">Layer 7 &middot; caching konten di edge</text>
+
+  <rect x="70" y="136" width="120" height="40" rx="9" fill="#fbfaf5" stroke="#bd5d3e" stroke-width="2" />
+  <text x="130" y="161" text-anchor="middle" font-size="11.5" fill="#241f17" font-weight="700">User</text>
+  <rect x="230" y="136" width="120" height="40" rx="9" fill="#fbfaf5" stroke="#bd5d3e" stroke-width="2" />
+  <text x="290" y="156" text-anchor="middle" font-size="11" fill="#241f17" font-weight="700">Edge cache</text>
+  <text x="290" y="170" text-anchor="middle" font-size="9.5" fill="#6e6a5c">salinan konten</text>
+  <line x1="190" y1="156" x2="230" y2="156" stroke="#bd5d3e" stroke-width="3" marker-end="url(#vpcCfArrow)" />
+
+  <rect x="130" y="200" width="220" height="34" rx="8" fill="#fbfaf5" stroke="#bd5d3e" stroke-width="1.5" />
+  <text x="240" y="221" text-anchor="middle" font-size="10.5" fill="#6e6a5c">cache miss &rarr; ambil dari Origin (S3/ALB)</text>
+
+  <text x="210" y="262" text-anchor="middle" font-size="12" fill="#c14a39" font-weight="700">Use case</text>
+  <text x="210" y="283" text-anchor="middle" font-size="11" fill="#6e6a5c">gambar, video, file download,</text>
+  <text x="210" y="299" text-anchor="middle" font-size="11" fill="#6e6a5c">static website, API cacheable</text>
+  <text x="210" y="320" text-anchor="middle" font-size="10.5" fill="#bd5d3e" font-weight="700">free tier: 1 TB out + 10 juta request/bulan</text>
+
+  <rect x="395" y="74" width="320" height="258" rx="14" fill="#f0e3d8" stroke="#9c4a2f" stroke-width="2" />
+  <text x="555" y="100" text-anchor="middle" font-size="15" fill="#bd5d3e" font-weight="700">Global Accelerator</text>
+  <text x="555" y="120" text-anchor="middle" font-size="11.5" fill="#6e6a5c">Layer 4 &middot; optimasi network path</text>
+
+  <rect x="420" y="136" width="110" height="40" rx="9" fill="#fbfaf5" stroke="#9c4a2f" stroke-width="2" />
+  <text x="475" y="161" text-anchor="middle" font-size="11.5" fill="#241f17" font-weight="700">User</text>
+  <rect x="570" y="136" width="120" height="40" rx="9" fill="#fbfaf5" stroke="#9c4a2f" stroke-width="2" />
+  <text x="630" y="156" text-anchor="middle" font-size="10.5" fill="#241f17" font-weight="700">2 static anycast IP</text>
+  <text x="630" y="170" text-anchor="middle" font-size="9.5" fill="#6e6a5c">pintu masuk global</text>
+  <line x1="530" y1="156" x2="570" y2="156" stroke="#9c4a2f" stroke-width="3" marker-end="url(#vpcGaArrow)" />
+
+  <rect x="475" y="200" width="220" height="34" rx="8" fill="#fbfaf5" stroke="#9c4a2f" stroke-width="1.5" />
+  <text x="585" y="221" text-anchor="middle" font-size="10.5" fill="#6e6a5c">AWS global network &rarr; endpoint sehat</text>
+
+  <text x="555" y="262" text-anchor="middle" font-size="12" fill="#bd5d3e" font-weight="700">Use case</text>
+  <text x="555" y="283" text-anchor="middle" font-size="11" fill="#6e6a5c">gaming (UDP), VoIP, IoT (MQTT),</text>
+  <text x="555" y="299" text-anchor="middle" font-size="11" fill="#6e6a5c">traffic non-cacheable, failover regional</text>
+  <text x="555" y="320" text-anchor="middle" font-size="10.5" fill="#bd5d3e" font-weight="700">tanpa caching &middot; AWS Shield Standard</text>
+
+  <text x="380" y="352" text-anchor="middle" font-size="11.5" fill="#6e6a5c">CloudFront menyimpan konten dekat user; Global Accelerator mempercepat jalur ke aplikasi.</text>
+</svg>

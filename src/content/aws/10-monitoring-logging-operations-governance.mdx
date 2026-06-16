@@ -1,0 +1,557 @@
+---
+title: "Modul Monitoring, Logging, Operations & Governance - AWS Cloud Practitioner CLF-C02"
+badge: "MON"
+topTitle: "Monitoring, Logging, Operations & Governance"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Memahami cara melihat, mencatat, mengaudit, mengoperasikan, dan mengatur resource AWS agar tetap sehat, aman, dan siap diaudit."
+order: 10
+target: "CLF-C02"
+readingTime: "~75 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Mengapa Monitoring & Governance Penting?" }
+  - { num: "02", id: "peta-besar", title: "Peta Besar: Telemetry, Audit, Operasi, Governance" }
+  - { num: "03", id: "cloudwatch", title: "Amazon CloudWatch" }
+  - { num: "04", id: "cloudtrail", title: "AWS CloudTrail" }
+  - { num: "05", id: "x-ray", title: "AWS X-Ray" }
+  - { num: "06", id: "config", title: "AWS Config" }
+  - { num: "07", id: "systems-manager", title: "AWS Systems Manager" }
+  - { num: "08", id: "eventbridge", title: "Amazon EventBridge untuk Operasi" }
+  - { num: "09", id: "health-dashboard", title: "AWS Health Dashboard" }
+  - { num: "10", id: "trusted-advisor", title: "AWS Trusted Advisor" }
+  - { num: "11", id: "service-quotas", title: "Service Quotas" }
+  - { num: "12", id: "optimizer-well-architected", title: "Compute Optimizer & Well-Architected Tool" }
+  - { num: "13", id: "skenario-nyata", title: "Skenario Nyata: Online Shop Skincare" }
+  - { num: "14", id: "hands-on", title: "Hands-on Ringan: Alur Operasional Harian" }
+  - { num: "15", id: "jebakan-umum", title: "Kesalahan Umum & Jebakan Soal" }
+  - { num: "16", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul Monitoring, Logging, Operations & Governance - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import MonitoringFig01 from "@figures/MonitoringFig01.astro";
+import MonitoringFig02 from "@figures/MonitoringFig02.astro";
+import MonitoringFig03 from "@figures/MonitoringFig03.astro";
+import MonitoringFig04 from "@figures/MonitoringFig04.astro";
+import MonitoringFig05 from "@figures/MonitoringFig05.astro";
+
+<Hero eyebrow="Modul &middot; Management and Governance" title="<em>Monitoring</em><br />Logging, Operations &amp; Governance">
+  <p>Belajar membaca tanda-tanda kesehatan cloud, menemukan jejak perubahan, dan menjaga lingkungan AWS tetap terkendali.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~75 menit baca</Chip>
+    <Chip icon="book">Domain 3 &middot; 34% &amp; Domain 2 &middot; 30%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Mengapa Monitoring &amp; Governance Penting?" sub="Jembatan antara membuat resource dan mengoperasikan resource">
+
+<p class="lead">Membuat resource itu seperti membuka toko, sedangkan monitoring dan governance adalah CCTV, buku tamu, SOP kasir, teknisi gedung, dan audit harian.</p>
+
+Bayangkan kamu punya online shop skincare. Server menyala, database berjalan, bucket S3 menyimpan gambar produk, dan API menerima pesanan. Masalahnya, bisnis tidak berhenti di tahap "resource berhasil dibuat". Kamu perlu tahu apakah aplikasi sehat, siapa mengubah pengaturan, konfigurasi mana yang melanggar standar, kapan AWS punya maintenance, apakah kuota hampir habis, dan apakah resource terlalu besar sehingga biaya bocor.
+
+Di AWS, kumpulan layanan monitoring, logging, operasi, dan governance membantu menjawab pertanyaan itu. **Amazon CloudWatch** melihat metrik, log, alarm, dan dashboard. **AWS CloudTrail** mencatat aktivitas API dan tindakan akun. **AWS X-Ray** membantu menelusuri perjalanan request. **AWS Config** merekam konfigurasi resource dan mengevaluasi kepatuhan. **AWS Systems Manager** membantu mengelola node dan menjalankan operasi rutin. **Amazon EventBridge** menghubungkan event dengan tindakan otomatis. **AWS Health Dashboard**, **Trusted Advisor**, **Service Quotas**, **Compute Optimizer**, dan **AWS Well-Architected Tool** memberi konteks kesehatan, rekomendasi, batas layanan, optimasi, dan evaluasi arsitektur.
+
+<Box variant="analogy" icon="🏥" label="Analogi rumah sakit"><p>CloudWatch seperti monitor detak jantung, CloudTrail seperti rekam medis tindakan dokter, X-Ray seperti pemeriksaan radiologi alur masalah, Config seperti checklist kepatuhan ruangan, Systems Manager seperti tim perawat yang menjalankan tindakan rutin, dan Trusted Advisor seperti konsultan yang memberi saran perbaikan.</p></Box>
+
+Untuk CLF-C02, kamu tidak diminta menjadi operator senior yang menulis query log rumit. Fokusnya adalah **mengenali layanan yang tepat untuk skenario yang tepat**. Jika soal bertanya "siapa menghapus security group?", pikirkan CloudTrail. Jika soal bertanya "CPU melewati threshold dan perlu alarm", pikirkan CloudWatch. Jika soal bertanya "bucket berubah menjadi public dan harus dievaluasi terhadap aturan", pikirkan AWS Config.
+
+Sumber resmi yang relevan: [Exam Guide CLF-C02](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html), [In-Scope AWS Services CLF-C02](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/clf-02-in-scope-services.html), dan [Content Domain 2 Security and Compliance](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02-domain2.html).
+
+</Section>
+
+<Section num="02" id="peta-besar" title="Peta Besar: Telemetry, Audit, Operasi, Governance" sub="Satu masalah operasional biasanya butuh lebih dari satu layanan">
+
+<p class="lead">Cara cepat memahami modul ini adalah memisahkan sinyal teknis, jejak tindakan, perubahan konfigurasi, dan rekomendasi perbaikan.</p>
+
+<Figure><MonitoringFig01 /><Fragment slot="caption"><b>Gambar 1.</b> Alur operasi AWS tingkat tinggi, dari telemetry sampai governance dan tindakan perbaikan.</Fragment></Figure>
+
+| Kebutuhan | Pertanyaan manusia | Layanan yang paling cocok | Kata kunci ujian |
+|---|---|---|---|
+| Monitoring | "Aplikasi sehat atau tidak?" | Amazon CloudWatch | metrics, logs, alarms, dashboard |
+| Audit | "Siapa melakukan apa dan kapan?" | AWS CloudTrail | API activity, account activity, event history, trail |
+| Tracing | "Request lambat di bagian mana?" | AWS X-Ray | trace, segment, service map, latency |
+| Compliance konfigurasi | "Resource sesuai aturan atau tidak?" | AWS Config | configuration history, rule, compliance, remediation |
+| Operasi node | "Bagaimana patch, remote command, dan akses instance?" | AWS Systems Manager | Session Manager, Run Command, Patch Manager, Parameter Store |
+| Otomasi event | "Bagaimana memicu aksi otomatis saat sebuah event terjadi?" | Amazon EventBridge | event bus, rule, target, scheduler |
+| Kesehatan AWS | "Apakah ada event AWS yang memengaruhi akun?" | AWS Health Dashboard | service health, account events, scheduled changes |
+| Rekomendasi best practice | "Apa yang harus diperbaiki?" | AWS Trusted Advisor | cost, security, fault tolerance, performance, service limits |
+| Batas layanan | "Kuota hampir habis atau perlu dinaikkan?" | Service Quotas | quotas, limits, request increase |
+| Optimasi ukuran resource | "Resource terlalu besar atau terlalu kecil?" | AWS Compute Optimizer | rightsizing, idle resource, utilization metrics |
+| Evaluasi arsitektur | "Apakah workload mengikuti best practice?" | AWS Well-Architected Tool | six pillars, workload review, improvement plan |
+
+<Box variant="exam" icon="🧠" label="Pola pikir ujian"><p>Jangan menghafal semua fitur. Hafalkan pasangan pertanyaan dan layanan, karena soal CLF-C02 sering berbentuk skenario singkat.</p></Box>
+
+<Figure><MonitoringFig02 /><Fragment slot="caption"><b>Gambar 2.</b> Pohon keputusan dari pertanyaan manusia ke layanan AWS yang tepat, peta jebakan ujian yang paling sering muncul.</Fragment></Figure>
+
+Ada empat kelompok besar yang perlu kamu bedakan. Pertama, **observability** adalah kemampuan melihat keadaan sistem dari luar lewat metrik, log, dan trace. Kedua, **auditability** adalah kemampuan menelusuri tindakan yang terjadi di akun. Ketiga, **operations** adalah kemampuan menjalankan pekerjaan rutin dengan aman. Keempat, **governance** adalah kemampuan memastikan lingkungan tetap sesuai aturan, batas, dan best practice.
+
+Dalam praktik, layanan ini saling melengkapi. CloudTrail bisa mengirim log ke CloudWatch Logs atau S3. CloudWatch bisa membuat alarm dan memicu notifikasi. AWS Config bisa mendeteksi resource noncompliant. Systems Manager bisa menjalankan patching atau automation. Service Quotas dan Trusted Advisor membantu mencegah kejutan operasional sebelum aplikasi gagal di hari ramai.
+
+<h3>Tiga "log" yang sering tertukar</h3>
+
+Banyak pemula menyangka semua jejak digital itu sama. Padahal CloudWatch, CloudTrail, dan Config menjawab tiga pertanyaan berbeda atas satu kejadian yang sama. Inilah pembedaan paling penting di seluruh modul, jadi pegang erat ketiga kata kerja ini.
+
+<CardGrid cols={3}>
+  <Card><h4>CloudWatch &middot; APA</h4><p>Apa yang sedang terjadi dan bagaimana performanya. Angka (metrics), catatan teks (logs), dan peringatan (alarms).</p></Card>
+  <Card><h4>CloudTrail &middot; SIAPA</h4><p>Siapa melakukan apa lewat API atau console. Audit who-did-what, event history selama 90 hari.</p></Card>
+  <Card><h4>Config &middot; SESUAI</h4><p>Apakah konfigurasi sesuai aturan dan bagaimana riwayatnya. Compliance dan configuration history.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Jebakan inti modul ini"><p>"SIAPA yang membuka port minggu lalu" &rarr; CloudTrail. "Apakah security group PERNAH membuka port minggu lalu" (riwayat konfigurasi) &rarr; AWS Config. "Berapa banyak traffic akibat port terbuka" &rarr; CloudWatch. Satu kejadian, tiga jawaban berbeda tergantung kata kerjanya.</p></Box>
+
+</Section>
+
+<Section num="03" id="cloudwatch" title="Amazon CloudWatch" sub="Metrik, log, alarm, dashboard, dan pandangan kesehatan operasional">
+
+<p class="lead">CloudWatch adalah panel instrumen mobil, kamu melihat kecepatan, suhu mesin, indikator bahan bakar, dan lampu peringatan sebelum mobil mogok.</p>
+
+[Amazon CloudWatch](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/WhatIsCloudWatch.html) membantu mengumpulkan dan memantau data operasional seperti metrik, log, alarm, dashboard, dan insight dari resource AWS maupun aplikasi. Banyak layanan AWS mengirim metrik dasar ke CloudWatch secara otomatis, sedangkan aplikasi sendiri bisa mengirim custom metrics atau log dengan agent dan API.
+
+Kenapa CloudWatch jadi pusat observability? Karena ia adalah tempat angka, log, dan grafik dari banyak layanan berkumpul tanpa kamu harus membuka tiap layanan satu per satu. Banyak layanan AWS sudah mendorong metrik dasar ke sana secara otomatis, jadi titik awal monitoring biasanya gratis dan langsung ada. Untuk hal yang tidak terkirim otomatis (misalnya log aplikasi atau metrik memori EC2), kamu memasang CloudWatch Agent atau mengirim custom metric lewat API.
+
+<CardGrid cols={3}>
+  <Card><h4>Metrics</h4><p>Angka dari waktu ke waktu, seperti CPUUtilization, request count, error rate, latency, atau jumlah pesan antrean.</p></Card>
+  <Card><h4>Logs</h4><p>Catatan kejadian berbentuk teks, seperti log aplikasi, log Lambda, log VPC Flow Logs, atau log sistem dari instance.</p></Card>
+  <Card><h4>Alarms</h4><p>Aturan peringatan saat metrik melewati threshold, misalnya CPU di atas 80 persen selama beberapa periode.</p></Card>
+  <Card><h4>Dashboards</h4><p>Tampilan visual terpadu untuk melihat grafik dan status beberapa resource dalam satu tempat.</p></Card>
+  <Card><h4>CloudWatch Agent</h4><p>Agent untuk mengumpulkan metrik dan log tambahan dari EC2, server on-premises, dan lingkungan lain yang didukung.</p></Card>
+  <Card><h4>Logs Insights</h4><p>Fitur query untuk mencari pola di log, cocok untuk analisis cepat saat investigasi operasional.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Cara mengingat"><p>CloudWatch menjawab "apa yang sedang terjadi pada sistem saya?" lewat angka, log, grafik, dan alarm.</p></Box>
+
+<Figure><MonitoringFig04 /><Fragment slot="caption"><b>Gambar 3.</b> Alur dari sumber telemetry sampai tindakan: metrik dan log masuk ke CloudWatch, alarm menyala, lalu SNS atau EventBridge memicu notifikasi, Auto Scaling, atau remediation otomatis.</Fragment></Figure>
+
+Contoh nyata, API checkout skincare mulai lambat. CloudWatch bisa menunjukkan p95 latency meningkat, error rate naik, dan CPU instance backend mendekati penuh. Jika alarm sudah dibuat, tim bisa menerima notifikasi sebelum pelanggan ramai-ramai komplain. Dashboard membantu tim nonteknis melihat status umum tanpa membuka tiap layanan satu per satu.
+
+<h3>Seberapa sering CloudWatch mengukur?</h3>
+
+Detail yang sering muncul di soal adalah interval pengumpulan metrik. Secara default, EC2 memakai **basic monitoring** yang mengambil data tiap 5 menit dan gratis. Jika kamu mengaktifkan **detailed monitoring**, intervalnya menjadi 1 menit, tetapi berbayar. Untuk workload yang naik turun cepat, interval 1 menit membantu alarm bereaksi lebih sigap. Untuk lab belajar atau workload tenang, interval 5 menit sudah cukup dan tidak menambah biaya.
+
+<Box variant="tip" icon="⏱️" label="Basic vs detailed monitoring"><p>EC2 basic monitoring = data tiap 5 menit (default, gratis). Detailed monitoring = data tiap 1 menit (berbayar). Jika soal menyebut "perlu reaksi lebih cepat dari 5 menit", arahnya detailed monitoring.</p></Box>
+
+<h3>CloudWatch Logs Insights, contoh nyata</h3>
+
+Saat investigasi, kamu jarang membaca log baris demi baris. **CloudWatch Logs Insights** adalah bahasa query untuk menyaring dan mengagregasi log dengan cepat. Misalnya, saat checkout error, kamu bisa menjalankan query yang mencari semua entri berstatus 500, menghitung jumlahnya per menit, lalu mengurutkan dari yang terbanyak. Dalam hitungan detik kamu tahu kapan lonjakan error dimulai, bukan menebak dari ribuan baris log mentah.
+
+<Box variant="analogy" icon="🔎" label="Logs Insights seperti mesin cari"><p>Daripada membaca seluruh buku catatan satpam halaman per halaman, Logs Insights seperti menelusuri kata kunci dan langsung mendapat ringkasan: "error 500 terjadi 240 kali antara pukul 19.00 dan 19.05".</p></Box>
+
+<h3>Kapan memakai CloudWatch?</h3>
+
+- Saat perlu memantau performa EC2, Lambda, RDS, DynamoDB, SQS, atau layanan lain.
+- Saat perlu alarm berbasis metrik, misalnya CPU tinggi, error rate tinggi, atau antrean SQS menumpuk.
+- Saat perlu menyimpan dan mencari log aplikasi.
+- Saat perlu dashboard operasional untuk tim.
+- Saat perlu mengirim custom metric dari aplikasi sendiri.
+
+<h3>Jebakan umum CloudWatch</h3>
+
+CloudWatch bukan alat utama untuk menjawab "siapa mengubah konfigurasi IAM policy?". Untuk aktivitas API dan audit tindakan akun, pilih CloudTrail. CloudWatch juga bukan alat utama untuk mengevaluasi apakah resource compliant terhadap aturan organisasi, pilih AWS Config. CloudWatch bisa menyimpan log dan menampilkan alarm, tetapi bukan pengganti semua governance.
+
+<Box variant="tip" icon="🎁" label="Catatan biaya (jangan dihafal angka)"><p>CloudWatch punya free tier yang lumayan: sekitar 10 custom metrics, 10 standard-resolution alarms, 5 GB log ingestion + 5 GB log archive, dan 3 dashboards. Untuk ujian, cukup ingat bahwa metrik dasar banyak yang gratis, sedangkan custom metrics, retention panjang, dan ingestion besar bisa berbiaya. Cek [halaman pricing CloudWatch](https://aws.amazon.com/cloudwatch/pricing/) untuk angka terbaru.</p></Box>
+
+<Box variant="exam" icon="🎯" label="Tips ujian"><p>Jika soal menyebut metrics, alarm, dashboard, logs, threshold, atau operational health, jawaban paling sering adalah Amazon CloudWatch.</p></Box>
+
+</Section>
+
+<Section num="04" id="cloudtrail" title="AWS CloudTrail" sub="Jejak audit aktivitas akun dan API">
+
+<p class="lead">CloudTrail adalah buku tamu dan CCTV pintu admin, mencatat siapa masuk, lewat pintu mana, dan tindakan apa yang dilakukan.</p>
+
+[AWS CloudTrail](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html) mencatat aktivitas akun AWS dalam bentuk event. Aktivitas ini bisa berasal dari AWS Management Console, AWS CLI, SDK, API call, atau layanan AWS lain. Bagi pemula, kalimat paling penting adalah: **CloudTrail menjawab siapa melakukan apa, kapan, dari mana, dan terhadap resource apa**. CloudTrail aktif secara default, jadi jejak management events sudah terekam meski kamu belum mengatur apa pun.
+
+CloudTrail punya beberapa konsep yang sering muncul di ujian. **Event history** memberi riwayat management events selama 90 hari per Region, bisa dilihat, dicari, dan diunduh, dan **gratis**. **Trail** mengirim event ke bucket S3 untuk penyimpanan jangka panjang dan bisa dikirim juga ke CloudWatch Logs atau EventBridge. Penyimpanan jangka panjang lewat trail ke S3 inilah yang berbiaya, bukan event history-nya. **CloudTrail Lake** adalah event data store terkelola untuk menyimpan dan menganalisis aktivitas audit dengan query SQL. **Management events** mencatat operasi control plane seperti membuat bucket atau mengubah IAM role. **Data events** mencatat aktivitas data plane, misalnya akses object S3 atau invoke Lambda, dan perlu dikonfigurasi karena lebih detail dan volumenya bisa sangat besar.
+
+<Box variant="exam" icon="💰" label="Gratis vs berbayar (sering jadi distraktor)"><p>"Cara termurah melihat aktivitas API 60 hari terakhir" &rarr; Event history (gratis, menyimpan 90 hari). "Menyimpan jejak audit bertahun-tahun untuk compliance" &rarr; buat trail ke S3 (berbiaya penyimpanan). Jangan tertukar.</p></Box>
+
+<CardGrid cols={2}>
+  <Card><h4>Management events</h4><p>Aktivitas control plane, seperti CreateUser, RunInstances, PutBucketPolicy, atau DeleteSecurityGroup.</p></Card>
+  <Card><h4>Data events</h4><p>Aktivitas data plane yang lebih granular, seperti akses object S3 atau eksekusi fungsi Lambda tertentu.</p></Card>
+  <Card><h4>Insights events</h4><p>Mendeteksi pola aktivitas tidak biasa pada API call rate dan API error rate. Kini bisa menganalisis management maupun data events untuk menemukan anomali akses.</p></Card>
+  <Card><h4>Trails</h4><p>Konfigurasi untuk mengirim dan menyimpan event ke S3, serta opsional ke CloudWatch Logs dan EventBridge.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="🪤" label="Jebakan: event history hanya management events"><p>Pertanyaan klasik: "kenapa akses object S3 tidak muncul di Event history?" Jawabannya karena Event history hanya menampilkan management events. Untuk merekam data events (akses object S3, invoke Lambda), kamu harus mengonfigurasinya secara eksplisit lewat trail atau event data store, dan itu berpotensi menambah biaya karena volumenya besar.</p></Box>
+
+<Box variant="analogy" icon="📒" label="Analogi resepsionis"><p>CloudTrail tidak memberi tahu suhu ruangan server. CloudTrail memberi tahu siapa yang masuk ruangan, kapan masuk, dan tombol apa yang ditekan.</p></Box>
+
+Contoh skenario, tiba-tiba bucket gambar produk menjadi public. CloudWatch mungkin menunjukkan lonjakan traffic, tetapi CloudTrail membantu mencari event `PutBucketPolicy` atau perubahan ACL yang menjelaskan siapa atau role mana yang mengubahnya. Jika perusahaan butuh audit, CloudTrail adalah salah satu layanan pertama yang harus dikenali. Untuk menilai apakah bucket itu melanggar aturan, barulah AWS Config masuk. Lihat gambar berikut untuk membandingkan tiga sudut pandang atas kejadian yang sama.
+
+<Figure><MonitoringFig03 /><Fragment slot="caption"><b>Gambar 4.</b> Satu kejadian (bucket S3 jadi public) dilihat oleh tiga layanan: CloudWatch melihat lonjakan traffic, CloudTrail melihat siapa yang mengubah, AWS Config menilai bucket NONCOMPLIANT terhadap rule.</Fragment></Figure>
+
+<h3>Kapan memakai CloudTrail?</h3>
+
+- Saat perlu audit aktivitas akun dan API.
+- Saat perlu mencari siapa menghapus, membuat, atau mengubah resource.
+- Saat perlu bukti aktivitas untuk compliance dan investigasi keamanan.
+- Saat perlu menyimpan log aktivitas jangka panjang di S3.
+- Saat perlu mendeteksi pola API yang tidak biasa dengan CloudTrail Insights.
+
+<Box variant="warn" icon="⚠️" label="Kesalahan pemula"><p>Jangan menjawab CloudWatch untuk pertanyaan "who made this API call?". Itu tugas CloudTrail, bukan CloudWatch.</p></Box>
+
+<Compare aLabel="CloudWatch &middot; APA yang terjadi" bLabel="CloudTrail &middot; SIAPA melakukan apa" aTone="blue" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Fokus pada performa dan kesehatan: metrics, logs, alarms, dashboards.</li><li>Menjawab "CPU tinggi", "error rate naik", "latency p95 melonjak".</li><li>Bisa memicu alarm lalu notifikasi atau Auto Scaling.</li><li>Bisa MENERIMA log dari CloudTrail, tetapi tetap bukan sumber audit.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Fokus pada audit: who-did-what lewat API atau console.</li><li>Menjawab "siapa menghapus security group", "kapan IAM policy diubah".</li><li>Event history 90 hari per Region, gratis; trail ke S3 untuk jangka panjang.</li><li>Bukti untuk investigasi keamanan dan compliance.</li></ul></Fragment>
+</Compare>
+
+</Section>
+
+<Section num="05" id="x-ray" title="AWS X-Ray" sub="Distributed tracing untuk aplikasi modern">
+
+<p class="lead">X-Ray seperti pelacak paket ekspedisi, kamu bisa melihat paket berhenti di gudang mana dan berapa lama menunggu di tiap titik.</p>
+
+Aplikasi modern jarang hanya satu server. Satu request checkout bisa melewati API Gateway, Lambda, service backend, DynamoDB, SQS, dan service pembayaran. Saat lambat, metrik rata-rata saja tidak cukup. [AWS X-Ray](https://docs.aws.amazon.com/xray/latest/devguide/aws-xray.html) membantu melakukan distributed tracing, yaitu menelusuri perjalanan request melewati beberapa komponen.
+
+<Box variant="tip" icon="🗂️" label="Catatan kategori in-scope"><p>Di daftar in-scope services resmi CLF-C02, X-Ray ada di kategori **Developer Tools** (bersama AWS CLI, CodeBuild, CodePipeline), bukan Management and Governance. Soal kategori jarang muncul, tetapi penting agar kamu tidak salah mengelompokkan saat melihat tabel domain.</p></Box>
+
+Konsep dasar X-Ray adalah **segment**, **subsegment**, **trace**, dan **service map**. Segment adalah data kerja dari satu komponen. Beberapa segment yang punya request sama dikelompokkan menjadi trace. Dari trace itu, X-Ray membuat service map, sehingga kamu bisa melihat hubungan antar service dan menemukan bottleneck.
+
+<Steps>
+  <Step><b>Request masuk</b><p>Pelanggan menekan tombol checkout dan request masuk ke API.</p></Step>
+  <Step><b>Trace dibuat</b><p>Aplikasi yang sudah di-instrument mengirim data segment dan subsegment ke X-Ray.</p></Step>
+  <Step><b>Service map terbentuk</b><p>X-Ray menampilkan jalur request antar komponen, termasuk error, fault, dan latency.</p></Step>
+  <Step><b>Tim menemukan bottleneck</b><p>Tim melihat titik yang paling lambat, misalnya query database atau panggilan ke service eksternal.</p></Step>
+</Steps>
+
+<Box variant="tip" icon="🔍" label="Cara mengingat"><p>CloudWatch melihat kesehatan umum, X-Ray mengikuti satu request dari awal sampai akhir.</p></Box>
+
+Untuk CLF-C02, kamu cukup tahu bahwa X-Ray membantu debugging performa aplikasi terdistribusi, terutama untuk mengetahui latency, error, dan dependency antar service. Kamu tidak perlu menguasai detail SDK atau instrumentation tingkat lanjut.
+
+X-Ray makin terintegrasi sebagai bagian observability CloudWatch (lewat fitur seperti Application Signals dan Transaction Search). Narasinya tetap sama: CloudWatch melihat kesehatan umum lewat angka dan log, X-Ray mengikuti satu request melewati banyak komponen, dan kini keduanya berada di bawah satu payung observability.
+
+<Box variant="tip" icon="🧭" label="Catatan masa depan (level CLF rendah)"><p>AWS sedang mengarahkan instrumentasi ke standar OpenTelemetry. X-Ray SDK dan Daemon lama masuk maintenance mode pada 25 Februari 2026, tetapi layanan X-Ray (trace map dan service map) tetap didukung dan tetap in-scope. Untuk ujian, cukup ingat fungsinya, bukan jadwal transisinya.</p></Box>
+
+<h3>Kapan memakai X-Ray?</h3>
+
+- Saat request melewati banyak microservice atau layanan AWS.
+- Saat perlu tahu bagian mana yang menyebabkan latency.
+- Saat perlu visual service map.
+- Saat perlu trace detail untuk debugging performa aplikasi.
+
+<Box variant="exam" icon="🎯" label="Tips ujian"><p>Jika soal menyebut trace, service map, segment, request path, microservices latency, atau distributed application, pilih AWS X-Ray.</p></Box>
+
+</Section>
+
+<Section num="06" id="config" title="AWS Config" sub="Riwayat konfigurasi dan evaluasi compliance resource">
+
+<p class="lead">AWS Config seperti petugas audit gedung yang memotret kondisi tiap ruangan dari waktu ke waktu dan membandingkannya dengan aturan.</p>
+
+[AWS Config](https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html) memberi tampilan detail tentang konfigurasi resource AWS, relasi antar resource, dan perubahan konfigurasi dari waktu ke waktu. Ia membantu menjawab pertanyaan: "Konfigurasi resource ini dulu seperti apa?", "Apa yang berubah?", dan "Apakah konfigurasi ini sesuai aturan?".
+
+Komponen penting AWS Config adalah **configuration recorder**, **configuration item**, **AWS Config rules**, **conformance packs**, **aggregator**, dan **remediation**. Untuk CLF-C02, cukup pahami bahwa Config merekam konfigurasi resource, mengevaluasi resource terhadap rules, menandai resource compliant atau noncompliant, dan dapat membantu remediation. Soal harga jarang ditanya detail, tetapi enak diketahui bahwa Config menagih berdasarkan jumlah configuration items yang direkam, jumlah evaluasi Config rule, dan jumlah evaluasi conformance pack ([halaman pricing Config](https://aws.amazon.com/config/pricing/)).
+
+<CardGrid cols={2}>
+  <Card><h4>Configuration history</h4><p>Riwayat perubahan konfigurasi resource, berguna untuk audit dan troubleshooting.</p></Card>
+  <Card><h4>Config rules</h4><p>Aturan untuk mengevaluasi apakah resource mengikuti standar tertentu.</p></Card>
+  <Card><h4>Conformance packs</h4><p>Kumpulan rules dan remediation action yang bisa dikelola sebagai satu paket compliance.</p></Card>
+  <Card><h4>Aggregator</h4><p>Tampilan terpusat untuk data Config lintas akun dan Region.</p></Card>
+</CardGrid>
+
+Contoh nyata, perusahaan ingin semua bucket S3 tidak public. AWS Config dapat menggunakan rule terkait public access untuk mengevaluasi bucket. Jika ada bucket noncompliant, tim security bisa menerima sinyal dan menindaklanjuti. Ini berbeda dari CloudTrail. CloudTrail mencari tindakan yang menyebabkan perubahan. Config menilai kondisi akhir resource terhadap aturan.
+
+<Box variant="analogy" icon="📸" label="CloudTrail vs Config"><p>CloudTrail adalah rekaman siapa yang memindahkan kursi, Config adalah foto layout ruangan sebelum dan sesudah kursi dipindahkan, lalu menilai apakah layout masih sesuai SOP.</p></Box>
+
+<h3>Dari deteksi ke perbaikan otomatis</h3>
+
+Config tidak hanya menandai masalah, ia bisa menutup masalahnya. Saat sebuah rule menandai resource NONCOMPLIANT, kamu bisa menempelkan **remediation action** yang menjalankan dokumen **SSM Automation** untuk memperbaiki resource secara otomatis. Contoh konkret: rule mendeteksi sebuah security group membuka SSH (port 22) ke 0.0.0.0/0, lalu remediation memanggil runbook Systems Manager yang menutup aturan terbuka itu. Inilah jembatan antara governance (Config menilai) dan operations (Systems Manager bertindak).
+
+<Box variant="tip" icon="🔗" label="Config + Systems Manager"><p>Config = "apakah ini melanggar aturan?" Jika ya, remediation lewat SSM Automation = "perbaiki sekarang". Kombinasi ini sering disebut auto-remediation dan menghemat kerja manual tim security.</p></Box>
+
+<h3>Conformance packs</h3>
+
+Daripada mengaktifkan rule satu per satu, **conformance pack** mengemas sekumpulan Config rules plus remediation action sebagai satu paket compliance yang bisa di-deploy lintas akun dan Region. Bayangkan template "PCI-DSS dasar" atau "best practice keamanan S3" yang siap pakai, sehingga satu tim governance bisa menetapkan standar yang sama di seluruh organisasi tanpa menyalin konfigurasi berulang.
+
+<h3>Kapan memakai AWS Config?</h3>
+
+- Saat perlu inventory dan riwayat konfigurasi resource.
+- Saat perlu mengevaluasi compliance otomatis.
+- Saat perlu mengetahui perubahan konfigurasi dari waktu ke waktu.
+- Saat perlu melihat relasi resource, misalnya security group terkait EC2 tertentu.
+- Saat perlu governance lintas akun dan Region dengan aggregator.
+
+<Box variant="exam" icon="🎯" label="Tips ujian"><p>Jika soal menyebut configuration history, compliance rule, resource inventory, noncompliant resource, atau governance configuration, jawab AWS Config.</p></Box>
+
+</Section>
+
+<Section num="07" id="systems-manager" title="AWS Systems Manager" sub="Pusat operasi untuk node, parameter, patch, command, dan automation">
+
+<p class="lead">Systems Manager seperti ruang kontrol teknisi gedung, dari sana teknisi bisa memeriksa mesin, menjalankan perintah, mengatur jadwal patch, dan menyimpan catatan konfigurasi.</p>
+
+[AWS Systems Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/what-is-systems-manager.html) membantu melihat, mengelola, dan mengoperasikan **managed nodes** dalam skala besar di AWS, on-premises, dan multicloud. Node bisa berupa EC2 instance, server on-premises, atau mesin lain yang didukung. Agar node dikelola Systems Manager, umumnya perlu **SSM Agent** dan koneksi ke layanan Systems Manager. Untuk EC2 modern, **Default Host Management Configuration (DHMC)** kini bisa otomatis menjadikan instance ber-IMDSv2 sebagai managed node tanpa kamu memasang instance profile secara manual.
+
+<CardGrid cols={3}>
+  <Card><h4>Session Manager</h4><p>Akses shell ke instance tanpa membuka inbound SSH atau mengelola bastion host secara tradisional.</p></Card>
+  <Card><h4>Run Command</h4><p>Menjalankan perintah ke satu atau banyak node tanpa login manual ke masing-masing server.</p></Card>
+  <Card><h4>Patch Manager</h4><p>Mengotomatisasi proses patching sistem operasi dan aplikasi yang didukung.</p></Card>
+  <Card><h4>Parameter Store</h4><p>Menyimpan data konfigurasi dan parameter aplikasi, termasuk nilai sensitif jika memakai SecureString.</p></Card>
+  <Card><h4>Automation</h4><p>Menjalankan runbook untuk tugas operasional berulang, misalnya restart instance atau remediation tertentu.</p></Card>
+  <Card><h4>Inventory</h4><p>Mengumpulkan informasi software, konfigurasi, dan metadata dari managed nodes.</p></Card>
+</CardGrid>
+
+Contoh nyata, kamu punya beberapa EC2 instance untuk worker image processing. Daripada SSH satu per satu, Systems Manager Run Command bisa menjalankan perintah massal. Daripada membuka port 22 ke internet, Session Manager bisa memberi akses administratif yang lebih aman dan tercatat. Daripada patch manual, Patch Manager membantu jadwal patching yang lebih terkontrol.
+
+<Box variant="warn" icon="⚠️" label="Batas pemahaman CLF-C02"><p>Kamu tidak perlu menulis runbook Automation untuk ujian, tetapi harus tahu Systems Manager adalah layanan operasi terpusat untuk node, patch, command, session, parameter, dan automation.</p></Box>
+
+<h3>Parameter Store vs Secrets Manager</h3>
+
+Parameter Store sering dipakai untuk konfigurasi aplikasi seperti endpoint, environment name, feature flag, atau nilai sensitif sederhana. Secrets Manager lebih fokus pada secret lifecycle, termasuk rotasi secret otomatis untuk database dan kredensial. Dalam soal CLF-C02, jika kata kunci adalah **configuration data** atau **parameter hierarchy**, pikirkan Systems Manager Parameter Store. Jika kata kunci adalah **automatic secret rotation**, pikirkan Secrets Manager.
+
+<Compare aLabel="Parameter Store &middot; konfigurasi" bLabel="Secrets Manager &middot; secret rotation" aTone="blue" bTone="red" vs="vs">
+  <Fragment slot="a"><ul><li>Bagian dari Systems Manager, gratis untuk tier Standard.</li><li>Cocok untuk configuration data, parameter hierarchy, feature flag, dan SecureString sederhana.</li><li>Tidak melakukan rotasi otomatis terhadap kredensial.</li><li>Kata kunci soal: "configuration value", "parameter hierarchy".</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Layanan terpisah yang fokus pada secret lifecycle.</li><li>Mendukung rotasi otomatis untuk database dan kredensial.</li><li>Lebih mahal, tetapi memberi fitur secret yang lebih kaya.</li><li>Kata kunci soal: "automatic rotation", "database credentials".</li></ul></Fragment>
+</Compare>
+
+<Box variant="exam" icon="🎯" label="Tips ujian"><p>Jika soal menyebut patching fleet, remote command, managed instances, Session Manager, atau Parameter Store, pilih AWS Systems Manager.</p></Box>
+
+</Section>
+
+<Section num="08" id="eventbridge" title="Amazon EventBridge untuk Operasi" sub="Hub event-driven yang menghubungkan sinyal dengan tindakan otomatis">
+
+<p class="lead">EventBridge seperti operator radio pusat gedung, ia mendengar berbagai laporan masuk lalu meneruskannya ke petugas yang tepat sesuai aturan.</p>
+
+Monitoring dan governance jadi jauh lebih kuat ketika sinyal bisa langsung memicu tindakan tanpa manusia menatap layar terus-menerus. Di sinilah [Amazon EventBridge](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html) berperan. EventBridge adalah **event bus** yang menerima event dari layanan AWS, aplikasi sendiri, dan SaaS, lalu memakai **rules** untuk mencocokkan event tertentu ke **targets** yang akan menjalankan aksi.
+
+<Figure><MonitoringFig05 /><Fragment slot="caption"><b>Gambar 5.</b> EventBridge sebagai hub: menerima CloudWatch alarm (via SNS), Config noncompliant, AWS Health event, Trusted Advisor result, dan CloudTrail, lalu memicu Lambda, SSM Automation, SNS, atau Step Functions.</Fragment></Figure>
+
+<CardGrid cols={2}>
+  <Card><h4>Event bus</h4><p>Saluran tempat event berkumpul. Ada default bus untuk event AWS dan custom bus untuk aplikasi atau partner SaaS.</p></Card>
+  <Card><h4>Rules</h4><p>Pola pencocokan event. Jika event cocok dengan pola, EventBridge meneruskannya ke satu atau lebih target.</p></Card>
+  <Card><h4>Targets</h4><p>Tujuan aksi: Lambda, SSM Automation, SNS, SQS, Step Functions, dan banyak layanan lain.</p></Card>
+  <Card><h4>EventBridge Scheduler</h4><p>Penjadwal cron atau rate untuk tugas terjadwal, kini direkomendasikan untuk scheduled tasks operasional.</p></Card>
+</CardGrid>
+
+<h3>Kenapa EventBridge penting untuk operasi?</h3>
+
+Layanan-layanan di modul ini menghasilkan event, dan EventBridge mengubah event itu menjadi otomasi. Beberapa pola yang sering muncul: CloudWatch alarm (lewat SNS) memicu remediation, AWS Config menandai resource noncompliant lalu EventBridge menjalankan SSM Automation untuk memperbaiki, AWS Health event memicu notifikasi tim, dan Trusted Advisor check result diteruskan ke Lambda untuk ditindaklanjuti. Dengan begitu, tim tidak perlu memelototi dashboard sepanjang hari.
+
+<Box variant="analogy" icon="📻" label="Routing, bukan sekadar antrean"><p>EventBridge mencocokkan event lalu mengarahkannya ke aksi yang tepat. Bedakan dari SQS yang menampung pesan dalam antrean untuk diproses kemudian, dan dari SNS yang menyiarkan satu pesan ke banyak pelanggan. EventBridge unggul saat kamu ingin aturan "jika event seperti X, lakukan Y".</p></Box>
+
+<Box variant="warn" icon="⚠️" label="EventBridge vs SQS vs SNS"><p>EventBridge = routing event-driven berbasis aturan dan penjadwalan. SQS = antrean pesan untuk decoupling. SNS = pub/sub notifikasi fan-out. Soal sering memakai ketiganya sebagai distraktor, jadi baca apakah skenarionya butuh routing aturan (EventBridge), buffering (SQS), atau broadcast (SNS).</p></Box>
+
+<Box variant="exam" icon="🎯" label="Tips ujian"><p>Jika soal menyebut "memicu otomasi dari event AWS", "menjalankan tindakan saat Config noncompliant atau Health event", atau "menjadwalkan tugas dengan cron", pikirkan Amazon EventBridge.</p></Box>
+
+</Section>
+
+<Section num="09" id="health-dashboard" title="AWS Health Dashboard" sub="Informasi kesehatan layanan AWS dan event yang memengaruhi akun">
+
+<p class="lead">AWS Health Dashboard seperti papan pengumuman resmi dari pengelola gedung, memberi tahu ada perbaikan lift, gangguan listrik area tertentu, atau jadwal maintenance.</p>
+
+[AWS Health Dashboard](https://docs.aws.amazon.com/health/latest/ug/what-is-aws-health.html) memberi informasi tentang event AWS Health yang bisa memengaruhi layanan AWS atau akun kamu. Tanpa sign-in, kamu bisa melihat status layanan umum. Setelah sign-in, dashboard memberi informasi yang lebih personal, seperti event akun, event organisasi, scheduled changes, notifikasi, dan event log.
+
+<Box variant="tip" icon="📜" label="Menjembatani materi lama"><p>Sumber belajar lama sering memakai istilah Personal Health Dashboard (PHD) dan Service Health Dashboard (SHD). Keduanya kini disatukan menjadi satu pengalaman bernama AWS Health Dashboard. Jadi jika kamu menemukan istilah PHD/SHD di soal latihan lama, anggap itu bagian dari Health Dashboard yang sekarang.</p></Box>
+
+<CardGrid cols={2}>
+  <Card><h4>Service health</h4><p>Melihat status layanan AWS secara umum lintas Region, berguna untuk mengetahui apakah ada isu layanan luas.</p></Card>
+  <Card><h4>Your account events</h4><p>Melihat event yang spesifik untuk akun kamu, termasuk open events, recent events, dan scheduled changes.</p></Card>
+  <Card><h4>Your organization events</h4><p>Melihat event untuk organisasi jika menggunakan AWS Organizations dan konfigurasi yang sesuai.</p></Card>
+  <Card><h4>EventBridge integration</h4><p>Event AWS Health dapat diintegrasikan dengan EventBridge untuk alur notifikasi dan respons otomatis.</p></Card>
+</CardGrid>
+
+Contoh, aplikasi tiba-tiba terganggu di satu Region. CloudWatch menunjukkan error naik, tetapi penyebabnya mungkin bukan kode kamu. AWS Health Dashboard bisa menunjukkan apakah ada event layanan AWS yang relevan, misalnya maintenance terjadwal atau gangguan layanan yang memengaruhi resource tertentu.
+
+<Box variant="tip" icon="💡" label="Cara mengingat"><p>CloudWatch memantau workload kamu, AWS Health Dashboard memberi kabar resmi tentang kesehatan layanan AWS dan dampaknya ke akun kamu.</p></Box>
+
+<Box variant="exam" icon="🎯" label="Tips ujian"><p>Jika soal menyebut service event, scheduled maintenance, AWS service availability, atau event yang memengaruhi akun, pilih AWS Health Dashboard.</p></Box>
+
+</Section>
+
+<Section num="10" id="trusted-advisor" title="AWS Trusted Advisor" sub="Rekomendasi best practice untuk akun AWS">
+
+<p class="lead">Trusted Advisor seperti konsultan gedung yang berkeliling dan memberi daftar saran, ada lampu boros, pintu darurat kurang aman, kapasitas lift hampir penuh, dan sistem backup perlu diperbaiki.</p>
+
+[AWS Trusted Advisor](https://docs.aws.amazon.com/awssupport/latest/user/trusted-advisor.html) memeriksa lingkungan AWS dan memberi rekomendasi berdasarkan best practice. Rekomendasinya membantu menghemat biaya, meningkatkan keamanan, memperbaiki fault tolerance, meningkatkan performance, memantau service limits, dan mendukung operational excellence. Akses ke checks bergantung pada AWS Support plan yang digunakan.
+
+<Box variant="tip" icon="🔢" label="5 klasik + Operational Excellence"><p>Banyak materi menyebut "5 kategori": Cost Optimization, Security, Fault Tolerance, Performance, dan Service Limits. Sejak 2023 ditambahkan kategori keenam, **Operational Excellence**, sehingga sumber baru sering menyebut 6 kategori. Jika soal lama menyebut 5 dan soal baru menyebut 6, keduanya benar, cukup ingat lima yang klasik plus tambahan Operational Excellence.</p></Box>
+
+<CardGrid cols={3}>
+  <Card><h4>Cost optimization</h4><p>Rekomendasi untuk mengurangi pemborosan, misalnya resource idle atau konfigurasi yang kurang hemat.</p></Card>
+  <Card><h4>Security</h4><p>Rekomendasi keamanan, misalnya root MFA atau konfigurasi akses yang terlalu terbuka.</p></Card>
+  <Card><h4>Fault tolerance</h4><p>Rekomendasi agar workload lebih tahan gangguan, misalnya backup dan distribusi kapasitas.</p></Card>
+  <Card><h4>Performance</h4><p>Rekomendasi untuk meningkatkan performa resource dan layanan.</p></Card>
+  <Card><h4>Service limits</h4><p>Pemeriksaan terkait batas layanan agar pertumbuhan workload tidak terhambat kuota.</p></Card>
+  <Card><h4>Operational Excellence</h4><p>Rekomendasi yang mendukung praktik operasi yang lebih baik.</p></Card>
+</CardGrid>
+
+Contoh nyata, akun development punya security group yang membuka SSH ke internet, root account belum pakai MFA, dan beberapa EBS volume tidak terpakai. Trusted Advisor dapat membantu memberi peringatan dan rekomendasi. Namun, jangan menganggap Trusted Advisor sebagai monitoring real-time utama. Untuk metrik dan alarm operasional, tetap gunakan CloudWatch.
+
+<h3>Akses checks bergantung support plan</h3>
+
+Ini jebakan favorit. Akun pada plan dasar tidak mendapat semua checks, sehingga untuk mengakses seluruh rekomendasi kamu perlu meng-upgrade support plan, bukan mengganti layanan.
+
+<Compare aLabel="Basic / Developer" bLabel="Business Support+ / Enterprise / Unified Operations" aTone="muted" bTone="violet" vs="vs">
+  <Fragment slot="a"><ul><li>Mendapat semua Service Limits checks.</li><li>Mendapat sebagian Security dan Fault Tolerance checks.</li><li>Tidak mendapat akses penuh ke semua kategori.</li><li>Cocok untuk eksperimen kecil dan belajar.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Mendapat akses ke semua Trusted Advisor checks.</li><li>Termasuk cost optimization, performance, dan rekomendasi lengkap lain.</li><li>Cocok untuk workload produksi yang butuh governance penuh.</li><li>Jebakan soal: "akun perlu semua checks" &rarr; upgrade support plan.</li></ul></Fragment>
+</Compare>
+
+<Box variant="warn" icon="🗓️" label="Nama plan terbaru (2026)"><p>Nama plan sudah berubah: akses ke SEMUA checks kini disyaratkan plan Business Support+, Enterprise, atau Unified Operations. Plan Developer dan Business klasik dijadwalkan dihentikan pada 1 Januari 2027, dengan pelanggan diarahkan ke Business Support+. Untuk ujian, prinsipnya tetap: akses penuh Trusted Advisor butuh upgrade dari plan dasar.</p></Box>
+
+<Box variant="exam" icon="🎯" label="Tips ujian"><p>Jika soal menyebut rekomendasi best practice lintas cost, security, fault tolerance, performance, dan service limits, pilih AWS Trusted Advisor. Jika soal menekankan "butuh semua checks", jawabannya upgrade support plan.</p></Box>
+
+</Section>
+
+<Section num="11" id="service-quotas" title="Service Quotas" sub="Melihat dan mengelola batas layanan AWS">
+
+<p class="lead">Service Quotas seperti batas kapasitas gedung, ada jumlah lift, kapasitas parkir, dan batas orang masuk yang harus diketahui sebelum acara besar.</p>
+
+Di AWS, banyak layanan punya **quota** atau batas jumlah resource yang bisa dibuat dalam akun dan Region tertentu. Contohnya bisa berupa jumlah VPC, Elastic IP, on-demand instance tertentu, atau batas API tertentu. [Service Quotas](https://docs.aws.amazon.com/servicequotas/latest/userguide/intro.html) membantu melihat dan mengelola quota layanan AWS secara lebih terpusat, termasuk meminta kenaikan untuk quota yang adjustable.
+
+<Box variant="tip" icon="💡" label="Istilah"><p>Quota dulu sering disebut limit. Dalam dokumentasi modern AWS, istilah yang umum dipakai adalah service quotas.</p></Box>
+
+<Box variant="warn" icon="🪤" label="Service Quotas vs Trusted Advisor Service Limits"><p>Keduanya menyentuh kata "limit", tetapi berbeda. Trusted Advisor Service Limits hanya **memantau** pemakaian terhadap kuota dan memberi peringatan. Service Quotas adalah layanan untuk **melihat dan meminta kenaikan** kuota. Jika soal menyebut "request quota increase", jawabannya Service Quotas.</p></Box>
+
+Service Quotas berguna karena masalah quota sering muncul saat traffic tumbuh, deployment besar, atau event marketing. Misalnya online shop skincare mengadakan flash sale dan perlu menaikkan kapasitas. Jika quota tidak dicek dari awal, scaling bisa gagal bukan karena kode buruk, tetapi karena akun belum punya batas yang cukup.
+
+<Steps>
+  <Step><b>Lihat quota</b><p>Buka Service Quotas dan pilih layanan, misalnya Amazon EC2 atau Amazon VPC.</p></Step>
+  <Step><b>Cek nilai saat ini</b><p>Bandingkan quota saat ini dengan kebutuhan arsitektur dan rencana pertumbuhan.</p></Step>
+  <Step><b>Ajukan increase jika perlu</b><p>Untuk quota yang adjustable, ajukan kenaikan sebelum hari produksi atau campaign besar.</p></Step>
+  <Step><b>Pantau penggunaan</b><p>Gunakan alarm atau rekomendasi terkait agar quota tidak menjadi kejutan operasional.</p></Step>
+</Steps>
+
+<Box variant="exam" icon="🎯" label="Tips ujian"><p>Jika soal menyebut melihat batas layanan, mengelola quota, request quota increase, atau resource creation gagal karena limit, pilih Service Quotas.</p></Box>
+
+</Section>
+
+<Section num="12" id="optimizer-well-architected" title="Compute Optimizer &amp; Well-Architected Tool" sub="Optimasi resource dan evaluasi best practice arsitektur">
+
+<p class="lead">Compute Optimizer seperti mekanik yang menyarankan ukuran mesin paling pas, sedangkan Well-Architected Tool seperti checklist desain gedung sebelum dipakai jangka panjang.</p>
+
+**AWS Compute Optimizer** menganalisis konfigurasi resource dan metrik penggunaan untuk memberi rekomendasi rightsizing dan menemukan resource idle. Tujuannya adalah membantu mengurangi biaya dan meningkatkan performa. Layanan ini bisa memberi rekomendasi untuk resource seperti EC2 instances, Auto Scaling groups, EBS volumes, Lambda functions, ECS services on Fargate, software licenses, Aurora, dan RDS, bergantung dukungan dan persyaratan metric data.
+
+**AWS Well-Architected Tool** membantu mengevaluasi workload terhadap AWS Well-Architected Framework. Framework ini membahas best practice untuk membangun dan menjalankan sistem yang reliable, secure, efficient, cost-effective, dan sustainable di cloud. Tool ini membantu review workload, mencatat improvement plan, dan melihat high-risk issues.
+
+<CardGrid cols={2}>
+  <Card><h4>Compute Optimizer</h4><p>Gunakan saat ingin rekomendasi ukuran resource berdasarkan metrik penggunaan, misalnya instance terlalu besar atau volume kurang sesuai.</p></Card>
+  <Card><h4>Well-Architected Tool</h4><p>Gunakan saat ingin mengevaluasi workload secara arsitektural dengan pertanyaan best practice dan rencana perbaikan.</p></Card>
+</CardGrid>
+
+<h3>Perbedaan yang sering membingungkan</h3>
+
+| Skenario | Jawaban yang lebih tepat |
+|---|---|
+| "Instance sering idle, apa rekomendasi ukuran yang lebih tepat?" | AWS Compute Optimizer |
+| "Aplikasi perlu direview terhadap pilar security, reliability, cost, dan operational excellence." | AWS Well-Architected Tool |
+| "Akun punya banyak rekomendasi security dan cost best practice." | AWS Trusted Advisor |
+| "Aplikasi perlu alarm CPU tinggi." | Amazon CloudWatch |
+
+<Box variant="exam" icon="🎯" label="Tips ujian"><p>Compute Optimizer fokus pada rekomendasi resource berbasis utilization metrics, Well-Architected Tool fokus pada review workload terhadap best practice arsitektur.</p></Box>
+
+</Section>
+
+<Section num="13" id="skenario-nyata" title="Skenario Nyata: Online Shop Skincare" sub="Menggabungkan semua layanan dalam satu cerita operasional">
+
+<p class="lead">Satu aplikasi nyata biasanya memakai beberapa layanan sekaligus, karena tiap layanan menjawab pertanyaan berbeda.</p>
+
+Bayangkan online shop skincare berjalan di AWS. Frontend menyajikan katalog. API menerima checkout. Worker memproses gambar produk. Database menyimpan pesanan. S3 menyimpan gambar. Saat flash sale, tim harus memastikan aplikasi tetap sehat, aman, dan terkendali.
+
+<Steps>
+  <Step><b>Sebelum flash sale</b><p>Service Quotas dicek agar kapasitas tidak mentok, Trusted Advisor dilihat untuk rekomendasi security dan limits, Compute Optimizer dipakai untuk melihat resource yang perlu disesuaikan.</p></Step>
+  <Step><b>Saat flash sale berjalan</b><p>CloudWatch dashboard memantau latency, error, CPU, database connections, dan antrean SQS, sedangkan alarms memberi notifikasi saat threshold berbahaya.</p></Step>
+  <Step><b>Ketika checkout lambat</b><p>X-Ray membantu melihat apakah lambatnya di API, Lambda, database, atau panggilan downstream lain.</p></Step>
+  <Step><b>Ketika ada perubahan mencurigakan</b><p>CloudTrail dipakai untuk mencari siapa mengubah IAM policy, security group, atau bucket policy.</p></Step>
+  <Step><b>Otomasi di balik layar</b><p>EventBridge menghubungkan sinyal dengan tindakan: alarm CloudWatch (via SNS) atau Config noncompliant memicu Lambda atau SSM Automation, sehingga sebagian perbaikan berjalan tanpa menunggu manusia.</p></Step>
+  <Step><b>Setelah incident</b><p>AWS Config membantu mengevaluasi resource noncompliant, Systems Manager menjalankan patch atau command, dan Well-Architected Tool dipakai untuk review perbaikan jangka panjang.</p></Step>
+</Steps>
+
+<Box variant="analogy" icon="🛍️" label="Inti cerita"><p>CloudWatch memberi alarm toko ramai, X-Ray menunjukkan kasir mana yang macet, CloudTrail menunjukkan siapa mengubah SOP, Config mengecek SOP masih dipatuhi, EventBridge meneruskan laporan ke petugas yang tepat, Systems Manager membantu teknisi memperbaiki mesin, dan Trusted Advisor memberi daftar saran sebelum audit berikutnya.</p></Box>
+
+Skenario ini penting untuk ujian karena soal CLF-C02 sering tidak bertanya definisi langsung. Soal bisa berbentuk cerita bisnis, misalnya "sebuah perusahaan ingin menerima rekomendasi untuk mengurangi biaya dan meningkatkan performa EC2" atau "tim compliance ingin melihat konfigurasi security group dari waktu ke waktu". Kamu harus mengubah cerita menjadi kata kunci layanan.
+
+</Section>
+
+<Section num="14" id="hands-on" title="Hands-on Ringan: Alur Operasional Harian" sub="Walkthrough konseptual tanpa harus membangun lab mahal">
+
+<p class="lead">Hands-on terbaik untuk pemula adalah memahami alur kerja operator, bukan sekadar menekan tombol console.</p>
+
+Berikut walkthrough konseptual yang bisa kamu lakukan di akun latihan dengan resource kecil atau sekadar dibaca sebagai simulasi. Tujuannya adalah mengenali layar dan keputusan, bukan menghabiskan biaya.
+
+<Steps>
+  <Step><b>Buat alarm sederhana di CloudWatch</b><p>Pilih metrik, tentukan threshold, hubungkan ke notifikasi, lalu pahami bahwa alarm membaca angka dari waktu ke waktu.</p></Step>
+  <Step><b>Buka CloudTrail Event history</b><p>Cari event terbaru seperti console login atau perubahan resource, lalu amati kolom event name, username, event time, source IP, dan resource.</p></Step>
+  <Step><b>Lihat log aplikasi di CloudWatch Logs</b><p>Buka log group dan log stream, lalu pahami bahwa log membantu melihat cerita detail di balik angka metrik.</p></Step>
+  <Step><b>Aktifkan AWS Config secara hati-hati</b><p>Jika memakai lab, pahami pilihan recorder, S3 bucket, SNS topic, dan managed rule, lalu sadari bahwa Config berfokus pada konfigurasi dan compliance.</p></Step>
+  <Step><b>Pelajari Systems Manager Fleet Manager atau Session Manager</b><p>Perhatikan bahwa node harus menjadi managed node dan SSM Agent perlu berkomunikasi dengan Systems Manager.</p></Step>
+  <Step><b>Cek Trusted Advisor dan Service Quotas</b><p>Lihat kategori rekomendasi dan quota layanan, lalu bedakan rekomendasi best practice dari batas teknis yang perlu dinaikkan.</p></Step>
+  <Step><b>Telusuri satu rule EventBridge</b><p>Bayangkan event "Config noncompliant" atau "CloudWatch alarm" masuk, lalu rule mencocokkannya ke target Lambda atau SSM Automation, sehingga kamu paham alur event-driven dari sinyal ke aksi.</p></Step>
+</Steps>
+
+<Box variant="warn" icon="💸" label="Hati-hati biaya"><p>Beberapa fitur logging, retention, custom metrics, Config recording, dan analisis tambahan dapat menghasilkan biaya. Untuk ujian, jangan menghafal harga, cek halaman pricing resmi saat praktik.</p></Box>
+
+<h3>Latihan mental untuk ujian</h3>
+
+Ambil satu kejadian dan jawab dengan layanan yang tepat. "CPU tinggi" berarti CloudWatch. "Siapa menjalankan DeleteBucket" berarti CloudTrail. "Bucket tidak sesuai aturan public access" berarti AWS Config. "Patch instance banyak sekaligus" berarti Systems Manager. "Kuota VPC kurang" berarti Service Quotas. "Butuh rekomendasi ukuran instance" berarti Compute Optimizer. "Picu otomasi saat Config noncompliant" berarti EventBridge. "Apakah ada gangguan layanan AWS" berarti Health Dashboard.
+
+</Section>
+
+<Section num="15" id="jebakan-umum" title="Kesalahan Umum &amp; Jebakan Soal" sub="Bagian ini sering membedakan jawaban benar dan distraktor">
+
+<p class="lead">Di ujian, pilihan jawaban sering terlihat mirip. Kuncinya adalah membaca kata kerja utama dalam skenario.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>CloudWatch vs CloudTrail</h4><p>CloudWatch memantau kondisi, CloudTrail mencatat tindakan. Metrics dan alarms berarti CloudWatch. API audit berarti CloudTrail.</p></Card>
+  <Card><h4>CloudTrail vs Config</h4><p>CloudTrail melihat siapa melakukan perubahan, Config melihat konfigurasi resource dan apakah konfigurasi itu compliant.</p></Card>
+  <Card><h4>CloudWatch Logs vs X-Ray</h4><p>Logs memberi catatan aplikasi, X-Ray memberi trace perjalanan request antar service.</p></Card>
+  <Card><h4>Trusted Advisor vs Compute Optimizer</h4><p>Trusted Advisor memberi rekomendasi best practice lintas kategori, Compute Optimizer memberi rekomendasi resource berbasis utilization metrics.</p></Card>
+  <Card><h4>Health Dashboard vs CloudWatch</h4><p>Health Dashboard memberi event dari AWS yang dapat memengaruhi layanan atau akun, CloudWatch memantau workload kamu.</p></Card>
+  <Card><h4>Systems Manager vs IAM</h4><p>Systems Manager menjalankan operasi node dan menyimpan parameter, IAM mengatur identitas, policy, role, dan permission.</p></Card>
+  <Card><h4>EventBridge vs SQS vs SNS</h4><p>EventBridge merutekan event ke target berdasarkan aturan, SQS menampung pesan dalam antrean, SNS menyiarkan notifikasi pub/sub.</p></Card>
+  <Card><h4>Compute Optimizer vs Well-Architected</h4><p>Compute Optimizer = rightsizing berbasis utilization metrics. Well-Architected Tool = review workload terhadap 6 pilar + improvement plan.</p></Card>
+  <Card><h4>Service Quotas vs Trusted Advisor</h4><p>Service Quotas melihat dan meminta kenaikan kuota. Trusted Advisor Service Limits hanya memantau pemakaian terhadap kuota.</p></Card>
+  <Card><h4>Management vs Data events</h4><p>Management events terekam default dan muncul di Event history. Data events (akses object S3, invoke Lambda) harus dikonfigurasi dan tidak muncul di Event history.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🧪" label="Contoh jebakan"><p>"Perusahaan ingin mengetahui apakah security group pernah membuka port tertentu minggu lalu." Kata "pernah" dan "konfigurasi" mengarah ke AWS Config, bukan hanya CloudTrail.</p></Box>
+
+<Box variant="exam" icon="🧪" label="Contoh jebakan kedua"><p>"Mengapa akses object S3 tidak muncul di CloudTrail Event history?" Jawaban: karena Event history hanya menampilkan management events. Data events harus diaktifkan lewat trail atau event data store.</p></Box>
+
+<h3>Daftar kata kunci cepat</h3>
+
+| Kata kunci soal | Layanan |
+|---|---|
+| metric, dashboard, alarm, threshold, log query | Amazon CloudWatch |
+| API call, who did what, account activity, event history | AWS CloudTrail |
+| trace, segment, service map, latency across microservices | AWS X-Ray |
+| configuration history, compliance rule, noncompliant | AWS Config |
+| patching, run command, session, managed node, parameter | AWS Systems Manager |
+| event-driven automation, rule, target, trigger on event, cron schedule | Amazon EventBridge |
+| service event, scheduled maintenance, account health | AWS Health Dashboard |
+| best practice recommendation, cost, security, fault tolerance | AWS Trusted Advisor |
+| quota, limit, request increase | Service Quotas |
+| rightsizing, idle resource, utilization recommendation | AWS Compute Optimizer |
+| workload review, six pillars, improvement plan | AWS Well-Architected Tool |
+
+<Box variant="warn" icon="⚠️" label="Jangan overthinking"><p>CLF-C02 menilai kemampuan mengenali layanan dan konsep. Jika pilihan jawaban terlalu teknis, kembali ke pertanyaan utama: monitor, audit, trace, compliance, operasi, quota, atau rekomendasi.</p></Box>
+
+</Section>
+
+<Section num="16" id="ringkasan" title="Ringkasan &amp; Tips Ujian" sub="Peta cepat untuk review terakhir sebelum latihan soal">
+
+<p class="lead">Monitoring dan governance membuat cloud bukan hanya berjalan, tetapi bisa diamati, diaudit, diperbaiki, dan dikendalikan.</p>
+
+<Recap title="Poin Penting">
+  <ul><li>Amazon CloudWatch memantau metrics, logs, alarms, dan dashboards untuk kesehatan operasional; basic monitoring 5 menit (default), detailed 1 menit (berbayar).</li><li>AWS CloudTrail mencatat aktivitas akun dan API, cocok untuk audit "siapa melakukan apa"; Event history 90 hari gratis (management events), data events harus dikonfigurasi.</li><li>AWS X-Ray menelusuri request di aplikasi terdistribusi (segment, trace, service map); kategori in-scope Developer Tools.</li><li>AWS Config merekam riwayat konfigurasi resource dan mengevaluasi compliance dengan rules, conformance packs, dan remediation via SSM Automation.</li><li>AWS Systems Manager membantu operasi node, patching, session, command, automation, inventory, dan Parameter Store.</li><li>Amazon EventBridge merutekan event (CloudWatch alarm, Config noncompliant, Health, Trusted Advisor) ke target (Lambda, SSM Automation, SNS) untuk otomasi operasi.</li><li>AWS Health Dashboard memberi informasi service health, account events, organization events, dan scheduled changes (penyatuan PHD dan SHD lama).</li><li>AWS Trusted Advisor memberi rekomendasi best practice: 5 kategori klasik + Operational Excellence; akses semua checks butuh Business Support+/Enterprise/Unified Operations.</li><li>Service Quotas digunakan untuk melihat, mengelola, dan meminta kenaikan quota layanan AWS.</li><li>AWS Compute Optimizer memberi rekomendasi rightsizing berbasis utilization metrics; Well-Architected Tool mereview workload terhadap best practice arsitektur dan improvement plan.</li></ul>
+</Recap>
+
+<h3>Pemetaan ke domain CLF-C02</h3>
+
+| Domain | Hubungan dengan modul ini | Fokus belajar |
+|---|---|---|
+| Domain 1, Cloud Concepts, 24% | Memahami nilai observability, elasticity, reliability, dan operational excellence di cloud. | Mengerti kenapa monitoring dan governance penting untuk operasi cloud. |
+| Domain 2, Security and Compliance, 30% | CloudTrail, Config, CloudWatch logs, Systems Manager, Trusted Advisor, dan EventBridge (auto-remediation) mendukung audit, governance, dan security posture. | Bedakan audit activity (CloudTrail), configuration compliance (Config), dan operational security (Systems Manager). |
+| Domain 3, Cloud Technology and Services, 34% | Sebagian besar layanan modul ini masuk Management and Governance (CloudWatch, CloudTrail, Config, Systems Manager, Trusted Advisor, Health, Service Quotas, Compute Optimizer, Well-Architected Tool), X-Ray di Developer Tools, dan EventBridge di Application Integration. | Kenali fungsi utama tiap layanan, kategorinya, dan skenario pemilihannya. |
+| Domain 4, Billing, Pricing, and Support, 12% | Trusted Advisor, Compute Optimizer, Service Quotas, dan CloudWatch pricing awareness membantu cost dan support decision. | Jangan hafal harga, tetapi pahami layanan mana yang membantu cost optimization dan quota planning. |
+
+<h3>Checklist sebelum lanjut modul berikutnya</h3>
+
+<Steps>
+  <Step><b>Ucapkan dengan cepat</b><p>CloudWatch monitor, CloudTrail audit, Config compliance, X-Ray trace, Systems Manager operate, Health Dashboard AWS events.</p></Step>
+  <Step><b>Latih pasangan skenario</b><p>Baca soal dan tandai kata kunci seperti alarm, API activity, configuration history, patching, quota, atau rightsizing.</p></Step>
+  <Step><b>Jangan tertukar kategori</b><p>CloudWatch bukan audit API, CloudTrail bukan compliance evaluator, Config bukan metric alarm, dan Trusted Advisor bukan tracing request.</p></Step>
+  <Step><b>Ingat bobot ujian</b><p>Domain 2 dan Domain 3 paling besar, jadi layanan security, compliance, governance, dan core services perlu dikuasai lebih kuat.</p></Step>
+</Steps>
+
+<Box variant="exam" icon="🎯" label="Kalimat hafalan terakhir"><p>Jika ingin tahu kondisi sistem, CloudWatch. Jika ingin tahu tindakan akun, CloudTrail. Jika ingin tahu konfigurasi dan compliance, Config. Jika ingin tahu jalur request, X-Ray. Jika ingin mengoperasikan node, Systems Manager. Jika ingin memicu otomasi dari event, EventBridge. Jika ingin tahu kabar dari AWS, Health Dashboard.</p></Box>
+
+</Section>

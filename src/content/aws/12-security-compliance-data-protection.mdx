@@ -1,0 +1,599 @@
+---
+title: "Modul Security, Compliance & Data Protection - AWS Cloud Practitioner CLF-C02"
+badge: "SEC"
+topTitle: "Security, Compliance & Data Protection"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Memahami shared responsibility, enkripsi, perlindungan aplikasi, deteksi ancaman, dan bukti compliance di AWS."
+order: 12
+target: "CLF-C02"
+readingTime: "~80 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Keamanan Cloud seperti Gedung Perkantoran" }
+  - { num: "02", id: "shared-responsibility", title: "Shared Responsibility Model" }
+  - { num: "03", id: "pilar-keamanan", title: "Pilar Keamanan untuk Pemula" }
+  - { num: "04", id: "enkripsi-kms", title: "Enkripsi dan AWS KMS" }
+  - { num: "05", id: "secrets-acm", title: "Secrets Manager, Parameter Store, dan ACM" }
+  - { num: "06", id: "perimeter-aplikasi", title: "WAF dan Shield" }
+  - { num: "07", id: "deteksi-respons", title: "GuardDuty, Inspector, Macie, Security Hub, Detective" }
+  - { num: "08", id: "compliance-governance", title: "Artifact, Audit Manager, Config, dan Governance" }
+  - { num: "09", id: "alur-arsitektur-aman", title: "Alur Arsitektur Aman Tingkat Tinggi" }
+  - { num: "10", id: "hands-on-konseptual", title: "Hands-on Konseptual" }
+  - { num: "11", id: "skenario-pemilihan-layanan", title: "Skenario Pemilihan Layanan" }
+  - { num: "12", id: "kesalahan-umum", title: "Kesalahan Umum Pemula" }
+  - { num: "13", id: "jebakan-soal", title: "Jebakan Soal CLF-C02" }
+  - { num: "14", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul Security, Compliance & Data Protection - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import SecFig01 from "@figures/SecFig01.astro";
+import SecFig02 from "@figures/SecFig02.astro";
+import SecFig03 from "@figures/SecFig03.astro";
+import SecFig04 from "@figures/SecFig04.astro";
+import SecFig05 from "@figures/SecFig05.astro";
+
+<Hero eyebrow="Modul &middot; Security" title="Security, Compliance<br /><em>&amp; Data Protection</em>">
+  <p>Keamanan di AWS bukan satu tombol ajaib, melainkan rangkaian pagar, kunci, kamera, alarm, dan buku audit yang bekerja bersama.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~80 menit baca</Chip>
+    <Chip icon="book">Domain 2 &middot; 30%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Keamanan Cloud seperti Gedung Perkantoran" sub="Analogi dulu, definisi menyusul.">
+
+<p class="lead">Bayangkan AWS seperti gedung perkantoran modern, AWS menjaga fondasi, lift, listrik, kamera gedung, dan petugas keamanan, sedangkan penyewa mengunci ruangannya, mengatur siapa boleh masuk, dan menjaga dokumen rahasia.</p>
+
+Dalam cloud, keamanan tidak berhenti saat resource berhasil dibuat. Setelah EC2, S3, database, jaringan, dan deployment aktif, pertanyaan berikutnya adalah: siapa boleh mengakses, data dienkripsi atau tidak, aplikasi tahan serangan umum atau tidak, aktivitas terekam atau tidak, dan bukti compliance bisa ditunjukkan atau tidak.
+
+Untuk CLF-C02, modul ini penting karena Domain 2, **Security and Compliance**, menyumbang 30% konten ujian. Ini domain terbesar kedua (Domain 3 Cloud Technology &amp; Services 34% adalah yang terbesar, lalu Domain 1 Cloud Concepts 24%, dan Domain 4 Billing/Pricing/Support 12%). Jadi hampir satu dari tiga soal datang dari materi modul ini. AWS tidak menuntut kamu menjadi penetration tester, tetapi kamu harus bisa memilih layanan keamanan yang tepat untuk skenario bisnis yang umum. Rincian bobot ada di [Exam Guide CLF-C02](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html).
+
+<Box variant="analogy" icon="🏢" label="Analogi besar"><p>AWS menjaga gedung dan fasilitas bersama, kamu menjaga ruangan, kunci, dokumen, daftar tamu, serta prosedur operasional di dalam ruanganmu.</p></Box>
+
+<CardGrid cols={3}>
+  <Card><h4>Data protection</h4><p>Menjaga data saat disimpan dan saat berpindah, memakai enkripsi, kunci, sertifikat, dan secret yang aman.</p></Card>
+  <Card><h4>Threat detection</h4><p>Mendeteksi aktivitas mencurigakan, celah software, data sensitif, dan temuan keamanan lintas akun.</p></Card>
+  <Card><h4>Compliance</h4><p>Mengumpulkan laporan, bukti audit, agreement, dan status kontrol agar organisasi lebih siap diperiksa.</p></Card>
+</CardGrid>
+
+<Recap title="Tujuan Modul"><ul><li>Memahami perbedaan tanggung jawab AWS dan pelanggan.</li><li>Membedakan layanan enkripsi, secret, sertifikat, firewall aplikasi, DDoS protection, deteksi ancaman, dan compliance.</li><li>Menjawab soal CLF-C02 berbasis skenario dengan memilih layanan yang paling pas.</li></ul></Recap>
+
+</Section>
+
+<Section num="02" id="shared-responsibility" title="Shared Responsibility Model" sub="Security of the cloud dan security in the cloud.">
+
+<p class="lead">Shared Responsibility Model adalah pembagian tanggung jawab keamanan antara AWS dan pelanggan.</p>
+
+AWS bertanggung jawab atas **security of the cloud**, yaitu perlindungan infrastruktur yang menjalankan layanan AWS. Ini mencakup fasilitas fisik, hardware, networking global, virtualization layer, dan fondasi layanan. Pelanggan bertanggung jawab atas **security in the cloud**, yaitu konfigurasi dan data yang mereka pilih untuk jalankan di AWS.
+
+<Figure><SecFig01 /><Fragment slot="caption"><b>Gambar 1.</b> Pembagian tanggung jawab berubah mengikuti tipe layanan, makin managed sebuah layanan, makin banyak pekerjaan operasional yang ditangani AWS.</Fragment></Figure>
+
+<h3>Kenapa model ini sering keluar di ujian?</h3>
+
+Soal CLF-C02 sering menanyakan siapa yang bertanggung jawab untuk sesuatu. Jawabannya tidak selalu sama karena bergantung pada layanan. Di EC2, kamu mengelola OS tamu, patching, aplikasi, security group, dan data. Di Lambda, AWS mengelola server dan OS runtime host, sedangkan kamu tetap mengelola kode, permission, konfigurasi, secret, dan data.
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Area</th><th>AWS</th><th>Pelanggan</th></tr></thead>
+  <tbody>
+    <tr><td>Fasilitas fisik</td><td>Data center, hardware, power, cooling, physical access.</td><td>Tidak mengelola langsung.</td></tr>
+    <tr><td>EC2</td><td>Host fisik, hypervisor, fasilitas, infrastruktur global.</td><td>Guest OS, patch aplikasi, firewall OS, security group, data, IAM.</td></tr>
+    <tr><td>RDS</td><td>Database engine operation yang dikelola, backup fitur layanan, patch engine sesuai pilihan dan kebijakan layanan.</td><td>Data, akses, parameter, enkripsi, network access, konfigurasi database.</td></tr>
+    <tr><td>S3</td><td>Durabilitas layanan, infrastruktur penyimpanan, keamanan fisik.</td><td>Bucket policy, object ownership, block public access, enkripsi, lifecycle, data classification.</td></tr>
+    <tr><td>Lambda</td><td>Server, OS host, scaling platform, runtime environment yang dikelola.</td><td>Kode fungsi, IAM role, environment variable, secret, logging, konfigurasi event.</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="exam" icon="🧠" label="Tips ujian"><p>Kalimat kunci: AWS menjaga keamanan cloud, pelanggan menjaga keamanan apa yang mereka taruh dan konfigurasi di dalam cloud.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jebakan"><p>Managed service bukan berarti pelanggan bebas dari tanggung jawab, data, permission, enkripsi, dan konfigurasi akses tetap milik pelanggan.</p></Box>
+
+</Section>
+
+<Section num="03" id="pilar-keamanan" title="Pilar Keamanan untuk Pemula" sub="Pikirkan sebagai lapisan, bukan produk tunggal.">
+
+<p class="lead">Keamanan AWS mirip sistem keamanan rumah, ada kunci pintu, pagar, kamera, alarm, brankas, buku tamu, dan dokumen bukti inspeksi.</p>
+
+Untuk pemula, susun layanan keamanan AWS menjadi beberapa lapisan. Lapisan ini membantu kamu mengingat fungsi layanan dan menjawab soal skenario dengan cepat.
+
+<CardGrid cols={3}>
+  <Card><h4>Identity and access</h4><p>IAM, IAM Identity Center, role, policy, MFA, least privilege, dan perlindungan root user.</p></Card>
+  <Card><h4>Data protection</h4><p>KMS, Secrets Manager, ACM, enkripsi at rest, enkripsi in transit, dan klasifikasi data sensitif.</p></Card>
+  <Card><h4>Network and app protection</h4><p>Security group, NACL, WAF, Shield, Network Firewall, CloudFront, dan desain private network.</p></Card>
+  <Card><h4>Detection and response</h4><p>GuardDuty, Inspector, Macie, Security Hub, CloudTrail, CloudWatch, dan EventBridge.</p></Card>
+  <Card><h4>Governance</h4><p>Organizations, SCP, AWS Config, Control Tower, tagging, dan guardrail multi-account.</p></Card>
+  <Card><h4>Compliance evidence</h4><p>AWS Artifact untuk laporan dan agreement, Audit Manager untuk evidence collection dan assessment.</p></Card>
+</CardGrid>
+
+<h3>Prinsip yang sering diuji</h3>
+
+<ul>
+  <li><strong>Least privilege</strong>, beri izin minimum yang dibutuhkan, bukan akses admin karena mudah.</li>
+  <li><strong>Defense in depth</strong>, pakai beberapa lapisan proteksi, bukan mengandalkan satu kontrol.</li>
+  <li><strong>Encrypt by default</strong>, lindungi data saat disimpan dan saat transit.</li>
+  <li><strong>Centralize visibility</strong>, temuan keamanan lintas akun lebih mudah dipantau dari satu tempat.</li>
+  <li><strong>Automate evidence</strong>, audit lebih ringan bila bukti dikumpulkan otomatis dari layanan AWS.</li>
+</ul>
+
+<Box variant="tip" icon="💡" label="Cara menghafal"><p>Urutan mental yang aman: identitas dulu, data dikunci, aplikasi diberi pagar, aktivitas dipantau, bukti disiapkan.</p></Box>
+
+</Section>
+
+<Section num="04" id="enkripsi-kms" title="Enkripsi dan AWS KMS" sub="Kunci data seperti kunci brankas, bukan seperti stiker rahasia.">
+
+<p class="lead">Enkripsi adalah cara mengubah data menjadi bentuk yang tidak berguna tanpa kunci yang benar.</p>
+
+AWS sering membagi enkripsi menjadi dua konteks: **encryption at rest** untuk data yang sedang disimpan, dan **encryption in transit** untuk data yang sedang bergerak melalui jaringan. Untuk CLF-C02, kamu perlu mengenali layanan dan skenario, bukan menghafal algoritma kriptografi secara mendalam.
+
+<h3>AWS KMS dalam bahasa sederhana</h3>
+
+<a href="https://docs.aws.amazon.com/kms/latest/developerguide/overview.html">AWS Key Management Service</a> atau **AWS KMS** membantu membuat, mengelola, dan menggunakan kunci kriptografi. Banyak layanan AWS terintegrasi dengan KMS, misalnya S3, EBS, RDS, CloudTrail, dan Secrets Manager. Dalam analogi, KMS adalah ruang kontrol kunci pusat. Kamu tidak menyimpan kunci utama sembarangan di aplikasi, tetapi meminta KMS melakukan operasi kriptografi atau membuat data key sesuai izin. Poin penting yang sering keliru: kunci KMS tidak pernah keluar dari KMS dalam bentuk plaintext, dan setiap penggunaannya bisa diaudit lewat CloudTrail.
+
+<CardGrid cols={3}>
+  <Card><h4>AWS owned keys</h4><p>Kunci yang dimiliki dan dikelola AWS untuk beberapa layanan, pelanggan tidak mengelola langsung.</p></Card>
+  <Card><h4>AWS managed keys</h4><p>Kunci yang dibuat dan dikelola otomatis oleh layanan AWS untuk akunmu, cocok saat ingin sederhana.</p></Card>
+  <Card><h4>Customer managed keys</h4><p>Kunci yang kamu kelola sendiri, cocok saat butuh kontrol lifecycle, key policy, rotation, audit, dan pemisahan akses.</p></Card>
+</CardGrid>
+
+<h3>Envelope encryption</h3>
+
+Saat data besar dienkripsi, praktik umum adalah memakai data key untuk mengenkripsi data, lalu data key itu dienkripsi oleh KMS key. Anggap saja kamu punya banyak kotak kecil, tiap kotak punya gembok sendiri, lalu semua kunci gembok disimpan dalam brankas utama yang dikontrol KMS. Kenapa berlapis seperti ini? Karena mengirim data berukuran besar bolak-balik ke KMS itu lambat dan mahal, sedangkan data key berukuran kecil. Jadi KMS cukup mengurus kunci kecil, sementara enkripsi data besar berjalan cepat secara lokal.
+
+<Figure><SecFig05 /><Fragment slot="caption"><b>Gambar 2.</b> Alur envelope encryption: KMS hanya mengeluarkan dan mendekripsi data key (gated IAM dan key policy), sedangkan data besar tetap berada di layanan seperti S3 atau EBS. KMS menyimpan kunci, bukan data.</Fragment></Figure>
+
+<Steps>
+  <Step><b>Aplikasi meminta data key</b><p>Aplikasi atau layanan AWS meminta data key ke KMS, permintaan dicek terhadap izin IAM dan key policy.</p></Step>
+  <Step><b>KMS membalas dua versi data key</b><p>KMS mengirim data key plaintext (untuk dipakai sekarang) dan data key terenkripsi (untuk disimpan).</p></Step>
+  <Step><b>Data dienkripsi lokal atau oleh layanan</b><p>Data key plaintext mengunci data, misalnya objek S3 atau volume EBS, lalu plaintext dibuang dari memori.</p></Step>
+  <Step><b>Data key terenkripsi disimpan bersama ciphertext</b><p>Saat ingin membuka data, layanan meminta KMS mendekripsi data key terenkripsi sesuai izin.</p></Step>
+</Steps>
+
+<h3>Key rotation dan biaya KMS</h3>
+
+KMS bisa merotasi customer managed key secara otomatis agar kunci tidak dipakai selamanya. Sejak April 2024, periode rotasi bisa diatur fleksibel dari 90 hari sampai 2560 hari (sebelumnya tetap 365 hari), dan kamu juga bisa memicu on-demand rotation kapan saja. Detail biaya tidak diuji dalam, tetapi anchor berikut membantu intuisi.
+
+<Box variant="tip" icon="💰" label="Anchor biaya terverifikasi (April 2024)"><p>Tiap customer managed key sekitar $1 per bulan plus biaya per request API. Rotasi otomatis: rotasi ke-1 dan ke-2 masing-masing menambah $1 per bulan, lalu dibatasi, sehingga kunci dengan 3 rotasi atau lebih jadi $3 per bulan total dan rotasi berikutnya gratis. AWS managed key dan AWS owned key tidak dikenakan biaya bulanan terpisah.</p></Box>
+
+<h3>Kapan memakai KMS?</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Skenario</th><th>Layanan yang relevan</th><th>Alasan</th></tr></thead>
+  <tbody>
+    <tr><td>Objek S3 harus dienkripsi dan akses kunci harus diaudit.</td><td>S3 dengan SSE-KMS</td><td>KMS memberi kontrol key policy dan audit penggunaan via CloudTrail.</td></tr>
+    <tr><td>Database menyimpan data pelanggan.</td><td>RDS atau DynamoDB dengan enkripsi terintegrasi KMS</td><td>Data at rest terlindungi dengan integrasi managed service.</td></tr>
+    <tr><td>Log audit harus tidak mudah dibaca sembarang orang.</td><td>CloudTrail atau CloudWatch Logs dengan KMS</td><td>Log adalah bukti penting, sehingga aksesnya perlu dikendalikan.</td></tr>
+    <tr><td>Aplikasi menyimpan password database.</td><td>Secrets Manager memakai KMS di belakang layar</td><td>Secret disimpan terenkripsi dan dapat dikontrol aksesnya.</td></tr>
+  </tbody>
+</table></div>
+
+<h3>AWS KMS vs AWS CloudHSM</h3>
+
+Analogi dulu: KMS itu seperti brankas bank bersama yang dijaga ketat, banyak nasabah memakai gedung yang sama tetapi tiap kotak terpisah. <a href="https://docs.aws.amazon.com/cloudhsm/latest/userguide/introduction.html">AWS CloudHSM</a> itu seperti menyewa satu ruang brankas khusus untuk perusahaanmu sendiri, hardware dedicated yang hanya kamu yang pegang kuncinya, bahkan AWS pun tidak bisa mengakses materi kuncimu.
+
+KMS bersifat multi-tenant dan dikelola AWS, memakai HSM tervalidasi FIPS yang dibagi banyak pelanggan, terintegrasi dalam ke layanan AWS, dan murah. CloudHSM bersifat single-tenant, hardware HSM dedicated, kontrol penuh ada di tangan pelanggan, biasanya dipilih saat ada syarat compliance ketat atau ketika organisasi wajib memegang kendali penuh atas kunci tanpa akses AWS sama sekali.
+
+<Compare aLabel="AWS KMS &middot; brankas bersama terkelola" bLabel="AWS CloudHSM &middot; HSM dedicated milik sendiri" aTone="blue" bTone="violet" vs="vs">
+  <Fragment slot="a"><ul><li>Multi-tenant, HSM dipakai bersama banyak pelanggan di balik layar.</li><li>Dikelola AWS, integrasi mendalam dengan S3, EBS, RDS, Secrets Manager, dan lainnya.</li><li>Murah dan mudah dipakai, cocok untuk mayoritas kebutuhan enkripsi.</li><li>AWS mengelola lifecycle HSM, kamu fokus pada key policy dan izin.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Single-tenant, hardware HSM dedicated khusus untukmu.</li><li>Kontrol penuh di tangan pelanggan, AWS tidak bisa mengakses materi kunci.</li><li>Dipilih untuk compliance ketat atau syarat dedicated single-tenant HSM.</li><li>Lebih banyak tanggung jawab operasional, biaya lebih tinggi.</li></ul></Fragment>
+</Compare>
+
+<Box variant="exam" icon="🧠" label="Jebakan KMS vs CloudHSM"><p>Jika soal menyebut dedicated single-tenant HSM atau customer fully controls keys with no AWS access, jawabannya CloudHSM. Selain itu, untuk kebutuhan enkripsi umum yang terintegrasi dan hemat, jawabannya KMS.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jangan salah paham"><p>KMS bukan tempat menyimpan file rahasia besar, KMS mengelola kunci, sedangkan data biasanya tetap berada di layanan seperti S3, EBS, RDS, atau Secrets Manager. Menyimpan password database di KMS adalah jawaban salah, simpan di Secrets Manager atau Parameter Store SecureString yang justru memakai KMS untuk mengenkripsinya.</p></Box>
+
+<Box variant="exam" icon="🧠" label="Tips ujian"><p>Bila soal menyebut membuat dan mengontrol kunci enkripsi untuk layanan AWS, arahkan ke AWS KMS.</p></Box>
+
+</Section>
+
+<Section num="05" id="secrets-acm" title="Secrets Manager, Parameter Store, dan ACM" sub="Secret untuk aplikasi, config murah, sertifikat untuk koneksi aman.">
+
+<p class="lead">Secret adalah benda yang tidak boleh ditaruh di papan pengumuman, sertifikat adalah kartu identitas digital agar koneksi HTTPS bisa dipercaya.</p>
+
+<h3>AWS Secrets Manager</h3>
+
+<a href="https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html">AWS Secrets Manager</a> membantu mengelola, mengambil, dan merotasi secret seperti kredensial database, API key, token OAuth, dan password aplikasi. Tujuannya sederhana: aplikasi tidak perlu menyimpan password langsung di source code, file konfigurasi publik, atau repository.
+
+<CardGrid cols={3}>
+  <Card><h4>Simpan rahasia</h4><p>Secret disimpan terpusat dan terenkripsi dengan KMS, sehingga tidak tercecer di kode atau catatan manual.</p></Card>
+  <Card><h4>Ambil saat runtime</h4><p>Aplikasi meminta secret ketika dibutuhkan, biasanya lewat SDK, API, atau integrasi layanan.</p></Card>
+  <Card><h4>Rotasi otomatis</h4><p>Secret dapat diganti berkala secara otomatis, dengan integrasi rotasi native untuk RDS, sehingga risiko kredensial lama berkurang.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💰" label="Anchor biaya terverifikasi"><p>Secrets Manager dikenakan sekitar $0.40 per secret per bulan plus $0.05 per 10.000 panggilan API. Cocok saat rotasi otomatis dan integrasi RDS lebih penting daripada biaya nol.</p></Box>
+
+<h3>AWS Systems Manager Parameter Store</h3>
+
+Analogi dulu: kalau Secrets Manager adalah brankas password kelas premium dengan layanan ganti gembok otomatis, <a href="https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html">Parameter Store</a> adalah laci arsip serbaguna yang gratis untuk menyimpan nilai konfigurasi, dan bisa dikunci pakai SecureString bila isinya rahasia.
+
+Parameter Store adalah bagian dari AWS Systems Manager. Parameter tipe standard gratis (hingga 10.000 per akun), sedangkan advanced parameter sekitar $0.05 per parameter per bulan. Tipe SecureString mengenkripsi nilai dengan KMS. Bedanya yang paling sering diuji: Parameter Store tidak punya rotasi otomatis bawaan, sedangkan Secrets Manager punya.
+
+<Compare aLabel="Secrets Manager &middot; rahasia + rotasi" bLabel="Parameter Store &middot; config hemat" aTone="red" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Rotasi otomatis bawaan, plus integrasi native untuk kredensial RDS.</li><li>Mendukung cross-region replication untuk secret.</li><li>Sekitar $0.40 per secret per bulan, dipilih saat rotasi wajib.</li><li>Kata kunci soal: automatic rotation of database credentials.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Tier standard gratis, cocok untuk nilai konfigurasi dan secret sederhana.</li><li>SecureString mengenkripsi nilai dengan KMS, tetapi tanpa rotasi otomatis bawaan.</li><li>Tidak ada integrasi rotasi RDS native seperti Secrets Manager.</li><li>Kata kunci soal: free, store config values, no rotation needed.</li></ul></Fragment>
+</Compare>
+
+<Box variant="exam" icon="🧠" label="Secrets Manager vs Parameter Store"><p>Jika soal menekankan automatic rotation atau integrasi database, pilih Secrets Manager. Jika soal menekankan gratis atau menyimpan config tanpa butuh rotasi, pilih Parameter Store (SecureString bila perlu enkripsi).</p></Box>
+
+<h3>AWS Certificate Manager</h3>
+
+<a href="https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html">AWS Certificate Manager</a> atau **ACM** membantu membuat, menyimpan, dan memperbarui sertifikat SSL/TLS untuk aplikasi dan website AWS. Sertifikat ini dipakai agar user bisa mengakses aplikasi melalui HTTPS. ACM sering dipakai bersama CloudFront, Application Load Balancer, API Gateway, dan layanan terintegrasi lain. ACM juga memperbarui (auto-renew) sertifikat yang dikeluarkannya secara otomatis, sehingga kamu tidak perlu mengingat tanggal kedaluwarsa.
+
+<Box variant="warn" icon="⚠️" label="ACM gratis vs berbayar"><p>Sertifikat public dan private yang dibuat lewat ACM dan dipakai dengan layanan terintegrasi (ELB, CloudFront, API Gateway) gratis. Sejak 17 Juni 2025 ada jenis baru, exportable public certificate, yang bisa diekspor dengan private key untuk dipakai di luar AWS (EC2, container, on-prem) dan ini berbayar. Jadi jangan menyimpulkan semua sertifikat ACM gratis.</p></Box>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Kebutuhan</th><th>Pilih</th><th>Contoh</th></tr></thead>
+  <tbody>
+    <tr><td>Menyimpan password database aplikasi dan merotasinya otomatis.</td><td>Secrets Manager</td><td>Backend mengambil password RDS saat runtime, rotasi terjadwal otomatis.</td></tr>
+    <tr><td>Mengelola API key pihak ketiga dengan rotasi.</td><td>Secrets Manager</td><td>Service pembayaran memakai token yang tersimpan aman dan dirotasi.</td></tr>
+    <tr><td>Menyimpan nilai config dan secret sederhana dengan biaya nol.</td><td>Parameter Store</td><td>Tier standard gratis, SecureString memakai KMS bila perlu enkripsi.</td></tr>
+    <tr><td>Mengaktifkan HTTPS di domain aplikasi.</td><td>ACM</td><td>CloudFront atau ALB memakai sertifikat TLS dari ACM.</td></tr>
+    <tr><td>Mengganti sertifikat public yang mendekati kedaluwarsa.</td><td>ACM managed renewal</td><td>ACM membantu memperbarui sertifikat yang dikeluarkan ACM sesuai syarat validasi.</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="tip" icon="🔐" label="Analogi"><p>Secrets Manager seperti brankas password aplikasi dengan tukang ganti gembok otomatis, Parameter Store seperti laci arsip gratis (bisa dikunci SecureString), ACM seperti kantor penerbit kartu identitas digital untuk website.</p></Box>
+
+<Box variant="exam" icon="🧠" label="Tips ujian"><p>Bila soal menyebut password, token, API key, atau rotation, pikirkan Secrets Manager. Bila menyebut config gratis tanpa rotasi, pikirkan Parameter Store. Bila menyebut SSL/TLS certificate atau HTTPS, pikirkan ACM.</p></Box>
+
+</Section>
+
+<Section num="06" id="perimeter-aplikasi" title="WAF dan Shield" sub="Pagar aplikasi dan perlindungan banjir traffic.">
+
+<p class="lead">Kalau internet adalah jalan raya, WAF adalah satpam yang memeriksa isi permintaan HTTP, sedangkan Shield adalah perlindungan saat jalan dibanjiri traffic serangan DDoS.</p>
+
+<h3>AWS WAF</h3>
+
+<a href="https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html">AWS WAF</a> adalah web application firewall untuk memantau dan mengontrol request HTTP(S) yang menuju resource aplikasi. Kamu membuat **web ACL**, menambahkan rule, lalu mengaitkannya ke resource seperti CloudFront distribution, Application Load Balancer, API Gateway REST API, AppSync GraphQL API, Cognito user pool, App Runner, Verified Access, dan Amplify. WAF bekerja di Layer 7, ia bisa memeriksa isi request: blokir SQL injection dan XSS, rate limiting, filter IP atau geografi, sampai memakai managed rule group siap pakai dari AWS.
+
+<h3>AWS Shield</h3>
+
+<a href="https://docs.aws.amazon.com/waf/latest/developerguide/ddos-overview.html">AWS Shield</a> membantu melindungi aplikasi dari Distributed Denial of Service atau DDoS. **Shield Standard** tersedia otomatis dan gratis untuk semua pelanggan AWS, melindungi dari serangan DDoS umum pada Layer 3 dan 4 (network dan transport). Tidak perlu opt-in atau bayar untuk tier ini. **Shield Advanced** adalah tier berbayar untuk organisasi yang butuh perlindungan lebih tinggi, mitigasi Layer 3, 4, dan 7, visibilitas tambahan, akses 24/7 ke Shield Response Team (SRT), serta DDoS cost protection berupa kredit tagihan saat usage melonjak pada resource yang dilindungi.
+
+<Compare aLabel="Shield Standard &middot; gratis &amp; otomatis" bLabel="Shield Advanced &middot; berbayar &amp; lengkap" aTone="blue" bTone="violet" vs="vs">
+  <Fragment slot="a"><ul><li>Gratis dan aktif otomatis untuk semua pelanggan, tanpa opt-in.</li><li>Mitigasi DDoS Layer 3 dan 4 (network dan transport).</li><li>Tidak ada Shield Response Team (SRT).</li><li>Tidak ada DDoS cost protection.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Sekitar $3.000 per bulan per organisasi dengan komitmen 1 tahun.</li><li>Mitigasi DDoS Layer 3, 4, dan 7, plus visibilitas lebih dalam.</li><li>Akses 24/7 ke Shield Response Team (SRT).</li><li>DDoS cost protection (kredit tagihan untuk CloudFront, Route 53, ELB, Global Accelerator, WAF).</li></ul></Fragment>
+</Compare>
+
+<Box variant="warn" icon="⚠️" label="Jangan tertukar layer"><p>WAF bekerja di Layer 7 (isi request HTTP), Shield fokus pada DDoS. Standard menangani L3/L4, Advanced menambah L7. Jadi serangan DDoS volumetrik besar mengarah ke Shield, sedangkan SQL injection di request web mengarah ke WAF.</p></Box>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Serangan atau kebutuhan</th><th>Layanan</th><th>Alasan</th></tr></thead>
+  <tbody>
+    <tr><td>Blokir SQL injection atau request pattern berbahaya.</td><td>AWS WAF</td><td>WAF memeriksa request HTTP(S) dan menerapkan rules.</td></tr>
+    <tr><td>Batasi request dari IP tertentu atau negara tertentu.</td><td>AWS WAF</td><td>Rule WAF bisa memakai IP set, pattern, header, URI, dan kondisi request lain.</td></tr>
+    <tr><td>Perlindungan dasar dari DDoS umum.</td><td>AWS Shield Standard</td><td>Aktif otomatis untuk pelanggan AWS.</td></tr>
+    <tr><td>Aplikasi publik sangat kritikal dan butuh proteksi DDoS lebih tinggi.</td><td>AWS Shield Advanced</td><td>Memberi perlindungan tambahan, visibility, dan dukungan respons untuk serangan DDoS besar.</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="warn" icon="⚠️" label="Batas pemahaman CLF-C02"><p>Kamu tidak perlu menulis rule WAF yang kompleks, tetapi harus tahu WAF bekerja di layer aplikasi HTTP(S), sedangkan Shield fokus pada DDoS protection.</p></Box>
+
+<Box variant="exam" icon="🧠" label="Tips ujian"><p>Jika kata kuncinya SQL injection, XSS, bot request, atau web ACL, pilih WAF. Jika kata kuncinya DDoS, pilih Shield.</p></Box>
+
+</Section>
+
+<Section num="07" id="deteksi-respons" title="GuardDuty, Inspector, Macie, Security Hub, Detective" sub="Deteksi, konsolidasi, dan investigasi yang saling melengkapi.">
+
+<p class="lead">Setelah pintu dikunci dan pagar dipasang, kamu tetap butuh kamera, alarm, pemeriksaan celah, ruang kontrol yang menggabungkan laporan, dan detektif yang menelusuri akar masalah.</p>
+
+Kelima layanan ini paling sering tertukar di ujian karena namanya mirip dan semua terdengar seperti keamanan. Kunci membedakannya bukan menghafal fitur, tetapi menjawab satu pertanyaan: layanan ini menjawab pertanyaan keamanan yang mana?
+
+<h3>Lima layanan dan pertanyaan yang dijawabnya</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Layanan</th><th>Analogi</th><th>Pertanyaan yang dijawab</th><th>Kata kunci ujian</th></tr></thead>
+  <tbody>
+    <tr><td>Amazon GuardDuty</td><td>Alarm keamanan pintar</td><td>Apakah ada aktivitas mencurigakan atau ancaman di akunku?</td><td>Threat detection, malicious IP, suspicious activity, account compromise.</td></tr>
+    <tr><td>Amazon Inspector</td><td>Pemeriksa celah bangunan</td><td>Apakah workload-ku punya kerentanan software (CVE) atau paparan jaringan?</td><td>Vulnerability management, CVE, package vulnerability, network exposure.</td></tr>
+    <tr><td>Amazon Macie</td><td>Petugas pencari dokumen rahasia</td><td>Apakah ada data sensitif (PII) yang tersimpan di S3?</td><td>Sensitive data, PII, S3 bucket, data classification.</td></tr>
+    <tr><td>AWS Security Hub</td><td>Ruang kontrol keamanan</td><td>Bisakah aku melihat dan memprioritaskan semua temuan di satu tempat?</td><td>Centralize findings, security posture, compliance status, CSPM.</td></tr>
+    <tr><td>Amazon Detective</td><td>Detektif penyelidik</td><td>Apa akar masalah dari temuan ini, dan bagaimana hubungannya antar resource?</td><td>Investigate, root cause, behavior graph, visualize relationships.</td></tr>
+  </tbody>
+</table></div>
+
+<Figure><SecFig04 /><Fragment slot="caption"><b>Gambar 3.</b> Alurnya: GuardDuty, Inspector, dan Macie mendeteksi, Security Hub mengonsolidasikan dan memprioritaskan, Detective menyelidiki akar masalah, lalu Config, Audit Manager, dan Artifact menutup sisi bukti dan compliance.</Fragment></Figure>
+
+<h3>GuardDuty</h3>
+
+<a href="https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html">Amazon GuardDuty</a> terus memantau dan menganalisis log AWS untuk menemukan aktivitas mencurigakan. Data source dasarnya tidak perlu setup tambahan: CloudTrail management events, VPC Flow Logs, dan DNS query logs. Contoh temuan: akses API tidak biasa, komunikasi dengan domain atau IP berbahaya, atau pola yang menunjukkan kredensial mungkin disalahgunakan. Protection plan opsional bisa menambah cakupan, misalnya S3 Protection, EKS Protection, Runtime Monitoring, Malware Protection, RDS Protection, dan Lambda Protection.
+
+<Box variant="tip" icon="🆕" label="GuardDuty 2025"><p>GuardDuty Extended Threat Detection kini otomatis mengaitkan sinyal lintas layanan untuk memunculkan rangkaian serangan multi-tahap (misalnya kredensial bocor lalu eksfiltrasi data) sebagai satu temuan kritikal dengan pemetaan MITRE ATT&amp;CK. Aktif otomatis tanpa biaya tambahan, inilah pengalaman GuardDuty yang akan kamu lihat di console 2026.</p></Box>
+
+<h3>Inspector</h3>
+
+<a href="https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html">Amazon Inspector</a> berfokus pada kerentanan. Jika kamu ingin tahu apakah EC2, image container di ECR, atau fungsi Lambda punya paket rentan (CVE) atau paparan jaringan yang tidak disengaja, pikirkan Inspector. Ia menghasilkan **finding** yang bisa diprioritaskan untuk perbaikan. Sejak Juni 2025 Inspector menambah code security, yaitu memindai source code, dependency, dan Infrastructure as Code dengan integrasi GitHub dan GitLab, sehingga cakupannya meluas dari sekadar EC2/ECR/Lambda.
+
+<h3>Macie</h3>
+
+<a href="https://docs.aws.amazon.com/macie/latest/user/data-classification.html">Amazon Macie</a> berfokus pada data sensitif di S3. Misalnya organisasi ingin mendeteksi apakah bucket menyimpan informasi identitas pribadi, nomor kartu, kredensial, atau pola data sensitif lain, memakai machine learning dan pattern matching. Macie bukan firewall dan bukan vulnerability scanner. Ada free trial 30 hari yang mencakup automated sensitive data discovery gratis.
+
+<h3>Security Hub</h3>
+
+<a href="https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html">AWS Security Hub</a> menggabungkan temuan dan security check agar tim tidak membuka banyak console satu per satu. Ia cocok untuk melihat posture keamanan lintas akun dan integrasi, lalu mendorong remediasi lewat workflow lain. AWS Config adalah mesin di balik sebagian besar cek control Security Hub.
+
+<Box variant="warn" icon="🏷️" label="Penamaan Security Hub 2026 (penting)"><p>Sejak 2 Desember 2025 ada perubahan nama. Produk lama yang melakukan control check dan konsolidasi finding kini bernama <b>AWS Security Hub CSPM</b>. Nama <b>AWS Security Hub</b> sekarang dipakai untuk produk baru yang menambah korelasi lintas layanan dan prioritas risiko near-real-time. Untuk CLF-C02 2026, framing aman: Security Hub (CSPM) = konsolidasi finding dan posture, Security Hub baru = korelasi dan prioritas risiko. Kedua istilah bisa muncul di docs maupun soal.</p></Box>
+
+<h3>Detective</h3>
+
+<a href="https://docs.aws.amazon.com/detective/latest/userguide/what-is-detective.html">Amazon Detective</a> adalah langkah investigasi setelah deteksi. Ia membangun behavior graph dari CloudTrail logs, VPC Flow Logs, EKS audit logs, dan finding dari GuardDuty, Security Hub, dan Inspector, lalu memakai machine learning dan graph theory untuk membantu menelusuri akar masalah sebuah temuan. Kalau GuardDuty bertanya apakah ada masalah, Detective bertanya kenapa masalah ini terjadi dan apa hubungannya antar resource sepanjang waktu.
+
+<Compare aLabel="GuardDuty &middot; detect" bLabel="Detective &middot; investigate" aTone="violet" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Memunculkan alert atau finding bahwa sesuatu mencurigakan terjadi.</li><li>Sumber: CloudTrail, VPC Flow Logs, DNS logs, plus protection plan.</li><li>Kata kunci: threat detection, anomaly, suspicious activity.</li><li>Menjawab pertanyaan: apakah ada masalah?</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Menyelidiki akar masalah dari finding yang sudah muncul.</li><li>Behavior graph yang menghubungkan resource, aktor, dan waktu.</li><li>Kata kunci: investigate, root cause, visualize relationships.</li><li>Menjawab pertanyaan: kenapa masalah ini terjadi?</li></ul></Fragment>
+</Compare>
+
+<Box variant="exam" icon="🧠" label="Tips ujian"><p>GuardDuty mencari ancaman, Inspector mencari vulnerability, Macie mencari data sensitif di S3, Security Hub (CSPM) mengonsolidasikan dan memprioritaskan finding, Detective menyelidiki akar masalah. Jangan tukar Detective dengan GuardDuty: kata investigate atau root cause mengarah ke Detective.</p></Box>
+
+</Section>
+
+<Section num="08" id="compliance-governance" title="Artifact, Audit Manager, Config, dan Governance" sub="Bukti, kontrol, evaluasi konfigurasi, dan aturan main.">
+
+<p class="lead">Compliance bukan hanya menjadi aman, tetapi juga bisa menunjukkan bukti bahwa kontrol keamanan berjalan.</p>
+
+<h3>AWS Artifact</h3>
+
+<a href="https://docs.aws.amazon.com/artifact/latest/ug/what-is-aws-artifact.html">AWS Artifact</a> menyediakan akses on-demand ke laporan keamanan dan compliance AWS (SOC, PCI DSS, ISO, dan lainnya) serta agreement tertentu seperti Business Associate Addendum (BAA). Ini seperti lemari dokumen resmi dari pengelola gedung. Penting: Artifact mendokumentasikan compliance milik AWS, bukan compliance aplikasimu. Saat auditor bertanya tentang sertifikasi atau laporan AWS, Artifact adalah tempat untuk mencari dokumen AWS yang relevan.
+
+<h3>AWS Audit Manager</h3>
+
+<a href="https://docs.aws.amazon.com/audit-manager/latest/userguide/what-is.html">AWS Audit Manager</a> membantu mengotomatisasi pengumpulan evidence untuk assessment berbasis framework, dengan memetakan konfigurasi resource, aktivitas pengguna, dan hasil compliance check terhadap framework bawaan dan custom (misalnya CIS, PCI DSS, GDPR, HIPAA, SOC 2). Ini seperti asisten audit yang mengumpulkan bukti dari layanan AWS. Audit Manager tidak menggantikan auditor manusia, tetapi mengurangi pekerjaan manual menyiapkan bukti tentang lingkunganmu sendiri.
+
+<h3>AWS Config</h3>
+
+Analogi dulu: Config seperti kamera CCTV yang merekam riwayat perubahan setiap resource, plus inspektur yang terus mengecek apakah konfigurasi masih sesuai aturan. <a href="https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html">AWS Config</a> merekam konfigurasi resource, menyimpan configuration history, dan mengevaluasi resource terhadap rule untuk kepatuhan. Ia menjawab pertanyaan seperti: seperti apa konfigurasi resource ini bulan lalu, apakah ada drift dari desired state, dan apakah resource ini melanggar aturan. Config adalah mesin di balik sebagian besar control check di Security Hub CSPM.
+
+<CardGrid cols={2}>
+  <Card><h4>Configuration history</h4><p>Riwayat perubahan setiap resource dari waktu ke waktu, berguna untuk audit dan investigasi.</p></Card>
+  <Card><h4>Config rules</h4><p>Aturan desired-state, misalnya semua bucket S3 harus terenkripsi atau tidak boleh public.</p></Card>
+  <Card><h4>Drift &amp; compliance evaluation</h4><p>Menandai resource yang menyimpang dari aturan, sehingga tim tahu apa yang perlu diperbaiki.</p></Card>
+  <Card><h4>Conformance packs</h4><p>Kumpulan rule untuk satu standar tertentu, mempercepat penerapan guardrail compliance.</p></Card>
+</CardGrid>
+
+<h3>Standar compliance yang sering disebut</h3>
+
+CLF-C02 menyebut beberapa standar compliance secara umum. Kamu tidak perlu hafal isi tiap standar, cukup tahu di mana AWS membantu.
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Standar</th><th>Untuk apa</th><th>Di mana AWS membantu</th></tr></thead>
+  <tbody>
+    <tr><td>SOC 1/2/3</td><td>Kontrol operasional dan keamanan penyedia layanan.</td><td>Laporan via AWS Artifact.</td></tr>
+    <tr><td>PCI DSS</td><td>Keamanan data kartu pembayaran.</td><td>Laporan Artifact, framework Audit Manager, conformance pack Config.</td></tr>
+    <tr><td>ISO 27001</td><td>Sistem manajemen keamanan informasi.</td><td>Sertifikat dan laporan via Artifact.</td></tr>
+    <tr><td>HIPAA</td><td>Perlindungan data kesehatan (AS).</td><td>Accept BAA via Artifact, framework Audit Manager.</td></tr>
+    <tr><td>GDPR</td><td>Perlindungan data pribadi (Eropa).</td><td>Framework Audit Manager, Macie untuk temukan PII.</td></tr>
+    <tr><td>NIST / CIS</td><td>Kerangka kontrol keamanan referensi.</td><td>Conformance pack Config, framework Audit Manager, standar Security Hub CSPM.</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Governance di AWS</h3>
+
+Governance adalah cara organisasi memastikan banyak akun dan resource tetap mengikuti aturan. Contohnya, memakai AWS Organizations untuk struktur akun, SCP untuk guardrail izin, AWS Config untuk evaluasi konfigurasi, tagging untuk kepemilikan dan biaya, serta Trusted Advisor untuk rekomendasi best practice tertentu.
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Kebutuhan</th><th>Layanan</th><th>Jawaban singkat</th></tr></thead>
+  <tbody>
+    <tr><td>Mengunduh laporan compliance AWS.</td><td>AWS Artifact</td><td>Tempat dokumen audit dan compliance AWS.</td></tr>
+    <tr><td>Mengelola agreement seperti BAA bila relevan.</td><td>AWS Artifact</td><td>Tempat review, accept, dan track agreement tertentu.</td></tr>
+    <tr><td>Mengumpulkan evidence audit otomatis dari resource AWS.</td><td>AWS Audit Manager</td><td>Assessment, framework, controls, evidence collection.</td></tr>
+    <tr><td>Mengevaluasi konfigurasi resource terhadap aturan.</td><td>AWS Config</td><td>Configuration history, compliance rules, drift awareness.</td></tr>
+    <tr><td>Menerapkan guardrail lintas akun.</td><td>AWS Organizations dan SCP</td><td>Membatasi tindakan maksimum yang bisa dilakukan akun anggota.</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="warn" icon="⚠️" label="Jangan salah arti"><p>AWS Artifact menunjukkan compliance AWS dan dokumen resmi AWS, tetapi compliance aplikasi kamu tetap bergantung pada konfigurasi, proses, data, dan kontrol yang kamu jalankan.</p></Box>
+
+<Box variant="exam" icon="🧠" label="Tips ujian"><p>Jika soal menyebut download laporan AWS (SOC, PCI, ISO) atau agreement, pilih Artifact. Jika menyebut evidence collection otomatis dari resource-mu, pilih Audit Manager. Jika menyebut evaluasi konfigurasi, riwayat konfigurasi, atau drift, pilih Config.</p></Box>
+
+</Section>
+
+<Section num="09" id="alur-arsitektur-aman" title="Alur Arsitektur Aman Tingkat Tinggi" sub="Melihat layanan sebagai sistem terpadu.">
+
+<p class="lead">Keamanan yang baik biasanya tidak berdiri sendiri, tetapi mengikuti alur user, aplikasi, data, monitoring, dan bukti audit.</p>
+
+<Figure><SecFig02 /><Fragment slot="caption"><b>Gambar 4.</b> Contoh alur keamanan aplikasi web, dari edge protection sampai data protection, detection, central findings, dan compliance evidence.</Fragment></Figure>
+
+<h3>Membaca diagram</h3>
+
+Pengguna masuk melalui internet. CloudFront atau ALB memakai sertifikat dari ACM untuk HTTPS. WAF memeriksa request HTTP(S), Shield membantu proteksi DDoS, aplikasi mengambil secret dari Secrets Manager (atau config dari Parameter Store), data disimpan di S3 atau database dengan enkripsi KMS, aktivitas terekam di CloudTrail dan CloudWatch, lalu GuardDuty, Inspector, dan Macie menghasilkan temuan. Security Hub mengonsolidasikan temuan, Detective membantu menyelidiki akar masalah, sedangkan Config, Artifact, dan Audit Manager menutup sisi compliance.
+
+<Steps>
+  <Step><b>Edge dan aplikasi dilindungi</b><p>Gunakan HTTPS dengan ACM, WAF untuk request aplikasi, dan Shield untuk proteksi DDoS.</p></Step>
+  <Step><b>Data dan secret dikunci</b><p>Gunakan KMS untuk kunci enkripsi, Secrets Manager untuk kredensial, dan Parameter Store untuk config.</p></Step>
+  <Step><b>Aktivitas dipantau dan diselidiki</b><p>Gunakan CloudTrail, CloudWatch, GuardDuty, Inspector, Macie, Security Hub, dan Detective sesuai kebutuhan.</p></Step>
+  <Step><b>Bukti compliance disiapkan</b><p>Gunakan Config untuk evaluasi konfigurasi, Artifact untuk dokumen AWS, dan Audit Manager untuk evidence assessment.</p></Step>
+</Steps>
+
+<Box variant="tip" icon="💡" label="Pola berpikir"><p>Untuk soal skenario, cari dulu masalahnya: akses, data, web attack, DDoS, vulnerability, sensitive data, central findings, compliance report, atau audit evidence.</p></Box>
+
+</Section>
+
+<Section num="10" id="hands-on-konseptual" title="Hands-on Konseptual" sub="Walkthrough aman tanpa harus menghafal klik console.">
+
+<p class="lead">Latihan ini bukan untuk menghafal tombol, tetapi untuk membangun intuisi keamanan yang benar.</p>
+
+<h3>Kasus: online shop sederhana</h3>
+
+Kamu punya aplikasi online shop skincare. Aplikasi publik menerima traffic HTTPS, membaca katalog dari database, menyimpan gambar produk di S3, dan memakai API key payment gateway. Targetnya: aman untuk pemula, realistis, dan mudah dijelaskan ke stakeholder.
+
+<Steps>
+  <Step><b>Mulai dari akun dan identitas</b><p>Aktifkan MFA untuk root user, jangan pakai root untuk kerja harian, buat IAM role untuk aplikasi, dan terapkan least privilege.</p></Step>
+  <Step><b>Aktifkan HTTPS</b><p>Gunakan ACM untuk sertifikat domain, lalu pasangkan ke CloudFront, ALB, atau API Gateway sesuai arsitektur.</p></Step>
+  <Step><b>Pasang proteksi web</b><p>Gunakan AWS WAF di depan aplikasi untuk managed rules, rate-based rule, atau blokir pattern request berbahaya.</p></Step>
+  <Step><b>Simpan secret dengan benar</b><p>Simpan password database dan API key di Secrets Manager, aplikasi mengambil secret saat runtime melalui role yang tepat.</p></Step>
+  <Step><b>Enkripsi data</b><p>Aktifkan enkripsi pada S3, database, volume, dan log dengan KMS bila butuh kontrol kunci lebih detail.</p></Step>
+  <Step><b>Aktifkan logging dan audit trail</b><p>Gunakan CloudTrail untuk aktivitas API, CloudWatch untuk metrik dan log aplikasi, serta simpan log penting dengan akses terbatas.</p></Step>
+  <Step><b>Aktifkan deteksi</b><p>Gunakan GuardDuty untuk ancaman, Inspector untuk vulnerability workload, Macie untuk data sensitif di S3, dan Security Hub untuk tampilan pusat.</p></Step>
+  <Step><b>Siapkan compliance</b><p>Gunakan Artifact untuk dokumen AWS, Audit Manager untuk evidence collection, dan Config untuk memantau konfigurasi resource.</p></Step>
+</Steps>
+
+<h3>Lab aman: tiga langkah hemat biaya di console</h3>
+
+Kalau kamu ingin benar-benar menekan tombol tanpa risiko tagihan, tiga langkah berikut aman dan langsung memperkuat postur keamanan. Tetap perhatikan free trial dan matikan layanan trial bila tidak dilanjutkan.
+
+<Steps>
+  <Step><b>Nyalakan S3 Block Public Access dan default encryption</b><p>Buka S3, pastikan Block Public Access aktif di level akun, dan default encryption menyala. Ini gratis dan menutup penyebab kebocoran S3 yang paling umum.</p></Step>
+  <Step><b>Aktifkan GuardDuty pakai free trial</b><p>GuardDuty punya free trial 30 hari. Aktifkan, lihat sampel finding, lalu matikan bila belum mau lanjut agar tidak ada biaya setelah trial.</p></Step>
+  <Step><b>Simpan satu config di Parameter Store (gratis)</b><p>Buat satu parameter tipe standard (gratis) untuk nilai config, dan SecureString bila perlu enkripsi KMS, lalu rasakan bedanya dengan Secrets Manager yang berbayar.</p></Step>
+</Steps>
+
+<Box variant="warn" icon="🧹" label="Kebiasaan baik"><p>Setiap lab harus punya langkah cleanup. Banyak tagihan pemula datang dari layanan trial yang lupa dimatikan, bukan dari materi belajarnya. Cek halaman pricing resmi sebelum mengaktifkan layanan berbayar.</p></Box>
+
+<h3>Pertanyaan refleksi</h3>
+
+<ul>
+  <li>Apakah ada password yang masih ditaruh di repository?</li>
+  <li>Apakah bucket S3 yang berisi data pelanggan punya public access yang tidak sengaja terbuka?</li>
+  <li>Apakah aplikasi punya sertifikat TLS yang dikelola baik?</li>
+  <li>Apakah ada tempat terpusat untuk melihat temuan keamanan, dan cara menyelidiki akar masalahnya?</li>
+  <li>Apakah tim bisa menunjukkan bukti compliance tanpa mencari manual di banyak akun?</li>
+</ul>
+
+<Box variant="exam" icon="🧠" label="Tips ujian"><p>CLF-C02 suka skenario bisnis sederhana, fokus pada layanan yang menyelesaikan masalah paling langsung, bukan desain paling rumit.</p></Box>
+
+</Section>
+
+<Section num="11" id="skenario-pemilihan-layanan" title="Skenario Pemilihan Layanan" sub="Latihan mengenali kata kunci.">
+
+<p class="lead">Di ujian, kamu jarang ditanya definisi kosong. Kamu diberi masalah, lalu diminta memilih layanan yang paling tepat.</p>
+
+<Figure><SecFig03 /><Fragment slot="caption"><b>Gambar 5.</b> Pohon keputusan pilih-dari-kata-kunci: mulai dari masalah di soal (data, rahasia, serangan aplikasi, deteksi, compliance), ikuti cabang, temukan layanannya. Ini visual paling berguna untuk ujian.</Fragment></Figure>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Skenario soal</th><th>Jawaban paling mungkin</th><th>Kenapa</th></tr></thead>
+  <tbody>
+    <tr><td>Perusahaan butuh mengontrol dan mengaudit penggunaan kunci enkripsi untuk data S3.</td><td>AWS KMS</td><td>KMS mengelola kunci dan terintegrasi dengan banyak layanan AWS.</td></tr>
+    <tr><td>Perusahaan butuh HSM single-tenant dedicated dengan kontrol penuh dan tanpa akses AWS.</td><td>AWS CloudHSM</td><td>CloudHSM memberi hardware HSM khusus, AWS tidak bisa mengakses kunci.</td></tr>
+    <tr><td>Developer masih menyimpan password database di source code dan ingin rotasi otomatis.</td><td>AWS Secrets Manager</td><td>Secret disimpan terpusat, diambil saat runtime, dan dirotasi otomatis.</td></tr>
+    <tr><td>Tim ingin menyimpan nilai config dan secret sederhana dengan biaya nol.</td><td>Parameter Store</td><td>Tier standard gratis, SecureString memakai KMS bila perlu enkripsi.</td></tr>
+    <tr><td>Website butuh HTTPS dengan sertifikat TLS.</td><td>AWS Certificate Manager</td><td>ACM mengelola sertifikat untuk layanan AWS terintegrasi.</td></tr>
+    <tr><td>Aplikasi perlu perlindungan dari SQL injection dan request web mencurigakan.</td><td>AWS WAF</td><td>WAF memeriksa request HTTP(S) dan menerapkan rule.</td></tr>
+    <tr><td>Organisasi ingin proteksi DDoS lebih tinggi untuk aplikasi publik kritikal.</td><td>AWS Shield Advanced</td><td>Shield berfokus pada DDoS protection dengan fitur lanjutan pada tier Advanced.</td></tr>
+    <tr><td>Tim keamanan ingin mendeteksi aktivitas mencurigakan di akun AWS.</td><td>Amazon GuardDuty</td><td>GuardDuty adalah layanan threat detection.</td></tr>
+    <tr><td>Tim platform ingin menemukan CVE dan kerentanan paket pada EC2, ECR, atau Lambda.</td><td>Amazon Inspector</td><td>Inspector adalah vulnerability management service.</td></tr>
+    <tr><td>Tim data ingin mengetahui apakah bucket S3 berisi PII.</td><td>Amazon Macie</td><td>Macie menemukan sensitive data di Amazon S3.</td></tr>
+    <tr><td>Manajemen ingin satu dashboard temuan keamanan lintas akun dan layanan.</td><td>AWS Security Hub (CSPM)</td><td>Security Hub mengonsolidasikan findings dan status keamanan.</td></tr>
+    <tr><td>Tim ingin menyelidiki akar masalah sebuah temuan keamanan dan hubungan antar resource.</td><td>Amazon Detective</td><td>Detective membangun behavior graph untuk investigasi root cause.</td></tr>
+    <tr><td>Tim ingin mengevaluasi konfigurasi resource terhadap aturan dan melihat riwayat perubahan.</td><td>AWS Config</td><td>Config merekam configuration history dan mengevaluasi compliance rule.</td></tr>
+    <tr><td>Auditor meminta laporan compliance AWS seperti SOC atau PCI.</td><td>AWS Artifact</td><td>Artifact menyediakan laporan dan dokumen compliance AWS.</td></tr>
+    <tr><td>Tim compliance ingin evidence collection otomatis untuk audit framework.</td><td>AWS Audit Manager</td><td>Audit Manager mengumpulkan evidence assessment dari sumber AWS.</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="tip" icon="💡" label="Peta cepat"><p>KMS = kunci, CloudHSM = HSM dedicated, Secrets Manager = rahasia + rotasi, Parameter Store = config gratis, ACM = sertifikat, WAF = request web, Shield = DDoS, GuardDuty = threat, Inspector = vulnerability, Macie = sensitive data S3, Security Hub = konsolidasi temuan, Detective = investigasi root cause, Config = evaluasi konfigurasi, Artifact = dokumen compliance, Audit Manager = evidence audit.</p></Box>
+
+</Section>
+
+<Section num="12" id="kesalahan-umum" title="Kesalahan Umum Pemula" sub="Yang sering terlihat aman, padahal belum tentu.">
+
+<p class="lead">Banyak insiden cloud terjadi bukan karena AWS tidak aman, tetapi karena konfigurasi pelanggan terlalu longgar atau proses operasional belum matang.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Menggunakan root user untuk kerja harian</h4><p>Root user seharusnya dilindungi ketat dengan MFA dan hanya dipakai untuk tugas yang benar-benar membutuhkan root.</p></Card>
+  <Card><h4>Memberi akses admin terlalu luas</h4><p>Least privilege lebih aman daripada memberi wildcard permission karena ingin cepat selesai.</p></Card>
+  <Card><h4>Menyimpan secret di repository</h4><p>Password dan API key sebaiknya berada di Secrets Manager atau solusi secret management yang sesuai.</p></Card>
+  <Card><h4>Melupakan enkripsi log</h4><p>Log sering berisi informasi sensitif, sehingga akses dan enkripsinya perlu diperhatikan.</p></Card>
+  <Card><h4>Menganggap WAF menggantikan patching</h4><p>WAF membantu memfilter request, tetapi aplikasi dan dependensi tetap harus diperbaiki.</p></Card>
+  <Card><h4>Menganggap compliance AWS otomatis membuat aplikasi compliant</h4><p>AWS menyediakan kontrol dan bukti untuk sisi AWS, tetapi konfigurasi aplikasi dan proses pelanggan tetap menentukan compliance akhir.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Kesalahan mental"><p>Jangan bertanya layanan mana yang paling canggih, tanyakan risiko apa yang ingin dikurangi.</p></Box>
+
+</Section>
+
+<Section num="13" id="jebakan-soal" title="Jebakan Soal CLF-C02" sub="Kata kunci mirip, jawaban berbeda.">
+
+<p class="lead">Bagian ini membantu kamu menghindari jawaban yang terdengar benar tetapi tidak paling tepat.</p>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Jebakan</th><th>Jawaban yang benar</th><th>Alasan</th></tr></thead>
+  <tbody>
+    <tr><td>Butuh laporan compliance AWS dijawab Audit Manager.</td><td>AWS Artifact</td><td>Artifact untuk laporan dan agreement AWS, Audit Manager untuk evidence assessment pelanggan.</td></tr>
+    <tr><td>Butuh menemukan PII di S3 dijawab GuardDuty.</td><td>Amazon Macie</td><td>Macie fokus pada sensitive data discovery di S3.</td></tr>
+    <tr><td>Butuh mendeteksi CVE di workload dijawab Security Hub.</td><td>Amazon Inspector</td><td>Inspector melakukan vulnerability management, Security Hub mengonsolidasikan temuan.</td></tr>
+    <tr><td>Butuh menyelidiki akar masalah finding dijawab GuardDuty.</td><td>Amazon Detective</td><td>GuardDuty mendeteksi (apakah ada masalah), Detective menyelidiki (kenapa terjadi).</td></tr>
+    <tr><td>Butuh rotasi otomatis password DB dijawab Parameter Store.</td><td>AWS Secrets Manager</td><td>Parameter Store tidak punya rotasi otomatis bawaan, Secrets Manager punya.</td></tr>
+    <tr><td>Butuh blokir SQL injection dijawab Shield.</td><td>AWS WAF</td><td>SQL injection adalah masalah request web layer aplikasi, bukan sekadar DDoS.</td></tr>
+    <tr><td>Butuh HSM single-tenant dedicated dijawab KMS.</td><td>AWS CloudHSM</td><td>KMS multi-tenant terkelola, CloudHSM HSM dedicated dengan kontrol penuh pelanggan.</td></tr>
+    <tr><td>Butuh mengelola sertifikat TLS dijawab KMS.</td><td>AWS Certificate Manager</td><td>KMS mengelola kunci kriptografi, ACM mengelola sertifikat SSL/TLS.</td></tr>
+    <tr><td>Simpan password database di KMS.</td><td>Secrets Manager / Parameter Store</td><td>KMS menyimpan kunci, bukan data. Secret disimpan di Secrets Manager atau Parameter Store yang memakai KMS.</td></tr>
+    <tr><td>Semua sertifikat ACM gratis.</td><td>Tidak semua</td><td>Cert terintegrasi (ELB, CloudFront, API Gateway) gratis, exportable public cert berbayar.</td></tr>
+    <tr><td>Shield Standard harus opt-in atau bayar, dan punya SRT.</td><td>Salah</td><td>Standard gratis dan otomatis tanpa SRT, SRT dan cost protection hanya di Advanced.</td></tr>
+    <tr><td>Managed service berarti AWS bertanggung jawab atas semua hal.</td><td>Tanggung jawab tetap dibagi</td><td>Pelanggan tetap mengelola data, akses, konfigurasi, dan compliance internal.</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Latihan cepat</h3>
+
+<ul>
+  <li>Threat detection lintas log AWS = GuardDuty.</li>
+  <li>Investigasi akar masalah finding = Detective.</li>
+  <li>Vulnerability scan workload (CVE) = Inspector.</li>
+  <li>Data sensitif di S3 = Macie.</li>
+  <li>Central findings dan posture = Security Hub (CSPM).</li>
+  <li>Evaluasi konfigurasi dan drift = Config.</li>
+  <li>Compliance reports dan agreements = Artifact.</li>
+  <li>Audit evidence collection = Audit Manager.</li>
+  <li>Keys = KMS, HSM dedicated = CloudHSM, secrets + rotasi = Secrets Manager, config gratis = Parameter Store, certificates = ACM.</li>
+</ul>
+
+<Box variant="exam" icon="🧠" label="Strategi ujian"><p>Coret jawaban yang menyelesaikan lapisan masalah berbeda, misalnya memilih Shield untuk SQL injection, Macie untuk vulnerability, atau GuardDuty untuk investigasi root cause (itu Detective).</p></Box>
+
+</Section>
+
+<Section num="14" id="ringkasan" title="Ringkasan &amp; Tips Ujian" sub="Peta akhir untuk Domain 2 CLF-C02.">
+
+<p class="lead">Keamanan AWS adalah kombinasi pembagian tanggung jawab, kontrol akses, perlindungan data, proteksi aplikasi, deteksi ancaman, governance, dan bukti compliance.</p>
+
+<Recap title="Poin Penting"><ul><li>Shared Responsibility Model adalah fondasi semua topik security di CLF-C02, dan Domain 2 menyumbang 30% soal.</li><li>KMS mengelola kunci (multi-tenant, terkelola), CloudHSM memberi HSM dedicated single-tenant dengan kontrol penuh pelanggan.</li><li>Secrets Manager menyimpan secret dengan rotasi otomatis, Parameter Store menyimpan config gratis tanpa rotasi bawaan, ACM mengelola sertifikat SSL/TLS.</li><li>AWS WAF melindungi aplikasi web di Layer 7 (SQLi, XSS, bot), AWS Shield melindungi dari DDoS (Standard gratis L3/L4, Advanced berbayar L3/L4/L7 + SRT + cost protection).</li><li>GuardDuty mendeteksi ancaman, Inspector menemukan vulnerability/CVE, Macie menemukan PII di S3, Security Hub (CSPM) mengonsolidasikan findings, Detective menyelidiki akar masalah.</li><li>Config mengevaluasi konfigurasi, Artifact menyediakan laporan dan agreement AWS, Audit Manager mengumpulkan evidence audit dari lingkunganmu.</li></ul></Recap>
+
+<h3>Pemetaan ke domain CLF-C02</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Domain</th><th>Kaitannya dengan modul ini</th><th>Yang harus diingat</th></tr></thead>
+  <tbody>
+    <tr><td>Domain 1, Cloud Concepts</td><td>Cloud mengurangi beban operasional fisik melalui shared responsibility.</td><td>AWS mengamankan cloud, pelanggan mengamankan konfigurasi dan data.</td></tr>
+    <tr><td>Domain 2, Security and Compliance</td><td>Topik utama modul ini.</td><td>Shared responsibility, encryption, access, resource security, compliance, governance, dan layanan keamanan.</td></tr>
+    <tr><td>Domain 3, Cloud Technology and Services</td><td>Layanan keamanan melekat pada compute, storage, database, network, dan monitoring.</td><td>Pilih layanan sesuai masalah teknis: KMS, CloudHSM, Secrets Manager, Parameter Store, ACM, WAF, Shield, GuardDuty, Inspector, Macie, Security Hub, Detective, Config, Artifact, Audit Manager.</td></tr>
+    <tr><td>Domain 4, Billing, Pricing, and Support</td><td>Beberapa layanan punya tier, biaya, atau support berbeda.</td><td>Jangan menebak harga, cek halaman pricing resmi saat implementasi, dan ingat Shield Advanced berbeda dari Shield Standard.</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Checklist menjelang ujian</h3>
+
+<ul>
+  <li>Bisa menjelaskan security of the cloud vs security in the cloud dengan contoh EC2, RDS, S3, dan Lambda.</li>
+  <li>Bisa membedakan KMS vs CloudHSM, dan Secrets Manager vs Parameter Store, tanpa tertukar.</li>
+  <li>Bisa membedakan ACM dari KMS, dan ingat ACM gratis untuk cert terintegrasi vs exportable cert berbayar.</li>
+  <li>Bisa membedakan WAF (L7) dan Shield (DDoS), serta Shield Standard (gratis) vs Advanced (berbayar + SRT).</li>
+  <li>Bisa membedakan GuardDuty, Inspector, Macie, Security Hub, dan Detective dari jenis temuan dan langkah (detect vs investigate).</li>
+  <li>Bisa membedakan Artifact, Audit Manager, dan Config dari kebutuhan compliance.</li>
+  <li>Bisa memilih layanan paling sederhana yang langsung menjawab skenario soal.</li>
+</ul>
+
+<h3>Rujukan resmi untuk belajar lanjut</h3>
+
+<ul>
+  <li><a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02-domain2.html">AWS CLF-C02 Content Domain 2: Security and Compliance</a></li>
+  <li><a href="https://aws.amazon.com/compliance/shared-responsibility-model/">AWS Shared Responsibility Model</a></li>
+  <li><a href="https://docs.aws.amazon.com/decision-guides/latest/security-on-aws-how-to-choose/choosing-aws-security-services.html">Choosing AWS security, identity, and governance services</a></li>
+  <li><a href="https://docs.aws.amazon.com/kms/latest/developerguide/overview.html">AWS KMS Developer Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/cloudhsm/latest/userguide/introduction.html">AWS CloudHSM User Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html">AWS Secrets Manager User Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html">AWS Systems Manager Parameter Store</a></li>
+  <li><a href="https://docs.aws.amazon.com/acm/latest/userguide/acm-overview.html">AWS Certificate Manager User Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html">AWS WAF Developer Guide</a></li>
+  <li><a href="https://aws.amazon.com/shield/pricing/">AWS Shield Pricing (Standard vs Advanced)</a></li>
+  <li><a href="https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html">Amazon GuardDuty User Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html">Amazon Inspector User Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/macie/latest/user/data-classification.html">Amazon Macie User Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html">AWS Security Hub User Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/detective/latest/userguide/what-is-detective.html">Amazon Detective User Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html">AWS Config Developer Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/artifact/latest/ug/what-is-aws-artifact.html">AWS Artifact User Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/audit-manager/latest/userguide/what-is.html">AWS Audit Manager User Guide</a></li>
+</ul>
+
+<Box variant="exam" icon="🎯" label="Kalimat penutup"><p>Untuk CLF-C02, hafalkan fungsi utama layanan, bukan detail konfigurasi terdalam. Jawaban terbaik biasanya layanan yang paling langsung menyelesaikan kebutuhan keamanan atau compliance pada soal.</p></Box>
+
+</Section>

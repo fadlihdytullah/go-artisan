@@ -1,0 +1,379 @@
+---
+title: "Modul Other Compute Services - AWS Cloud Practitioner CLF-C02"
+badge: "CMP"
+topTitle: "Other Compute Services"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Panduan memilih Lambda, Fargate, ECS, EKS, Batch, Elastic Beanstalk, Lightsail, dan Outposts untuk skenario compute di CLF-C02."
+order: 7
+target: "CLF-C02"
+readingTime: "~70 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Analogi: Dapur, Koki, dan Layanan Siap Saji" }
+  - { num: "02", id: "peta-compute", title: "Peta Besar Compute Setelah EC2" }
+  - { num: "03", id: "container", title: "Container: ECR, ECS, dan EKS" }
+  - { num: "04", id: "fargate", title: "AWS Fargate: Container Tanpa Mengelola Server" }
+  - { num: "05", id: "lambda", title: "AWS Lambda: Fungsi Kecil yang Jalan Saat Dipanggil" }
+  - { num: "06", id: "api-event", title: "API Gateway dan Pola Event-Driven" }
+  - { num: "07", id: "batch-beanstalk-lightsail", title: "Batch, Elastic Beanstalk, Lightsail, dan Outposts" }
+  - { num: "08", id: "memilih-layanan", title: "Cara Memilih Layanan di Skenario Nyata" }
+  - { num: "09", id: "keamanan-operasional", title: "Keamanan, Observability, dan Shared Responsibility" }
+  - { num: "10", id: "hands-on", title: "Hands-on Ringan: Rancang Tanpa Menekan Tombol" }
+  - { num: "11", id: "jebakan", title: "Kesalahan Pemula dan Jebakan Soal" }
+  - { num: "12", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul Other Compute Services - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import OtherComputeFig01 from "@figures/OtherComputeFig01.astro";
+import OtherComputeFig02 from "@figures/OtherComputeFig02.astro";
+import OtherComputeFig03 from "@figures/OtherComputeFig03.astro";
+import OtherComputeFig04 from "@figures/OtherComputeFig04.astro";
+
+<Hero eyebrow="Modul &middot; Compute" title="Other <em>Compute</em><br />Services CLF-C02">
+  <p>Setelah memahami EC2, sekarang kita belajar kapan memakai container, serverless, batch, PaaS, dan compute hybrid.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~70 menit baca</Chip>
+    <Chip icon="book">Domain 3 &middot; 34%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Analogi: Dapur, Koki, dan Layanan Siap Saji" sub="Mulai dari analogi agar pilihan compute terasa masuk akal.">
+
+<p class="lead">Bayangkan kamu ingin membuka bisnis makanan, pilihan compute AWS mirip cara memilih dapur.</p>
+
+Kalau memakai **Amazon EC2**, kamu menyewa dapur sendiri. Kamu memilih kompor, mengatur gas, membersihkan lantai, dan memutuskan kapan menambah meja kerja. Ini fleksibel, tetapi tanggung jawab operasionalnya besar.
+
+Kalau memakai **Elastic Beanstalk**, kamu membawa resep dan bahan utama, lalu pengelola gedung menyiapkan dapur, ventilasi, meja kerja, dan petugas monitoring. Kamu tetap punya dapur di balik layar, tetapi banyak pekerjaan standar dibantu AWS.
+
+Kalau memakai **container**, kamu mengemas makanan dalam kotak standar. Kotaknya bisa dipindah dari dapur kecil ke dapur besar tanpa banyak perubahan. **ECR** adalah rak penyimpanan kotak, **ECS** dan **EKS** adalah manajer dapur yang menentukan kotak mana dimasak di mana.
+
+Kalau memakai **Fargate**, kamu tidak lagi memikirkan dapurnya. Kamu hanya bilang, "jalankan kotak ini dengan CPU dan memori sekian." AWS menyiapkan tempatnya.
+
+Kalau memakai **Lambda**, kamu tidak membuka dapur sepanjang hari. Kamu hanya memanggil koki saat ada pesanan tertentu, misalnya resize gambar ketika file baru masuk ke S3.
+
+<Box variant="analogy" icon="🍱" label="Inti analogi"><p>EC2 adalah dapur sewaan, Beanstalk adalah dapur dikelola, container adalah kotak standar, Fargate adalah jalankan kotak tanpa mengurus dapur, Lambda adalah koki on-demand.</p></Box>
+
+</Section>
+
+<Section num="02" id="peta-compute" title="Peta Besar Compute Setelah EC2" sub="CLF-C02 menilai kemampuan mengenali layanan yang tepat, bukan menghafal semua konfigurasi teknis.">
+
+<p class="lead">Di ujian, pertanyaan compute biasanya berbentuk skenario: workload apa, butuh kontrol seberapa besar, dan siapa yang mengelola server?</p>
+
+Panduan resmi CLF-C02 memasukkan **AWS Batch, Amazon EC2, AWS Elastic Beanstalk, Amazon Lightsail, AWS Outposts, Amazon ECR, Amazon ECS, Amazon EKS, AWS Fargate, dan AWS Lambda** dalam cakupan layanan terkait compute, container, dan serverless. Lihat daftar resminya di <a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/clf-02-in-scope-services.html" target="_blank" rel="noreferrer">In-Scope AWS Services</a>.
+
+Domain 3 CLF-C02 meminta peserta mengenali layanan compute, opsi container seperti ECS dan EKS, serta opsi serverless seperti Fargate dan Lambda. Lihat <a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02-domain3.html" target="_blank" rel="noreferrer">Domain 3: Cloud Technology and Services</a>.
+
+<Figure><OtherComputeFig01 /><Fragment slot="caption"><b>Gambar 1.</b> Spektrum compute AWS, dari kontrol tinggi di EC2 hingga abstraksi tinggi di Lambda.</Fragment></Figure>
+
+<CardGrid cols={3}>
+  <Card><h4>Kontrol tinggi</h4><p>Pilih EC2 atau Outposts saat kamu perlu mengatur sistem operasi, tipe instance, jaringan, atau lokasi fisik lebih detail.</p></Card>
+  <Card><h4>Deploy lebih mudah</h4><p>Pilih Elastic Beanstalk atau Lightsail saat tujuan utamanya menjalankan aplikasi web dengan lebih sedikit keputusan infrastruktur.</p></Card>
+  <Card><h4>Abstraksi tinggi</h4><p>Pilih Fargate atau Lambda saat ingin fokus pada container atau fungsi, bukan pada pengelolaan server.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Kacamata ujian"><p>CLF-C02 jarang meminta cara menulis task definition atau manifest Kubernetes, tetapi sering menguji kapan memilih ECS, EKS, Fargate, Lambda, Batch, Beanstalk, Lightsail, atau Outposts.</p></Box>
+
+</Section>
+
+<Section num="03" id="container" title="Container: ECR, ECS, dan EKS" sub="Container membuat aplikasi mudah dipaketkan, dipindahkan, dan dijalankan konsisten.">
+
+<p class="lead">Container adalah paket standar yang berisi aplikasi beserta dependensinya, seperti kotak makanan yang sudah diberi label isi dan cara pemanasan.</p>
+
+Kenapa container penting? Karena ia menyelesaikan keluhan klasik "di laptop saya jalan, di server kok error". Aplikasi, library, versi runtime, dan konfigurasi dikemas jadi satu image yang berperilaku sama di mana pun dijalankan. Untuk tiga huruf yang sering tertukar di ujian, ingat satu kalimat: **ECR menyimpan image, ECS dan EKS mengatur container, dan launch type (Fargate atau EC2) menentukan di mana container benar-benar berjalan.**
+
+**Amazon ECR** adalah managed container image registry untuk menyimpan dan membagikan image container. ECR mendukung **private repository** (akses diatur lewat IAM) dan **public repository** lewat Amazon ECR Public, sehingga bisa juga untuk berbagi image ke publik. ECR menerima Docker image, OCI image, dan artifact yang OCI-compatible. Jadi ECR bukan sekadar "private registry", melainkan registry yang bisa privat maupun publik. Lihat <a href="https://docs.aws.amazon.com/AmazonECR/latest/userguide/what-is-ecr.html" target="_blank" rel="noreferrer">What is Amazon ECR?</a>.
+
+**Amazon ECS** adalah layanan orkestrasi container fully managed, bukan compute engine. Tugasnya menjawab "siapa yang mengatur container": berapa salinan harus hidup, mengganti container yang gagal, dan mengarahkan traffic. ECS dapat memakai beberapa backend compute, yaitu **Fargate** (serverless), **EC2**, **ECS Managed Instances**, dan **ECS Anywhere** untuk on-premises. Karena ECS adalah orchestrator, ia tidak bisa dibandingkan langsung dengan Fargate yang merupakan compute engine. Lihat <a href="https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html" target="_blank" rel="noreferrer">What is Amazon ECS?</a>.
+
+**Amazon EKS** adalah managed Kubernetes service. Pilih EKS ketika organisasi sudah memakai Kubernetes, punya tim yang memahami ekosistemnya, atau butuh portabilitas tooling Kubernetes lintas lingkungan. EKS juga bisa menjalankan pod tanpa mengelola node lewat Fargate. Lihat <a href="https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html" target="_blank" rel="noreferrer">What is Amazon EKS?</a>.
+
+<h3>Urutan kerja container sederhana</h3>
+
+<Figure><OtherComputeFig03 /><Fragment slot="caption"><b>Gambar 2.</b> Image dibangun, didorong ke ECR, lalu dijalankan oleh ECS atau EKS; launch type Fargate atau EC2 menentukan di mana container benar-benar berjalan.</Fragment></Figure>
+
+<Steps>
+  <Step><b>Bangun image</b><p>Developer membuat container image dari aplikasi, dependensi, dan konfigurasi runtime di mesinnya atau di pipeline CI/CD.</p></Step>
+  <Step><b>Simpan di ECR</b><p>Image didorong ke repository ECR, privat untuk internal atau publik lewat ECR Public, agar bisa ditarik oleh layanan compute AWS.</p></Step>
+  <Step><b>Jalankan dengan ECS atau EKS</b><p>Orchestrator menarik image lalu menentukan berapa banyak salinan container berjalan dan bagaimana traffic diarahkan.</p></Step>
+  <Step><b>Pilih launch type</b><p>Tentukan apakah container berjalan di Fargate (tanpa server yang kamu kelola) atau di EC2 (kamu mengurus host).</p></Step>
+  <Step><b>Pantau dan skalakan</b><p>Gunakan CloudWatch, load balancer, dan Auto Scaling agar aplikasi tetap responsif saat traffic berubah.</p></Step>
+</Steps>
+
+<h3>ECS vs EKS, dua orchestrator yang sering tertukar</h3>
+
+<p>Keduanya sama-sama mengatur container, bedanya pada cara berpikir dan ekosistemnya, bukan pada "mana yang lebih bagus".</p>
+
+<Compare aLabel="Amazon ECS" bLabel="Amazon EKS" aTone="blue" bTone="violet" vs="vs">
+  <Fragment slot="a"><ul><li>Orchestrator AWS-native, lebih sederhana untuk dimulai.</li><li>Konsep inti: task definition dan service, bukan manifest Kubernetes.</li><li>Cocok bila tim ingin menjalankan container tanpa belajar Kubernetes.</li><li>Backend compute: Fargate, EC2, Managed Instances, atau ECS Anywhere.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Managed Kubernetes, kompatibel dengan tooling Kubernetes standar.</li><li>Konsep inti: pod, deployment, dan manifest YAML Kubernetes.</li><li>Cocok bila organisasi sudah standar di Kubernetes lintas cloud.</li><li>Backend compute: Fargate atau EC2 sebagai node.</li></ul></Fragment>
+</Compare>
+
+<Box variant="warn" icon="⚠️" label="Jangan tertukar"><p>ECR menyimpan image container, ECS dan EKS mengorkestrasi container, dan keduanya bisa memakai Fargate atau EC2 sebagai tempat container berjalan.</p></Box>
+
+</Section>
+
+<Section num="04" id="fargate" title="AWS Fargate: Container Tanpa Mengelola Server" sub="Fargate adalah compute engine serverless untuk container, bukan orchestrator baru.">
+
+<p class="lead">Fargate ibarat meminta dapur hotel memasak paket makananmu tanpa kamu menyewa dan merawat dapur sendiri.</p>
+
+**AWS Fargate** adalah compute engine serverless dengan model pay-as-you-go untuk container. Ia dipakai bersama ECS atau EKS untuk menjalankan container tanpa mengelola server atau cluster EC2. Dokumentasi AWS menyatakan Fargate menghilangkan kebutuhan memilih tipe server, menentukan kapan scale cluster, atau mengoptimalkan penempatan container. Lihat <a href="https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html" target="_blank" rel="noreferrer">AWS Fargate for Amazon ECS</a>.
+
+Penting untuk tidak menukar peran: ECS dan EKS adalah orchestrator yang menjawab "siapa yang mengatur container", sedangkan Fargate adalah compute engine yang menjawab "di mana container berjalan". Jadi Fargate bukan orchestrator baru dan bukan pengganti Kubernetes, melainkan launch type yang dipakai di bawah ECS atau EKS.
+
+Saat memakai Fargate, kamu tetap mendefinisikan image container, CPU, memori, networking, dan IAM policy. Bedanya, kamu tidak lagi memilih tipe instance, mem-patch sistem operasi host, atau merencanakan kapasitas cluster EC2.
+
+<CardGrid cols={2}>
+  <Card><h4>Pakai Fargate jika</h4><p>Tim ingin menjalankan container tanpa patching host, capacity planning, dan pengelolaan cluster EC2, serta nyaman membayar per task yang berjalan.</p></Card>
+  <Card><h4>Pakai EC2 launch type jika</h4><p>Tim butuh kontrol lebih rinci atas instance, tipe hardware tertentu seperti GPU, optimasi biaya khusus (misalnya Reserved atau Spot di skala besar), atau konfigurasi host.</p></Card>
+</CardGrid>
+
+<h3>Lambda vs Fargate, dua wajah "serverless"</h3>
+
+<p>Keduanya sama-sama menghilangkan pengelolaan server, tetapi unit kerjanya berbeda: Lambda menjalankan fungsi, Fargate menjalankan container. Soal CLF-C02 sering menguji perbedaan ini lewat bentuk workload.</p>
+
+<Compare aLabel="AWS Lambda &middot; serverless functions" bLabel="AWS Fargate &middot; serverless containers" aTone="red" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Unit kerja: fungsi yang dipicu event (S3, API Gateway, SQS, jadwal).</li><li>Cocok untuk proses singkat, maksimum 900 detik (15 menit) per invocation.</li><li>Scale otomatis dari nol sampai banyak invocation, tanpa kapasitas idle.</li><li>Tidak perlu memikirkan image OS, cukup kode, memori, dan timeout.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Unit kerja: container yang dipaketkan sebagai image, dijalankan terus.</li><li>Cocok untuk service long-running seperti API atau worker yang selalu hidup.</li><li>Scale dengan menambah task melalui ECS atau EKS dan load balancer.</li><li>Kamu mengontrol image container, CPU, dan memori per task.</li></ul></Fragment>
+</Compare>
+
+<Box variant="tip" icon="💡" label="Cara mengingat"><p>Jika soal bilang "jalankan fungsi singkat saat ada event", pikirkan Lambda; jika bilang "jalankan container yang sudah dipaketkan tanpa mengelola server", pikirkan Fargate.</p></Box>
+
+</Section>
+
+<Section num="05" id="lambda" title="AWS Lambda: Fungsi Kecil yang Jalan Saat Dipanggil" sub="Lambda cocok untuk event-driven compute, otomatis scale, dan bayar sesuai pemakaian.">
+
+<p class="lead">Lambda mirip bel layanan hotel, petugas datang ketika tombol ditekan, mengerjakan tugas singkat, lalu pergi.</p>
+
+**AWS Lambda** adalah layanan compute yang menjalankan kode tanpa perlu mengelola server. Kode dapat scale naik dan turun otomatis, dengan model pay-per-use. Lihat <a href="https://docs.aws.amazon.com/lambda/latest/dg/welcome.html" target="_blank" rel="noreferrer">What is AWS Lambda?</a>.
+
+Lambda sangat cocok untuk tugas yang dipicu event, misalnya file baru masuk ke S3, pesan masuk ke SQS, perubahan data di DynamoDB, jadwal tertentu, atau request dari API Gateway.
+
+<h3>Batas praktik yang perlu diingat</h3>
+
+<p>Batasan Lambda sering muncul sebagai jebakan halus di CLF-C02, jadi kenali angka kuncinya. Kamu tidak perlu menghafal semua, cukup ingat polanya: Lambda dibuat untuk tugas singkat, kecil, dan event-driven, bukan workload berat yang berjalan lama.</p>
+
+Lambda memiliki timeout **default 3 detik** dan dapat diatur sampai **maksimum 900 detik (15 menit)**. Tidak ada cara menaikkan timeout di atas 900 detik, jadi proses yang lebih panjang harus dipindah ke Fargate, ECS, AWS Batch, atau EC2. Lihat <a href="https://docs.aws.amazon.com/lambda/latest/dg/configuration-timeout.html" target="_blank" rel="noreferrer">Configure Lambda function timeout</a>.
+
+Memori Lambda dapat diatur dari **128 MB sampai 10.240 MB (10 GB)** dengan increment 1 MB, dan alokasi CPU mengikuti memori (sekitar setara 1 vCPU pada 1.769 MB). Lambda juga menyediakan ephemeral storage di direktori `/tmp`, dengan **minimum sekaligus default 512 MB** dan dapat dinaikkan sampai **10.240 MB (10 GB)**. Storage di atas 512 MB dikenakan biaya tambahan. `/tmp` berguna untuk proses sementara seperti ETL ringan, pemrosesan gambar, atau file sementara. Lihat <a href="https://docs.aws.amazon.com/lambda/latest/dg/configuration-ephemeral-storage.html" target="_blank" rel="noreferrer">Configure ephemeral storage for Lambda functions</a> dan <a href="https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html" target="_blank" rel="noreferrer">Lambda quotas</a>.
+
+Secara default, satu akun punya batas **1.000 concurrent executions per Region** dan **75 GB code storage per akun per Region**, dan keduanya bisa dinaikkan lewat permintaan kuota. Inti praktisnya: Lambda scale otomatis, tetapi tetap ada plafon konkruensi yang dijaga agar aman.
+
+<CardGrid cols={3}>
+  <Card><h4>Event singkat</h4><p>Resize gambar, validasi data, webhook, transformasi file kecil, dan otomatisasi operasional.</p></Card>
+  <Card><h4>Scale otomatis</h4><p>Lambda cocok ketika beban datang tidak menentu dan kamu tidak ingin server idle membayar saat sepi.</p></Card>
+  <Card><h4>Bukan untuk semua hal</h4><p>Jika proses sangat lama, stateful, butuh GPU, atau perlu kontrol host, pertimbangkan ECS, Fargate, Batch, atau EC2.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Jebakan Lambda"><p>Jika soal menyebut tugas berjalan lebih dari 15 menit, butuh GPU khusus, atau perlu mengelola OS, Lambda biasanya bukan jawaban terbaik. Angka 3 detik (default) dan 900 detik (maksimum) sering jadi pengecoh.</p></Box>
+
+</Section>
+
+<Section num="06" id="api-event" title="API Gateway dan Pola Event-Driven" sub="Serverless sering berarti beberapa layanan kecil yang saling terhubung melalui event.">
+
+<p class="lead">API Gateway adalah resepsionis API, ia menerima tamu, memeriksa aturan, lalu meneruskan permintaan ke backend seperti Lambda.</p>
+
+**Amazon API Gateway** adalah layanan untuk membuat, menerbitkan, memelihara, memonitor, dan mengamankan API pada skala besar. Ia mendukung tiga tipe API: **REST API**, **HTTP API**, dan **WebSocket API**. Lihat <a href="https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html" target="_blank" rel="noreferrer">Amazon API Gateway documentation</a>.
+
+Perlu dicatat, REST API dan HTTP API adalah dua jenis RESTful API yang berbeda, bukan sinonim. REST API adalah versi lebih lama dengan fitur paling lengkap, sedangkan HTTP API lebih baru, lebih cepat, dan biasanya lebih hemat untuk kasus umum. Untuk CLF-C02 cukup mengenali bahwa keduanya ada dan berbeda, tanpa menghafal daftar fitur per jenis.
+
+Dalam arsitektur serverless, API Gateway sering menjadi pintu depan (front door) untuk Lambda. Namun Lambda juga bisa dipicu oleh layanan lain, misalnya S3, EventBridge, SQS, SNS, DynamoDB Streams, atau jadwal tertentu.
+
+<Figure><OtherComputeFig02 /><Fragment slot="caption"><b>Gambar 3.</b> Contoh alur serverless, pengguna memanggil API Gateway, Lambda menjalankan logika, lalu memakai layanan data atau messaging.</Fragment></Figure>
+
+<h3>Pola yang sering muncul</h3>
+
+<Steps>
+  <Step><b>Request sinkron</b><p>Browser memanggil API Gateway, API Gateway memanggil Lambda, Lambda mengembalikan response.</p></Step>
+  <Step><b>Event asinkron</b><p>S3 atau EventBridge memicu Lambda, Lambda memproses data tanpa menunggu pengguna di depan layar.</p></Step>
+  <Step><b>Antrean kerja</b><p>SQS menahan pesan agar Lambda atau container dapat memproses pekerjaan secara stabil.</p></Step>
+</Steps>
+
+<Box variant="tip" icon="💡" label="Mental model"><p>Serverless bukan berarti tidak ada server sama sekali, tetapi servernya dikelola AWS dan kamu fokus pada fungsi, event, serta konfigurasi keamanan.</p></Box>
+
+</Section>
+
+<Section num="07" id="batch-beanstalk-lightsail" title="Batch, Elastic Beanstalk, Lightsail, dan Outposts" sub="Empat layanan ini sering keluar sebagai jawaban skenario yang mirip tetapi tujuannya berbeda.">
+
+<p class="lead">Tidak semua pekerjaan cocok menjadi web server atau fungsi singkat, beberapa butuh antrean job, platform siap pakai, paket sederhana, atau lokasi on-premises.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>AWS Batch</h4><p>Layanan fully managed untuk menjalankan batch computing workloads, cocok untuk job besar seperti simulasi, analitik, dan ML batch. Batch tidak punya compute sendiri, melainkan memakai ECS, EKS, Fargate, dan EC2 (On-Demand atau Spot) sebagai backend. Lihat <a href="https://docs.aws.amazon.com/batch/latest/userguide/what-is-batch.html" target="_blank" rel="noreferrer">What is AWS Batch?</a>.</p></Card>
+  <Card><h4>Elastic Beanstalk</h4><p>Layanan yang menyederhanakan deployment aplikasi web, menyediakan EC2, load balancing, health monitoring, dan scaling otomatis. Mendukung Go, Java, .NET, Node.js, PHP, Python, Ruby, dan Docker. Lihat <a href="https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/Welcome.html" target="_blank" rel="noreferrer">What is Elastic Beanstalk?</a>.</p></Card>
+  <Card><h4>Amazon Lightsail</h4><p>Cara mudah memulai website atau web app dengan paket sederhana seperti VPS, container service, managed database, CDN, load balancer, storage, static IP, DNS, dan snapshot, dengan harga bulanan tetap. Lihat <a href="https://docs.aws.amazon.com/lightsail/latest/userguide/what-is-amazon-lightsail.html" target="_blank" rel="noreferrer">What is Amazon Lightsail?</a>.</p></Card>
+  <Card><h4>AWS Outposts</h4><p>Layanan fully managed yang membawa infrastruktur dan API AWS ke lokasi on-premises pelanggan, tersedia sebagai Outposts racks (42U) dan Outposts servers (1U/2U). Lihat <a href="https://docs.aws.amazon.com/outposts/latest/userguide/what-is-outposts.html" target="_blank" rel="noreferrer">What is AWS Outposts?</a>.</p></Card>
+</CardGrid>
+
+<h3>Catatan penting tiap layanan</h3>
+
+<p><strong>AWS Batch</strong> bukan pengganti Lambda atau ECS, melainkan lapisan orkestrasi job di atasnya. Kamu mengirim job ke job queue, dan Batch memilih kapan serta di mana menjalankannya memakai ECS, EKS, Fargate, atau EC2. Karena bisa memakai EC2 Spot, Batch sering jadi cara hemat untuk job besar yang tahan interupsi.</p>
+
+<p><strong>Elastic Beanstalk</strong> populer disebut PaaS di komunitas, tetapi dokumentasi AWS lebih sering menyebutnya sebagai layanan yang menyederhanakan deployment dengan provisioning otomatis. Untuk CLF-C02, fokuslah pada idenya: kamu unggah kode, AWS menyiapkan dan mengelola resource standar di baliknya. Tidak ada biaya layanan Beanstalk itu sendiri, kamu hanya membayar resource AWS yang dipakai.</p>
+
+<p><strong>Amazon Lightsail</strong> menonjol karena harga bulanan tetap yang mudah diprediksi, dengan compute, storage, dan sebagian transfer data sudah dibundel. Cocok untuk pemula dan proyek kecil, tetapi kurang fleksibel dibanding EC2 dan ECS untuk arsitektur kompleks.</p>
+
+<p><strong>AWS Outposts</strong> menjalankan EC2, ECS, EBS, S3, RDS, dan lainnya secara on-premises memakai API AWS yang sama seperti di Region. Satu hal yang sering jadi jebakan: EKS hanya didukung pada Outposts racks, bukan pada Outposts servers yang lebih kecil. Harga Outposts bergantung konfigurasi order, term kontrak, dan opsi pembayaran, jadi verifikasi langsung di halaman pricing AWS sebelum komitmen.</p>
+
+<h3>Bedakan dengan cepat</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Layanan</th><th>Gunakan ketika</th><th>Kata kunci ujian</th></tr></thead>
+  <tbody>
+    <tr><td>AWS Batch</td><td>Pekerjaan batch, job queue, komputasi besar, pemrosesan periodik.</td><td>batch jobs, simulation, scheduled processing, ML batch.</td></tr>
+    <tr><td>Elastic Beanstalk</td><td>Developer ingin upload kode web app dan AWS mengelola resource standar.</td><td>easy deployment, web app, managed platform, underlying resources.</td></tr>
+    <tr><td>Lightsail</td><td>Pemula atau bisnis kecil ingin paket VPS sederhana dan harga lebih mudah diprediksi.</td><td>simple website, predictable monthly price, all-in-one bundle.</td></tr>
+    <tr><td>Outposts</td><td>Butuh menjalankan layanan AWS di on-premises karena latency, data locality, atau integrasi fasilitas lokal.</td><td>on premises, hybrid, local processing, same AWS APIs.</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="exam" icon="🎯" label="Jebakan biaya"><p>Elastic Beanstalk tidak menambahkan biaya layanan platform tersendiri, tetapi resource di baliknya seperti EC2, load balancer, database, dan storage tetap ditagihkan.</p></Box>
+
+</Section>
+
+<Section num="08" id="memilih-layanan" title="Cara Memilih Layanan di Skenario Nyata" sub="Mulai dari pertanyaan bisnis, bukan dari nama layanan.">
+
+<p class="lead">Di dunia nyata, pilihan compute yang benar adalah yang paling sederhana memenuhi kebutuhan kontrol, skala, biaya, keamanan, dan skill tim.</p>
+
+<Figure><OtherComputeFig04 /><Fragment slot="caption"><b>Gambar 4.</b> Pohon keputusan ringkas: mulai dari bentuk workload, lalu turun ke layanan yang paling cocok dengan kata kunci skenario.</Fragment></Figure>
+
+<h3>Checklist keputusan</h3>
+
+<Steps>
+  <Step><b>Tentukan bentuk workload</b><p>Apakah web app, API, fungsi event-driven, container, batch job, atau workload hybrid di lokasi fisik?</p></Step>
+  <Step><b>Tentukan durasi proses</b><p>Apakah proses singkat dan event-based, berjalan terus, atau job panjang yang bisa masuk antrean?</p></Step>
+  <Step><b>Tentukan level kontrol</b><p>Apakah perlu mengatur OS dan instance, atau cukup mendefinisikan kode, container, CPU, memori, dan event?</p></Step>
+  <Step><b>Tentukan skill tim</b><p>Apakah tim nyaman dengan Kubernetes, cukup dengan ECS, atau lebih cocok memakai Beanstalk dan Lightsail?</p></Step>
+  <Step><b>Tentukan pola biaya</b><p>Apakah ingin pay-per-use, kapasitas selalu berjalan, Spot untuk job interupsi, atau paket bulanan yang mudah diprediksi?</p></Step>
+</Steps>
+
+<CardGrid cols={2}>
+  <Card><h4>Startup membuat API kecil</h4><p>API Gateway + Lambda cocok jika traffic belum stabil, proses singkat, dan tim ingin minim server.</p></Card>
+  <Card><h4>Perusahaan punya aplikasi Docker</h4><p>ECR + ECS cocok jika ingin orkestrasi container AWS-native tanpa kompleksitas Kubernetes penuh.</p></Card>
+  <Card><h4>Platform sudah Kubernetes</h4><p>EKS cocok jika organisasi sudah punya pipeline, observability, dan deployment standard berbasis Kubernetes.</p></Card>
+  <Card><h4>Riset menjalankan simulasi malam hari</h4><p>AWS Batch cocok karena job bisa diantrikan, dijadwalkan, dan dijalankan dengan compute sesuai kebutuhan.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Prinsip sederhana"><p>Untuk CLF-C02, jawaban terbaik biasanya layanan yang paling managed dan paling cocok dengan kata kunci skenario, bukan layanan yang paling fleksibel.</p></Box>
+
+</Section>
+
+<Section num="09" id="keamanan-operasional" title="Keamanan, Observability, dan Shared Responsibility" sub="Semakin managed layanannya, semakin banyak pekerjaan infrastruktur ditangani AWS, tetapi keamanan aplikasi tetap milik pelanggan.">
+
+<p class="lead">Managed service bukan kartu bebas dari tanggung jawab, ia hanya memindahkan sebagian pekerjaan operasional ke AWS.</p>
+
+Pada **Lambda**, AWS mengelola infrastruktur runtime, tetapi kamu tetap bertanggung jawab atas kode, IAM role, environment variable, dependency, logging, dan akses ke data.
+
+Pada **ECS atau EKS di EC2**, kamu punya tanggung jawab lebih besar atas host EC2, patching, kapasitas, dan konfigurasi jaringan. Pada **Fargate**, AWS lebih banyak mengurus host, tetapi kamu tetap mengatur image, task role, secrets, network, dan izin.
+
+Pada **ECR**, perhatikan permission push/pull, image scanning, lifecycle policy, dan integrasi CI/CD. Image container yang usang atau berisi secret adalah risiko keamanan nyata.
+
+Pada **API Gateway**, perhatikan authentication, authorization, throttling, logging, dan integrasi dengan backend. API yang terbuka tanpa kontrol ibarat pintu toko tanpa penjaga.
+
+<h3>Observability minimum</h3>
+
+<CardGrid cols={3}>
+  <Card><h4>CloudWatch Logs</h4><p>Tempat umum melihat log Lambda, ECS, dan aplikasi agar error tidak hanya terasa oleh pengguna.</p></Card>
+  <Card><h4>CloudWatch Metrics</h4><p>Pantau invocations, errors, duration, throttles, CPU, memory, dan sinyal kapasitas sesuai layanan.</p></Card>
+  <Card><h4>AWS X-Ray</h4><p>Bantu tracing request lintas API, Lambda, dan service lain saat aplikasi semakin terdistribusi.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Kesalahan keamanan umum"><p>Jangan memberi role Lambda atau task ECS izin terlalu luas seperti akses penuh ke semua S3 bucket hanya karena aplikasi butuh satu bucket.</p></Box>
+
+</Section>
+
+<Section num="10" id="hands-on" title="Hands-on Ringan: Rancang Tanpa Menekan Tombol" sub="Latihan konseptual ini melatih pola pikir layanan, bukan langkah klik yang mudah berubah di console.">
+
+<p class="lead">Bayangkan kamu diminta merancang fitur upload gambar untuk toko online kecil.</p>
+
+<h3>Skenario A: Serverless thumbnail</h3>
+
+<Steps>
+  <Step><b>Upload gambar ke S3</b><p>Pengguna mengunggah gambar produk ke bucket S3 melalui aplikasi.</p></Step>
+  <Step><b>Event S3 memicu Lambda</b><p>Lambda berjalan hanya saat file baru masuk, lalu membuat thumbnail.</p></Step>
+  <Step><b>Simpan hasil ke S3</b><p>Thumbnail disimpan ke prefix berbeda agar aplikasi bisa menampilkan gambar ringan.</p></Step>
+  <Step><b>Log ke CloudWatch</b><p>Jika resize gagal, tim melihat error dan durasi fungsi melalui CloudWatch Logs dan Metrics.</p></Step>
+</Steps>
+
+<h3>Skenario B: Container API</h3>
+
+<Steps>
+  <Step><b>Bangun image API</b><p>Tim membuat image container aplikasi dan menyimpannya di Amazon ECR.</p></Step>
+  <Step><b>Jalankan service di ECS</b><p>ECS menjaga beberapa task tetap berjalan dan mengganti task yang gagal.</p></Step>
+  <Step><b>Pakai Fargate</b><p>Fargate dipilih agar tim tidak mengelola EC2 host untuk container.</p></Step>
+  <Step><b>Tambahkan load balancer</b><p>Traffic pengguna diarahkan ke service secara stabil, lalu kapasitas bisa diskalakan sesuai kebutuhan.</p></Step>
+</Steps>
+
+<Box variant="exam" icon="🎯" label="Latihan ujian"><p>Jika kata kunci soal adalah "jalankan kode saat file masuk S3", pikirkan Lambda; jika "jalankan container tanpa mengelola server", pikirkan Fargate.</p></Box>
+
+</Section>
+
+<Section num="11" id="jebakan" title="Kesalahan Pemula dan Jebakan Soal" sub="Bagian ini membantu menghindari jawaban yang terlihat benar tetapi tidak paling cocok.">
+
+<p class="lead">Banyak soal compute CLF-C02 terasa mudah, tetapi sengaja memakai kata kunci yang mirip.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>ECR bukan tempat menjalankan container</h4><p>ECR adalah registry image yang bisa privat maupun publik. Untuk menjalankan container, gunakan ECS, EKS, atau layanan lain yang mendukung container.</p></Card>
+  <Card><h4>ECS itu orchestrator, bukan compute engine</h4><p>ECS dan EKS mengatur container, sedangkan Fargate dan EC2 adalah tempat container berjalan. Jangan tukarkan peran orchestrator dan compute engine.</p></Card>
+  <Card><h4>Fargate bukan pengganti Kubernetes</h4><p>Fargate adalah compute engine serverless untuk container yang dipakai di bawah ECS atau EKS, sedangkan EKS adalah managed Kubernetes service.</p></Card>
+  <Card><h4>Lambda bukan server web biasa</h4><p>Lambda cocok untuk event dan proses singkat, bukan workload long-running yang perlu host selalu hidup.</p></Card>
+  <Card><h4>Lightsail bukan pilihan enterprise paling fleksibel</h4><p>Lightsail unggul untuk kesederhanaan dan prediktabilitas, tetapi EC2, ECS, EKS, atau Beanstalk lebih fleksibel untuk arsitektur kompleks.</p></Card>
+  <Card><h4>Batch bukan database analytics</h4><p>AWS Batch menjalankan job komputasi batch, sedangkan Athena, EMR, Redshift, dan Glue berada di ranah analytics yang berbeda.</p></Card>
+  <Card><h4>Beanstalk tetap memakai resource AWS</h4><p>Beanstalk menyederhanakan deployment, tetapi resource di baliknya tetap perlu dipahami dari sisi biaya dan konfigurasi.</p></Card>
+</CardGrid>
+
+<h3>Kata kunci cepat</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Kata kunci soal</th><th>Jawaban yang sering tepat</th><th>Kenapa</th></tr></thead>
+  <tbody>
+    <tr><td>Event, fungsi, tidak mengelola server, trigger S3.</td><td>AWS Lambda</td><td>Compute serverless berbasis event.</td></tr>
+    <tr><td>Container, tidak ingin mengelola EC2 host.</td><td>AWS Fargate</td><td>Menjalankan container tanpa server yang dikelola pelanggan.</td></tr>
+    <tr><td>Orkestrasi container AWS-native.</td><td>Amazon ECS</td><td>Managed container orchestration di AWS.</td></tr>
+    <tr><td>Kubernetes managed.</td><td>Amazon EKS</td><td>Menjalankan Kubernetes tanpa mengelola control plane sendiri.</td></tr>
+    <tr><td>Simpan image Docker atau OCI.</td><td>Amazon ECR</td><td>Managed container registry.</td></tr>
+    <tr><td>Batch jobs skala besar.</td><td>AWS Batch</td><td>Mengelola antrean dan eksekusi job batch.</td></tr>
+    <tr><td>Upload kode web app, AWS siapkan environment.</td><td>Elastic Beanstalk</td><td>Menyederhanakan deployment aplikasi web dengan provisioning otomatis.</td></tr>
+    <tr><td>Website sederhana, paket VPS mudah.</td><td>Amazon Lightsail</td><td>Pengalaman sederhana dengan harga lebih mudah diprediksi.</td></tr>
+    <tr><td>AWS services di data center sendiri.</td><td>AWS Outposts</td><td>Hybrid cloud untuk lokasi pelanggan.</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="warn" icon="⚠️" label="Jebakan istilah"><p>Serverless di AWS bisa berarti Lambda untuk fungsi atau Fargate untuk container, jadi baca bentuk workload sebelum memilih.</p></Box>
+
+</Section>
+
+<Section num="12" id="ringkasan" title="Ringkasan & Tips Ujian" sub="Pemetaan akhir ke domain CLF-C02.">
+
+<p class="lead">Other Compute Services membantu kamu menjawab satu pertanyaan besar: beban kerja ini sebaiknya dijalankan di mana?</p>
+
+<Recap title="Poin Penting"><ul><li><strong>Lambda</strong> cocok untuk fungsi event-driven, proses singkat, scale otomatis, dan minim server management.</li><li><strong>Fargate</strong> menjalankan container tanpa mengelola server, biasanya bersama ECS atau EKS.</li><li><strong>ECR</strong> menyimpan image container, <strong>ECS</strong> mengorkestrasi container AWS-native, dan <strong>EKS</strong> menjalankan Kubernetes terkelola.</li><li><strong>AWS Batch</strong> cocok untuk batch job, simulasi, analitik, dan workload komputasi yang bisa diantrikan.</li><li><strong>Elastic Beanstalk</strong> menyederhanakan deployment web app, tetapi resource underlying tetap ada dan tetap ditagihkan.</li><li><strong>Lightsail</strong> cocok untuk website atau aplikasi sederhana yang butuh paket mudah dan prediktabel.</li><li><strong>Outposts</strong> membawa pengalaman AWS ke lokasi on-premises untuk kebutuhan hybrid, latency lokal, atau data locality.</li></ul></Recap>
+
+<h3>Pemetaan domain CLF-C02</h3>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Domain</th><th>Bobot</th><th>Hubungan dengan modul ini</th></tr></thead>
+  <tbody>
+    <tr><td>Domain 1, Cloud Concepts</td><td>24%</td><td>Memahami elasticity, managed services, dan value proposition serverless.</td></tr>
+    <tr><td>Domain 2, Security and Compliance</td><td>30%</td><td>Memahami IAM roles, least privilege, shared responsibility, secrets, image security, dan API protection.</td></tr>
+    <tr><td>Domain 3, Cloud Technology and Services</td><td>34%</td><td>Fokus utama modul, mengenali layanan compute, container, serverless, batch, PaaS, dan hybrid.</td></tr>
+    <tr><td>Domain 4, Billing, Pricing, and Support</td><td>12%</td><td>Membedakan pay-per-use, resource underlying, kapasitas berjalan, dan paket harga yang lebih prediktabel tanpa menghafal angka.</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Tips ujian cepat</h3>
+
+<ul>
+  <li>Jika soal berkata "tanpa mengelola server" dan workload adalah fungsi, pilih Lambda; jika workload adalah container, pilih Fargate.</li>
+  <li>Jika soal berkata "Kubernetes", pilih EKS, bukan ECS.</li>
+  <li>Jika soal berkata "registry untuk image container", pilih ECR, bukan ECS.</li>
+  <li>Jika soal berkata "batch jobs" atau "job queue", pilih AWS Batch.</li>
+  <li>Jika soal berkata "deploy web app dengan AWS mengurus load balancing, scaling, dan health monitoring", pilih Elastic Beanstalk.</li>
+  <li>Jika soal berkata "website sederhana untuk pemula dengan paket mudah diprediksi", pilih Lightsail.</li>
+  <li>Jika soal berkata "AWS di on-premises", pilih Outposts.</li>
+</ul>
+
+<Box variant="exam" icon="🎯" label="Kalimat kunci"><p>Untuk Cloud Practitioner, hafalkan hubungan layanan dan skenario bisnisnya, bukan konfigurasi teknis terdalam.</p></Box>
+
+</Section>

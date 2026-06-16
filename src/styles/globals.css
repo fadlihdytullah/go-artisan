@@ -3832,3 +3832,255 @@ pre.astro-code > code {
     outline-offset: 2px;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   COURSE DETAIL — "Tracks" (dipakai /courses/go-luminas & /courses/aws).
+   Satu sumber styling agar dua halaman + dua varian tidak pernah drift:
+   - varian "phases"   : accordion Tahap → banyak chapter (Go Luminas)
+   - varian "chapters" : daftar chapter bernomor datar (AWS Cloud Practitioner)
+   Hero ada di components/course/CourseHero.astro. Flat, rounded, token-driven.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.course-detail { display: block; font-family: var(--font-body); }
+
+/* Hero band — di dalam .shell-col (garis sisi vertikal). border-top + divider
+   antar-band (.shell-band + .shell-band) memberi garis horizontal atas & bawah,
+   sehingga hero "berbingkai" seperti frame desain. Ritme vertikal lebih rapat
+   dari band default; padding horizontal tetap default agar sejajar kurikulum. */
+.course-hero-band {
+  --shell-band-py: clamp(36px, 4vw, 48px);
+  border-top: 1px solid var(--line);
+}
+
+/* Header kurikulum */
+.course-cur-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.course-cur-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.course-cur-count {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--faint);
+}
+
+/* ── Varian "phases": accordion Tahap ─────────────────────────────────── */
+.track-phases { display: flex; flex-direction: column; gap: 12px; }
+.track-phase {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.track-phase-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.track-phase-head::-webkit-details-marker { display: none; }
+.track-phase-head:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; border-radius: var(--radius-card); }
+.track-phase-lead { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.track-phase-tag {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper-soft);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.track-phase-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.track-phase-meta { flex: none; display: inline-flex; align-items: center; gap: 16px; }
+.track-phase-progress { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--blue); }
+.track-phase.is-complete .track-phase-progress { color: var(--green, #2f7d4f); }
+.track-phase-total { font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--faint); }
+.track-phase-chevron { flex: none; display: inline-flex; color: var(--faint); transition: transform 0.18s ease; }
+.track-phase[open] .track-phase-chevron { transform: rotate(180deg); }
+.track-phase-head:hover .track-phase-name { color: var(--blue); }
+
+/* Daftar chapter (modul) di dalam sebuah phase */
+.track-modules {
+  list-style: none;
+  max-width: none; /* batalkan aturan prosa global `ol { max-width: 720px }` */
+  margin: 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.track-module { margin: 0; }
+.track-module-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 22px;
+  text-decoration: none;
+  color: inherit;
+}
+.track-module-link:hover { background: var(--paper-soft); }
+.track-module-link:hover .track-module-title { color: var(--blue); }
+.track-module-ico { flex: none; display: inline-flex; }
+.track-module-ico .ico-current,
+.track-module-ico .ico-done { display: none; }
+.track-module-ico .ico-todo { display: block; color: var(--faint); }
+.track-module.is-next .track-module-ico .ico-todo { display: none; }
+.track-module.is-next .track-module-ico .ico-current { display: block; color: var(--blue-bright); }
+.track-module.is-complete .track-module-ico .ico-todo { display: none; }
+.track-module.is-complete .track-module-ico .ico-done { display: block; color: var(--blue-bright); }
+.track-module-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  overflow: hidden;
+}
+.track-module.is-next .track-module-title { font-weight: 600; }
+.track-module:not(.is-next):not(.is-complete) .track-module-title { color: var(--ink-muted); }
+.track-module-flag {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--blue);
+  white-space: nowrap;
+}
+.track-module-state {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.track-module.is-next .track-module-state { color: var(--blue); }
+.track-module.is-complete .track-module-state { color: var(--green, #2f7d4f); }
+.track-module-meta {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+/* ── Varian "chapters": daftar bernomor datar (satu kartu) ────────────── */
+.track-chapters {
+  list-style: none;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.track-chapter { margin: 0; }
+.track-chapter + .track-chapter { border-top: 1px solid var(--line); }
+.track-chapter-link {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 22px;
+  text-decoration: none;
+  color: inherit;
+}
+.track-chapter-link:hover { background: var(--paper-soft); }
+.track-chapter-link:hover .track-chapter-title { color: var(--blue); }
+.track-chapter-link:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.track-chapter-num {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--faint);
+  padding-top: 2px;
+  min-width: 24px;
+}
+.track-chapter-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.track-chapter-title {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.track-chapter-flag {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--blue);
+  white-space: nowrap;
+}
+.track-chapter-sum { font-size: 13px; font-weight: 500; line-height: 1.5; color: var(--ink-muted); }
+.track-chapter-meta {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--faint);
+  white-space: nowrap;
+  padding-top: 2px;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .track-phase-head { padding: 16px 16px; gap: 10px; }
+  .track-phase-lead { gap: 10px; }
+  .track-phase-meta { gap: 10px; }
+  .track-phase-progress { display: none; }
+  .track-module-link { padding: 11px 16px; }
+  .track-module-flag,
+  .track-module-state { display: none; }
+  .track-chapter-link { padding: 14px 16px; gap: 12px; }
+  .track-chapter-meta { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .track-phase-chevron { transition: none; }
+}

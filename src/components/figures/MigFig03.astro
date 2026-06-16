@@ -1,0 +1,83 @@
+<svg viewBox="0 0 760 470" xmlns="http://www.w3.org/2000/svg" font-family="Inter, ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <marker id="arrowMig3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9c4a2f" />
+    </marker>
+  </defs>
+  <rect x="16" y="16" width="728" height="438" rx="18" fill="#fbfaf5" stroke="#d9d4c4" stroke-width="2" />
+  <text x="380" y="46" text-anchor="middle" font-size="19" fill="#241f17" font-weight="700">Pohon Keputusan 7 R Strategi Migrasi</text>
+
+  <!-- Q1 keep app? -->
+  <rect x="296" y="62" width="168" height="48" rx="10" fill="#241f17" />
+  <text x="380" y="82" text-anchor="middle" font-size="13" fill="#bd5d3e" font-weight="700">Masih dipakai?</text>
+  <text x="380" y="100" text-anchor="middle" font-size="11" fill="#fbfaf5">Pertanyaan awal</text>
+
+  <!-- branch to Retire -->
+  <line x1="296" y1="86" x2="150" y2="86" stroke="#9c4a2f" stroke-width="2.5" />
+  <line x1="150" y1="86" x2="150" y2="128" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#arrowMig3)" />
+  <text x="200" y="80" text-anchor="middle" font-size="10" fill="#6e6a5c">Tidak</text>
+  <rect x="74" y="130" width="152" height="56" rx="10" fill="#c14a39" />
+  <text x="150" y="152" text-anchor="middle" font-size="13" fill="#fbfaf5" font-weight="700">Retire</text>
+  <text x="150" y="170" text-anchor="middle" font-size="10" fill="#f7e6df">matikan aplikasi zombie</text>
+
+  <!-- branch to Retain -->
+  <line x1="464" y1="86" x2="610" y2="86" stroke="#9c4a2f" stroke-width="2.5" />
+  <line x1="610" y1="86" x2="610" y2="128" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#arrowMig3)" />
+  <text x="560" y="80" text-anchor="middle" font-size="10" fill="#6e6a5c">Belum siap</text>
+  <rect x="534" y="130" width="152" height="56" rx="10" fill="#6e6a5c" />
+  <text x="610" y="152" text-anchor="middle" font-size="13" fill="#fbfaf5" font-weight="700">Retain</text>
+  <text x="610" y="170" text-anchor="middle" font-size="10" fill="#edeadf">tahan di on-premises</text>
+
+  <!-- Q2 change app? -->
+  <line x1="380" y1="110" x2="380" y2="206" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#arrowMig3)" />
+  <text x="416" y="160" text-anchor="middle" font-size="10" fill="#6e6a5c">Ya, pindah</text>
+  <rect x="288" y="208" width="184" height="48" rx="10" fill="#bd5d3e" />
+  <text x="380" y="228" text-anchor="middle" font-size="13" fill="#fbfaf5" font-weight="700">Seberapa banyak ubah?</text>
+  <text x="380" y="246" text-anchor="middle" font-size="11" fill="#f0e3d8">Tingkat perubahan aplikasi</text>
+
+  <!-- 5 leaves row -->
+  <line x1="380" y1="256" x2="380" y2="300" stroke="#9c4a2f" stroke-width="2.5" />
+  <line x1="110" y1="300" x2="650" y2="300" stroke="#9c4a2f" stroke-width="2.5" />
+
+  <!-- Relocate -->
+  <line x1="110" y1="300" x2="110" y2="332" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#arrowMig3)" />
+  <rect x="42" y="334" width="136" height="92" rx="10" fill="#fbfaf5" stroke="#0a7d6e" stroke-width="2" />
+  <text x="110" y="356" text-anchor="middle" font-size="13" fill="#0a7d6e" font-weight="700">Relocate</text>
+  <text x="110" y="376" text-anchor="middle" font-size="10" fill="#6e6a5c">level hypervisor</text>
+  <text x="110" y="392" text-anchor="middle" font-size="10" fill="#6e6a5c">tanpa ubah app</text>
+  <text x="110" y="414" text-anchor="middle" font-size="10" fill="#241f17" font-weight="700">VMware Cloud</text>
+
+  <!-- Rehost -->
+  <line x1="245" y1="300" x2="245" y2="332" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#arrowMig3)" />
+  <rect x="186" y="334" width="118" height="92" rx="10" fill="#fbfaf5" stroke="#bd5d3e" stroke-width="2" />
+  <text x="245" y="356" text-anchor="middle" font-size="13" fill="#bd5d3e" font-weight="700">Rehost</text>
+  <text x="245" y="376" text-anchor="middle" font-size="10" fill="#6e6a5c">tanpa ubah</text>
+  <text x="245" y="392" text-anchor="middle" font-size="10" fill="#6e6a5c">lift and shift</text>
+  <text x="245" y="414" text-anchor="middle" font-size="10" fill="#241f17" font-weight="700">MGN</text>
+
+  <!-- Replatform -->
+  <line x1="380" y1="300" x2="380" y2="332" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#arrowMig3)" />
+  <rect x="312" y="334" width="136" height="92" rx="10" fill="#fbfaf5" stroke="#9c4a2f" stroke-width="2" />
+  <text x="380" y="356" text-anchor="middle" font-size="12" fill="#9c4a2f" font-weight="700">Replatform</text>
+  <text x="380" y="376" text-anchor="middle" font-size="10" fill="#6e6a5c">ubah kecil</text>
+  <text x="380" y="392" text-anchor="middle" font-size="10" fill="#6e6a5c">lift tinker shift</text>
+  <text x="380" y="414" text-anchor="middle" font-size="10" fill="#241f17" font-weight="700">DB &rarr; RDS</text>
+
+  <!-- Repurchase -->
+  <line x1="515" y1="300" x2="515" y2="332" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#arrowMig3)" />
+  <rect x="456" y="334" width="118" height="92" rx="10" fill="#fbfaf5" stroke="#6a5aa6" stroke-width="2" />
+  <text x="515" y="356" text-anchor="middle" font-size="12" fill="#6a5aa6" font-weight="700">Repurchase</text>
+  <text x="515" y="376" text-anchor="middle" font-size="10" fill="#6e6a5c">ganti produk</text>
+  <text x="515" y="392" text-anchor="middle" font-size="10" fill="#6e6a5c">drop and shop</text>
+  <text x="515" y="414" text-anchor="middle" font-size="10" fill="#241f17" font-weight="700">pindah ke SaaS</text>
+
+  <!-- Refactor -->
+  <line x1="650" y1="300" x2="650" y2="332" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#arrowMig3)" />
+  <rect x="582" y="334" width="136" height="92" rx="10" fill="#fbfaf5" stroke="#c14a39" stroke-width="2" />
+  <text x="650" y="356" text-anchor="middle" font-size="13" fill="#c14a39" font-weight="700">Refactor</text>
+  <text x="650" y="376" text-anchor="middle" font-size="10" fill="#6e6a5c">ubah besar</text>
+  <text x="650" y="392" text-anchor="middle" font-size="10" fill="#6e6a5c">re-architect</text>
+  <text x="650" y="414" text-anchor="middle" font-size="10" fill="#241f17" font-weight="700">cloud-native</text>
+
+  <text x="380" y="446" text-anchor="middle" font-size="10" fill="#6e6a5c">Tujuh R resmi AWS Prescriptive Guidance &middot; Relocate adalah anggota penuh, bukan tambahan opsional</text>
+</svg>

@@ -1,0 +1,365 @@
+---
+title: "Modul AWS S3 - AWS Cloud Practitioner CLF-C02"
+badge: "S3"
+topTitle: "Amazon S3"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Memahami Amazon S3 sebagai gudang objek AWS, dari bucket, keamanan, website statis, versioning, replikasi, storage class, Snow Family, hingga Storage Gateway."
+order: 5
+target: "CLF-C02"
+readingTime: "~75 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "S3 sebagai Gudang Objek" }
+  - { num: "02", id: "bucket-objek-prefix", title: "Bucket, Object, Key, dan Prefix" }
+  - { num: "03", id: "hands-on-dasar", title: "Hands-on Dasar S3" }
+  - { num: "04", id: "keamanan-bucket-policy", title: "Keamanan, Bucket Policy, dan Block Public Access" }
+  - { num: "05", id: "static-website", title: "Static Website Hosting" }
+  - { num: "06", id: "versioning-replikasi", title: "Versioning dan Replication" }
+  - { num: "07", id: "storage-classes-lifecycle", title: "Storage Classes dan Lifecycle" }
+  - { num: "08", id: "s3-express-one-zone", title: "S3 Express One Zone" }
+  - { num: "09", id: "enkripsi-audit", title: "Encryption, Access Analyzer, dan Audit" }
+  - { num: "10", id: "snow-family", title: "AWS Snow Family" }
+  - { num: "11", id: "storage-gateway", title: "AWS Storage Gateway" }
+  - { num: "12", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul AWS S3 - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import S3Fig01 from "@figures/S3Fig01.astro";
+import S3Fig02 from "@figures/S3Fig02.astro";
+import S3Fig03 from "@figures/S3Fig03.astro";
+import S3Fig04 from "@figures/S3Fig04.astro";
+import S3Fig05 from "@figures/S3Fig05.astro";
+
+<Hero eyebrow="Modul &middot; Storage" title="Amazon <em>S3</em><br />Simple Storage Service">
+  <p>Belajar S3 sebagai tempat menyimpan data yang sederhana untuk dipakai, tetapi kaya fitur untuk keamanan, skala, dan biaya.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~75 menit baca</Chip>
+    <Chip icon="book">Domain 3 &middot; 34%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="S3 sebagai Gudang Objek" sub="Analogi dulu, lalu definisi.">
+
+<p class="lead">Bayangkan S3 seperti gudang logistik raksasa yang menerima paket digital, menyimpannya dengan label unik, lalu mengirimkannya kembali kapan pun aplikasi meminta.</p>
+
+Di gudang biasa, barang disimpan di rak dan diberi nomor resi. Di Amazon S3, barang itu disebut **object**, rak besarnya disebut **bucket**, dan nomor resinya disebut **key**. Aplikasi tidak perlu tahu di server fisik mana file disimpan, karena S3 mengurus penyimpanan, skala, dan ketahanan datanya di balik layar. Kamu cukup memikirkan "objek apa yang mau saya simpan", bukan "disk mana yang masih punya ruang".
+
+Secara sederhana, [Amazon S3](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html) adalah layanan **object storage** untuk menyimpan dan mengambil data dalam bentuk objek melalui internet atau jaringan AWS. Cocok untuk file statis, backup, arsip, data lake, log, gambar, video, aset website, dan data aplikasi yang tidak perlu diperlakukan seperti disk lokal. AWS menyebut S3 dirancang untuk **durabilitas 99,999999999% (11 sembilan)**, artinya data yang kamu titipkan praktis tidak akan hilang karena S3 menyimpan banyak salinan di balik layar.
+
+<Box variant="analogy" icon="🏬" label="Analogi gudang"><p>EC2 seperti komputer yang bekerja, EBS seperti hard disk yang menempel ke satu komputer, sedangkan S3 seperti gudang pusat yang bisa diakses banyak aplikasi sekaligus tanpa harus menempel ke satu server.</p></Box>
+
+Kenapa kamu perlu membedakan S3 dari EBS sejak awal? Karena soal CLF-C02 sering menyodorkan tiga pilihan storage yang mirip, lalu menguji apakah kamu paham bentuk datanya. EBS adalah **block storage** yang melekat pada satu EC2 di satu Availability Zone, cocok untuk disk sistem dan database. S3 adalah **object storage** yang berdiri sendiri, diakses lewat API dari mana saja, dan otomatis tahan di beberapa Availability Zone.
+
+<Compare aLabel="Amazon S3 &middot; object storage" bLabel="Amazon EBS &middot; block storage" aTone="teal" bTone="blue">
+  <Fragment slot="a"><ul><li>Menyimpan objek utuh (file + metadata + key), diakses via API.</li><li>Berdiri sendiri, bisa dipakai banyak aplikasi sekaligus.</li><li>Otomatis tahan di beberapa AZ dalam satu Region.</li><li>Cocok untuk backup, media, log, data lake, aset web.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Menyimpan blok disk mentah, diakses seperti hard disk biasa.</li><li>Melekat ke satu EC2 di satu Availability Zone.</li><li>Cocok untuk disk OS dan database yang butuh akses byte cepat.</li><li>Tidak diakses langsung lewat URL atau API objek.</li></ul></Fragment>
+</Compare>
+
+S3 sering muncul di CLF-C02 karena ia menyentuh beberapa domain sekaligus. Dari sisi **Cloud Concepts**, S3 menunjukkan elastisitas dan pay-as-you-go. Dari sisi **Security and Compliance**, S3 punya bucket policy, encryption, Block Public Access, IAM Access Analyzer, dan audit. Dari sisi **Cloud Technology and Services**, S3 adalah layanan storage inti. Dari sisi **Billing and Pricing**, storage class dan lifecycle membantu optimasi biaya.
+
+<CardGrid cols={3}>
+  <Card><h4>Objek, bukan blok</h4><p>S3 menyimpan data sebagai objek lengkap, bukan blok disk seperti EBS dan bukan file system tradisional seperti EFS.</p></Card>
+  <Card><h4>Skala besar</h4><p>Kamu bisa mulai dari beberapa file kecil lalu tumbuh menjadi jutaan atau miliaran objek tanpa mengelola server penyimpanan.</p></Card>
+  <Card><h4>Fitur kaya</h4><p>Di atas penyimpanan dasar, S3 punya versioning, lifecycle, replication, encryption, event notification, dan integrasi analitik.</p></Card>
+</CardGrid>
+
+<Figure><S3Fig01 /><Fragment slot="caption"><b>Gambar 1.</b> Cara berpikir dasar S3, aplikasi mengirim objek ke bucket, lalu S3 mengelola data, metadata, keamanan, dan kelas penyimpanan.</Fragment></Figure>
+
+<Box variant="exam" icon="🎯" label="Fokus ujian"><p>Untuk CLF-C02, hafalkan perbedaan S3 dengan EBS dan EFS, fungsi bucket policy, Block Public Access, storage class, versioning, replication, dan kapan memakai Snow Family atau Storage Gateway.</p></Box>
+
+</Section>
+
+<Section num="02" id="bucket-objek-prefix" title="Bucket, Object, Key, dan Prefix" sub="Fondasi istilah yang akan muncul terus di soal.">
+
+<p class="lead">Sebelum membahas fitur canggih, pahami dulu kosakata S3 seperti alamat gudang, label paket, dan folder semu.</p>
+
+**Bucket** adalah wadah tingkat atas untuk menyimpan objek. Nama bucket harus unik secara global dalam partisi AWS tertentu karena nama itu menjadi bagian dari alamat akses. Saat membuat bucket, kamu memilih AWS Region untuk lokasi bucket tersebut, lalu objek di dalamnya berada di Region itu kecuali kamu mengatur replikasi atau fitur khusus lain.
+
+**Object** adalah data yang disimpan, misalnya `logo.png`, `backup.zip`, `data-penjualan.csv`, atau `video.mp4`. Object berisi data, metadata, key, version ID bila versioning aktif, tag, serta informasi storage class. Dokumentasi S3 menjelaskan bahwa setiap objek disimpan dalam bucket, dan bucket harus dibuat sebelum kamu menyimpan data di S3.
+
+**Key** adalah nama unik objek di dalam bucket. Jika object bernama `images/produk/kopi.png`, seluruh string itu adalah key. Bagian `images/produk/` sering terlihat seperti folder, tetapi di S3 itu disebut **prefix**, yaitu pola nama yang membantu mengelompokkan objek.
+
+<Figure><S3Fig05 /><Fragment slot="caption"><b>Gambar 2.</b> Anatomi bucket, prefix, dan key di kiri, lalu garis waktu satu key saat versioning aktif di kanan, lengkap dengan versi lama (noncurrent), versi terbaru (current), dan delete marker.</Fragment></Figure>
+
+<Box variant="tip" icon="💡" label="Folder di S3 bukan folder sungguhan"><p>Console S3 menampilkan prefix seperti folder agar manusia nyaman, tetapi S3 tetap object storage dengan namespace berbasis key yang datar.</p></Box>
+
+<CardGrid cols={2}>
+  <Card><h4>Bucket</h4><p>Wadah utama, punya nama unik, Region, pengaturan akses, encryption, versioning, lifecycle, logging, dan replication.</p></Card>
+  <Card><h4>Object</h4><p>Unit data yang disimpan, memiliki data, metadata, key, tag, storage class, dan versi bila fitur versioning aktif.</p></Card>
+  <Card><h4>Key</h4><p>Nama lengkap objek di dalam bucket, misalnya <code>laporan/2026/juni.csv</code>.</p></Card>
+  <Card><h4>Prefix</h4><p>Awalan key untuk pengelompokan, misalnya <code>laporan/2026/</code>, berguna untuk organisasi, lifecycle, dan filter.</p></Card>
+</CardGrid>
+
+S3 bukan database transaksional, bukan shared file system penuh, dan bukan tempat menjalankan kode. S3 adalah tempat menyimpan objek. Aplikasi boleh menyimpan database backup di S3, tetapi database aktif biasanya berjalan di RDS, DynamoDB, atau layanan database lain.
+
+<Box variant="warn" icon="⚠️" label="Kesalahan pemula"><p>Jangan menyamakan S3 dengan drive lokal. Kamu tidak melakukan edit byte-by-byte seperti disk, kamu mengunggah atau mengambil objek utuh melalui API.</p></Box>
+
+</Section>
+
+<Section num="03" id="hands-on-dasar" title="Hands-on Dasar S3" sub="Walkthrough konseptual tanpa mengunci ke satu akun atau Region.">
+
+<p class="lead">Hands-on S3 paling aman dimulai dari membuat bucket privat, mengunggah objek, lalu mengamati metadata, URL, dan izin aksesnya.</p>
+
+Ikuti alur ini di AWS Management Console saat latihan. Jangan gunakan data sensitif, dan hapus objek serta bucket setelah selesai bila hanya untuk belajar.
+
+<Steps>
+  <Step><b>Buka Amazon S3 Console</b><p>Masuk ke AWS Management Console, cari S3, lalu pilih menu Buckets.</p></Step>
+  <Step><b>Buat bucket baru</b><p>Pilih nama unik, pilih Region terdekat atau Region latihan, dan biarkan Block Public Access tetap aktif untuk latihan dasar.</p></Step>
+  <Step><b>Biarkan encryption default</b><p>S3 mengenkripsi objek baru secara default dengan SSE-S3, jadi untuk pemula cukup pahami bahwa data tidak dibiarkan polos saat tersimpan.</p></Step>
+  <Step><b>Unggah objek</b><p>Upload file kecil seperti gambar atau dokumen dummy, lalu lihat object key, size, storage class, dan metadata.</p></Step>
+  <Step><b>Coba buka object URL</b><p>Object URL biasanya gagal diakses publik karena bucket privat, ini perilaku aman yang memang diharapkan.</p></Step>
+  <Step><b>Bersihkan latihan</b><p>Hapus objek, lalu hapus bucket jika tidak dipakai lagi agar tidak lupa dan tidak menimbulkan biaya.</p></Step>
+</Steps>
+
+Saat file tidak bisa dibuka publik, bukan berarti S3 rusak. Itu berarti pengaturan akses privat bekerja. S3 modern cenderung aman secara default, terutama dengan Block Public Access dan encryption default.
+
+<Box variant="exam" icon="🧠" label="Yang perlu diingat"><p>Dalam soal ujian, bucket privat adalah default yang aman. Untuk berbagi publik, kamu harus sengaja membuka akses, dan itu biasanya bukan rekomendasi terbaik untuk production.</p></Box>
+
+Untuk akses sementara, solusi yang lebih aman daripada membuka bucket adalah **presigned URL**, yaitu URL bertanda tangan yang berlaku terbatas waktu. Konsep ini sering membantu skenario seperti pelanggan mengunduh invoice atau aplikasi mobile mengunggah foto tanpa membuat bucket publik. Yang penting diingat, masa berlaku presigned URL ada batasnya, **maksimum 12 jam bila dibuat lewat Console** dan **maksimum 7 hari (604800 detik) bila dibuat lewat AWS CLI atau SDK**.
+
+<Box variant="tip" icon="🔗" label="Presigned URL vs membuka bucket"><p>Presigned URL memberi akses sementara ke satu objek tanpa mengubah izin bucket, jadi setelah waktunya habis, tautan itu mati sendiri. Ini jauh lebih aman daripada menjadikan seluruh bucket publik hanya demi satu file.</p></Box>
+
+</Section>
+
+<Section num="04" id="keamanan-bucket-policy" title="Keamanan, Bucket Policy, dan Block Public Access" sub="S3 aman bila izin aksesnya dipahami, bukan sekadar dicoba-coba.">
+
+<p class="lead">Keamanan S3 mirip gedung arsip, ada kartu pegawai, aturan pintu, alarm publik, dan log siapa saja yang masuk.</p>
+
+Di S3, akses bisa dikendalikan dengan beberapa lapisan. **IAM policy** menempel pada user, group, atau role. **Bucket policy** menempel pada bucket. **Access Control List** pernah umum dipakai, tetapi untuk desain modern lebih baik mengandalkan IAM policy, bucket policy, Object Ownership, dan Block Public Access kecuali ada alasan khusus.
+
+**Bucket policy** adalah resource-based policy yang menjawab pertanyaan, siapa boleh melakukan aksi apa pada bucket atau objek ini. Contoh aksi adalah `s3:GetObject` untuk membaca objek, `s3:PutObject` untuk mengunggah, dan `s3:ListBucket` untuk melihat daftar objek. Resource biasanya berbentuk ARN bucket atau ARN object. Bentuk policy-nya adalah dokumen JSON dengan field `Effect`, `Principal`, `Action`, dan `Resource`, misalnya &#123; "Effect": "Allow", "Action": "s3:GetObject" &#125; ditulis dalam satu blok kurung kurawal.
+
+Menurut dokumentasi S3, [Block Public Access](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html) dapat diterapkan di level account, bucket, dan access point. Untuk bucket general purpose baru, pengaturan Block Public Access aktif secara default. Artinya, meskipun seseorang menulis policy yang tampak membuka akses publik, pengaturan Block Public Access dapat tetap memblokirnya. Inilah jaring pengaman utama melawan kebocoran tidak sengaja.
+
+<Figure><S3Fig02 /><Fragment slot="caption"><b>Gambar 3.</b> Alur keputusan akses S3, identitas meminta object, lalu izin IAM, bucket policy, Block Public Access, dan encryption ikut menentukan apakah request berhasil.</Fragment></Figure>
+
+<CardGrid cols={2}>
+  <Card><h4>IAM policy</h4><p>Baik untuk memberi izin kepada role aplikasi, admin, atau user internal.</p></Card>
+  <Card><h4>Bucket policy</h4><p>Baik untuk aturan yang melekat pada bucket, seperti hanya boleh dari role tertentu atau account tertentu.</p></Card>
+  <Card><h4>Block Public Access</h4><p>Lapisan pelindung untuk mencegah akses publik yang tidak sengaja melalui policy atau ACL.</p></Card>
+  <Card><h4>Access Analyzer</h4><p>Membantu menemukan bucket yang dapat diakses publik atau dari account lain.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="🚫" label="Jangan buka semua akses"><p>Policy publik dengan principal <code>*</code> dan aksi luas seperti write atau list adalah sinyal bahaya, apalagi bila bucket berisi data perusahaan.</p></Box>
+
+Dalam praktik, gunakan prinsip **least privilege**. Beri aplikasi hanya aksi yang diperlukan. Jika aplikasi hanya perlu membaca gambar produk, jangan beri `s3:PutObject` atau `s3:DeleteObject`. Jika hanya perlu menulis log ke prefix tertentu, batasi resource ke prefix itu.
+
+<Box variant="exam" icon="🎯" label="Jebakan CLF-C02"><p>Jika soal bertanya cara mencegah bucket tidak sengaja menjadi publik, jawaban paling tepat biasanya S3 Block Public Access, bukan sekadar mengganti nama bucket atau memindahkan file.</p></Box>
+
+</Section>
+
+<Section num="05" id="static-website" title="Static Website Hosting" sub="S3 bisa menyajikan HTML statis, tetapi pahami batas keamanan dan HTTPS.">
+
+<p class="lead">S3 static website seperti menaruh brosur HTML di rak publik, pengunjung bisa membaca, tetapi tidak ada server aplikasi yang memproses login atau transaksi.</p>
+
+S3 dapat digunakan untuk [hosting static website](https://docs.aws.amazon.com/AmazonS3/latest/userguide/WebsiteHosting.html), misalnya HTML, CSS, JavaScript, gambar, dan file statis. Ini cocok untuk landing page sederhana, dokumentasi statis, aset frontend, atau situs yang dibangun oleh static site generator seperti Astro.
+
+Namun, website endpoint bawaan S3 bersifat HTTP. Jika kamu membutuhkan HTTPS, domain custom, caching global, redirect yang lebih fleksibel, atau proteksi tambahan, gunakan Amazon CloudFront di depan S3. Dokumentasi AWS juga merekomendasikan CloudFront bila kamu ingin website publik tanpa membuka Block Public Access langsung ke bucket.
+
+<Steps>
+  <Step><b>Buat bucket untuk website</b><p>Nama bucket sebaiknya mengikuti domain bila memakai website endpoint langsung, tetapi untuk production biasanya CloudFront menjadi pintu depan.</p></Step>
+  <Step><b>Unggah file statis</b><p>Masukkan <code>index.html</code>, aset CSS, JavaScript, dan gambar.</p></Step>
+  <Step><b>Aktifkan static website hosting</b><p>Tentukan index document dan optional error document.</p></Step>
+  <Step><b>Atur akses baca dengan hati-hati</b><p>Untuk endpoint website publik langsung, bucket harus bisa dibaca publik, tetapi untuk desain lebih aman, gunakan CloudFront dengan Origin Access Control.</p></Step>
+</Steps>
+
+<Box variant="warn" icon="⚠️" label="Static bukan dynamic"><p>S3 static website tidak menjalankan PHP, Node.js, database query, atau login server-side. Untuk backend, gunakan layanan lain seperti Lambda, API Gateway, ECS, Elastic Beanstalk, atau EC2.</p></Box>
+
+Skenario ujian yang umum, perusahaan ingin website statis murah dan tahan skala. Jawaban sering mengarah ke S3 untuk file statis, CloudFront untuk distribusi global dan HTTPS, Route 53 untuk DNS, serta Certificate Manager untuk sertifikat TLS di CloudFront.
+
+</Section>
+
+<Section num="06" id="versioning-replikasi" title="Versioning dan Replication" sub="Melindungi data dari overwrite, delete, dan kebutuhan lintas Region.">
+
+<p class="lead">Versioning seperti fitur riwayat dokumen, kalau file tertimpa atau terhapus, versi lama masih bisa dipulihkan.</p>
+
+[S3 Versioning](https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html) menyimpan beberapa versi dari objek yang sama. Jika objek ditimpa, S3 membuat versi baru dan versi lama menjadi noncurrent version. Jika objek dihapus dengan delete biasa, S3 membuat **delete marker**, sehingga objek tampak hilang tetapi versi sebelumnya masih dapat dipulihkan. Garis waktu ini sudah kamu lihat di Gambar 2.
+
+Versioning berguna untuk pemulihan dari kesalahan manusia, bug aplikasi, overwrite tidak sengaja, dan sebagai prasyarat replikasi. Setelah versioning diaktifkan pada bucket, kamu bisa **suspend**, tetapi tidak benar-benar mengembalikan bucket ke kondisi belum pernah versioning. Untuk Cloud Practitioner, cukup pahami nilai proteksinya dan dampak biaya, karena versi lama juga menyimpan data dan ikut ditagih.
+
+**Replication** menyalin objek dari source bucket ke destination bucket. [S3 Replication](https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html) punya dua bentuk live replication utama, **Cross-Region Replication** untuk Region berbeda dan **Same-Region Replication** untuk Region sama. Ada juga S3 Batch Replication untuk objek yang sudah ada.
+
+<Box variant="warn" icon="⚠️" label="Jebakan replikasi objek lama"><p>Live replication (CRR dan SRR) hanya menyalin objek <b>baru</b> yang diunggah setelah aturan replikasi aktif. Objek yang sudah ada sebelumnya tidak ikut tersalin otomatis, kamu perlu S3 Batch Replication untuk backfill objek lama.</p></Box>
+
+<CardGrid cols={2}>
+  <Card><h4>CRR</h4><p>Cross-Region Replication, cocok untuk disaster recovery, kepatuhan, latensi pembaca di Region lain, atau isolasi geografis.</p></Card>
+  <Card><h4>SRR</h4><p>Same-Region Replication, cocok untuk salinan log, pemisahan account, compliance, atau pipeline data di Region yang sama.</p></Card>
+  <Card><h4>Live replication</h4><p>Menyalin objek baru setelah aturan replikasi aktif, butuh versioning di source dan destination.</p></Card>
+  <Card><h4>Batch Replication</h4><p>Menyalin objek yang sudah ada, berguna saat migrasi atau backfill data lama.</p></Card>
+</CardGrid>
+
+<Figure><S3Fig03 /><Fragment slot="caption"><b>Gambar 4.</b> S3 dapat mengelola siklus hidup data ke storage class lebih murah, mereplikasi ke bucket lain, dan menerima data dari on-premises melalui Snow Family atau Storage Gateway.</Fragment></Figure>
+
+<Box variant="exam" icon="🎯" label="Jebakan soal"><p>Replication bukan backup penuh otomatis untuk semua kondisi. Kamu perlu konfigurasi, versioning, izin IAM role, destination bucket, dan ingat bahwa objek lama hanya ikut bila kamu pakai Batch Replication.</p></Box>
+
+</Section>
+
+<Section num="07" id="storage-classes-lifecycle" title="Storage Classes dan Lifecycle" sub="Kunci optimasi biaya S3.">
+
+<p class="lead">Storage class seperti pilihan layanan pengiriman, ada yang cepat dan selalu siap, ada yang murah untuk barang yang jarang diambil, ada yang arsip sangat murah tetapi butuh proses ambil.</p>
+
+S3 menyediakan delapan [storage class](https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html) aktif untuk pola akses berbeda. Jangan menghafal harga per GB, karena harga berubah menurut Region dan komponen biaya. Untuk ujian, pahami **kapan memilih kelas mana** dan dua pengetahuan kunci di tiap kelas, yaitu seberapa cepat data bisa diambil dan apakah ada biaya retrieval.
+
+<Figure><S3Fig04 /><Fragment slot="caption"><b>Gambar 5.</b> Spektrum storage class dari panas (sering diakses, mahal disimpan, gratis diambil) ke dingin (jarang diakses, murah disimpan, lambat dan berbayar saat diambil), lengkap dengan waktu retrieval dan minimum storage duration.</Fragment></Figure>
+
+<CardGrid cols={2}>
+  <Card><h4>S3 Standard</h4><p>Untuk data yang sering diakses, aplikasi production, konten aktif, dan kebutuhan umum. Akses milidetik, multi-AZ, tanpa retrieval fee.</p></Card>
+  <Card><h4>S3 Intelligent-Tiering</h4><p>Untuk pola akses tidak pasti atau berubah, S3 otomatis memindahkan objek antar tier akses, tanpa retrieval fee, dengan biaya monitoring kecil per objek.</p></Card>
+  <Card><h4>S3 Standard-IA</h4><p>Untuk data jarang diakses tetapi tetap butuh akses cepat saat diperlukan. Ada retrieval fee, minimum simpan 30 hari, billable minimum 128 KB.</p></Card>
+  <Card><h4>S3 One Zone-IA</h4><p>Untuk data jarang diakses yang bisa dibuat ulang dan cukup disimpan di satu Availability Zone. Lebih murah, tetapi hilang bila AZ-nya gagal.</p></Card>
+  <Card><h4>S3 Glacier Instant Retrieval</h4><p>Untuk arsip yang jarang diakses tetapi perlu retrieval milidetik saat diperlukan. Minimum simpan 90 hari.</p></Card>
+  <Card><h4>S3 Glacier Flexible Retrieval</h4><p>Untuk arsip jangka panjang yang retrieval-nya bisa ditunggu menit sampai jam, bukan untuk data yang harus selalu langsung tersedia. Minimum simpan 90 hari.</p></Card>
+  <Card><h4>S3 Glacier Deep Archive</h4><p>Untuk arsip paling dingin dengan biaya storage paling rendah dan waktu pemulihan sampai 12 jam. Minimum simpan 180 hari.</p></Card>
+  <Card><h4>S3 Express One Zone</h4><p>Untuk workload latency-sensitive dengan akses sangat sering pada data yang disimpan di satu Availability Zone. Dibahas tersendiri di section berikutnya.</p></Card>
+</CardGrid>
+
+<h3>Cara memutuskan storage class</h3>
+
+Ada dua pertanyaan yang nyaris selalu cukup untuk menjawab soal CLF-C02. Pertama, **seberapa sering data dibaca?** Sering berarti Standard, jarang tetapi harus cepat berarti Standard-IA atau Glacier Instant Retrieval, sangat jarang dan boleh lambat berarti Glacier Flexible Retrieval atau Deep Archive. Kedua, **berapa toleransi waktu ambil data?** Butuh milidetik mengarah ke Standard, IA, atau Glacier Instant Retrieval, sedangkan boleh menunggu menit sampai jam mengarah ke Glacier Flexible atau Deep Archive.
+
+<Compare aLabel="Hot &middot; S3 Standard" bLabel="Cold &middot; Glacier Deep Archive" aTone="red" bTone="blue">
+  <Fragment slot="a"><ul><li>Data aktif yang sering dibaca dan ditulis.</li><li>Akses milidetik, tanpa biaya retrieval.</li><li>Biaya simpan per GB paling tinggi di antara dua ini.</li><li>Contoh: gambar produk, aset web, data aplikasi live.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Arsip yang nyaris tidak pernah dibaca.</li><li>Pemulihan bisa sampai 12 jam, ada biaya retrieval.</li><li>Biaya simpan per GB paling murah, minimum simpan 180 hari.</li><li>Contoh: arsip kepatuhan jangka panjang, backup dingin.</li></ul></Fragment>
+</Compare>
+
+<Box variant="warn" icon="⏳" label="Hati-hati minimum storage duration"><p>Kelas dingin punya masa simpan minimum (IA 30 hari, Glacier Instant dan Flexible 90 hari, Deep Archive 180 hari). Menghapus objek lebih awal tetap ditagih sampai batas itu, jadi jangan menaruh data yang berumur pendek di kelas arsip hanya demi terlihat murah.</p></Box>
+
+[S3 Lifecycle](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html) membantu memindahkan objek ke storage class lain (transition) atau menghapus objek (expiration) setelah umur tertentu, secara otomatis. Contohnya, log aplikasi disimpan di Standard selama beberapa minggu, dipindah ke Standard-IA atau Glacier, lalu dihapus setelah masa retensi berakhir, semua tanpa intervensi manual.
+
+<Steps>
+  <Step><b>Identifikasi pola akses</b><p>Tentukan apakah data sering dibaca, jarang dibaca, tidak pasti, atau arsip jangka panjang.</p></Step>
+  <Step><b>Pilih storage class awal</b><p>Gunakan S3 Standard untuk umum, Intelligent-Tiering bila pola akses belum jelas, atau kelas arsip bila data memang arsip sejak awal.</p></Step>
+  <Step><b>Buat lifecycle rule</b><p>Gunakan prefix atau tag agar hanya objek tertentu yang dipindahkan atau dihapus, dan tentukan umur transisi tiap kelas.</p></Step>
+  <Step><b>Perhatikan biaya retrieval dan minimum duration</b><p>Kelas IA dan Glacier lebih murah disimpan, tetapi akses atau pemulihan menambah biaya, dan ada masa simpan minimum yang ikut ditagih.</p></Step>
+</Steps>
+
+Menurut [halaman pricing S3](https://aws.amazon.com/s3/pricing/), biaya S3 tidak hanya storage. Ada komponen request (PUT, COPY, POST, LIST lebih mahal dari GET, HEAD), retrieval, data transfer keluar ke internet, management, dan replication. Sebagai catatan, request DELETE dan CANCEL tidak dikenai biaya, dan encryption default SSE-S3 tidak menambah biaya. Jadi jawaban hemat biaya bukan sekadar memilih kelas paling murah, tetapi memilih kelas yang cocok dengan pola akses.
+
+<Box variant="exam" icon="🧾" label="Tips ujian biaya"><p>Jika data jarang diakses tetapi butuh langsung tersedia, pikirkan Standard-IA atau Glacier Instant Retrieval. Jika pola akses tidak diketahui atau berubah-ubah, Intelligent-Tiering sering menjadi jawaban aman karena tidak ada retrieval fee dan tier diatur otomatis.</p></Box>
+
+</Section>
+
+<Section num="08" id="s3-express-one-zone" title="S3 Express One Zone" sub="Kelas performa tinggi untuk workload khusus.">
+
+<p class="lead">S3 Express One Zone seperti loker khusus tepat di sebelah meja kerja, aksesnya sangat cepat, tetapi lokasinya lebih spesifik daripada gudang multi-AZ umum.</p>
+
+[S3 Express One Zone](https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-express-one-zone.html) adalah storage class S3 berperforma tinggi untuk aplikasi yang sangat sensitif terhadap latency. AWS menggambarkannya punya **latency single-digit milidetik**, **akses data sampai 10x lebih cepat** dibanding S3 Standard, dan **biaya request 50% lebih rendah** dari S3 Standard. Sebagai imbalannya, data disimpan di **satu Availability Zone** dan menggunakan konsep **directory bucket**.
+
+Gunakan cara berpikir ini. Jika data harus sering dibaca atau ditulis dengan latency sangat rendah dan aplikasi berjalan dekat dengan data di AZ yang sama, S3 Express One Zone bisa relevan. Jika yang dibutuhkan adalah ketahanan multi-AZ untuk object storage umum, S3 Standard lebih mudah dipahami dan lebih umum untuk CLF-C02.
+
+<CardGrid cols={2}>
+  <Card><h4>Cocok</h4><p>Analytics interaktif, machine learning training, high performance computing, dan workload yang butuh akses object sangat cepat di satu AZ.</p></Card>
+  <Card><h4>Tidak cocok</h4><p>Arsip murah, backup lintas AZ, konten publik umum, atau data yang tidak ingin bergantung pada satu Availability Zone.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="CLF-C02 level"><p>Kamu tidak perlu menghafal detail API directory bucket, cukup tahu bahwa S3 Express One Zone adalah kelas performa tinggi, single-AZ, untuk workload latency-sensitive, dengan biaya request lebih rendah dari Standard.</p></Box>
+
+</Section>
+
+<Section num="09" id="enkripsi-audit" title="Encryption, Access Analyzer, dan Audit" sub="Keamanan S3 bukan satu tombol, tetapi beberapa kontrol yang saling melengkapi.">
+
+<p class="lead">Jika bucket adalah gudang, encryption adalah gembok isi paket, Access Analyzer adalah petugas audit pintu, dan logging adalah buku tamu.</p>
+
+Sejak 5 Januari 2023, semua objek baru di S3 otomatis memiliki [default server-side encryption](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-encryption.html) SSE-S3 (AES-256), tanpa biaya tambahan, dan tidak bisa dinonaktifkan untuk upload baru. Untuk kontrol kunci lebih besar, gunakan **SSE-KMS** dengan AWS Key Management Service. Untuk kebutuhan regulasi lebih ketat, ada **DSSE-KMS** (dual-layer). Ada juga **SSE-C** di mana kunci disediakan pelanggan, tetapi sejak April 2026 SSE-C dinonaktifkan secara default untuk bucket general purpose baru dan harus diaktifkan manual bila dibutuhkan.
+
+<CardGrid cols={2}>
+  <Card><h4>SSE-S3</h4><p>Server-side encryption dengan kunci yang dikelola S3, kini aktif default untuk objek baru, sederhana, dan tanpa biaya tambahan.</p></Card>
+  <Card><h4>SSE-KMS</h4><p>Server-side encryption dengan AWS KMS, cocok bila perlu kontrol key policy, audit key usage, dan pemisahan akses.</p></Card>
+  <Card><h4>DSSE-KMS</h4><p>Dual-layer server-side encryption dengan AWS KMS untuk kebutuhan compliance yang lebih ketat.</p></Card>
+  <Card><h4>SSE-C</h4><p>Kunci disediakan pelanggan, S3 hanya memakai untuk enkripsi lalu membuangnya. Disabled by default untuk bucket baru sejak April 2026.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="🔑" label="Client-side vs server-side"><p>Server-side encryption (SSE) berarti S3 mengenkripsi setelah data tiba. Client-side encryption berarti aplikasi mengenkripsi data lebih dulu sebelum mengirim ke S3, sehingga tanggung jawab pengelolaan kunci sepenuhnya di sisi pelanggan.</p></Box>
+
+[IAM Access Analyzer for S3](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-analyzer.html) membantu meninjau bucket general purpose yang memberikan akses ke internet publik atau account AWS lain. Ini berguna untuk menemukan bucket yang tidak sengaja dibagikan terlalu luas.
+
+Selain enkripsi dan analisis akses, S3 juga mendukung **Object Lock** dengan model WORM (Write Once Read Many) untuk mencegah objek dihapus atau ditimpa selama periode tertentu. Object Lock punya dua retention mode, **Compliance** (tidak bisa dihapus siapa pun, bahkan root account, sampai masa retensi berakhir) dan **Governance** (bisa di-override oleh user dengan permission khusus). Ada juga **legal hold** yang menahan objek tanpa tanggal kedaluwarsa sampai dilepas manual. Fitur ini penting untuk kepatuhan dan perlindungan dari ransomware.
+
+Untuk audit, gunakan AWS CloudTrail untuk aktivitas API, S3 server access logging bila perlu log request tingkat bucket, Amazon CloudWatch untuk alarm, Amazon Macie untuk menemukan data sensitif di S3, dan Trusted Advisor untuk pemeriksaan umum terkait keamanan dan biaya. Tidak semua ini harus dikonfigurasi di modul pemula, tetapi nama layanan dan tujuannya penting untuk ujian.
+
+<Box variant="warn" icon="🔐" label="Shared responsibility"><p>AWS bertanggung jawab atas keamanan infrastruktur S3, pelanggan bertanggung jawab atas data, konfigurasi akses, policy, pilihan encryption, lifecycle, logging, dan siapa yang diberi izin.</p></Box>
+
+<Box variant="exam" icon="🎯" label="Jebakan keamanan"><p>Encryption melindungi data saat tersimpan, tetapi tidak otomatis membuat policy aman. Bucket terenkripsi tetap bisa bocor bila public access dibuka.</p></Box>
+
+</Section>
+
+<Section num="10" id="snow-family" title="AWS Snow Family" sub="Saat internet bukan jalur terbaik untuk migrasi data besar.">
+
+<p class="lead">Snow Family seperti truk pengiriman data terenkripsi, bukan mengirim semuanya lewat jalan internet yang macet, AWS mengirim perangkat fisik ke lokasimu.</p>
+
+[AWS Snow Family](https://docs.aws.amazon.com/snow/latest/swsbe-pack/getting-started.html) membantu memindahkan data dalam skala besar ke dan dari AWS, atau menjalankan storage dan compute AWS secara lokal di tempat yang koneksi internetnya terbatas. Untuk CLF-C02, hubungan utamanya dengan S3 adalah migrasi data offline ke S3 dan edge computing.
+
+Snow Family bukan layanan yang dipilih untuk upload file kecil harian. Ia relevan saat ukuran data sangat besar, koneksi lambat, biaya transfer jaringan tidak efisien, lokasi terpencil, atau ada kebutuhan memproses data di edge sebelum dikirim ke AWS.
+
+<Box variant="warn" icon="📦" label="Lineup Snow Family 2026"><p>Per 2026 yang aktif hanya <b>AWS Snowball Edge</b> dalam dua varian, Storage Optimized 210 TB (NVMe) dan Compute Optimized 104 vCPU. AWS Snowcone sudah discontinued (12 November 2024) dan AWS Snowmobile sudah dipensiunkan (April 2024), jadi keduanya tidak lagi ditawarkan untuk pesanan baru.</p></Box>
+
+<CardGrid cols={2}>
+  <Card><h4>Snowball Edge Storage Optimized</h4><p>Perangkat 210 TB berbasis NVMe untuk migrasi data besar offline ke S3, dengan workflow pesan, terima, salin, kirim balik.</p></Card>
+  <Card><h4>Snowball Edge Compute Optimized</h4><p>Hingga 104 vCPU untuk edge computing, memproses data di lokasi terpencil sebelum hasilnya dikirim ke AWS.</p></Card>
+</CardGrid>
+
+<Steps>
+  <Step><b>Buat job Snow</b><p>Pilih varian Snowball Edge dan tujuan data, misalnya impor data ke Amazon S3.</p></Step>
+  <Step><b>Terima perangkat</b><p>Perangkat dikirim ke lokasimu, lalu dibuka dan dikonfigurasi sesuai instruksi.</p></Step>
+  <Step><b>Salin data lokal</b><p>Data dipindahkan ke perangkat secara lokal, biasanya jauh lebih praktis untuk dataset besar daripada internet lambat.</p></Step>
+  <Step><b>Kirim balik ke AWS</b><p>AWS menerima perangkat, memproses data, dan memasukkannya ke layanan tujuan seperti S3 sesuai job.</p></Step>
+</Steps>
+
+Tentang pricing, hindari menghafal angka. [Pricing Snowball](https://aws.amazon.com/snowball/pricing/) bergantung pada perangkat, durasi penggunaan, lokasi, pengiriman, transfer data, dan layanan tambahan. Untuk ujian, pahami pola biayanya, bukan angka spesifik.
+
+<Box variant="exam" icon="🎯" label="Kapan pilih Snow"><p>Jika soal menyebut puluhan atau ratusan terabyte, petabyte, koneksi internet terbatas, lokasi remote, atau migrasi offline ke S3, pertimbangkan AWS Snowball Edge dari Snow Family.</p></Box>
+
+</Section>
+
+<Section num="11" id="storage-gateway" title="AWS Storage Gateway" sub="Jembatan hybrid antara on-premises dan AWS storage.">
+
+<p class="lead">Storage Gateway seperti pintu belakang gudang AWS yang dipasang di kantor lama, aplikasi lokal tetap merasa berbicara ke file share, tetapi datanya mengalir ke AWS.</p>
+
+[AWS Storage Gateway](https://docs.aws.amazon.com/storagegateway/latest/userguide/WhatIsStorageGateway.html) adalah layanan hybrid cloud storage. Dalam konteks S3, yang paling relevan adalah **Amazon S3 File Gateway**. Dokumentasi [S3 File Gateway](https://docs.aws.amazon.com/filegateway/latest/files3/what-is-file-s3.html) menjelaskan bahwa gateway ini menyederhanakan penyimpanan file ke Amazon S3, mendukung protokol file standar, dan menyediakan cache lokal untuk akses latency rendah.
+
+Gunakan S3 File Gateway saat aplikasi on-premises sudah terbiasa memakai NFS atau SMB, tetapi perusahaan ingin menyimpan data sebagai objek di S3. Aplikasi lama tidak harus langsung diubah menjadi aplikasi cloud-native berbasis S3 API.
+
+<CardGrid cols={2}>
+  <Card><h4>Masalah</h4><p>Aplikasi lokal butuh file share, sementara target strategis perusahaan adalah object storage di AWS.</p></Card>
+  <Card><h4>Solusi</h4><p>S3 File Gateway memberi interface file lokal dan mengubah file menjadi objek di S3.</p></Card>
+  <Card><h4>Manfaat</h4><p>Cache lokal membantu akses cepat untuk data yang sering digunakan, sedangkan data tersimpan di S3.</p></Card>
+  <Card><h4>Ingat batasnya</h4><p>Ini jembatan hybrid, bukan pengganti semua file system atau database lokal.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Kapan pilih Storage Gateway"><p>Jika soal menyebut aplikasi on-premises yang perlu tetap memakai NFS atau SMB tetapi data harus tersimpan di S3, jawabannya kemungkinan S3 File Gateway.</p></Box>
+
+</Section>
+
+<Section num="12" id="ringkasan" title="Ringkasan & Tips Ujian" sub="Peta cepat untuk CLF-C02.">
+
+<p class="lead">S3 adalah layanan storage paling penting di level Cloud Practitioner karena menggabungkan konsep cloud, keamanan, layanan inti, dan optimasi biaya.</p>
+
+<Recap title="Poin Penting"><ul><li>S3 adalah object storage, bukan block storage (EBS) dan bukan file system tradisional (EFS), dengan durabilitas 11 sembilan.</li><li>Bucket adalah wadah, object adalah data, key adalah nama objek, prefix adalah pengelompokan semu.</li><li>Default aman modern, bucket privat, Block Public Access aktif untuk bucket baru, dan encryption default SSE-S3 untuk objek baru.</li><li>Bucket policy mengatur akses pada bucket, IAM policy mengatur akses pada identitas, Access Analyzer membantu menemukan akses publik atau lintas account.</li><li>Presigned URL berlaku terbatas waktu, maksimum 12 jam via Console dan 7 hari via CLI atau SDK.</li><li>Static website hosting cocok untuk HTML, CSS, JavaScript, dan aset statis, tetapi untuk HTTPS dan desain production gunakan CloudFront.</li><li>Versioning membantu pemulihan dari overwrite atau delete (delete marker), replication menyalin objek ke bucket lain; live replication hanya untuk objek baru, objek lama butuh Batch Replication.</li><li>Storage class dan lifecycle adalah inti optimasi biaya S3, pilih berdasarkan frekuensi akses, waktu retrieval, biaya retrieval, dan minimum storage duration.</li><li>S3 Express One Zone adalah storage class performa tinggi single-AZ untuk latency sangat rendah dan biaya request lebih murah.</li><li>Snow Family 2026 hanya Snowball Edge (Storage Optimized 210 TB dan Compute Optimized 104 vCPU); Snowcone dan Snowmobile sudah tidak ditawarkan. Storage Gateway membantu integrasi hybrid on-premises ke S3.</li></ul></Recap>
+
+<h3>Pemetaan ke domain CLF-C02</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr><th>Domain</th><th>Bobot</th><th>Kaitannya dengan modul ini</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Domain 1, Cloud Concepts</td><td>24%</td><td>S3 menunjukkan elastisitas, skala global, pay-as-you-go, managed service, dan pengurangan beban mengelola hardware storage.</td></tr>
+    <tr><td>Domain 2, Security and Compliance</td><td>30%</td><td>IAM, bucket policy, Block Public Access, encryption (SSE-S3, SSE-KMS, DSSE-KMS, SSE-C), Object Lock, Access Analyzer, CloudTrail, Macie, dan shared responsibility.</td></tr>
+    <tr><td>Domain 3, Cloud Technology and Services</td><td>34%</td><td>Use case S3, static website, versioning, replication, lifecycle, storage class, Snow Family, dan Storage Gateway.</td></tr>
+    <tr><td>Domain 4, Billing, Pricing, and Support</td><td>12%</td><td>Storage class, lifecycle, retrieval cost, request cost, data transfer, replication, dan alasan memilih Intelligent-Tiering atau Glacier.</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Jebakan soal yang sering muncul</h3>
+
+<ul><li>Soal menyebut file statis dan traffic global, pikirkan S3 plus CloudFront, bukan EC2 hanya untuk menyajikan HTML.</li><li>Soal menyebut bucket tidak sengaja publik, jawab S3 Block Public Access atau IAM Access Analyzer sesuai konteks.</li><li>Soal menyebut data jarang diakses tetapi harus cepat tersedia, jangan langsung pilih Deep Archive, pikirkan Standard-IA atau Glacier Instant Retrieval.</li><li>Soal menyebut pola akses tidak diketahui, pertimbangkan S3 Intelligent-Tiering.</li><li>Soal menyebut pemulihan dari object overwrite, jawab S3 Versioning.</li><li>Soal menyebut replikasi harus mencakup objek lama, ingat live replication hanya objek baru, butuh Batch Replication.</li><li>Soal menyebut salinan lintas Region untuk compliance atau disaster recovery, jawab Cross-Region Replication.</li><li>Soal menyebut dataset sangat besar dan koneksi internet terbatas, jawab AWS Snowball Edge.</li><li>Soal menyebut aplikasi on-premises butuh NFS atau SMB tetapi targetnya S3, jawab S3 File Gateway.</li></ul>
+
+<h3>Sumber resmi yang direkomendasikan</h3>
+
+<ul><li><a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html">AWS Certified Cloud Practitioner CLF-C02 Exam Guide</a></li><li><a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html">Amazon S3 User Guide</a></li><li><a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/security-best-practices.html">Security best practices for Amazon S3</a></li><li><a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html">Amazon S3 storage classes</a></li><li><a href="https://aws.amazon.com/s3/pricing/">Amazon S3 Pricing</a></li><li><a href="https://docs.aws.amazon.com/snow/latest/swsbe-pack/getting-started.html">AWS Snow Family devices</a></li><li><a href="https://docs.aws.amazon.com/filegateway/latest/files3/what-is-file-s3.html">Amazon S3 File Gateway</a></li></ul>
+
+<Box variant="tip" icon="✅" label="Cara belajar cepat"><p>Latih diri menjawab bukan hanya apa itu S3, tetapi kapan memilih S3 Standard, Intelligent-Tiering, Glacier, replication, Snowball Edge, atau Storage Gateway berdasarkan skenario bisnis.</p></Box>
+
+</Section>

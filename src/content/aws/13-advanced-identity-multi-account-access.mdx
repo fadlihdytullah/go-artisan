@@ -1,0 +1,428 @@
+---
+title: "Modul Advanced Identity & Multi-Account Access - AWS Cloud Practitioner CLF-C02"
+badge: "AID"
+topTitle: "Advanced Identity & Multi-Account Access"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Memahami Identity Center, federation, STS, Cognito, Directory Service, cross-account access, AWS RAM, dan pola akses multi-account."
+order: 13
+target: "CLF-C02"
+readingTime: "~70 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa Identitas Lanjutan Penting?" }
+  - { num: "02", id: "model-identitas", title: "Tiga Jenis Identitas di AWS" }
+  - { num: "03", id: "identity-center", title: "IAM Identity Center untuk Workforce" }
+  - { num: "04", id: "federation", title: "Federation, SAML, OIDC, dan SCIM" }
+  - { num: "05", id: "sts-role", title: "STS, Role, dan Kredensial Sementara" }
+  - { num: "06", id: "cross-account", title: "Cross-Account Access" }
+  - { num: "07", id: "cognito", title: "Amazon Cognito untuk Pengguna Aplikasi" }
+  - { num: "08", id: "directory-service", title: "AWS Directory Service dan Active Directory" }
+  - { num: "09", id: "organizations-ram", title: "Organizations, SCP, RCP, dan AWS RAM" }
+  - { num: "10", id: "control-tower", title: "Control Tower dan Consolidated Billing" }
+  - { num: "11", id: "hands-on", title: "Walkthrough Konseptual" }
+  - { num: "12", id: "jebakan", title: "Kesalahan Umum dan Jebakan Ujian" }
+  - { num: "13", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul Advanced Identity & Multi-Account Access - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import AdvancedIdentityFig01 from "@figures/AdvancedIdentityFig01.astro";
+import AdvancedIdentityFig02 from "@figures/AdvancedIdentityFig02.astro";
+import AdvancedIdentityFig03 from "@figures/AdvancedIdentityFig03.astro";
+import AdvancedIdentityFig04 from "@figures/AdvancedIdentityFig04.astro";
+import AdvancedIdentityFig05 from "@figures/AdvancedIdentityFig05.astro";
+import AdvancedIdentityFig06 from "@figures/AdvancedIdentityFig06.astro";
+
+<Hero eyebrow="Modul &middot; Identity" title="Advanced Identity &amp;<br /><em>Multi-Account Access</em>">
+  <p>Belajar memilih layanan identitas yang tepat untuk karyawan, aplikasi, mesin, dan banyak akun AWS.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~70 menit baca</Chip>
+    <Chip icon="book">Domain 2 &middot; 30%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa Identitas Lanjutan Penting?" sub="Analogi gedung kantor, badge tamu, dan akses antar lantai.">
+
+<p class="lead">Bayangkan AWS seperti gedung perkantoran besar dengan banyak lantai, ruang server, ruang arsip, dan pintu khusus staf.</p>
+
+Di gedung kecil, satu kunci mungkin cukup. Tetapi ketika perusahaan tumbuh, satu kunci untuk semua orang menjadi berbahaya. Resepsionis butuh daftar tamu, karyawan butuh badge sesuai divisi, vendor butuh akses sementara, pelanggan aplikasi tidak boleh masuk ruang staf, dan cabang kantor lain butuh cara meminjam fasilitas tanpa mengambil alih gedung.
+
+Di AWS, pola itu diterjemahkan menjadi **IAM Identity Center** untuk akses karyawan, **federation** untuk memakai identitas perusahaan, **AWS STS** untuk kredensial sementara, **Amazon Cognito** untuk pengguna aplikasi, **Directory Service** untuk Active Directory, **cross-account access** untuk berpindah akun secara aman, **AWS RAM** untuk berbagi resource, dan **AWS Organizations** untuk mengelola banyak akun sebagai satu lingkungan.
+
+<Box variant="analogy" icon="🏢" label="Analogi cepat"><p>IAM user seperti kunci permanen di satu ruangan, IAM role seperti badge sementara, IAM Identity Center seperti meja resepsionis pusat untuk semua lantai, dan Cognito seperti loket login pelanggan aplikasi.</p></Box>
+
+Menurut daftar layanan in-scope CLF-C02 dari AWS, topik identity, security, governance, Organizations, IAM Identity Center, Cognito, Directory Service, STS, dan RAM berada dalam area yang perlu dikenali kandidat. Modul ini tidak sedalam ujian Solutions Architect, tetapi kamu harus bisa memilih layanan yang benar dalam skenario singkat.
+
+<Figure><AdvancedIdentityFig01 /><Fragment slot="caption"><b>Gambar 1.</b> Peta keputusan layanan identitas, bedakan workforce user, app user, dan shared resource.</Fragment></Figure>
+
+</Section>
+
+<Section num="02" id="model-identitas" title="Tiga Jenis Identitas di AWS" sub="Sebelum memilih layanan, kenali siapa yang sedang meminta akses.">
+
+<p class="lead">Kesalahan pemula biasanya dimulai dari satu pertanyaan yang tidak dijawab, siapa identitasnya?</p>
+
+Di AWS, identitas bukan hanya orang. Identitas bisa manusia internal, pengguna aplikasi, atau mesin. Setiap jenis punya layanan dan pola akses yang berbeda.
+
+<CardGrid cols={3}>
+  <Card><h4>Workforce user</h4><p>Karyawan, admin, developer, auditor, atau partner internal yang perlu masuk ke AWS Console, CLI, aplikasi AWS, atau beberapa akun AWS.</p></Card>
+  <Card><h4>Application user</h4><p>Pelanggan aplikasi web atau mobile yang login ke aplikasi, misalnya pembeli online shop, pengguna SaaS, atau member komunitas.</p></Card>
+  <Card><h4>Machine identity</h4><p>Workload, CI/CD pipeline, Lambda, EC2, container, atau aplikasi eksternal yang perlu memanggil AWS API tanpa manusia mengetik password.</p></Card>
+</CardGrid>
+
+Definisi praktisnya sederhana. **Authentication** menjawab "siapa kamu?", **authorization** menjawab "boleh melakukan apa?", dan **federation** menjawab "bolehkah AWS mempercayai identitas dari sistem lain?".
+
+<Box variant="tip" icon="💡" label="Aturan 3 kotak"><p>Untuk karyawan gunakan IAM Identity Center, untuk pelanggan aplikasi gunakan Cognito, untuk mesin gunakan role dan kredensial sementara.</p></Box>
+
+Tiga layanan yang paling sering tertukar di ujian adalah IAM, IAM Identity Center, dan Cognito. Ketiganya bicara soal akses, tetapi melayani aktor yang berbeda dan punya cakupan yang berbeda. Sebelum hafal fiturnya, kunci dulu satu pembeda inti, siapa yang login dan ke mana.
+
+<Figure><AdvancedIdentityFig05 /><Fragment slot="caption"><b>Gambar 2.</b> IAM mengurus identitas di dalam satu akun, IAM Identity Center mengurus akses workforce ke banyak akun, Cognito mengurus identitas pengguna aplikasi.</Fragment></Figure>
+
+<Compare aLabel="IAM Identity Center &middot; workforce" bLabel="Amazon Cognito &middot; app users" aTone="violet" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Aktornya karyawan internal: developer, finance, security, auditor, partner.</li><li>Memberi akses ke AWS account dan aplikasi bisnis lewat satu portal SSO.</li><li>Kata kunci soal: "employees across multiple AWS accounts", "centralized workforce access".</li><li>Sesi memakai kredensial sementara, bukan password AWS permanen per akun.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Aktornya pengguna aplikasimu: pelanggan, member, siswa, pengguna SaaS.</li><li>Menyediakan sign-up, sign-in, dan token untuk aplikasi web atau mobile.</li><li>Kata kunci soal: "customer identity", "mobile/web app users", "sign-up/sign-in for my app".</li><li>Ini ranah CIAM (customer identity), bukan akses admin ke akun AWS.</li></ul></Fragment>
+</Compare>
+
+<h3>Kapan memakai apa?</h3>
+
+| Kebutuhan | Pilihan utama | Kenapa |
+| --- | --- | --- |
+| Karyawan masuk ke banyak akun AWS | IAM Identity Center | Akses terpusat, single sign-on, permission set, cocok dengan AWS Organizations. |
+| Perusahaan sudah punya Okta, Microsoft Entra ID, atau AD | Federation ke IAM Identity Center | User tetap dikelola di IdP perusahaan, AWS memberi akses berdasarkan assignment. |
+| Aplikasi mobile butuh sign-up dan sign-in | Amazon Cognito user pool | Cognito menyediakan direktori pengguna aplikasi dan token untuk aplikasi. |
+| Pengguna aplikasi perlu akses terbatas ke AWS resource | Amazon Cognito identity pool | Identity pool dapat memberikan temporary AWS credentials melalui role. |
+| CI/CD dari luar AWS perlu deploy | IAM role dengan federation OIDC atau STS | Menghindari access key permanen di pipeline. |
+| Akun A perlu mengakses resource Akun B | Cross-account IAM role atau resource-based policy | Akses lintas akun dikendalikan melalui trust dan permission. |
+| Resource perlu dipakai banyak akun | AWS RAM | Share resource yang didukung tanpa menggandakan resource. |
+
+</Section>
+
+<Section num="03" id="identity-center" title="IAM Identity Center untuk Workforce" sub="Pusat akses untuk manusia internal di banyak akun dan aplikasi.">
+
+<p class="lead">IAM Identity Center adalah "resepsionis pusat" yang mengatur siapa boleh masuk ke akun dan aplikasi mana.</p>
+
+<a href="https://docs.aws.amazon.com/singlesignon/latest/userguide/what-is.html">AWS IAM Identity Center</a> (nama lama: AWS Single Sign-On, diganti nama pada Juli 2022) menyediakan satu tempat untuk mengelola akses workforce user ke banyak AWS account dan aplikasi. Dalam pola multi-account modern, pengguna masuk ke AWS access portal, memilih akun, memilih permission set, lalu mendapatkan sesi akses sementara untuk bekerja. Namespace API lamanya (`sso` dan `identitystore`) tetap dipakai agar tidak merusak otomasi yang sudah ada, jadi jangan kaget bila masih melihat nama itu di dokumentasi teknis.
+
+Komponen utamanya adalah **identity source**, **users and groups**, **permission sets**, **account assignments**, dan **AWS access portal**. Identity source bisa direktori bawaan IAM Identity Center, external identity provider seperti Okta atau Microsoft Entra ID, atau Active Directory melalui AWS Directory Service.
+
+<Box variant="exam" icon="🧠" label="Yang sering keluar"><p>IAM Identity Center bukan pengganti Cognito untuk pelanggan aplikasi, dan bukan sekadar IAM user massal. Fokusnya adalah workforce access. Mengaktifkannya tidak menambah biaya, kamu hanya membayar resource AWS yang dipakai di baliknya.</p></Box>
+
+<h3>Kenapa tidak cukup pakai IAM user saja?</h3>
+
+Bayangkan perusahaan dengan 200 karyawan dan 15 akun AWS. Tanpa Identity Center, kamu harus membuat IAM user di tiap akun, lalu mengelola 200 dikali 15 kombinasi password, rotasi, dan offboarding. Saat satu orang resign, kamu harus berburu akunnya di 15 tempat. Identity Center memindahkan daftar orang ke satu sumber, lalu menempelkan permission set ke akun yang relevan. Resign cukup dimatikan di satu tempat, dan akses ke semua akun otomatis hilang. Inilah alasan AWS merekomendasikannya sebagai jalur utama untuk akses manusia di lingkungan multi-account.
+
+<Box variant="tip" icon="🏛️" label="Organization instance vs account instance"><p>Ada dua jenis instance. <b>Organization instance</b> (disarankan) butuh AWS Organizations dan mengelola akses ke semua akun member dari satu titik. <b>Account instance</b> bercakupan satu akun, biasanya untuk memberi akses ke aplikasi tertentu. Untuk skenario multi-account klasik, jawabannya selalu organization instance.</p></Box>
+
+<h3>Permission set dengan analogi seragam kerja</h3>
+
+Permission set mirip seragam kerja. Seragam "ReadOnly" hanya boleh melihat, seragam "Developer" boleh mengelola resource tertentu, dan seragam "Billing" fokus ke biaya. Saat permission set di-assign ke akun, IAM Identity Center memprovision IAM role di akun tersebut dan menempelkan kebijakan yang sesuai.
+
+<CardGrid cols={2}>
+  <Card><h4>Identity source</h4><p>Tempat user dan group berasal, bisa Identity Center directory, external IdP, atau Active Directory.</p></Card>
+  <Card><h4>Permission set</h4><p>Paket izin yang bisa diassign ke user atau group pada akun AWS tertentu.</p></Card>
+  <Card><h4>Account assignment</h4><p>Hubungan antara user atau group, permission set, dan akun AWS target.</p></Card>
+  <Card><h4>AWS access portal</h4><p>Portal tempat user memilih akun, role, dan aplikasi yang sudah diberikan kepadanya.</p></Card>
+</CardGrid>
+
+<h3>Kapan Identity Center dipakai?</h3>
+
+Gunakan IAM Identity Center ketika organisasi punya banyak akun AWS, banyak tim, kebutuhan single sign-on, rotasi akses, atau ingin menghindari pembuatan IAM user untuk setiap karyawan di setiap akun. Untuk CLF-C02, jawaban "centralized access for workforce users across multiple AWS accounts" sangat kuat mengarah ke IAM Identity Center.
+
+</Section>
+
+<Section num="04" id="federation" title="Federation, SAML, OIDC, dan SCIM" sub="Cara AWS mempercayai identitas dari luar AWS tanpa menyalin semua password.">
+
+<p class="lead">Federation seperti hotel yang menerima kartu identitas resmi dari perusahaan, bukan membuat KTP baru untuk setiap tamu.</p>
+
+**Federation** berarti AWS mempercayai identitas dari identity provider eksternal. Pengguna tidak harus punya password terpisah di AWS. Mereka login di IdP perusahaan, lalu AWS memberikan akses berdasarkan trust dan assignment yang sudah dikonfigurasi.
+
+<CardGrid cols={3}>
+  <Card><h4>SAML 2.0</h4><p>Umum untuk single sign-on enterprise berbasis browser, misalnya akses karyawan dari IdP perusahaan ke AWS access portal.</p></Card>
+  <Card><h4>OIDC</h4><p>Umum untuk aplikasi modern dan workload eksternal, misalnya CI/CD pipeline yang menukar token OIDC dengan role AWS.</p></Card>
+  <Card><h4>SCIM</h4><p>Bukan protokol login. SCIM membantu provisioning dan sinkronisasi user atau group dari IdP ke IAM Identity Center.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Jangan tertukar"><p>SAML dan OIDC membantu proses federated authentication, sedangkan SCIM membantu provisioning identitas agar user dan group dikenal oleh IAM Identity Center.</p></Box>
+
+<h3>Federation dengan IAM Identity Center vs IAM langsung</h3>
+
+AWS merekomendasikan IAM Identity Center untuk manajemen akses manusia secara terpusat pada banyak akun dalam AWS Organizations. Federation IAM langsung masih bisa dipakai untuk skenario tertentu, misalnya akun tunggal, deployment skala kecil, atau machine identity yang memakai OIDC. Untuk ujian, perhatikan kata kunci "multiple AWS accounts", "centralized workforce access", dan "corporate IdP".
+
+<h3>Kenapa federation lebih aman daripada IAM user permanen?</h3>
+
+Dengan federation, organisasi tidak perlu mendistribusikan access key jangka panjang kepada manusia. Akses bisa dikendalikan dari IdP pusat, user yang resign bisa dinonaktifkan di satu tempat, dan sesi AWS biasanya berbasis kredensial sementara.
+
+</Section>
+
+<Section num="05" id="sts-role" title="STS, Role, dan Kredensial Sementara" sub="Kunci sementara lebih aman daripada kunci permanen.">
+
+<p class="lead">AWS STS seperti mesin pembuat badge sementara, badge punya masa berlaku dan hanya membuka pintu tertentu.</p>
+
+**AWS Security Token Service (AWS STS)** menerbitkan temporary security credentials. Kredensial sementara bekerja mirip access key, tetapi punya masa berlaku dan menyertakan session token. Pola ini lebih aman daripada menyimpan access key jangka panjang di laptop, server, atau pipeline.
+
+**IAM role** bukan user dan tidak punya password permanen. Role memiliki dua sisi penting. **Trust policy** menjawab siapa boleh mengambil role ini, sedangkan **permissions policy** menjawab apa yang boleh dilakukan setelah role berhasil diasumsikan.
+
+<CardGrid cols={2}>
+  <Card><h4>Trust policy</h4><p>Daftar pihak yang dipercaya untuk assume role, misalnya akun lain, layanan AWS, atau IdP federasi.</p></Card>
+  <Card><h4>Permissions policy</h4><p>Izin kerja saat role sudah dipakai, misalnya membaca objek S3, menulis log, atau deploy resource tertentu.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="🔑" label="Mental model"><p>Trust policy adalah "siapa boleh memakai badge", permissions policy adalah "badge ini membuka pintu apa".</p></Box>
+
+<Box variant="exam" icon="📌" label="Catatan cakupan STS"><p>STS adalah mesin di balik AssumeRole dan federation, tetapi STS tidak muncul sebagai nama layanan tersendiri di daftar in-scope CLF-C02, ia hadir sebagai konsep di bawah IAM. Cukup kenali idenya, "temporary security credentials = STS", tanpa menghafal detail API.</p></Box>
+
+<h3>Contoh pemakaian role dan STS</h3>
+
+Aplikasi di EC2 butuh membaca S3, berikan IAM role ke instance, bukan access key di file konfigurasi. Lambda butuh menulis CloudWatch Logs, berikan execution role. Developer dari akun pusat butuh memeriksa akun produksi, gunakan cross-account role dengan sesi sementara. Pipeline GitHub Actions butuh deploy ke AWS, gunakan OIDC federation ke IAM role, bukan access key statis di secret repository.
+
+</Section>
+
+<Section num="06" id="cross-account" title="Cross-Account Access" sub="Mengakses akun lain tanpa membagikan password akun itu.">
+
+<p class="lead">Cross-account access seperti cabang Jakarta meminjam ruang rapat cabang Bandung dengan surat izin, bukan meminta kunci master cabang Bandung.</p>
+
+Dalam arsitektur multi-account, kamu sering memisahkan akun berdasarkan lingkungan atau fungsi, misalnya `shared-services`, `security`, `dev`, `test`, dan `prod`. Agar tim pusat bisa bekerja lintas akun, AWS menyediakan pola cross-account access dengan IAM role, resource-based policy, atau AWS RAM untuk resource tertentu.
+
+<Figure><AdvancedIdentityFig02 /><Fragment slot="caption"><b>Gambar 3.</b> AssumeRole lintas akun membutuhkan izin dari sisi pemanggil dan kepercayaan dari sisi target.</Fragment></Figure>
+
+<h3>Alur cross-account role</h3>
+
+<Steps>
+  <Step><b>Principal sumber memiliki izin</b><p>User, role, atau pipeline di Account A harus diizinkan memanggil <code>sts:AssumeRole</code> ke role target.</p></Step>
+  <Step><b>Role target mempercayai sumber</b><p>Trust policy di Account B harus menyebut principal dari Account A sebagai pihak yang boleh assume role.</p></Step>
+  <Step><b>STS menerbitkan sesi</b><p>Jika kedua sisi cocok, STS mengembalikan temporary credentials untuk sesi role di Account B.</p></Step>
+  <Step><b>Permission role menentukan aksi</b><p>Setelah masuk, aksi yang boleh dilakukan tetap dibatasi oleh permissions policy role, resource policy, dan guardrail organisasi.</p></Step>
+</Steps>
+
+<Box variant="exam" icon="🧠" label="Pola soal"><p>Jika soal menyebut akun A harus mengakses akun B secara aman tanpa membuat IAM user di akun B, cari jawaban IAM role dengan trust policy dan STS AssumeRole.</p></Box>
+
+<h3>Resource-based policy vs role proxy</h3>
+
+Beberapa layanan mendukung resource-based policy, misalnya bucket policy di S3. Resource policy menyatakan langsung principal mana yang boleh mengakses resource. Jika resource tidak mendukung resource-based policy, pola umum adalah memakai IAM role sebagai "proxy" di akun target.
+
+</Section>
+
+<Section num="07" id="cognito" title="Amazon Cognito untuk Pengguna Aplikasi" sub="Jangan pakai IAM Identity Center untuk pelanggan aplikasi publik.">
+
+<p class="lead">Cognito adalah loket login untuk pengguna aplikasi, bukan meja admin AWS untuk karyawan.</p>
+
+<a href="https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html">Amazon Cognito</a> membantu developer menambahkan sign-up, sign-in, dan kontrol akses untuk aplikasi web atau mobile. Cognito sering muncul di soal CLF-C02 ketika ada kata kunci pelanggan, user aplikasi, mobile app, web app, social login, atau user directory untuk aplikasi.
+
+<CardGrid cols={2}>
+  <Card><h4>User pool</h4><p>Direktori pengguna aplikasi. Cocok untuk login, sign-up, MFA aplikasi, federasi social atau enterprise, dan token JWT untuk app atau API.</p></Card>
+  <Card><h4>Identity pool</h4><p>Menukar identitas pengguna aplikasi menjadi temporary AWS credentials, sehingga app bisa mengakses resource AWS secara terbatas melalui role.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Jebakan user pool vs identity pool"><p>User pool menjawab "pengguna login ke aplikasi", identity pool menjawab "pengguna aplikasi mendapat AWS credentials terbatas".</p></Box>
+
+Urutan dua komponen ini yang sering dibalik peserta. Pengguna login dulu ke user pool dan mendapat token JWT. Kalau aplikasi cuma butuh tahu "ini siapa" dan menyimpan data lewat backend sendiri, user pool saja sudah cukup. Identity pool baru dipakai ketika aplikasi perlu memanggil AWS secara langsung dari sisi klien, misalnya upload langsung ke S3, lalu token tadi ditukar menjadi kredensial AWS sementara yang dipetakan ke IAM role.
+
+<Figure><AdvancedIdentityFig06 /><Fragment slot="caption"><b>Gambar 4.</b> User pool mengautentikasi pengguna dan memberi token, identity pool menukar token itu menjadi AWS credentials sementara.</Fragment></Figure>
+
+<Compare aLabel="User pool &middot; authentication" bLabel="Identity pool &middot; authorization ke AWS" aTone="teal" bTone="blue" vs="vs">
+  <Fragment slot="a"><ul><li>Direktori dan mesin login: sign-up, sign-in, MFA, reset password.</li><li>Keluarannya token JWT untuk aplikasi atau API milikmu.</li><li>Mendukung social login (Google, Apple) dan federasi enterprise (SAML, OIDC).</li><li>Kata kunci: "user directory for my app", "let customers sign in".</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Menukar identitas terverifikasi menjadi temporary AWS credentials.</li><li>Kredensial dibatasi oleh IAM role, jadi tiap pengguna hanya menyentuh bagiannya.</li><li>Dipakai saat aplikasi mengakses S3, DynamoDB, atau layanan AWS lain langsung.</li><li>Kata kunci: "upload to S3 directly from the app per user", "grant AWS access".</li></ul></Fragment>
+</Compare>
+
+<Box variant="tip" icon="🎨" label="Istilah 2026: Managed Login"><p>Halaman login bawaan Cognito kini disebut <b>Managed Login</b> (penerus Hosted UI), dengan branding tanpa kode serta opsi passkey dan passwordless. Cognito juga punya feature tier baru (Lite, Essentials, Plus). Detail harga tidak diuji, tetapi istilah "Managed Login" adalah terminologi terkini yang mungkin kamu temui.</p></Box>
+
+<h3>Skenario nyata</h3>
+
+Online shop skincare punya pelanggan yang membuat akun, login dengan email, dan melihat riwayat pesanan. Ini cocok dengan Cognito user pool. Jika aplikasi mobile perlu upload foto profil langsung ke S3 dengan izin terbatas per user, identity pool bisa memberikan kredensial sementara yang dipetakan ke role khusus.
+
+<h3>Bedakan dari IAM Identity Center</h3>
+
+IAM Identity Center melayani workforce user seperti developer, finance, security, dan auditor. Cognito melayani application user seperti pelanggan, member, siswa, atau pengguna SaaS. Jika soal menyebut "customer identity and access management" atau "mobile and web app users", arahkan ke Cognito.
+
+</Section>
+
+<Section num="08" id="directory-service" title="AWS Directory Service dan Active Directory" sub="Saat organisasi sudah hidup dengan Microsoft AD.">
+
+<p class="lead">Directory Service seperti jembatan antara buku telepon perusahaan lama dan gedung cloud AWS.</p>
+
+<a href="https://docs.aws.amazon.com/directoryservice/latest/admin-guide/what_is.html">AWS Directory Service</a> membantu menjalankan atau menghubungkan direktori Microsoft Active Directory dengan AWS. Ini relevan ketika perusahaan punya Windows workload, kebijakan domain, user AD, atau ingin memakai kredensial perusahaan yang sudah ada untuk aplikasi dan layanan AWS tertentu.
+
+<CardGrid cols={3}>
+  <Card><h4>AWS Managed Microsoft AD</h4><p>Microsoft AD asli yang terkelola di AWS, cocok saat butuh fitur AD nyata seperti trust, group policy, dan schema extension untuk workload Windows dan integrasi enterprise.</p></Card>
+  <Card><h4>AD Connector</h4><p>Gateway atau proxy yang meneruskan permintaan ke Active Directory on-premises, tanpa menyimpan direktori apa pun di AWS. Cocok bila AD tetap ingin dikelola di kantor.</p></Card>
+  <Card><h4>Simple AD</h4><p>Direktori mandiri berbasis Samba dengan subset fitur AD, cocok untuk kebutuhan sederhana, bukan untuk semua fitur Microsoft AD penuh.</p></Card>
+</CardGrid>
+
+<Compare aLabel="AWS Managed Microsoft AD &middot; AD nyata di AWS" bLabel="AD Connector &middot; proxy ke AD on-prem" aTone="blue" bTone="muted" vs="vs">
+  <Fragment slot="a"><ul><li>Microsoft AD sungguhan yang berjalan dan disimpan di AWS.</li><li>Mendukung trust ke domain lain, group policy, dan schema extension.</li><li>Pilih saat butuh fitur AD penuh atau saat tidak ada AD on-premises.</li><li>Kini punya edisi Standard, Enterprise, dan Hybrid Edition (memperluas forest on-prem ke AWS).</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Tidak menyimpan direktori di AWS, hanya meneruskan ke AD on-premises.</li><li>Sumber kebenaran tetap AD di kantor; AWS sekadar pintu masuk.</li><li>Pilih saat AD harus tetap dikelola on-prem dan kamu hanya ingin menyambungkannya ke AWS.</li><li>Jika koneksi ke on-prem putus, layanan AWS yang bergantung padanya ikut terganggu.</li></ul></Fragment>
+</Compare>
+
+IAM Identity Center dapat menggunakan Active Directory sebagai identity source melalui Directory Service. Artinya user dan group tetap berasal dari AD, lalu assignment ke AWS account atau aplikasi dikelola di IAM Identity Center.
+
+<Box variant="tip" icon="🧭" label="Batas kedalaman CLF-C02"><p>Untuk Cloud Practitioner, fokus pada "Directory Service menghubungkan atau menjalankan Microsoft AD di AWS", bukan detail domain controller tingkat admin.</p></Box>
+
+<h3>Kapan Directory Service dipilih?</h3>
+
+Pilih Directory Service jika soal menyebut Microsoft Active Directory, domain join, Windows workload, kredensial AD, atau integrasi direktori perusahaan. Jangan memilih Cognito untuk login karyawan Windows domain, dan jangan memilih IAM user untuk menggantikan direktori perusahaan yang sudah ada.
+
+</Section>
+
+<Section num="09" id="organizations-ram" title="Organizations, SCP, RCP, dan AWS RAM" sub="Multi-account bukan hanya banyak akun, tetapi pola tata kelola.">
+
+<p class="lead">AWS Organizations adalah peta gedung, SCP dan RCP adalah pagar maksimum, dan RAM adalah cara berbagi fasilitas antar ruangan.</p>
+
+<a href="https://docs.aws.amazon.com/organizations/latest/userguide/orgs_introduction.html">AWS Organizations</a> membantu mengelola banyak akun AWS secara terpusat. Kamu bisa mengelompokkan akun ke dalam Organizational Unit (OU), memakai consolidated billing, mengatur guardrail dengan Service Control Policy (SCP) dan Resource Control Policy (RCP), dan mengintegrasikan layanan seperti IAM Identity Center dan AWS RAM.
+
+<Box variant="analogy" icon="🏗️" label="Plafon dan lantai"><p>Bayangkan ruangan dengan plafon dan lantai. SCP adalah plafon: tinggi maksimum yang boleh kamu capai. IAM policy adalah lantai yang kamu bangun: izin yang benar-benar diberikan. Kamu hanya bisa berdiri di area yang plafon dan lantai sama-sama izinkan. Plafon sendiri tidak pernah menambah ruang gerak, ia hanya membatasi.</p></Box>
+
+<h3>SCP bukan pemberi izin</h3>
+
+SCP adalah guardrail maksimum. SCP tidak memberi izin. Izin tetap harus diberikan oleh identity-based policy atau resource-based policy. Jika IAM policy mengizinkan `ec2:*`, tetapi SCP memblokir EC2 di OU tersebut, user tetap tidak bisa menjalankan EC2. Bahkan `AdministratorAccess` di sebuah member account tetap terblokir bila SCP melarang aksinya.
+
+<Box variant="exam" icon="🧠" label="Kalimat ujian"><p>"SCPs do not grant permissions" adalah konsep wajib. SCP hanya membatasi maksimum izin pada akun member dalam organisasi.</p></Box>
+
+<h3>Dua batasan SCP yang sering jadi jebakan</h3>
+
+Ada dua hal yang sering keliru dipahami soal SCP. Pertama, SCP tidak berlaku untuk management account, hanya untuk akun member. Jadi jawaban "pasang SCP untuk mengunci management account" adalah perangkap, itu tidak bekerja. Inilah salah satu alasan kuat kenapa kamu tidak menaruh workload biasa di management account. Kedua, SCP butuh AWS Organizations dalam mode all features, ia tidak tersedia bila organisasi hanya memakai fitur consolidated billing saja. SCP juga tidak membatasi service-linked role.
+
+<CardGrid cols={2}>
+  <Card><h4>Tidak menyentuh management account</h4><p>SCP hanya mengikat akun member. Management account kebal dari SCP, jadi jangan andalkan SCP untuk mengamankannya.</p></Card>
+  <Card><h4>Butuh mode all features</h4><p>SCP hanya aktif bila Organizations memakai all features, bukan mode consolidated billing only.</p></Card>
+</CardGrid>
+
+<h3>RCP, pagar di sisi resource</h3>
+
+Sejak November 2024, AWS menambahkan <a href="https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html">Resource Control Policy (RCP)</a> sebagai tipe kebijakan otorisasi baru di Organizations. Kalau SCP membatasi apa yang boleh dilakukan oleh principal (user dan role), RCP membatasi apa yang boleh dilakukan terhadap resource. RCP adalah pagar data perimeter, awalnya mendukung S3, STS, SQS, KMS, dan Secrets Manager. Sama seperti SCP, RCP tidak memberi izin, ia hanya menyempitkan. Keduanya guardrail, bukan pemberi akses, dan tidak ada biaya tambahan.
+
+<Figure><AdvancedIdentityFig03 /><Fragment slot="caption"><b>Gambar 5.</b> Izin efektif adalah irisan semua lapisan. SCP membatasi principal, RCP membatasi resource, dan keduanya tidak pernah menambah izin.</Fragment></Figure>
+
+<Compare aLabel="SCP &middot; membatasi PRINCIPAL" bLabel="RCP &middot; membatasi RESOURCE" aTone="violet" bTone="violet" vs="vs">
+  <Fragment slot="a"><ul><li>Membatasi maksimum izin user dan role di akun member.</li><li>Menjawab "principal ini paling jauh boleh apa?".</li><li>Tidak berlaku untuk management account dan service-linked role.</li><li>Butuh mode all features di Organizations.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Membatasi siapa pun yang mencoba mengakses resource tertentu.</li><li>Menjawab "resource ini paling jauh boleh diakses oleh siapa dan bagaimana?".</li><li>Awalnya untuk S3, STS, SQS, KMS, dan Secrets Manager.</li><li>Bagian dari pola data perimeter, melengkapi SCP.</li></ul></Fragment>
+</Compare>
+
+<h3>AWS RAM untuk berbagi resource</h3>
+
+<a href="https://docs.aws.amazon.com/ram/latest/userguide/what-is.html">AWS Resource Access Manager (AWS RAM)</a> membantu share resource yang didukung ke akun lain, OU, atau seluruh organization, dan untuk sebagian tipe resource juga ke IAM role atau user tertentu. Contohnya, tim network dapat membuat subnet VPC, Transit Gateway, atau Route 53 Resolver rule di akun pusat, lalu membuatnya bisa dipakai oleh akun aplikasi tanpa menggandakan resource. RAM gratis dipakai, kamu hanya membayar resource yang dibagikan. RAM bukan alat untuk login lintas akun dan bukan cara berbagi semua jenis resource secara bebas.
+
+<Box variant="warn" icon="⚠️" label="RAM bukan akses login"><p>RAM berbagi resource (mis. subnet, Transit Gateway), bukan memberi seseorang kemampuan masuk ke akun lain dan bukan alat billing. Kalau soal bilang "share a subnet across accounts without duplicating", jawabannya RAM.</p></Box>
+
+<CardGrid cols={2}>
+  <Card><h4>Organizations</h4><p>Mengelompokkan akun, mengelola billing, menerapkan kebijakan organisasi, dan menjadi fondasi multi-account governance.</p></Card>
+  <Card><h4>SCP &amp; RCP</h4><p>Guardrail maksimum. SCP membatasi principal, RCP membatasi resource. Keduanya tidak memberikan izin langsung.</p></Card>
+  <Card><h4>AWS RAM</h4><p>Berbagi resource yang didukung dengan account, OU, organization, atau principal tertentu jika resource mendukung.</p></Card>
+  <Card><h4>Identity Center</h4><p>Mengatur user dan group mana yang mendapat permission set di akun tertentu.</p></Card>
+</CardGrid>
+
+</Section>
+
+<Section num="10" id="control-tower" title="Control Tower dan Consolidated Billing" sub="Dari plumbing manual menuju landing zone yang sudah tertata.">
+
+<p class="lead">Jika Organizations adalah rangka dan pipa gedung, Control Tower adalah kontraktor yang langsung menyerahkan gedung siap huni dengan satpam dan CCTV terpasang.</p>
+
+Membangun multi-account yang aman dengan Organizations saja butuh banyak keputusan manual: bikin OU, atur SCP, siapkan akun untuk log, akun untuk audit, lalu sambungkan semuanya. <a href="https://docs.aws.amazon.com/controltower/latest/userguide/what-is-control-tower.html">AWS Control Tower</a> mengotomasi semua itu menjadi sebuah landing zone, yaitu lingkungan multi-account yang sudah tertata mengikuti praktik baik AWS sejak menit pertama.
+
+Saat diaktifkan, Control Tower menyiapkan management account dengan consolidated billing, lalu membuat dua akun khusus: <b>Log Archive</b> untuk menampung log secara terpusat dan <b>Audit</b> untuk akses keamanan lintas akun. Di atasnya, Control Tower menerapkan controls atau guardrails: preventif (mencegah aksi, biasanya lewat SCP), detektif (mendeteksi pelanggaran), dan proaktif (menolak resource yang tidak patuh sebelum dibuat). Control Tower sendiri tidak memungut biaya terpisah, kamu hanya membayar layanan yang ia jalankan di baliknya.
+
+<Figure><AdvancedIdentityFig04 /><Fragment slot="caption"><b>Gambar 6.</b> Landing zone khas: management account dengan consolidated billing, Security OU berisi Log Archive dan Audit, lalu OU workloads dan sandbox, dengan SCP, Identity Center, dan RAM menempel di atasnya.</Fragment></Figure>
+
+<Compare aLabel="AWS Organizations &middot; plumbing" bLabel="AWS Control Tower &middot; landing zone otomatis" aTone="blue" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Fondasi multi-account: akun, OU, consolidated billing, SCP, RCP.</li><li>Fleksibel tetapi banyak langkah manual untuk merakit struktur yang baik.</li><li>Kata kunci: "single bill", "group accounts", "apply SCP".</li><li>Kamu sendiri yang mendesain landing zone di atasnya.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Wrapper opinionated yang berdiri di atas Organizations.</li><li>Otomatis membuat Log Archive, Audit, OU, dan controls sekaligus.</li><li>Kata kunci: "quickly set up a governed, well-architected multi-account environment".</li><li>Cepat siap pakai, tetapi mengikuti pola yang sudah ditentukan AWS.</li></ul></Fragment>
+</Compare>
+
+<h3>Consolidated billing, satu tagihan untuk banyak akun</h3>
+
+Salah satu manfaat paling konkret dari Organizations adalah consolidated billing. Semua akun member dibayar lewat satu tagihan di management account, jadi finance cukup melihat satu invoice, bukan belasan. Lebih dari sekadar kerapian, pemakaian semua akun digabung untuk menghitung volume discount, dan komitmen seperti Reserved Instances serta Savings Plans bisa dibagi lintas akun. Akun yang sepi memakai sisa komitmen akun yang sibuk, sehingga diskon tidak terbuang.
+
+<Box variant="exam" icon="🧠" label="Billing vs governance"><p>Pisahkan dua hal. "Single bill dan combined usage discounts" mengarah ke consolidated billing (Organizations). "Quickly set up a governed multi-account environment" mengarah ke Control Tower. SCP, OU, dan Control Tower urusan governance, bukan billing.</p></Box>
+
+</Section>
+
+<Section num="11" id="hands-on" title="Walkthrough Konseptual" sub="Latihan mental untuk membangun akses multi-account yang rapi.">
+
+<p class="lead">Hands-on ini tidak wajib kamu jalankan sekarang, tetapi pahami urutannya seperti arsitek yang menggambar peta akses.</p>
+
+<Steps>
+  <Step><b>Buat pola akun</b><p>Kelompokkan akun menjadi shared-services, security, dev, test, dan prod, lalu tempatkan dalam OU yang masuk akal.</p></Step>
+  <Step><b>Aktifkan IAM Identity Center</b><p>Gunakan organization instance agar akses ke banyak akun dapat dikelola dari satu tempat.</p></Step>
+  <Step><b>Pilih identity source</b><p>Gunakan Identity Center directory untuk lab sederhana, external IdP untuk perusahaan modern, atau Active Directory jika organisasi memakai AD.</p></Step>
+  <Step><b>Buat group</b><p>Contoh group: Developers, SecurityAuditors, BillingViewers, dan NetworkAdmins.</p></Step>
+  <Step><b>Buat permission set</b><p>Contoh permission set: ReadOnly, DeveloperPowerUser, BillingReadOnly, dan SecurityAudit.</p></Step>
+  <Step><b>Assign group ke akun</b><p>Developers boleh DeveloperPowerUser di dev, tetapi hanya ReadOnly di prod. Auditor boleh SecurityAudit di semua akun.</p></Step>
+  <Step><b>Siapkan cross-account role untuk otomasi</b><p>Pipeline atau tooling pusat bisa assume role di akun target dengan trust policy yang jelas dan permission minimum.</p></Step>
+  <Step><b>Share resource bersama dengan RAM</b><p>Resource yang dikelola pusat, seperti network resource yang didukung, bisa dibagikan ke akun aplikasi tanpa menggandakan resource.</p></Step>
+  <Step><b>Audit aktivitas</b><p>Gunakan CloudTrail dan layanan governance terkait untuk melihat siapa melakukan apa, dari akun mana, dan dengan role apa.</p></Step>
+</Steps>
+
+<Box variant="tip" icon="✅" label="Tujuan praktis"><p>Desain yang baik membuat user masuk dari satu portal, mendapat izin sesuai tugas, memakai kredensial sementara, dan meninggalkan jejak audit.</p></Box>
+
+<h3>Mini skenario</h3>
+
+Tim developer ingin deploy ke akun dev, membaca log di akun prod, tetapi tidak boleh menghapus resource produksi. Solusi yang sehat adalah group Developers di IAM Identity Center, permission set lebih luas untuk akun dev, permission set read-only untuk akun prod, dan pipeline deploy memakai role terpisah dengan izin minimum.
+
+</Section>
+
+<Section num="12" id="jebakan" title="Kesalahan Umum dan Jebakan Ujian" sub="Bagian ini sengaja dibuat eksplisit karena soal CLF-C02 sering menukar istilah.">
+
+<p class="lead">Banyak jawaban salah terasa benar karena semua berbicara tentang "akses", padahal identitasnya berbeda.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>IAM user untuk semua karyawan</h4><p>Keliru untuk organisasi modern. Untuk workforce access terpusat, arahkan ke IAM Identity Center dan federation.</p></Card>
+  <Card><h4>Cognito untuk admin AWS</h4><p>Keliru. Cognito untuk pengguna aplikasi web atau mobile, bukan portal utama karyawan mengelola akun AWS.</p></Card>
+  <Card><h4>STS dianggap database user</h4><p>Keliru. STS menerbitkan temporary security credentials, bukan menyimpan direktori user.</p></Card>
+  <Card><h4>SCIM dianggap protokol login</h4><p>Keliru. SCIM untuk provisioning user dan group, sedangkan SAML atau OIDC dipakai untuk federated authentication.</p></Card>
+  <Card><h4>SCP dianggap memberi izin</h4><p>Keliru. SCP hanya guardrail maksimum, izin tetap berasal dari IAM policy atau resource policy.</p></Card>
+  <Card><h4>SCP untuk mengunci management account</h4><p>Keliru. SCP tidak berlaku untuk management account, hanya akun member. Lindungi management account dengan cara lain.</p></Card>
+  <Card><h4>Control Tower sama dengan Organizations</h4><p>Keliru. Organizations adalah fondasinya, Control Tower adalah wrapper otomatis yang membangun landing zone (Log Archive, Audit, controls) di atasnya.</p></Card>
+  <Card><h4>Identity pool dipakai untuk login</h4><p>Keliru. Login lewat user pool (token JWT), identity pool baru menukar identitas itu menjadi AWS credentials sementara.</p></Card>
+  <Card><h4>Simple AD untuk fitur AD penuh</h4><p>Keliru. Simple AD hanya subset fitur. Untuk trust dan schema extension, pilih AWS Managed Microsoft AD. AD Connector hanya proxy ke AD on-prem.</p></Card>
+  <Card><h4>RAM dianggap akses login</h4><p>Keliru. AWS RAM berbagi resource yang didukung, bukan memberi user kemampuan masuk ke akun lain.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Kata kunci soal"><p>"Employees across multiple AWS accounts" mengarah ke IAM Identity Center, "mobile app users" mengarah ke Cognito, "temporary credentials" mengarah ke STS, "share subnet across accounts" mengarah ke AWS RAM, "governed multi-account landing zone" mengarah ke Control Tower, "single bill and combined discounts" mengarah ke consolidated billing.</p></Box>
+
+<h3>Sumber resmi untuk review</h3>
+
+<ul>
+  <li><a href="https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/clf-02-in-scope-services.html">AWS CLF-C02 in-scope services</a></li>
+  <li><a href="https://docs.aws.amazon.com/singlesignon/latest/userguide/what-is.html">AWS IAM Identity Center User Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers.html">IAM identity providers and federation</a></li>
+  <li><a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html">Temporary security credentials in IAM</a></li>
+  <li><a href="https://docs.aws.amazon.com/cognito/latest/developerguide/what-is-amazon-cognito.html">Amazon Cognito Developer Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/directoryservice/latest/admin-guide/what_is.html">AWS Directory Service Administration Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/ram/latest/userguide/what-is.html">AWS Resource Access Manager User Guide</a></li>
+  <li><a href="https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html">AWS Organizations SCP documentation</a></li>
+  <li><a href="https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html">AWS Organizations RCP documentation</a></li>
+  <li><a href="https://docs.aws.amazon.com/controltower/latest/userguide/what-is-control-tower.html">AWS Control Tower User Guide</a></li>
+</ul>
+
+</Section>
+
+<Section num="13" id="ringkasan" title="Ringkasan & Tips Ujian" sub="Peta hafalan cepat untuk CLF-C02.">
+
+<p class="lead">Inti modul ini adalah memilih layanan identitas berdasarkan jenis pengguna dan konteks multi-account.</p>
+
+<Recap title="Poin Penting">
+  <ul><li>IAM mengelola identitas di dalam satu akun, IAM Identity Center mengelola akses workforce ke banyak akun, Cognito mengelola identitas pengguna aplikasi.</li><li>IAM Identity Center adalah pilihan utama untuk workforce access terpusat (pakai organization instance) dan gratis diaktifkan.</li><li>Federation membuat AWS mempercayai identitas dari IdP eksternal, misalnya SAML, OIDC, Active Directory, Okta, atau Microsoft Entra ID.</li><li>SCIM membantu provisioning user dan group, bukan proses login.</li><li>STS menerbitkan temporary security credentials, sering dipakai saat assume role dan federation (konsep di bawah IAM, bukan layanan in-scope terpisah).</li><li>IAM role memiliki trust policy untuk siapa boleh assume dan permissions policy untuk apa yang boleh dilakukan.</li><li>Cross-account access membutuhkan izin dari sisi pemanggil dan trust dari sisi target.</li><li>Amazon Cognito cocok untuk pengguna aplikasi web atau mobile: user pool untuk login (JWT), identity pool untuk AWS credentials sementara.</li><li>AWS Directory Service: Managed Microsoft AD (AD nyata), AD Connector (proxy ke on-prem), Simple AD (subset fitur).</li><li>AWS Organizations mengatur banyak akun, OU, consolidated billing, dan guardrail seperti SCP dan RCP.</li><li>SCP membatasi maksimum izin principal (tidak berlaku untuk management account, butuh mode all features), RCP membatasi akses ke resource. Keduanya tidak memberi izin.</li><li>AWS Control Tower membangun landing zone otomatis (Log Archive, Audit, controls) di atas Organizations.</li><li>Consolidated billing memberi satu tagihan plus volume discount dan sharing RI/Savings Plans lintas akun.</li><li>AWS RAM membagikan resource yang didukung, bukan membagikan password atau akses login.</li></ul>
+</Recap>
+
+<h3>Pemetaan ke domain CLF-C02</h3>
+
+<CardGrid cols={2}>
+  <Card><h4>Domain 2: Security &amp; Compliance (30%)</h4><p>Identity Center, federation, STS, role, cross-account trust, SCP, RCP, least privilege, dan kredensial sementara sangat relevan dengan keamanan akses. Ini domain utama modul.</p></Card>
+  <Card><h4>Domain 3: Cloud Technology &amp; Services (34%)</h4><p>Cognito, Directory Service, RAM, Organizations, Control Tower, dan pola multi-account termasuk layanan inti yang harus bisa dikenali dari skenario.</p></Card>
+  <Card><h4>Domain 1: Cloud Concepts (24%)</h4><p>Multi-account membantu pemisahan lingkungan, isolasi risiko, dan governance yang lebih baik daripada satu akun untuk semua workload.</p></Card>
+  <Card><h4>Domain 4: Billing, Pricing &amp; Support (12%)</h4><p>Consolidated billing memberi satu tagihan dan diskon gabungan lintas akun, sedangkan layanan governance seperti SCP dan Control Tower sendiri tidak memungut biaya terpisah.</p></Card>
+</CardGrid>
+
+<h3>Tips ujian super cepat</h3>
+
+<Steps>
+  <Step><b>Cari aktor utama</b><p>Jika aktornya karyawan, pikirkan IAM Identity Center. Jika aktornya pelanggan aplikasi, pikirkan Cognito. Jika aktornya workload, pikirkan role.</p></Step>
+  <Step><b>Cari kata "temporary"</b><p>Temporary credentials, assume role, dan federated session hampir selalu melibatkan STS.</p></Step>
+  <Step><b>Cari kata "multiple accounts"</b><p>Akses manusia lintas banyak akun mengarah ke IAM Identity Center, sedangkan governance akun mengarah ke Organizations, SCP, dan Control Tower.</p></Step>
+  <Step><b>Cari kata "share resource"</b><p>Jika soal ingin resource dipakai akun lain tanpa duplikasi, periksa AWS RAM atau resource-based policy, bukan membuat IAM user baru.</p></Step>
+  <Step><b>Pisahkan billing dari governance</b><p>"Single bill dan combined discounts" berarti consolidated billing. "Governed landing zone" berarti Control Tower. Keduanya beda urusan.</p></Step>
+  <Step><b>Ingat SCP dan RCP</b><p>Keduanya tidak pernah memberi izin. Jika semua policy mengizinkan tetapi SCP atau RCP melarang, aksi tetap ditolak. SCP juga tidak menyentuh management account.</p></Step>
+</Steps>
+
+<Box variant="exam" icon="🎓" label="Kalimat penutup"><p>Untuk CLF-C02, jangan hafal semua detail konfigurasi. Hafalkan peta keputusan layanan, siapa identitasnya, dari mana login berasal, apakah aksesnya permanen atau sementara, dan ingat guardrail hanya menyempitkan, tidak pernah memberi izin.</p></Box>
+
+</Section>

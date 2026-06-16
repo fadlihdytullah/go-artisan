@@ -1,0 +1,57 @@
+<svg viewBox="0 0 760 520" xmlns="http://www.w3.org/2000/svg" font-family="Inter, ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <marker id="vpcDtArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9c4a2f" />
+    </marker>
+  </defs>
+  <rect x="20" y="20" width="720" height="480" rx="18" fill="#fbfaf5" stroke="#d9d4c4" stroke-width="2" />
+  <text x="380" y="50" text-anchor="middle" font-size="18" fill="#241f17" font-weight="700">Decision tree: pilih layanan koneksi dan delivery</text>
+
+  <rect x="280" y="70" width="200" height="44" rx="10" fill="#241f17" stroke="#241f17" stroke-width="2" />
+  <text x="380" y="97" text-anchor="middle" font-size="14" fill="#bd5d3e" font-weight="700">Apa kebutuhan utamamu?</text>
+
+  <line x1="380" y1="114" x2="130" y2="150" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#vpcDtArrow)" />
+  <line x1="380" y1="114" x2="380" y2="150" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#vpcDtArrow)" />
+  <line x1="380" y1="114" x2="630" y2="150" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#vpcDtArrow)" />
+
+  <text x="225" y="138" text-anchor="middle" font-size="11" fill="#6e6a5c">user akhir global</text>
+  <text x="430" y="138" text-anchor="middle" font-size="11" fill="#6e6a5c">arahkan domain</text>
+  <text x="560" y="138" text-anchor="middle" font-size="11" fill="#6e6a5c">sambung jaringan</text>
+
+  <rect x="50" y="152" width="190" height="120" rx="12" fill="#f0e3d8" stroke="#bd5d3e" stroke-width="2" />
+  <text x="145" y="174" text-anchor="middle" font-size="13" fill="#c14a39" font-weight="700">Mempercepat akses user</text>
+  <line x1="145" y1="184" x2="145" y2="200" stroke="#bd5d3e" stroke-width="2" marker-end="url(#vpcDtArrow)" />
+  <rect x="62" y="202" width="166" height="28" rx="8" fill="#fbfaf5" stroke="#bd5d3e" stroke-width="1.5" />
+  <text x="145" y="221" text-anchor="middle" font-size="11" fill="#241f17">cacheable (HTTP/S)? &rarr; CloudFront</text>
+  <rect x="62" y="236" width="166" height="28" rx="8" fill="#fbfaf5" stroke="#bd5d3e" stroke-width="1.5" />
+  <text x="145" y="255" text-anchor="middle" font-size="11" fill="#241f17">static IP, TCP/UDP? &rarr; Global Accel.</text>
+
+  <rect x="300" y="152" width="160" height="86" rx="12" fill="#f0e3d8" stroke="#9c4a2f" stroke-width="2" />
+  <text x="380" y="178" text-anchor="middle" font-size="13" fill="#bd5d3e" font-weight="700">Resolusi nama</text>
+  <text x="380" y="198" text-anchor="middle" font-size="11" fill="#6e6a5c">DNS, routing policy,</text>
+  <text x="380" y="214" text-anchor="middle" font-size="11" fill="#6e6a5c">health check</text>
+  <text x="380" y="231" text-anchor="middle" font-size="12" fill="#bd5d3e" font-weight="700">&rarr; Route 53</text>
+
+  <rect x="520" y="152" width="200" height="120" rx="12" fill="#e6f0e6" stroke="#2f7d4f" stroke-width="2" />
+  <text x="620" y="174" text-anchor="middle" font-size="13" fill="#2f7d4f" font-weight="700">Hubungkan kantor/VPC</text>
+  <line x1="620" y1="184" x2="620" y2="200" stroke="#2f7d4f" stroke-width="2" marker-end="url(#vpcDtArrow)" />
+  <rect x="532" y="202" width="176" height="28" rx="8" fill="#fbfaf5" stroke="#2f7d4f" stroke-width="1.5" />
+  <text x="620" y="221" text-anchor="middle" font-size="11" fill="#241f17">cepat &amp; terenkripsi? &rarr; S2S VPN</text>
+  <rect x="532" y="236" width="176" height="28" rx="8" fill="#fbfaf5" stroke="#2f7d4f" stroke-width="1.5" />
+  <text x="620" y="255" text-anchor="middle" font-size="11" fill="#241f17">dedicated stabil? &rarr; Direct Connect</text>
+
+  <rect x="50" y="300" width="320" height="80" rx="12" fill="#ece6f3" stroke="#6a5aa6" stroke-width="2" />
+  <text x="210" y="324" text-anchor="middle" font-size="13" fill="#6a5aa6" font-weight="700">Banyak VPC saling terhubung?</text>
+  <text x="210" y="346" text-anchor="middle" font-size="11" fill="#6e6a5c">2 VPC saja, 1-ke-1 &rarr; VPC Peering</text>
+  <text x="210" y="366" text-anchor="middle" font-size="11" fill="#6e6a5c">banyak VPC + on-prem, hub &rarr; Transit Gateway</text>
+
+  <rect x="390" y="300" width="330" height="80" rx="12" fill="#ece6f3" stroke="#9c4a2f" stroke-width="2" />
+  <text x="555" y="324" text-anchor="middle" font-size="13" fill="#bd5d3e" font-weight="700">Akses privat ke layanan AWS?</text>
+  <text x="555" y="346" text-anchor="middle" font-size="11" fill="#6e6a5c">S3/DynamoDB &rarr; Gateway endpoint (gratis)</text>
+  <text x="555" y="366" text-anchor="middle" font-size="11" fill="#6e6a5c">layanan lain &rarr; Interface endpoint (PrivateLink)</text>
+
+  <rect x="50" y="404" width="670" height="76" rx="12" fill="#f0e3d8" stroke="#9c4a2f" stroke-width="2" />
+  <text x="385" y="428" text-anchor="middle" font-size="13" fill="#9c4a2f" font-weight="700">Kunci ingatan</text>
+  <text x="385" y="450" text-anchor="middle" font-size="11.5" fill="#6e6a5c">CloudFront = caching konten &middot; Global Accelerator = optimasi network path &middot; Route 53 = DNS</text>
+  <text x="385" y="469" text-anchor="middle" font-size="11.5" fill="#6e6a5c">PrivateLink = akses ke LAYANAN &middot; VPN/Direct Connect = hubungkan JARINGAN</text>
+</svg>

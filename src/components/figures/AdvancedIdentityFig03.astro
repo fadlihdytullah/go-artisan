@@ -1,0 +1,39 @@
+<svg viewBox="0 0 760 430" xmlns="http://www.w3.org/2000/svg" font-family="Inter, ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <marker id="arrow-aid-03" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#9c4a2f" />
+    </marker>
+  </defs>
+  <rect x="22" y="22" width="716" height="386" rx="18" fill="#fbfaf5" stroke="#f0e3d8" stroke-width="2" />
+  <text x="380" y="52" text-anchor="middle" font-size="18" fill="#241f17" font-weight="700">Izin efektif = irisan semua lapisan</text>
+  <text x="380" y="74" text-anchor="middle" font-size="12" fill="#6e6a5c">Guardrail hanya menyempitkan, tidak pernah menambah izin</text>
+
+  <rect x="58" y="98" width="298" height="60" rx="10" fill="#6a5aa6" />
+  <text x="207" y="124" text-anchor="middle" font-size="13" fill="#fbfaf5" font-weight="700">SCP &middot; batas izin PRINCIPAL</text>
+  <text x="207" y="144" text-anchor="middle" font-size="11" fill="#f0e3d8">apa yang boleh dilakukan user atau role</text>
+
+  <rect x="404" y="98" width="298" height="60" rx="10" fill="#6a5aa6" />
+  <text x="553" y="124" text-anchor="middle" font-size="13" fill="#fbfaf5" font-weight="700">RCP &middot; batas akses ke RESOURCE</text>
+  <text x="553" y="144" text-anchor="middle" font-size="11" fill="#ece6f3">data perimeter (S3, STS, SQS, KMS...)</text>
+
+  <rect x="58" y="176" width="298" height="60" rx="10" fill="#bd5d3e" />
+  <text x="207" y="202" text-anchor="middle" font-size="13" fill="#fbfaf5" font-weight="700">Identity-based policy</text>
+  <text x="207" y="222" text-anchor="middle" font-size="11" fill="#f0e3d8">izin yang ditempel ke user atau role</text>
+
+  <rect x="404" y="176" width="298" height="60" rx="10" fill="#0a7d6e" />
+  <text x="553" y="202" text-anchor="middle" font-size="13" fill="#fbfaf5" font-weight="700">Resource-based policy</text>
+  <text x="553" y="222" text-anchor="middle" font-size="11" fill="#e1f1ec">izin yang ditempel ke resource (mis. bucket)</text>
+
+  <line x1="207" y1="158" x2="207" y2="172" stroke="#9c4a2f" stroke-width="2" marker-end="url(#arrow-aid-03)" />
+  <line x1="553" y1="158" x2="553" y2="172" stroke="#9c4a2f" stroke-width="2" marker-end="url(#arrow-aid-03)" />
+  <line x1="356" y1="206" x2="404" y2="206" stroke="#9c4a2f" stroke-width="2" />
+  <line x1="380" y1="236" x2="380" y2="262" stroke="#9c4a2f" stroke-width="3" marker-end="url(#arrow-aid-03)" />
+
+  <rect x="208" y="270" width="344" height="58" rx="12" fill="#bd5d3e" />
+  <text x="380" y="296" text-anchor="middle" font-size="14" fill="#fbfaf5" font-weight="700">Izin efektif (yang benar-benar berlaku)</text>
+  <text x="380" y="316" text-anchor="middle" font-size="11" fill="#f0e3d8">aksi diizinkan hanya jika SEMUA lapisan mengizinkannya</text>
+
+  <rect x="58" y="346" width="644" height="46" rx="10" fill="#f7e6df" stroke="#c14a39" stroke-width="1.5" />
+  <text x="380" y="368" text-anchor="middle" font-size="12" fill="#c14a39" font-weight="700">SCP dan RCP tidak memberi izin. Satu Deny di mana pun = aksi ditolak.</text>
+  <text x="380" y="385" text-anchor="middle" font-size="11" fill="#c14a39">Analogi: SCP adalah plafon, IAM policy adalah lantai. Kamu hanya bisa berdiri di area yang keduanya izinkan.</text>
+</svg>

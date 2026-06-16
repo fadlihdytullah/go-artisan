@@ -1,0 +1,512 @@
+---
+title: "Modul Account Management, Billing, Pricing & Support - AWS Cloud Practitioner CLF-C02"
+badge: "BIL"
+topTitle: "Account Management, Billing, Pricing & Support"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Pelajari cara AWS mengelola akun, tagihan, estimasi biaya, anggaran, laporan biaya, dukungan, dan Marketplace untuk persiapan CLF-C02."
+order: 14
+target: "CLF-C02"
+readingTime: "~80 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Mengapa Billing Perlu Dipahami?" }
+  - { num: "02", id: "domain-billing", title: "Peta Domain Billing CLF-C02" }
+  - { num: "03", id: "organizations-consolidated-billing", title: "AWS Organizations & Consolidated Billing" }
+  - { num: "04", id: "pricing-models", title: "Model Harga AWS" }
+  - { num: "05", id: "free-tier", title: "AWS Free Tier" }
+  - { num: "06", id: "cost-explorer-budgets", title: "Cost Explorer & AWS Budgets" }
+  - { num: "07", id: "pricing-calculator", title: "AWS Pricing Calculator" }
+  - { num: "08", id: "cur-data-exports-tags", title: "CUR, Data Exports & Cost Allocation Tags" }
+  - { num: "09", id: "showback-chargeback", title: "Showback, Chargeback & Billing Conductor" }
+  - { num: "10", id: "support-plans", title: "AWS Support Plans" }
+  - { num: "11", id: "trusted-advisor-health", title: "Trusted Advisor & AWS Health Dashboard" }
+  - { num: "12", id: "marketplace-partners", title: "AWS Marketplace & Partner Ecosystem" }
+  - { num: "13", id: "walkthrough", title: "Walkthrough Konseptual" }
+  - { num: "14", id: "kesalahan-jebakan", title: "Kesalahan Umum & Jebakan Ujian" }
+  - { num: "15", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul Account Management, Billing, Pricing & Support - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import BillingFig01 from "@figures/BillingFig01.astro";
+import BillingFig02 from "@figures/BillingFig02.astro";
+import BillingFig03 from "@figures/BillingFig03.astro";
+import BillingFig04 from "@figures/BillingFig04.astro";
+import BillingFig05 from "@figures/BillingFig05.astro";
+import BillingFig06 from "@figures/BillingFig06.astro";
+
+<Hero eyebrow="Modul &middot; Billing" title="Account Management,<br /><em>Billing, Pricing &amp; Support</em>">
+  <p>Biaya cloud bukan sekadar angka tagihan, tetapi cara membaca, mengendalikan, dan menjelaskan keputusan bisnis di AWS.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~80 menit baca</Chip>
+    <Chip icon="book">Domain 4 &middot; 12%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Mengapa Billing Perlu Dipahami?" sub="Mulai dari analogi dompet keluarga, lalu naik ke akun dan organisasi AWS.">
+
+<p class="lead">Bayangkan satu keluarga memakai banyak kartu debit untuk belanja dapur, sekolah, transportasi, dan hiburan.</p>
+
+Kalau setiap kartu dibayar sendiri-sendiri, kepala keluarga sulit tahu total belanja bulan ini. Kalau semua kartu masuk satu laporan, lalu setiap transaksi diberi label seperti `dapur`, `sekolah`, atau `liburan`, keputusan menjadi jauh lebih mudah. Di AWS, pola ini mirip dengan **AWS Organizations**, **consolidated billing**, **cost allocation tags**, **Cost Explorer**, dan **Budgets**.
+
+Dalam modul ini, kita tidak sedang belajar akuntansi rumit. Kita belajar cara menjawab pertanyaan dasar: siapa yang memakai resource, berapa biayanya, apakah biaya akan melewati batas, bagaimana memperkirakan biaya sebelum membangun, dan dukungan AWS mana yang cocok saat terjadi masalah.
+
+Kenapa ini penting untukmu di ujian? Karena Domain 4 jarang menanyakan angka tagihan, tetapi sering menanyakan "alat mana yang tepat untuk tujuan X". Banyak alat terlihat mirip (Pricing Calculator, Cost Explorer, Budgets, CUR), tetapi tiap alat menjawab pertanyaan yang berbeda di waktu yang berbeda. Begitu kamu memetakan tiap alat ke satu kata kerja inti (estimasi, analisis, alert, ekspor, satukan, sarankan), pilihan ganda yang tadinya membingungkan menjadi mudah dieliminasi.
+
+<Box variant="analogy" icon="🧾" label="Analogi sederhana"><p>Billing AWS seperti nota supermarket besar: layanan AWS adalah barang, akun adalah anggota keluarga, tag adalah label kategori, Cost Explorer adalah grafik belanja, Budgets adalah alarm dompet, Pricing Calculator adalah daftar belanja sebelum masuk toko, dan Support Plan adalah tingkat bantuan dari kasir biasa sampai manajer toko yang siaga 24 jam.</p></Box>
+
+<Figure><BillingFig01 /><Fragment slot="caption"><b>Gambar 1.</b> Alur umum pengelolaan biaya AWS dari organisasi multi akun menuju analisis, alarm, dukungan, dan pembelian software.</Fragment></Figure>
+
+<Recap title="Gambaran awal"><ul><li>Billing tools menjawab pertanyaan biaya pada waktu berbeda: <strong>sebelum</strong> bangun (Pricing Calculator), <strong>sesudah</strong> jalan (Cost Explorer), dan saat ingin <strong>dibatasi</strong> (Budgets).</li><li>AWS Organizations dan consolidated billing menyatukan pembayaran banyak akun tanpa biaya tambahan dan tanpa menyatukan akses.</li><li>Tag dan cost allocation tags adalah pondasi agar biaya bisa dibaca per tim, aplikasi, atau environment.</li><li>Support Plans menentukan kecepatan dan kedalaman bantuan AWS sesuai kritikalitas workload.</li></ul></Recap>
+
+</Section>
+
+<Section num="02" id="domain-billing" title="Peta Domain Billing CLF-C02" sub="Domain 4 kecil secara bobot, tetapi sangat mudah menjadi poin cepat bila istilahnya rapi.">
+
+<p class="lead">Domain 4 pada CLF-C02 berfokus pada pricing, billing tools, cost management, support, dan resource resmi AWS.</p>
+
+Berdasarkan [Exam Guide CLF-C02 resmi](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html), Domain 4 bernama **Billing, Pricing, and Support** dan mencakup 12% konten yang dinilai. Sebagai konteks, bobot domain lain adalah Domain 1 Cloud Concepts 24%, Domain 2 Security and Compliance 30%, dan Domain 3 Cloud Technology and Services 34%. Ujian punya 50 soal dinilai plus 15 soal uji coba, dengan passing score 700 dari skala 100 sampai 1000. Tiga tugas besar Domain 4 adalah membandingkan model harga AWS, memahami resource untuk billing dan cost management, serta mengenali pilihan support dan resource teknis AWS.
+
+Untuk pemula, cara paling gampang adalah membagi Domain 4 menjadi empat laci:
+
+<CardGrid cols={2}>
+  <Card><h4>1. Cara AWS menagih</h4><p>Pahami pay as you go, On-Demand, Reserved Instances, Savings Plans, Spot, storage tiers, data transfer, dan diskon volume.</p></Card>
+  <Card><h4>2. Cara AWS mengelompokkan akun</h4><p>Pahami AWS Organizations, management account, member account, consolidated billing, dan manfaat satu tagihan untuk banyak akun.</p></Card>
+  <Card><h4>3. Cara AWS memantau biaya</h4><p>Pahami Cost Explorer, AWS Budgets, Pricing Calculator, Cost and Usage Report, Data Exports, dan cost allocation tags.</p></Card>
+  <Card><h4>4. Cara mendapatkan bantuan</h4><p>Pahami Support Plans, Support Center, Trusted Advisor, AWS Health Dashboard, re:Post, Knowledge Center, dokumentasi, Marketplace, dan partner AWS.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Fokus ujian"><p>Kalau soal bertanya alat untuk memprediksi biaya sebelum deploy, jawabannya biasanya Pricing Calculator. Kalau soal bertanya analisis biaya historis dan forecast, biasanya Cost Explorer. Kalau soal bertanya alarm anggaran, biasanya AWS Budgets.</p></Box>
+
+</Section>
+
+<Section num="03" id="organizations-consolidated-billing" title="AWS Organizations & Consolidated Billing" sub="Satu organisasi, banyak akun, satu cara melihat biaya.">
+
+<p class="lead">AWS Organizations adalah cara mengelola banyak akun AWS secara terpusat.</p>
+
+Dalam praktik modern, satu perusahaan jarang memakai satu akun AWS saja. Biasanya ada akun untuk produksi, pengembangan, keamanan, logging, data, sandbox, dan tim berbeda. Pemisahan akun membuat batas keamanan dan biaya lebih jelas. Masalahnya, tanpa pusat kendali, tagihan menjadi tersebar.
+
+**Consolidated billing** menyatukan tagihan dan pembayaran dari banyak akun dalam satu organisasi. AWS menjelaskan bahwa setiap organisasi memiliki **management account** yang membayar biaya semua **member account**, dan consolidated billing memberi manfaat seperti satu tagihan, pelacakan biaya lebih mudah, gabungan penggunaan untuk diskon volume, serta tanpa biaya tambahan untuk fitur consolidated billing.
+
+<CardGrid cols={2}>
+  <Card><h4>Management account</h4><p>Akun pusat organisasi. Untuk billing, akun ini melihat tagihan gabungan, laporan biaya, dan biaya dari member account.</p></Card>
+  <Card><h4>Member account</h4><p>Akun anggota yang menjalankan workload. Biayanya digabungkan ke tagihan organisasi, tetapi resource tetap berada di akun masing-masing.</p></Card>
+  <Card><h4>Consolidated billing</h4><p>Fitur billing di AWS Organizations untuk menyatukan tagihan dan memanfaatkan gabungan penggunaan dari beberapa akun.</p></Card>
+  <Card><h4>OU dan policy</h4><p>Organizational Unit dan policy seperti SCP lebih banyak masuk ke tata kelola akun, tetapi tetap relevan karena struktur akun memengaruhi kontrol biaya.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Kenapa multi akun penting?"><p>Multi akun membuat biaya lebih mudah ditelusuri. Akun produksi yang mahal tidak tercampur dengan eksperimen sandbox, dan tim finance bisa melihat biaya per akun atau per label.</p></Box>
+
+<Figure><BillingFig05 /><Fragment slot="caption"><b>Gambar 2.</b> Management account membayar tagihan semua member account. Penggunaan digabung untuk mencapai tier diskon volume lebih cepat dan berbagi RI serta Savings Plans, tetapi akses resource tetap dikontrol IAM secara terpisah.</Fragment></Figure>
+
+<h3>Kenapa "gabungan penggunaan" itu menguntungkan?</h3>
+
+Bayangkan diskon grosir: satu toko kecil membeli 10 dus tidak dapat harga grosir, tetapi bila empat toko menggabung pesanan menjadi 40 dus, mereka tembus tier harga grosir. Begitulah consolidated billing bekerja. AWS menjumlahkan penggunaan semua akun dalam organisasi, sehingga tier harga volume (misalnya harga per GB S3 yang menurun saat volume naik) tercapai lebih cepat untuk semua akun.
+
+Lebih jauh, [berbagi diskon RI dan Savings Plans](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/ri-turn-off.html) secara default <strong>aktif</strong> untuk semua akun di organisasi. Artinya, bila satu akun membeli Reserved Instances atau Savings Plans tetapi tidak memakainya penuh, sisa diskon dapat dipakai akun lain dalam organisasi. Management account boleh mematikan sharing ini per akun bila perlu.
+
+<h3>Kapan consolidated billing dipakai?</h3>
+
+Gunakan consolidated billing ketika organisasi memiliki lebih dari satu akun AWS dan ingin pembayaran terpusat. Contoh nyata: startup memiliki akun `prod`, `dev`, `security`, dan `analytics`. Semua akun tetap terpisah untuk keamanan, tetapi tagihan dibayar dari satu management account. Bill di tiap member account hanya bersifat informatif, sedangkan pembayaran aktual ditarik dari management account.
+
+<Compare aLabel="Billing &middot; digabung" bLabel="Akses &middot; tetap terpisah" aTone="blue" bTone="red" vs="vs">
+  <Fragment slot="a"><ul><li>Satu tagihan untuk seluruh organisasi, ditarik dari management account.</li><li>Penggunaan digabung untuk tier diskon volume lebih cepat.</li><li>RI dan Savings Plans dibagi antar akun (default ON).</li><li>Tidak ada biaya tambahan untuk fitur consolidated billing.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Siapa boleh memakai resource tetap ditentukan IAM, role, dan policy.</li><li>IAM Identity Center mengatur akses login lintas akun.</li><li>SCP di Organizations membatasi izin maksimum, bukan menyatukan akses.</li><li>Member account tidak otomatis bisa melihat resource akun lain.</li></ul></Fragment>
+</Compare>
+
+<Box variant="warn" icon="⚠️" label="Jangan salah paham"><p>Consolidated billing tidak otomatis berarti semua orang boleh mengakses semua akun. Billing digabung, tetapi akses resource tetap dikendalikan oleh IAM, Identity Center, role, dan policy. Ini jebakan soal yang sangat sering muncul.</p></Box>
+
+</Section>
+
+<Section num="04" id="pricing-models" title="Model Harga AWS" sub="Pilih model seperti memilih kendaraan: taksi, langganan, diskon komitmen, atau kursi kosong murah.">
+
+<p class="lead">Model harga AWS menentukan bagaimana kamu membayar resource sesuai pola penggunaan.</p>
+
+Prinsip dasar AWS adalah **pay as you go**, bayar sesuai pemakaian. Namun untuk compute seperti EC2, ada beberapa pilihan pembelian. Di ujian, kamu tidak diminta menghitung tagihan kompleks, tetapi harus tahu model mana cocok untuk skenario tertentu.
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr><th>Model</th><th>Analogi</th><th>Kapan cocok</th><th>Jebakan ujian</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>On-Demand</td><td>Naik taksi saat perlu</td><td>Beban kerja baru, tidak pasti, tidak mau komitmen</td><td>Bukan pilihan termurah untuk penggunaan stabil jangka panjang</td></tr>
+    <tr><td>Reserved Instances</td><td>Sewa kursi tetap</td><td>Penggunaan EC2 stabil dengan komitmen atribut tertentu</td><td>RI adalah diskon billing, bukan server fisik yang otomatis dibuat</td></tr>
+    <tr><td>Savings Plans</td><td>Langganan belanja minimum</td><td>Komitmen penggunaan per jam untuk diskon compute yang lebih fleksibel</td><td>Komitmen dibayar meski pemakaian turun</td></tr>
+    <tr><td>Spot Instances</td><td>Beli kursi kosong murah</td><td>Batch job, rendering, eksperimen, workload toleran interupsi</td><td>Tidak cocok untuk database utama atau workload yang tidak boleh terputus</td></tr>
+    <tr><td>Dedicated Hosts</td><td>Sewa gedung sendiri</td><td>Kebutuhan lisensi, compliance, atau hardware dedicated</td><td>Berbeda dari Dedicated Instances dan biasanya bukan jawaban default untuk pemula</td></tr>
+    <tr><td>Capacity Reservations</td><td>Memesan kapasitas kursi</td><td>Butuh jaminan kapasitas EC2 di Availability Zone tertentu</td><td>Menjamin kapasitas, bukan otomatis memberi diskon harga</td></tr>
+  </tbody>
+</table></div>
+
+Dokumentasi [Amazon EC2 pricing](https://aws.amazon.com/ec2/pricing/) menyebut On-Demand sebagai pembayaran compute tanpa komitmen jangka panjang, Reserved Instances sebagai diskon billing untuk penggunaan On-Demand yang cocok dengan atribut tertentu, [Savings Plans](https://aws.amazon.com/savingsplans/) sebagai model diskon berbasis komitmen penggunaan per jam, dan Capacity Reservations sebagai cara mencadangkan kapasitas EC2 di Availability Zone tertentu.
+
+<Figure><BillingFig04 /><Fragment slot="caption"><b>Gambar 3.</b> Peta model harga compute: On-Demand dan Spot tanpa komitmen, RI dan Savings Plans menukar komitmen dengan diskon, Dedicated Hosts memberi isolasi fisik dan lisensi, dan Capacity Reservation menjamin kapasitas tanpa otomatis memberi diskon.</Fragment></Figure>
+
+<Box variant="exam" icon="🧠" label="Pola jawaban cepat"><p>Workload stabil dan komitmen, pikirkan Reserved Instances atau Savings Plans. Workload bisa diinterupsi, pikirkan Spot. Butuh kapasitas pasti di AZ tertentu, pikirkan Capacity Reservations. Butuh isolasi hardware atau lisensi khusus, pikirkan Dedicated Hosts.</p></Box>
+
+<h3>Reserved Instances vs Savings Plans</h3>
+
+Dua model komitmen ini paling sering tertukar di ujian. Keduanya sama-sama <strong>diskon billing</strong>, bukan reservasi hardware fisik, dan keduanya menukar fleksibilitas dengan harga lebih murah dibanding On-Demand. Bedanya ada pada apa yang kamu komitmenkan.
+
+<Compare aLabel="Reserved Instances &middot; komit atribut" bLabel="Savings Plans &middot; komit $/jam" aTone="blue" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Komitmen terikat ke atribut instance (family, Region, kadang AZ).</li><li>Kurang fleksibel: ganti family berarti diskon tidak berlaku (kecuali Convertible RI).</li><li>Cocok bila pola pemakaian instance stabil dan jarang berubah.</li><li>Ada varian Standard (diskon terbesar) dan Convertible (lebih fleksibel).</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Komitmen berupa jumlah dolar pemakaian compute per jam selama 1 atau 3 tahun.</li><li>Lebih fleksibel: diskon mengikuti walau pindah family atau Region.</li><li>Compute Savings Plans bahkan berlaku lintas EC2, Fargate, dan Lambda.</li><li>EC2 Instance Savings Plans lebih murah tetapi terikat family di satu Region.</li></ul></Fragment>
+</Compare>
+
+<Box variant="warn" icon="⚠️" label="RI vs Capacity Reservation"><p>Jangan tukar keduanya. Reserved Instances memberi <strong>diskon harga</strong>. On-Demand Capacity Reservation menjamin <strong>kapasitas</strong> tersedia di AZ tertentu tetapi tidak otomatis memberi diskon. Untuk kebutuhan compute GPU besar berjangka, ada juga Capacity Blocks for ML, tetapi ini detail di luar fokus utama CLF-C02.</p></Box>
+
+<Box variant="tip" icon="🖥️" label="Dedicated Hosts vs Dedicated Instances"><p>Dedicated Host adalah server fisik penuh yang didedikasikan untukmu, dengan visibilitas socket dan core sehingga cocok untuk lisensi BYOL per socket atau per core. Dedicated Instance juga berjalan di hardware terisolasi, tetapi tanpa visibilitas dan kontrol lisensi tingkat host. Keduanya lebih mahal dari On-Demand biasa dan jarang menjadi jawaban default untuk pemula.</p></Box>
+
+<h3>Data transfer dan storage tiers</h3>
+
+Selain compute, CLF-C02 juga menguji pemahaman biaya storage dan data transfer. Secara umum, data masuk ke AWS sering tidak menjadi fokus biaya, sedangkan data keluar, antar Region, atau antar arsitektur tertentu bisa berbiaya. Untuk storage, kelas penyimpanan seperti S3 Standard, S3 Standard-IA, S3 One Zone-IA, S3 Glacier, dan S3 Intelligent-Tiering membantu menyesuaikan biaya dengan pola akses.
+
+<Box variant="warn" icon="⚠️" label="Jangan menghafal harga"><p>Untuk ujian Cloud Practitioner, pahami pola pemilihan model harga. Harga angka per Region selalu cek halaman pricing resmi karena berubah menurut layanan, Region, dan konfigurasi.</p></Box>
+
+</Section>
+
+<Section num="05" id="free-tier" title="AWS Free Tier" sub="Cara mencoba AWS tanpa langsung membayar, dengan dua model yang berbeda menurut tanggal pembuatan akun.">
+
+<p class="lead">AWS Free Tier seperti sampel gratis di supermarket: kamu bisa mencicipi layanan sebelum berkomitmen membayar.</p>
+
+[AWS Free Tier](https://aws.amazon.com/free/) membantu pemula bereksperimen tanpa langsung mengeluarkan biaya. Ini penting untuk belajar dan untuk membuktikan ide, tetapi sekarang ada satu hal krusial: aturannya berbeda tergantung kapan akun dibuat. Pada 15 Juli 2025, AWS merombak total model Free Tier.
+
+<Figure><BillingFig06 /><Fragment slot="caption"><b>Gambar 4.</b> Akun yang dibuat sejak 15 Juli 2025 memakai model kredit (Free atau Paid plan, kredit hingga $200), sedangkan akun lama tetap memakai model klasik (12 bulan gratis, always free, dan trial). Always free berlaku di kedua model.</Fragment></Figure>
+
+<h3>Akun baru (dibuat sejak 15 Juli 2025): model kredit</h3>
+
+Akun baru memilih antara <strong>Free account plan</strong> dan <strong>Paid account plan</strong>. Pada Free plan, kamu tidak ditagih sampai memutuskan upgrade, dan plan ini berakhir setelah 6 bulan atau saat kredit habis, mana yang lebih dulu. Kamu bisa mendapat kredit hingga $200: $100 saat mendaftar dan hingga $100 lagi dengan menyelesaikan lima aktivitas (sekitar $20 tiap aktivitas) di layanan seperti EC2, RDS, Lambda, Amazon Bedrock, dan AWS Budgets.
+
+<h3>Akun lama (dibuat sebelum 15 Juli 2025): model klasik</h3>
+
+Akun lama tetap memakai model lama yang mungkin sudah kamu kenal dari materi lawas. Modelnya terdiri dari tiga jenis penawaran.
+
+<CardGrid cols={3}>
+  <Card><h4>12 bulan gratis</h4><p>Berlaku 12 bulan sejak akun dibuat. Contoh klasik: 750 jam EC2 t2/t3.micro per bulan dan kuota S3 terbatas.</p></Card>
+  <Card><h4>Always free</h4><p>Lebih dari 30 layanan dengan kuota gratis yang tidak kedaluwarsa, misalnya Lambda 1 juta request per bulan dan DynamoDB 25 GB.</p></Card>
+  <Card><h4>Trial jangka pendek</h4><p>Uji coba sebagian layanan dengan batas waktu, misalnya sekian hari atau jam sejak diaktifkan.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Fokus ujian Free Tier"><p>Ingat tiga jenis penawaran klasik (always free, 12 bulan gratis, dan trial jangka pendek) sebagai konsep utama. Tambahkan kesadaran bahwa akun yang dibuat sejak 15 Juli 2025 memakai model kredit ($200) dengan Free atau Paid plan. Jangan asumsikan aturan 12 bulan otomatis berlaku untuk akun yang baru dibuat sekarang.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Free Tier bukan jaminan tanpa tagihan"><p>Always free hanya menutup kuota tertentu. Begitu pemakaian melampaui kuota, atau memakai layanan di luar Free Tier, biaya tetap muncul. Biasakan memasang AWS Budgets sejak hari pertama agar tidak ada kejutan tagihan.</p></Box>
+
+</Section>
+
+<Section num="06" id="cost-explorer-budgets" title="Cost Explorer & AWS Budgets" sub="Grafik untuk memahami, alarm untuk mencegah kaget.">
+
+<p class="lead">Cost Explorer membantu menganalisis biaya, AWS Budgets membantu memberi batas dan notifikasi.</p>
+
+[AWS Cost Explorer](https://docs.aws.amazon.com/cost-management/latest/userguide/ce-what-is.html) adalah alat visual untuk melihat dan menganalisis biaya serta penggunaan. Dokumentasi AWS menyebut Cost Explorer dapat menampilkan data historis hingga 13 bulan, bulan berjalan, dan membuat forecast hingga 18 bulan ke depan. Ini cocok untuk pertanyaan seperti, "Kenapa tagihan EC2 naik minggu ini?" atau "Tim mana yang paling banyak memakai S3 bulan lalu?" Cost Explorer kini juga bisa menjawab pertanyaan biaya dalam bahasa natural lewat Amazon Q Developer.
+
+[AWS Budgets](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html) digunakan untuk melacak biaya dan penggunaan, lalu mengirim notifikasi saat biaya aktual atau forecast mendekati batas. Ini cocok untuk pertanyaan seperti, "Beri tahu saya kalau biaya bulan ini diprediksi melewati Rp 5 juta," atau "Kirim alarm ketika utilisasi Savings Plans turun."
+
+<Figure><BillingFig02 /><Fragment slot="caption"><b>Gambar 5.</b> Pohon keputusan memilih alat biaya: estimasi sebelum deploy ke Pricing Calculator, analisis biaya lampau ke Cost Explorer, alert ambang ke Budgets, data granular ke CUR 2.0 / Data Exports, dan tarif showback kustom ke Billing Conductor.</Fragment></Figure>
+
+<h3>Jenis budget di AWS Budgets</h3>
+
+[AWS Budgets mendukung enam jenis budget](https://docs.aws.amazon.com/cost-management/latest/userguide/budget-methods.html). Mengenalnya membantu menjawab soal yang menekankan "tipe budget apa untuk tujuan ini".
+
+<CardGrid cols={3}>
+  <Card><h4>Cost budget</h4><p>Batas pengeluaran dalam satuan uang untuk periode tertentu.</p></Card>
+  <Card><h4>Usage budget</h4><p>Batas jumlah penggunaan, misalnya jam EC2 atau GB S3.</p></Card>
+  <Card><h4>RI utilization &amp; coverage</h4><p>Pantau seberapa terpakai dan tertutup Reserved Instances milikmu.</p></Card>
+  <Card><h4>Savings Plans utilization &amp; coverage</h4><p>Pantau seberapa terpakai dan tertutup komitmen Savings Plans.</p></Card>
+  <Card><h4>Aksi otomatis</h4><p>Budget actions bisa memicu tindakan, misalnya menerapkan policy saat ambang terlampaui.</p></Card>
+  <Card><h4>Notifikasi</h4><p>Alert dikirim lewat email atau Amazon SNS ke pihak yang ditentukan.</p></Card>
+</CardGrid>
+
+<CardGrid cols={2}>
+  <Card><h4>Cost Explorer</h4><p>Untuk analisis tren, filter, group by, forecast, dan investigasi biaya setelah data tersedia.</p></Card>
+  <Card><h4>AWS Budgets</h4><p>Untuk batas anggaran, alert aktual, alert forecast, penggunaan service, RI, dan Savings Plans.</p></Card>
+  <Card><h4>Cost Explorer menjawab kenapa</h4><p>Kenapa biaya naik, layanan apa penyebabnya, akun mana yang berubah, dan tag mana yang paling mahal.</p></Card>
+  <Card><h4>Budgets menjawab kapan perlu waspada</h4><p>Kapan biaya mendekati batas, kapan forecast melewati target, dan kapan utilisasi komitmen turun.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Cara mengingat"><p>Cost Explorer adalah kaca spion dan dashboard mobil (melihat ke belakang), Budgets adalah alarm bensin dan batas kecepatan biaya (memberi peringatan ke depan).</p></Box>
+
+<h3>Cost Anomaly Detection sebagai pelengkap</h3>
+
+Selain Budgets yang butuh ambang manual, [AWS Cost Anomaly Detection](https://docs.aws.amazon.com/cost-management/latest/userguide/getting-started-ad.html) memakai machine learning untuk mendeteksi lonjakan biaya tidak terduga secara otomatis dan gratis. Bedanya, Budgets butuh kamu menetapkan angka batas, sedangkan Cost Anomaly Detection belajar pola normal lalu memberi tahu saat ada penyimpangan.
+
+<h3>Budgets vs CloudWatch Alarms</h3>
+
+<Compare aLabel="AWS Budgets &middot; alarm biaya" bLabel="CloudWatch Alarms &middot; alarm metrik" aTone="teal" bTone="blue" vs="vs">
+  <Fragment slot="a"><ul><li>Memberi alert berdasarkan biaya, usage, RI, dan Savings Plans.</li><li>Menjawab "apakah pengeluaran melewati anggaran".</li><li>Dievaluasi beberapa kali sehari, bukan detik per detik.</li><li>Kata kunci soal: spending alert, threshold, budget.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Memberi alarm berdasarkan metrik operasional (CPU, latency, error).</li><li>Menjawab "apakah resource sehat atau bermasalah".</li><li>Bisa hampir real-time sesuai resolusi metrik.</li><li>Kata kunci soal: resource metric, CPU utilization, operational alarm.</li></ul></Fragment>
+</Compare>
+
+<Box variant="warn" icon="⏱️" label="Tidak real-time"><p>Billing tools punya jeda data. Cost Explorer umumnya menyegarkan data sekitar 24 jam sekali, dan Budgets dievaluasi hingga tiga kali sehari. Jangan menganggap Budgets atau Cost Explorer sebagai monitoring detik per detik seperti CloudWatch metric.</p></Box>
+
+<Box variant="exam" icon="💲" label="Cost Explorer gratis, tetapi APInya berbayar"><p>UI Cost Explorer gratis dipakai. Namun Cost Explorer API menagih sekitar $0,01 per request berhalaman. Untuk CLF-C02 cukup ingat: penggunaan biasa lewat console gratis.</p></Box>
+
+</Section>
+
+<Section num="07" id="pricing-calculator" title="AWS Pricing Calculator" sub="Estimasi sebelum membangun.">
+
+<p class="lead">AWS Pricing Calculator membantu membuat estimasi biaya sebelum resource benar-benar dibuat.</p>
+
+Kalau Cost Explorer melihat biaya yang sudah terjadi, [AWS Pricing Calculator](https://calculator.aws/) membantu memperkirakan biaya sebelum arsitektur dijalankan. Ini seperti membuat daftar belanja sebelum masuk supermarket. Kamu memilih layanan, Region, kapasitas, tipe instance, storage, transfer data, dan parameter lain, lalu calculator membuat estimasi.
+
+Gunakan Pricing Calculator untuk percakapan awal dengan stakeholder: "Kalau online shop memakai EC2, ALB, RDS, S3, CloudFront, dan backup, perkiraan biaya bulanannya seperti apa?" Estimasi ini bukan janji harga final, tetapi sangat membantu untuk membandingkan opsi arsitektur.
+
+<Steps>
+  <Step><b>Pilih layanan</b><p>Masukkan layanan yang akan digunakan, misalnya EC2, RDS, S3, CloudFront, atau Lambda.</p></Step>
+  <Step><b>Isi konfigurasi</b><p>Tentukan Region, ukuran resource, jam pemakaian, storage, request, dan transfer data sesuai kebutuhan skenario.</p></Step>
+  <Step><b>Bandingkan opsi</b><p>Coba model On-Demand, komitmen, storage tier, atau arsitektur berbeda untuk melihat dampaknya pada estimasi biaya.</p></Step>
+  <Step><b>Komunikasikan asumsi</b><p>Sampaikan bahwa angka adalah estimasi berdasarkan input, bukan tagihan final yang pasti.</p></Step>
+</Steps>
+
+<Box variant="tip" icon="🆕" label="Pricing Calculator versi in-console"><p>Selain situs publik calculator.aws, kini ada pengalaman Pricing Calculator baru di dalam console (GA 30 Mei 2025). Versi ini mendukung dua jenis estimasi (workload estimate dan full-bill estimate), impor riwayat pemakaian, tiga konfigurasi tarif termasuk tampilan setelah diskon dan komitmen, serta ekspor CSV/JSON. Untuk ujian, cukup ingat fungsi intinya tetap sama: estimasi sebelum membangun.</p></Box>
+
+<Box variant="exam" icon="🎯" label="Jebakan ujian"><p>Kalau pertanyaan memakai kata sebelum deploy, estimate, planning, atau compare architecture cost, pilih AWS Pricing Calculator, bukan Cost Explorer. Cost Explorer untuk biaya yang sudah terjadi, Pricing Calculator untuk biaya yang belum terjadi.</p></Box>
+
+</Section>
+
+<Section num="08" id="cur-data-exports-tags" title="CUR, Data Exports & Cost Allocation Tags" sub="Dari grafik sederhana menuju data biaya granular.">
+
+<p class="lead">Untuk analisis biaya tingkat lanjut, AWS menyediakan laporan detail dan tag biaya.</p>
+
+[AWS Cost and Usage Report (CUR)](https://docs.aws.amazon.com/cur/latest/userguide/what-is-cur.html) adalah dataset biaya dan penggunaan paling detail di AWS, dengan granularitas harian atau per jam, dikirim ke bucket S3. AWS juga menjelaskan [AWS Data Exports](https://docs.aws.amazon.com/cur/latest/userguide/what-is-data-exports.html) sebagai cara membuat export data billing dan cost management, termasuk <strong>Cost and Usage Report 2.0 (CUR 2.0)</strong> yang menjadi cara baru yang direkomendasikan untuk menerima data biaya dan penggunaan yang detail. CUR 2.0 punya skema yang tetap dan konsisten, mendukung data bersarang, dan menambah kolom seperti `bill_payer_account_name` dan `line_item_usage_account_name`. Penting: AWS tidak berencana mematikan CUR lama, jadi keduanya bisa kamu temui di soal.
+
+Perbedaan praktisnya begini: Cost Explorer cocok untuk dashboard dan analisis cepat, sedangkan CUR atau Data Exports cocok untuk tim finance, data analyst, FinOps, atau BI yang ingin mengolah data mentah di S3, Athena, QuickSight, atau data warehouse.
+
+<Box variant="analogy" icon="📊" label="Analogi CUR vs Cost Explorer"><p>Cost Explorer seperti grafik ringkas di aplikasi mobile banking: cepat dibaca, cukup untuk gambaran umum. CUR seperti file mutasi rekening mentah berisi tiap baris transaksi: berat dibaca manusia, tetapi sempurna untuk diolah mesin, audit, dan laporan kustom.</p></Box>
+
+<h3>Cost allocation tags: AWS-generated vs user-defined</h3>
+
+<strong>Cost allocation tags</strong> adalah tag yang diaktifkan untuk laporan biaya. Tag biasa membantu mengorganisasi resource, sedangkan cost allocation tag membantu memecah biaya berdasarkan label seperti `Project`, `Team`, `Environment`, atau `CostCenter`. Setelah diaktifkan, tag bisa muncul dalam laporan biaya seperti CUR dan Cost Explorer. Ada [dua jenis cost allocation tag](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html): AWS-generated (berawalan `aws:`, dibuat otomatis oleh AWS, misalnya `aws:createdBy`) dan user-defined (kamu sendiri yang membuat, biasanya tanpa awalan `aws:`).
+
+<CardGrid cols={3}>
+  <Card><h4>Tag resource</h4><p>Label pada resource AWS, misalnya `app=checkout` atau `env=prod`.</p></Card>
+  <Card><h4>Cost allocation tag</h4><p>Tag yang diaktifkan untuk pelaporan biaya sehingga bisa dipakai memfilter dan mengelompokkan biaya.</p></Card>
+  <Card><h4>AWS-generated vs user-defined</h4><p>AWS-generated berawalan `aws:` dan dibuat otomatis; user-defined kamu yang menentukan key dan value-nya.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Kesalahan pemula"><p>Menambahkan tag ke resource belum cukup. Untuk laporan biaya, tag yang relevan perlu diaktifkan sebagai cost allocation tag di Billing and Cost Management, dan datanya baru muncul untuk pemakaian setelah aktivasi.</p></Box>
+
+<h3>Contoh strategi tag sederhana</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr><th>Key</th><th>Contoh value</th><th>Tujuan</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Environment</td><td>dev, staging, prod</td><td>Membedakan biaya eksperimen dan produksi</td></tr>
+    <tr><td>Application</td><td>online-shop, payment, reporting</td><td>Melihat biaya per aplikasi</td></tr>
+    <tr><td>Team</td><td>backend, data, platform</td><td>Melihat konsumsi biaya per tim</td></tr>
+    <tr><td>CostCenter</td><td>cc-1001, cc-2002</td><td>Menghubungkan biaya AWS ke struktur finance internal</td></tr>
+  </tbody>
+</table></div>
+
+</Section>
+
+<Section num="09" id="showback-chargeback" title="Showback, Chargeback & Billing Conductor" sub="Biaya yang terlihat akan lebih mudah dikendalikan.">
+
+<p class="lead">Billing tools menjadi kuat ketika dipadukan dengan budaya transparansi biaya.</p>
+
+<strong>Showback</strong> berarti biaya ditampilkan kembali ke tim pemakai tanpa menagih secara internal. Tujuannya edukasi dan kesadaran. <strong>Chargeback</strong> berarti biaya dibebankan ke tim atau cost center pemakai. Ini lebih formal dan biasanya dipakai perusahaan besar.
+
+AWS tidak memaksa satu model organisasi. Namun untuk Cloud Practitioner, penting memahami bahwa akun, tag, laporan biaya, dan budget adalah pondasi governance biaya. Tanpa struktur akun dan tag yang rapi, biaya akan terlihat seperti kabut.
+
+<CardGrid cols={2}>
+  <Card><h4>Showback</h4><p>Tim melihat biaya mereka sendiri. Cocok untuk tahap awal FinOps agar semua orang sadar dampak resource yang dibuat.</p></Card>
+  <Card><h4>Chargeback</h4><p>Tim benar-benar dibebankan biaya. Cocok untuk organisasi dengan cost center, budget resmi, dan proses finance matang.</p></Card>
+  <Card><h4>Budget owner</h4><p>Tentukan siapa yang menerima alert, siapa yang boleh menaikkan batas, dan siapa yang harus mematikan resource tidak terpakai.</p></Card>
+  <Card><h4>Tag policy</h4><p>Standarkan key tag, misalnya `Environment`, `Application`, `Owner`, dan `CostCenter`, agar laporan tidak pecah karena variasi penulisan.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Praktik baik"><p>Mulai dari tag minimal yang konsisten. Lebih baik empat tag wajib yang dipakai semua tim daripada dua puluh tag indah yang diisi tidak konsisten.</p></Box>
+
+<h3>AWS Billing Conductor: tarif kustom untuk showback/chargeback</h3>
+
+Saat showback dan chargeback dilakukan serius, perusahaan kadang ingin menghitung biaya internal dengan tarif yang berbeda dari tarif AWS asli, misalnya menambah markup untuk biaya operasional tim platform. [AWS Billing Conductor](https://docs.aws.amazon.com/billingconductor/latest/userguide/what-is-billingconductor.html) adalah layanan resmi untuk ini. Ia menghasilkan data billing <strong>pro forma</strong> memakai pricing plan, pricing rule, dan custom line item yang diterapkan ke billing group, untuk showback atau chargeback yang disesuaikan.
+
+Cara kerjanya menarik: tiap billing group dihitung seolah-olah menjadi keluarga consolidated billing tersendiri, sehingga manfaat RI/Savings Plans dan tier volume berlaku di dalam grup itu, ditambah penawaran always-free-tier. Yang krusial untuk ujian: data pro forma ini <strong>tidak mengubah invoice AWS yang sebenarnya</strong>, ia hanya untuk pelaporan internal.
+
+<Compare aLabel="Tagihan AWS asli" bLabel="Data pro forma (Billing Conductor)" aTone="muted" bTone="violet" vs="vs">
+  <Fragment slot="a"><ul><li>Apa yang benar-benar AWS tagih ke management account.</li><li>Memakai harga AWS standar dan diskon organisasi.</li><li>Tidak bisa diubah oleh tarif internal.</li><li>Sumber kebenaran untuk pembayaran nyata.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Perhitungan ulang untuk showback/chargeback internal.</li><li>Memakai pricing rule, markup, dan custom line item.</li><li>Dikelompokkan per billing group sesuai struktur organisasi.</li><li>Hanya untuk laporan, tidak mengubah tagihan asli.</li></ul></Fragment>
+</Compare>
+
+<Box variant="exam" icon="🎯" label="Kata kunci Billing Conductor"><p>Kalau soal menyebut tarif kustom, markup internal, showback atau chargeback dengan harga yang disesuaikan, atau billing group dengan pricing rule, jawabannya AWS Billing Conductor. Ingat: pro forma, bukan tagihan asli.</p></Box>
+
+</Section>
+
+<Section num="10" id="support-plans" title="AWS Support Plans" sub="Semakin kritis workload, semakin penting akses dukungan yang cepat dan tepat.">
+
+<p class="lead">AWS Support Plans seperti paket asuransi kesehatan: makin tinggi tier, makin cepat respons dan makin lengkap layanan saat keadaan darurat.</p>
+
+Secara konsep, Support Plan adalah tingkat bantuan resmi dari AWS. Untuk CLF-C02, pahami perbedaan besar antara dukungan dasar untuk semua customer dan dukungan berbayar untuk workload produksi, bisnis kritis, atau mission-critical. Ada satu komplikasi di 2026: AWS sedang mengganti struktur dan nama paket, sementara exam guide dan banyak soal masih memakai nama lama. Jadi kamu perlu mengenali keduanya.
+
+<h3>Struktur baru (diumumkan Desember 2025)</h3>
+
+Halaman [AWS Support Plans](https://aws.amazon.com/premiumsupport/plans/) terbaru menampilkan empat tingkat: <strong>Basic Support</strong> (gratis untuk semua customer), <strong>Business Support+</strong> (mulai $29/bulan, respons kritis &lt; 30 menit, Trusted Advisor penuh, bantuan kontekstual berbasis GenAI), <strong>Enterprise Support</strong> (mulai $5.000/bulan, turun dari $15.000, respons kritis &lt; 15 menit, TAM, AWS Security Incident Response), dan <strong>Unified Operations</strong> (mulai $50.000/bulan, respons kritis &lt; 5 menit, TAM ditambah Domain Engineer dan Senior Billing Specialist). Tiap tingkat mencakup semua fitur tingkat di bawahnya.
+
+<Figure><BillingFig03 /><Fragment slot="caption"><b>Gambar 6.</b> Tangga AWS Support Plans baru: biaya, response time kritis, ketersediaan TAM, jumlah Trusted Advisor checks, dan Security Incident Response, dengan catatan pemetaan nama lama dan tanggal EOS 1 Januari 2027.</Fragment></Figure>
+
+<h3>Nama lama yang masih muncul di soal</h3>
+
+Exam Guide CLF-C02 dan banyak soal saat ini masih menyebut Developer Support, Business Support, Enterprise On-Ramp Support, dan Enterprise Support. AWS akan menghentikan (EOS) Developer Support, Business Support klasik, dan Enterprise On-Ramp pada [1 Januari 2027](https://docs.aws.amazon.com/awssupport/latest/user/support-plans-eos.html). Pelanggan lama menyimpan paketnya sampai tanggal itu; Developer dan Business bisa upgrade ke Business Support+, sedangkan Enterprise On-Ramp otomatis naik ke Enterprise selama 2026.
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr><th>Kebutuhan</th><th>Plan baru</th><th>Setara nama lama</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Belajar, akun pribadi, billing dan service quota</td><td>Basic Support (gratis)</td><td>Basic / customer service &amp; communities</td></tr>
+    <tr><td>Workload produksi, technical support 24/7</td><td>Business Support+ (&lt; 30 menit kritis)</td><td>Developer / Business</td></tr>
+    <tr><td>Bisnis kritis, butuh TAM dan Security Incident Response</td><td>Enterprise Support (&lt; 15 menit kritis)</td><td>Enterprise On-Ramp / Enterprise</td></tr>
+    <tr><td>Mission-critical, respons tercepat, operasi mendalam</td><td>Unified Operations (&lt; 5 menit kritis)</td><td>(tier baru, tidak ada padanan lama)</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Apa yang membedakan tiap tier?</h3>
+
+<CardGrid cols={2}>
+  <Card><h4>Basic = billing, bukan technical penuh</h4><p>Basic mencakup pertanyaan akun dan billing, forum, service health checks, dokumentasi, dan permintaan kenaikan service quota. Bukan technical support penuh untuk workload.</p></Card>
+  <Card><h4>TAM hanya di Enterprise ke atas</h4><p>Technical Account Manager (TAM) tersedia mulai Enterprise Support dan Unified Operations, tidak di Business Support+. Kata kunci designated TAM atau strategic guidance mengarah ke Enterprise-level.</p></Card>
+  <Card><h4>Response time bertingkat</h4><p>Business Support+ &lt; 30 menit, Enterprise &lt; 15 menit, Unified Operations &lt; 5 menit untuk kasus business atau production-critical down.</p></Card>
+  <Card><h4>Security Incident Response</h4><p>AWS Security Incident Response tanpa biaya tambahan tersedia mulai Enterprise Support.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Cara menjawab soal support"><p>Jawab berdasarkan skenario, bukan hafalan satu set nama. Akun dan billing dasar &rarr; Basic. Production workload butuh technical support 24/7 &rarr; Business Support+ (atau Developer/Business di nama lama). Butuh designated TAM atau strategic guidance &rarr; Enterprise. Butuh respons tercepat dan operasi mission-critical &rarr; Unified Operations.</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Dua set nama, satu logika"><p>Soal bisa memakai nama lama (Developer/Business/Enterprise On-Ramp/Enterprise) atau baru (Business Support+/Enterprise/Unified Operations). Cocokkan dengan kritikalitas, kehadiran TAM, dan response time, bukan dengan menghafal satu set nama saja.</p></Box>
+
+</Section>
+
+<Section num="11" id="trusted-advisor-health" title="Trusted Advisor & AWS Health Dashboard" sub="Rekomendasi praktik baik dan kabar kondisi layanan yang relevan dengan akun.">
+
+<p class="lead">Trusted Advisor memberi rekomendasi, AWS Health memberi informasi event yang dapat memengaruhi akun atau resource.</p>
+
+[AWS Trusted Advisor](https://aws.amazon.com/premiumsupport/technology/trusted-advisor/) seperti seorang inspektur yang berkeliling memeriksa rumahmu dan memberi daftar saran: keran ini bocor, kunci ini lemah, ruang ini terlalu panas. Ia mengevaluasi lingkungan AWS terhadap praktik baik lalu memberi rekomendasi.
+
+Kategori check Trusted Advisor mencakup <strong>cost optimization</strong>, <strong>performance</strong>, <strong>security</strong>, <strong>fault tolerance</strong> (resilience), <strong>service limits</strong>, dan kategori yang lebih baru, <strong>operational excellence</strong>. Yang sering diuji adalah soal akses: semua akun termasuk Basic mendapat 56 check inti, sedangkan Business Support+ ke atas membuka 426 check tambahan sehingga total 482. Akses Trusted Advisor lewat API atau CLI juga butuh Business Support+ atau lebih tinggi.
+
+[AWS Health Dashboard](https://docs.aws.amazon.com/health/latest/ug/what-is-aws-health.html) berbeda fokus: ia menampilkan event yang dapat memengaruhi layanan AWS atau akun dan resource milikmu, misalnya gangguan layanan, maintenance terjadwal, atau perubahan yang relevan. Tampilan saat sudah sign in (account view) lebih relevan daripada tampilan publik Service Health. Untuk organisasi, AWS Health bisa mengagregasi event lintas akun lewat Organizational View, dan AWS Health API (butuh Business, Enterprise, atau Unified Operations) memungkinkan akses programatik.
+
+<Compare aLabel="Trusted Advisor &middot; rekomendasi" bLabel="AWS Health &middot; event" aTone="teal" bTone="blue" vs="vs">
+  <Fragment slot="a"><ul><li>Menjawab "apa yang sebaiknya kuperbaiki".</li><li>Best-practice checks: cost, performance, security, fault tolerance, service limits, operational excellence.</li><li>Basic = 56 check, Business Support+ = 482 check penuh.</li><li>Kata kunci: recommendation, best practice, optimize.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Menjawab "apa yang sedang terjadi pada layanan/akunku".</li><li>Event: outage, degraded service, maintenance, perubahan.</li><li>Account view lebih relevan dari Service Health publik.</li><li>Kata kunci: event, outage, impact on my resources.</li></ul></Fragment>
+</Compare>
+
+<Box variant="exam" icon="🧠" label="Pola ujian"><p>Jika soal berkata rekomendasi best practices untuk menurunkan biaya atau meningkatkan keamanan, pikirkan Trusted Advisor. Jika soal berkata event atau outage yang memengaruhi resource akun, pikirkan AWS Health Dashboard atau AWS Health API. Kalau soal menekankan full Trusted Advisor checks, ingat itu sinyal paid support (Business Support+).</p></Box>
+
+</Section>
+
+<Section num="12" id="marketplace-partners" title="AWS Marketplace & Partner Ecosystem" sub="Tempat membeli solusi pihak ketiga yang berjalan di AWS.">
+
+<p class="lead">AWS Marketplace adalah katalog digital untuk menemukan, membeli, deploy, dan mengelola software, data, dan layanan pihak ketiga.</p>
+
+AWS menjelaskan [AWS Marketplace](https://docs.aws.amazon.com/marketplace/latest/buyerguide/what-is-marketplace.html) sebagai curated digital catalog untuk third-party software, data, dan services. Contoh kategorinya mencakup security, networking, storage, machine learning, business intelligence, database, dan DevOps. Produk bisa berupa AMI, SaaS, CloudFormation template, data product, atau solusi lain yang kompatibel dengan AWS.
+
+Keuntungan utama Marketplace untuk pemula adalah procurement dan billing lebih sederhana. Banyak pembelian software muncul di AWS bill, sehingga tim finance tidak perlu mengelola terlalu banyak vendor invoice terpisah. Marketplace juga mendukung opsi seperti free trial, hourly, monthly, annual, multi-year, dan BYOL tergantung produk.
+
+<CardGrid cols={2}>
+  <Card><h4>ISV</h4><p>Independent Software Vendor, penyedia software pihak ketiga yang menjual produk melalui Marketplace.</p></Card>
+  <Card><h4>System integrator</h4><p>Partner yang membantu merancang, memigrasikan, membangun, atau mengoperasikan solusi di AWS.</p></Card>
+  <Card><h4>Private offer</h4><p>Penawaran khusus antara seller dan buyer, biasanya untuk pricing atau terms yang dinegosiasikan.</p></Card>
+  <Card><h4>Entitlement dan governance</h4><p>Organisasi dapat mengatur siapa yang boleh membeli, menggunakan, dan mengelola subscription Marketplace.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Contoh nyata"><p>Perusahaan ingin memakai firewall pihak ketiga untuk VPC. Daripada membeli lisensi manual, tim dapat mencari appliance dari vendor di AWS Marketplace, subscribe, lalu deploy sesuai format produk.</p></Box>
+
+</Section>
+
+<Section num="13" id="walkthrough" title="Walkthrough Konseptual" sub="Latihan tanpa harus membuat resource mahal.">
+
+<p class="lead">Kita akan mensimulasikan cara tim kecil mengelola biaya AWS untuk online shop, dari estimasi sampai chargeback.</p>
+
+<Steps>
+  <Step><b>Estimasi sebelum deploy</b><p>Gunakan AWS Pricing Calculator untuk memperkirakan biaya EC2 atau ECS, ALB, RDS, S3, CloudFront, data transfer, dan support, lalu bandingkan beberapa arsitektur.</p></Step>
+  <Step><b>Buat struktur akun</b><p>Bayangkan ada akun `prod`, `dev`, dan `security` di AWS Organizations, lalu management account melihat consolidated billing dan berbagi RI/Savings Plans.</p></Step>
+  <Step><b>Tentukan tag wajib</b><p>Setiap resource wajib punya `Application`, `Environment`, `Owner`, dan `CostCenter`, lalu aktifkan sebagai cost allocation tag di Billing agar biaya mudah difilter.</p></Step>
+  <Step><b>Pasang Budgets sejak awal</b><p>Buat AWS Budgets untuk total bulanan dan akun dev, plus alert forecast, agar Free Tier tidak diam-diam terlewati dan tagihan tidak mengejutkan.</p></Step>
+  <Step><b>Analisis setelah berjalan</b><p>Gunakan Cost Explorer untuk melihat layanan paling mahal, tren mingguan, dan perbandingan biaya `dev` versus `prod`. Aktifkan Cost Anomaly Detection untuk lonjakan tak terduga.</p></Step>
+  <Step><b>Export data granular</b><p>Aktifkan Data Exports atau CUR 2.0 ke S3 bila finance membutuhkan laporan detail untuk dashboard BI atau audit.</p></Step>
+  <Step><b>Showback atau chargeback</b><p>Bila perlu tarif internal dengan markup, gunakan AWS Billing Conductor untuk data pro forma per billing group tanpa mengubah invoice asli.</p></Step>
+  <Step><b>Pilih support</b><p>Untuk produksi, pilih Support Plan yang sesuai risiko bisnis (Business Support+ minimum, Enterprise bila butuh TAM), lalu gunakan Support Center, Trusted Advisor, dan Health Dashboard.</p></Step>
+</Steps>
+
+<Box variant="exam" icon="🎯" label="Latihan mental"><p>Urutan sehat: estimate dahulu (Pricing Calculator), siapkan akun dan tag, pasang Budgets sejak awal, pantau dengan Cost Explorer, audit dengan CUR atau Data Exports, bagikan biaya dengan Billing Conductor, lalu pilih support sesuai kritikalitas. Hafalkan urutan ini sebagai siklus hidup biaya (cost lifecycle).</p></Box>
+
+</Section>
+
+<Section num="14" id="kesalahan-jebakan" title="Kesalahan Umum & Jebakan Ujian" sub="Bagian ini sering menentukan apakah Domain 4 terasa mudah atau membingungkan.">
+
+<p class="lead">Sebagian besar jebakan billing muncul karena alatnya mirip, tetapi tujuan masing-masing berbeda.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Pricing Calculator vs Cost Explorer</h4><p>Pricing Calculator untuk estimasi sebelum pemakaian. Cost Explorer untuk analisis biaya dan penggunaan setelah data billing tersedia.</p></Card>
+  <Card><h4>Budgets vs CloudWatch Alarms</h4><p>Budgets untuk biaya, usage budget, RI, dan Savings Plans. CloudWatch Alarms untuk metrik operasional seperti CPU, latency, atau error.</p></Card>
+  <Card><h4>CUR vs Cost Explorer</h4><p>Cost Explorer cocok untuk eksplorasi visual. CUR atau Data Exports cocok untuk laporan granular dan analisis lanjutan di S3.</p></Card>
+  <Card><h4>Tag biasa vs cost allocation tag</h4><p>Tag biasa belum otomatis muncul di laporan biaya. Aktifkan sebagai cost allocation tag agar berguna untuk billing.</p></Card>
+  <Card><h4>Reserved Instances vs Savings Plans</h4><p>RI terikat atribut instance (kurang fleksibel). Savings Plans komit $/jam dan lebih fleksibel lintas family, Region, bahkan Fargate dan Lambda.</p></Card>
+  <Card><h4>Reserved Instances vs Capacity Reservations</h4><p>RI memberi diskon billing untuk usage yang cocok. Capacity Reservation menjamin kapasitas di AZ tertentu, bukan diskon otomatis.</p></Card>
+  <Card><h4>Dedicated Hosts vs Dedicated Instances</h4><p>Host = server fisik penuh dengan visibilitas socket/core untuk lisensi BYOL. Instance = hardware terisolasi tanpa kontrol tingkat host.</p></Card>
+  <Card><h4>Consolidated billing vs akses akun</h4><p>Billing bisa digabung, tetapi akses resource tetap perlu IAM, role, Identity Center, dan policy yang tepat.</p></Card>
+  <Card><h4>TAM bukan untuk Business</h4><p>Technical Account Manager hanya ada di Enterprise dan Unified Operations, tidak di Business Support+. Kata kunci designated TAM mengarah ke Enterprise-level.</p></Card>
+  <Card><h4>Free Tier bukan satu aturan</h4><p>Akun setelah 15 Juli 2025 memakai model kredit ($200, Free/Paid plan). Jangan asumsikan aturan 12 bulan untuk akun baru.</p></Card>
+  <Card><h4>Trusted Advisor vs AWS Health</h4><p>Trusted Advisor = rekomendasi best practice. AWS Health = event atau outage yang memengaruhi resource akun.</p></Card>
+  <Card><h4>Billing Conductor = pro forma</h4><p>Billing Conductor menghasilkan data showback/chargeback kustom, tetapi tidak mengubah invoice AWS yang sebenarnya.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Kesalahan praktik"><p>Jangan memakai satu akun untuk semua workload hanya karena ingin tagihan sederhana. Multi akun plus consolidated billing biasanya lebih rapi untuk keamanan, isolasi, dan pelacakan biaya.</p></Box>
+
+<h3>Jebakan pilihan jawaban</h3>
+
+<ul>
+  <li>Soal menyebut <strong>forecast biaya</strong>, lihat konteksnya. Forecast historis dan analisis tren biasanya Cost Explorer, sedangkan perencanaan sebelum deploy biasanya Pricing Calculator.</li>
+  <li>Soal menyebut <strong>alert saat biaya mendekati batas</strong>, jawab AWS Budgets.</li>
+  <li>Soal menyebut <strong>lonjakan biaya tak terduga secara otomatis</strong>, jawab AWS Cost Anomaly Detection.</li>
+  <li>Soal menyebut <strong>laporan biaya paling detail untuk diproses di S3 atau BI</strong>, jawab CUR, CUR 2.0, atau Data Exports sesuai opsi.</li>
+  <li>Soal menyebut <strong>satu tagihan untuk banyak akun</strong>, jawab consolidated billing di AWS Organizations.</li>
+  <li>Soal menyebut <strong>tarif internal kustom atau billing group</strong>, jawab AWS Billing Conductor.</li>
+  <li>Soal menyebut <strong>rekomendasi best practice</strong>, jawab Trusted Advisor; soal <strong>full Trusted Advisor checks</strong> menyiratkan paid support.</li>
+  <li>Soal menyebut <strong>event layanan yang memengaruhi akun atau resource</strong>, jawab AWS Health Dashboard atau AWS Health API.</li>
+  <li>Soal menyebut <strong>designated TAM atau strategic guidance</strong>, jawab Enterprise Support (atau Unified Operations).</li>
+</ul>
+
+</Section>
+
+<Section num="15" id="ringkasan" title="Ringkasan & Tips Ujian" sub="Pemetaan cepat ke Domain 4 dan koneksi ke domain lain.">
+
+<p class="lead">Domain 4 hanya 12%, tetapi konsepnya sangat terstruktur dan mudah dikuasai.</p>
+
+<Recap title="Poin Penting">
+  <ul>
+    <li><strong>AWS Organizations dan consolidated billing</strong> menyatukan pembayaran banyak akun, membantu tracking, dan memanfaatkan gabungan penggunaan untuk diskon volume serta berbagi RI/Savings Plans (default ON), tanpa menyatukan akses.</li>
+    <li><strong>Model harga</strong>: On-Demand tanpa komitmen, RI dan Savings Plans menukar komitmen dengan diskon (SP lebih fleksibel), Spot termurah tetapi bisa diinterupsi, Dedicated Hosts untuk lisensi, Capacity Reservation menjamin kapasitas tanpa diskon.</li>
+    <li><strong>AWS Free Tier</strong>: akun lama memakai 12 bulan gratis, always free (30+ layanan), dan trial; akun sejak 15 Juli 2025 memakai model kredit ($200) dengan Free atau Paid plan.</li>
+    <li><strong>Pricing Calculator</strong> dipakai sebelum deploy untuk estimasi biaya; <strong>Cost Explorer</strong> untuk analisis historis (13 bulan balik, 18 bulan forecast).</li>
+    <li><strong>AWS Budgets</strong> dipakai untuk alert biaya, usage, RI utilization/coverage, dan Savings Plans utilization/coverage; <strong>Cost Anomaly Detection</strong> mendeteksi lonjakan otomatis.</li>
+    <li><strong>CUR, CUR 2.0, dan Data Exports</strong> dipakai untuk data biaya granular ke S3; <strong>cost allocation tags</strong> (AWS-generated vs user-defined) harus diaktifkan dulu untuk muncul di laporan.</li>
+    <li><strong>AWS Billing Conductor</strong> menghasilkan data pro forma untuk showback/chargeback kustom tanpa mengubah invoice asli.</li>
+    <li><strong>Support Plans</strong>: Basic (gratis), Business Support+ (&lt; 30 menit), Enterprise (&lt; 15 menit, TAM), Unified Operations (&lt; 5 menit). Nama lama Developer/Business/Enterprise On-Ramp dihentikan 1 Januari 2027.</li>
+    <li><strong>Trusted Advisor</strong> memberi rekomendasi best practice (Basic 56 check, Business Support+ 482); <strong>AWS Health</strong> memberi informasi event yang memengaruhi layanan, akun, atau resource.</li>
+    <li><strong>AWS Marketplace</strong> adalah katalog digital untuk membeli dan mengelola software, data, dan layanan pihak ketiga yang berjalan di AWS.</li>
+  </ul>
+</Recap>
+
+<h3>Pemetaan ke domain CLF-C02</h3>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr><th>Domain</th><th>Koneksi materi</th><th>Yang perlu diingat</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Domain 1, Cloud Concepts</td><td>Pay as you go, elastisitas, economies of scale, dan trade-off biaya</td><td>Cloud mengubah CAPEX menjadi OPEX dan membuat biaya mengikuti pemakaian</td></tr>
+    <tr><td>Domain 2, Security and Compliance</td><td>Multi akun, billing access, governance, tag policy, dan pemisahan akses</td><td>Consolidated billing tidak menggantikan IAM atau kontrol keamanan</td></tr>
+    <tr><td>Domain 3, Cloud Technology and Services</td><td>EC2 pricing options, storage tiers, data transfer, Marketplace software, Health Dashboard</td><td>Pahami layanan mana memengaruhi biaya dan tool mana membantu operasional</td></tr>
+    <tr><td>Domain 4, Billing, Pricing, and Support</td><td>Inti modul ini</td><td>Alat billing, pricing model, support, Trusted Advisor, Health, dan Marketplace</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="exam" icon="🎯" label="Tips ujian cepat"><p>Hafalkan pasangan kata kunci: estimate sebelum deploy = Pricing Calculator, analisis biaya = Cost Explorer, alarm anggaran = Budgets, lonjakan otomatis = Cost Anomaly Detection, laporan granular = CUR atau Data Exports, satu tagihan banyak akun = consolidated billing, tarif kustom = Billing Conductor, rekomendasi best practice = Trusted Advisor, event akun = AWS Health, designated TAM = Enterprise Support.</p></Box>
+
+<Box variant="tip" icon="✅" label="Checklist sebelum lanjut"><p>Kamu siap lanjut bila bisa menjelaskan perbedaan Pricing Calculator, Cost Explorer, Budgets, CUR, consolidated billing, model harga (RI vs Savings Plans vs Spot), Free Tier (lama vs baru), Billing Conductor, Support Plan (Basic sampai Unified Operations), Trusted Advisor, Health Dashboard, dan Marketplace tanpa melihat catatan.</p></Box>
+
+</Section>

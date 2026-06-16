@@ -1,0 +1,57 @@
+<svg viewBox="0 0 760 410" xmlns="http://www.w3.org/2000/svg" font-family="Inter, ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <marker id="arrowMig7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9c4a2f" />
+    </marker>
+  </defs>
+  <rect x="16" y="16" width="728" height="378" rx="18" fill="#fbfaf5" stroke="#d9d4c4" stroke-width="2" />
+  <text x="380" y="46" text-anchor="middle" font-size="19" fill="#241f17" font-weight="700">Empat Tipe AWS Storage Gateway</text>
+  <text x="380" y="66" text-anchor="middle" font-size="11" fill="#6e6a5c">Protokol on-premises di kiri, backend AWS di kanan</text>
+
+  <!-- on-prem column -->
+  <text x="120" y="92" text-anchor="middle" font-size="12" fill="#241f17" font-weight="700">Aplikasi on-premises</text>
+  <!-- AWS column -->
+  <text x="620" y="92" text-anchor="middle" font-size="12" fill="#241f17" font-weight="700">Backend AWS</text>
+
+  <!-- Row 1: S3 File Gateway -->
+  <rect x="40" y="104" width="200" height="56" rx="10" fill="#241f17" />
+  <text x="140" y="128" text-anchor="middle" font-size="12" fill="#bd5d3e" font-weight="700">S3 File Gateway</text>
+  <text x="140" y="146" text-anchor="middle" font-size="10" fill="#fbfaf5">protokol NFS / SMB</text>
+  <line x1="240" y1="132" x2="510" y2="132" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#arrowMig7)" />
+  <text x="375" y="124" text-anchor="middle" font-size="10" fill="#6e6a5c">file &rarr; objek</text>
+  <rect x="512" y="104" width="208" height="56" rx="10" fill="#bd5d3e" />
+  <text x="616" y="128" text-anchor="middle" font-size="12" fill="#fbfaf5" font-weight="700">Amazon S3</text>
+  <text x="616" y="146" text-anchor="middle" font-size="10" fill="#f0e3d8">file jadi objek S3</text>
+
+  <!-- Row 2: FSx File Gateway -->
+  <rect x="40" y="170" width="200" height="56" rx="10" fill="#241f17" />
+  <text x="140" y="194" text-anchor="middle" font-size="12" fill="#bd5d3e" font-weight="700">FSx File Gateway</text>
+  <text x="140" y="212" text-anchor="middle" font-size="10" fill="#fbfaf5">protokol SMB</text>
+  <line x1="240" y1="198" x2="510" y2="198" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#arrowMig7)" />
+  <text x="375" y="190" text-anchor="middle" font-size="10" fill="#6e6a5c">cache lokal</text>
+  <rect x="512" y="170" width="208" height="56" rx="10" fill="#bd5d3e" />
+  <text x="616" y="194" text-anchor="middle" font-size="12" fill="#fbfaf5" font-weight="700">FSx for Windows</text>
+  <text x="616" y="212" text-anchor="middle" font-size="10" fill="#f0e3d8">file share Windows</text>
+
+  <!-- Row 3: Volume Gateway -->
+  <rect x="40" y="236" width="200" height="56" rx="10" fill="#241f17" />
+  <text x="140" y="260" text-anchor="middle" font-size="12" fill="#bd5d3e" font-weight="700">Volume Gateway</text>
+  <text x="140" y="278" text-anchor="middle" font-size="10" fill="#fbfaf5">block iSCSI</text>
+  <line x1="240" y1="264" x2="510" y2="264" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#arrowMig7)" />
+  <text x="375" y="256" text-anchor="middle" font-size="10" fill="#6e6a5c">cached / stored</text>
+  <rect x="512" y="236" width="208" height="56" rx="10" fill="#bd5d3e" />
+  <text x="616" y="258" text-anchor="middle" font-size="12" fill="#fbfaf5" font-weight="700">Amazon S3</text>
+  <text x="616" y="276" text-anchor="middle" font-size="10" fill="#f0e3d8">snapshot EBS</text>
+
+  <!-- Row 4: Tape Gateway -->
+  <rect x="40" y="302" width="200" height="56" rx="10" fill="#241f17" />
+  <text x="140" y="326" text-anchor="middle" font-size="12" fill="#bd5d3e" font-weight="700">Tape Gateway</text>
+  <text x="140" y="344" text-anchor="middle" font-size="10" fill="#fbfaf5">virtual tape (VTL)</text>
+  <line x1="240" y1="330" x2="510" y2="330" stroke="#9c4a2f" stroke-width="2.5" marker-end="url(#arrowMig7)" />
+  <text x="375" y="322" text-anchor="middle" font-size="10" fill="#6e6a5c">ganti tape fisik</text>
+  <rect x="512" y="302" width="208" height="56" rx="10" fill="#bd5d3e" />
+  <text x="616" y="324" text-anchor="middle" font-size="12" fill="#fbfaf5" font-weight="700">S3 + S3 Glacier</text>
+  <text x="616" y="342" text-anchor="middle" font-size="10" fill="#f0e3d8">arsip backup</text>
+
+  <text x="380" y="382" text-anchor="middle" font-size="10" fill="#6e6a5c">Volume Gateway: cached = data utama di AWS (cache panas lokal) &middot; stored = data utama lokal (backup ke AWS)</text>
+</svg>

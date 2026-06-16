@@ -40,6 +40,14 @@ const courses = defineCollection({
   schema: lessonSchema,
 });
 
+// Koleksi "aws": track AWS (wrapper + lessons) yang TERPISAH dari 73 modul Go Luminas
+// ('modules') dan dari 'courses'. Memakai lessonSchema yang sama karena frontmatter AWS
+// sudah valid terhadapnya.
+const aws = defineCollection({
+  loader: glob({ pattern: '**/*.mdx', base: './src/content/aws' }),
+  schema: lessonSchema,
+});
+
 // Koleksi "roadmaps": jalur kurasi yang MEREFERENSIKAN course (bukan menulis ulang materi).
 // Satu file .mdx per roadmap; body MDX opsional (intro). Data terstruktur di frontmatter.
 const roadmaps = defineCollection({
@@ -58,4 +66,4 @@ const roadmaps = defineCollection({
   }),
 });
 
-export const collections = { modules, courses, roadmaps };
+export const collections = { modules, courses, aws, roadmaps };

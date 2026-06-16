@@ -1,0 +1,491 @@
+---
+title: "Modul AWS Architecting, Well-Architected & Ecosystem - AWS Cloud Practitioner CLF-C02"
+badge: "ARC"
+topTitle: "AWS Architecting, Well-Architected & Ecosystem"
+topSub: "AWS Certified Cloud Practitioner CLF-C02"
+summary: "Prinsip memilih arsitektur AWS dengan bahasa bisnis, enam pilar Well-Architected, CAF, dan sumber ekosistem resmi AWS."
+order: 18
+target: "CLF-C02"
+readingTime: "~85 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "intro", title: "Kenapa Arsitektur Bukan Sekadar Diagram" }
+  - { num: "02", id: "cara-berpikir-architecting", title: "Cara Berpikir Architecting di AWS" }
+  - { num: "03", id: "well-architected", title: "AWS Well-Architected Framework" }
+  - { num: "04", id: "enam-pilar", title: "Enam Pilar Well-Architected" }
+  - { num: "05", id: "review-workload", title: "Review Workload dengan AWS WA Tool" }
+  - { num: "06", id: "caf", title: "AWS Cloud Adoption Framework" }
+  - { num: "07", id: "ecosystem", title: "Ecosystem: Partner, Marketplace, dan Sumber Resmi" }
+  - { num: "08", id: "service-picker", title: "Service Picker Berbasis Prinsip" }
+  - { num: "09", id: "hands-on", title: "Hands-on Ringan: Mini Review Arsitektur" }
+  - { num: "10", id: "kesalahan-jebakan", title: "Kesalahan Umum & Jebakan Soal" }
+  - { num: "11", id: "ringkasan", title: "Ringkasan & Tips Ujian" }
+footerTitle: "Modul AWS Architecting, Well-Architected & Ecosystem - AWS Cloud Practitioner CLF-C02"
+footerSub: "Disusun untuk persiapan CLF-C02"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Figure, Compare } from "@components";
+import ArcFig01 from "@figures/ArcFig01.astro";
+import ArcFig02 from "@figures/ArcFig02.astro";
+import ArcFig03 from "@figures/ArcFig03.astro";
+import ArcFig04 from "@figures/ArcFig04.astro";
+import ArcFig05 from "@figures/ArcFig05.astro";
+import ArcFig06 from "@figures/ArcFig06.astro";
+import ArcFig07 from "@figures/ArcFig07.astro";
+import ArcFig08 from "@figures/ArcFig08.astro";
+
+<Hero eyebrow="Modul &middot; Architecting" title="AWS Architecting,<br /><em>Well-Architected & Ecosystem</em>">
+  <p>Belajar memilih arsitektur AWS dengan cara pikir bisnis, risiko, dan trade-off, bukan sekadar menghafal diagram.</p>
+  <Fragment slot="meta">
+    <Chip icon="target">Target: <b>CLF-C02</b></Chip>
+    <Chip icon="clock">~85 menit baca</Chip>
+    <Chip icon="book">Domain 1 &middot; 24%</Chip>
+  </Fragment>
+</Hero>
+
+<Section num="01" id="intro" title="Kenapa Arsitektur Bukan Sekadar Diagram" sub="Analogi: membangun rumah, bukan menggambar rumah.">
+
+<p class="lead">Arsitektur cloud mirip merancang rumah, gambar denah penting, tetapi keputusan tentang fondasi, keamanan, ventilasi, biaya listrik, dan kemudahan perawatan jauh lebih menentukan.</p>
+
+Banyak pemula mengira arsitektur AWS berarti menghafal ikon layanan dan menggambar kotak panah. Untuk CLF-C02, sudut pandangnya berbeda. Kamu perlu memahami **kenapa** sebuah desain lebih aman, lebih andal, lebih hemat, lebih mudah dioperasikan, dan lebih berkelanjutan. AWS menyebut cara berpikir ini melalui [AWS Well-Architected Framework](https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html), [AWS Cloud Adoption Framework](https://docs.aws.amazon.com/whitepapers/latest/overview-aws-cloud-adoption-framework/welcome.html), dan sumber ekosistem seperti [AWS Architecture Center](https://aws.amazon.com/architecture/), [AWS Marketplace](https://docs.aws.amazon.com/marketplace/latest/buyerguide/what-is-marketplace.html), [AWS Prescriptive Guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/patterns/welcome.html), dan [AWS re:Post Knowledge Center](https://repost.aws/knowledge-center/all).
+
+<Box variant="analogy" icon="🏗️" label="Analogi sederhana"><p>Diagram adalah denah, Well-Architected adalah checklist kualitas bangunan, CAF adalah rencana organisasi pindah ke lingkungan baru, dan ekosistem AWS adalah toko material plus konsultan yang membantu proyek berjalan.</p></Box>
+
+Modul ini sengaja bukan mini Solutions Architect. Kita tidak akan masuk terlalu dalam ke desain multi-tier, routing detail, atau tuning database. Fokusnya adalah **bahasa bisnis dan prinsip memilih arsitektur**: apa trade-off-nya, siapa yang bertanggung jawab, risiko apa yang dikurangi, dan sumber resmi mana yang harus dibaca ketika butuh panduan.
+
+<CardGrid cols={3}>
+  <Card><h4>Untuk praktik</h4><p>Kamu belajar menilai workload dengan pertanyaan sederhana: apa tujuan bisnisnya, risikonya apa, dan layanan mana yang paling cocok.</p></Card>
+  <Card><h4>Untuk ujian</h4><p>Kamu harus bisa membedakan pilar Well-Architected, CAF, Marketplace, APN, Prescriptive Guidance, whitepapers, re:Post, dan Knowledge Center.</p></Card>
+  <Card><h4>Untuk komunikasi</h4><p>Kamu belajar menjelaskan desain AWS kepada stakeholder non-teknis tanpa tenggelam dalam konfigurasi teknis.</p></Card>
+</CardGrid>
+
+</Section>
+
+<Section num="02" id="cara-berpikir-architecting" title="Cara Berpikir Architecting di AWS" sub="Mulai dari tujuan bisnis, lalu terjemahkan menjadi keputusan teknis.">
+
+<p class="lead">Architecting adalah proses mengambil keputusan yang sadar trade-off, bukan mencari satu jawaban sempurna untuk semua kasus.</p>
+
+Di dunia nyata, pertanyaan arsitektur jarang berbunyi, "Layanan apa yang paling keren?" Pertanyaannya lebih sering seperti ini: aplikasi harus tetap tersedia saat traffic naik, data pelanggan harus aman, tim operasi kecil, biaya harus terkendali, dan perubahan harus bisa dirilis cepat. Architecting berarti menyusun pilihan layanan, konfigurasi, proses, dan tanggung jawab agar kebutuhan itu terpenuhi.
+
+<Steps>
+  <Step><b>Mulai dari hasil bisnis</b><p>Tentukan apa yang harus terjadi, misalnya checkout tidak boleh sering gagal, audit harus mudah, atau biaya kampanye musiman harus elastis.</p></Step>
+  <Step><b>Ubah menjadi kualitas arsitektur</b><p>Terjemahkan kebutuhan menjadi keamanan, reliabilitas, performa, efisiensi biaya, operasi, dan sustainability.</p></Step>
+  <Step><b>Pilih layanan dengan alasan</b><p>Gunakan layanan managed bila ingin mengurangi beban operasi, gunakan serverless bila pola beban cocok, gunakan multi-AZ bila downtime harus ditekan.</p></Step>
+  <Step><b>Dokumentasikan trade-off</b><p>Catat keputusan, alasan, risiko, dan rencana perbaikan agar arsitektur tidak hanya hidup di kepala satu orang.</p></Step>
+</Steps>
+
+<Box variant="tip" icon="💡" label="Kalimat kunci"><p>Di AWS, desain yang baik biasanya mengurangi undifferentiated heavy lifting, meningkatkan otomasi, memakai managed service saat masuk akal, dan mengevaluasi risiko secara berkala.</p></Box>
+
+<h3>Pertanyaan architecting yang ramah pemula</h3>
+
+<ul>
+  <li><strong>Siapa pengguna dan seberapa kritis aplikasinya?</strong> Website profil perusahaan berbeda dari sistem pembayaran.</li>
+  <li><strong>Data apa yang disimpan?</strong> Data publik, data internal, data pelanggan, dan data sensitif punya kebutuhan kontrol berbeda.</li>
+  <li><strong>Apa pola traffic-nya?</strong> Stabil, musiman, naik mendadak, atau tidak terprediksi.</li>
+  <li><strong>Siapa yang mengoperasikan?</strong> Tim kecil biasanya diuntungkan oleh layanan managed dan otomasi.</li>
+  <li><strong>Apa batas biaya dan risiko?</strong> Hemat biaya bukan berarti memilih yang termurah, tetapi memilih yang paling efisien untuk kebutuhan.</li>
+</ul>
+
+<Box variant="exam" icon="🧠" label="Tips ujian"><p>Jika soal memakai kata seperti design principles, pillars, trade-offs, best practices, atau review architecture, pikirkan Well-Architected, bukan langsung lompat ke satu layanan spesifik.</p></Box>
+
+<h3>Enam general design principles</h3>
+
+<p>Sebelum masuk ke enam pilar, Well-Architected punya enam <strong>general design principles</strong>: prinsip umum yang berlaku lintas pilar dan menjelaskan kenapa cara berpikir di cloud berbeda dari data center tradisional. Di data center lama, kamu membeli server besar di awal karena menambah kapasitas butuh berminggu-minggu. Di cloud, kapasitas datang dalam hitungan menit, jadi keputusan arsitektur bisa lebih berani, lebih sering diuji, dan lebih dipandu data.</p>
+
+<Figure><ArcFig03 /><Fragment slot="caption"><b>Gambar 1.</b> Enam general design principles Well-Architected, prinsip umum yang berlaku di seluruh pilar.</Fragment></Figure>
+
+<CardGrid cols={3}>
+  <Card><h4>Stop guessing capacity</h4><p>Berhenti menebak kebutuhan kapasitas. Pakai scaling otomatis agar kapasitas mengikuti permintaan nyata, bukan tebakan saat membeli server.</p></Card>
+  <Card><h4>Test at production scale</h4><p>Uji sistem pada skala produksi. Di cloud kamu bisa membuat lingkungan uji seukuran produksi, lalu mematikannya setelah selesai, jadi biaya tetap rendah.</p></Card>
+  <Card><h4>Automate for experimentation</h4><p>Otomasi dengan eksperimen arsitektur dalam pikiran. Otomasi membuat percobaan, rollback, dan replikasi arsitektur murah dan mudah diulang.</p></Card>
+  <Card><h4>Evolutionary architectures</h4><p>Pertimbangkan arsitektur yang bisa berevolusi. Desain tidak perlu sempurna di awal, ia boleh berubah seiring kebutuhan dan teknologi baru.</p></Card>
+  <Card><h4>Drive with data</h4><p>Kendalikan arsitektur dengan data. Pakai metrik nyata untuk memilih instance, storage, atau pola desain, bukan asumsi.</p></Card>
+  <Card><h4>Improve through game days</h4><p>Tingkatkan lewat game days. Latih skenario kegagalan secara terjadwal agar tim dan sistem terbukti siap sebelum insiden sungguhan.</p></Card>
+</CardGrid>
+
+<Box variant="analogy" icon="🚒" label="Analogi game day"><p>Game day mirip simulasi kebakaran di gedung kantor. Kamu sengaja membunyikan alarm pada waktu terjadwal supaya semua orang tahu jalur evakuasi sebelum ada api sungguhan, bukan menunggu kebakaran asli untuk belajar.</p></Box>
+
+</Section>
+
+<Section num="03" id="well-architected" title="AWS Well-Architected Framework" sub="Kerangka evaluasi kualitas workload di cloud.">
+
+<p class="lead">AWS Well-Architected Framework adalah cara konsisten untuk mengevaluasi apakah sebuah workload selaras dengan praktik terbaik cloud.</p>
+
+Menurut dokumentasi AWS, framework ini membantu memahami pro dan kontra dari keputusan saat membangun sistem di AWS, serta menyediakan cara untuk mengukur arsitektur terhadap praktik terbaik dan menemukan area perbaikan. Kata pentingnya adalah **conversation**, bukan audit. Review Well-Architected seharusnya menjadi diskusi konstruktif tentang keputusan arsitektur, bukan sidang mencari kesalahan.
+
+<Box variant="analogy" icon="🩺" label="Analogi medical check-up"><p>Well-Architected seperti pemeriksaan kesehatan rutin. Tujuannya bukan mempermalukan pasien, tetapi menemukan risiko sebelum menjadi insiden besar.</p></Box>
+
+<Figure><ArcFig01 /><Fragment slot="caption"><b>Gambar 2.</b> Well-Architected melihat satu workload dari enam sudut kualitas yang saling melengkapi.</Fragment></Figure>
+
+<h3>Istilah penting</h3>
+
+<CardGrid cols={2}>
+  <Card><h4>Workload</h4><p>Satu set komponen yang menghasilkan nilai bisnis, misalnya backend mobile app, ecommerce, data platform, atau portal internal.</p></Card>
+  <Card><h4>Lens</h4><p>Kumpulan pertanyaan dan praktik terbaik untuk menilai workload dari perspektif tertentu, termasuk AWS Well-Architected Framework lens sebagai lens default.</p></Card>
+  <Card><h4>Milestone</h4><p>Catatan kondisi arsitektur pada titik tertentu, misalnya desain awal, testing, go live, atau setelah perbaikan besar.</p></Card>
+  <Card><h4>HRI dan MRI</h4><p>High risk issue adalah pilihan yang bisa berdampak negatif besar pada bisnis; medium risk issue serupa tetapi dampaknya lebih kecil dari HRI.</p></Card>
+</CardGrid>
+
+<h3>Konsep lens lebih dalam</h3>
+
+<p>Lens adalah ide penting yang sering muncul di soal. Lens default adalah <strong>AWS Well-Architected Framework lens</strong> yang berlaku untuk hampir semua workload. Selain itu, ada lens khusus untuk teknologi tertentu seperti Serverless, SaaS, Machine Learning, dan Generative AI, ditambah lens <strong>Responsible AI</strong> yang baru diperkenalkan pada re:Invent akhir 2025. Kamu juga bisa membuat <strong>custom lens</strong> untuk standar internal organisasi. Bila sebuah soal menyebut menyesuaikan review untuk teknologi spesifik, jawabannya adalah memakai lens khusus atau custom lens, bukan menulis ulang framework.</p>
+
+<Box variant="tip" icon="🆓" label="WA Tool itu gratis"><p>Memakai AWS Well-Architected Tool dan mendokumentasikan review tidak dikenakan biaya. Yang tetap berbiaya hanyalah resource AWS yang kamu provisioning untuk memperbaiki workload (misalnya menambah instance atau Multi-AZ).</p></Box>
+
+<Box variant="warn" icon="⚠️" label="Jangan salah paham"><p>Well-Architected bukan garansi aplikasi pasti tidak pernah gagal. Ia membantu menemukan risiko dan memperbaiki keputusan, tetapi implementasi tetap tanggung jawab tim.</p></Box>
+
+<Box variant="tip" icon="🔄" label="Framework terus berkembang"><p>Pada April 2025 AWS menyegarkan seratus persen praktik di setiap pilar dengan sekitar 78 best practice baru atau diperbarui, dan Pillar Reliability mendapat 14 pembaruan untuk pertama kali sejak siklus 2022. Nama enam pilar tetap sama, jadi yang berubah adalah isi praktiknya, bukan strukturnya.</p></Box>
+
+Untuk CLF-C02, hafalkan nama enam pilar dan bedakan fokusnya. Kamu tidak perlu menghafal semua pertanyaan detail dari setiap pilar, tetapi harus paham contoh situasi: monitoring masuk operational excellence, least privilege masuk security, backup dan multi-AZ masuk reliability, rightsizing masuk cost optimization, pemilihan resource sesuai beban masuk performance efficiency, dan pengurangan resource idle masuk sustainability.
+
+</Section>
+
+<Section num="04" id="enam-pilar" title="Enam Pilar Well-Architected" sub="Enam sudut pandang untuk menilai kualitas sistem.">
+
+<p class="lead">Enam pilar Well-Architected adalah operational excellence, security, reliability, performance efficiency, cost optimization, dan sustainability.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Operational Excellence</h4><p>Fokus pada menjalankan, memonitor, mengotomasi, belajar dari insiden, dan memperbaiki proses. Contoh: CloudWatch alarm, runbook, deployment otomatis, dan post-incident review.</p></Card>
+  <Card><h4>Security</h4><p>Fokus pada perlindungan data, sistem, identitas, deteksi, respons, dan kontrol akses. Contoh: IAM least privilege, MFA, encryption, logging, GuardDuty, dan AWS Artifact.</p></Card>
+  <Card><h4>Reliability</h4><p>Fokus pada kemampuan workload pulih dari gangguan dan memenuhi kebutuhan ketersediaan. Contoh: backup, multi-AZ, Auto Scaling, health checks, dan disaster recovery.</p></Card>
+  <Card><h4>Performance Efficiency</h4><p>Fokus pada penggunaan resource yang tepat untuk kebutuhan saat ini dan saat berubah. Contoh: memilih EC2, Lambda, S3, DynamoDB, CloudFront, atau managed database sesuai pola beban.</p></Card>
+  <Card><h4>Cost Optimization</h4><p>Fokus pada mendapatkan nilai bisnis maksimum dengan biaya minimum yang masuk akal. Contoh: rightsizing, Savings Plans, Reserved Instances, Budgets, Cost Explorer, dan mematikan resource idle.</p></Card>
+  <Card><h4>Sustainability</h4><p>Fokus pada mengurangi dampak lingkungan dari workload cloud. Contoh: menghapus resource tidak terpakai, meningkatkan utilisasi, memilih managed service, dan menyesuaikan kapasitas dengan kebutuhan.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Jebakan pilar"><p>Soal sering memberi skenario yang mirip. Backup untuk pemulihan biasanya reliability, encryption dan IAM biasanya security, rightsizing biasanya cost optimization, dan monitoring operasi harian biasanya operational excellence.</p></Box>
+
+<h3>Pertanyaan kunci dan trade-off tiap pilar</h3>
+
+<p>Topik ini bukan hanya soal nama pilar. Tiap pilar sebenarnya adalah satu pertanyaan yang harus kamu tanyakan ke arsitektur, dan setiap jawaban punya trade-off. Memahami trade-off inilah inti architecting, karena memaksimalkan satu pilar sering menekan pilar lain. Tabel ini membantu kamu berpikir seperti reviewer Well-Architected.</p>
+
+<div class="tbl-wrap"><table>
+  <thead>
+    <tr><th>Pilar</th><th>Pertanyaan kunci yang ia tanyakan</th><th>Trade-off yang harus disadari</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Operational Excellence</strong></td><td>Bagaimana kita menjalankan, memantau, dan terus memperbaiki workload setiap hari?</td><td>Otomasi dan observability butuh waktu serta usaha di awal sebelum hasilnya terasa.</td></tr>
+    <tr><td><strong>Security</strong></td><td>Bagaimana kita melindungi data, identitas, dan sistem dari ancaman?</td><td>Kontrol ketat (least privilege, enkripsi, approval) bisa memperlambat kecepatan tim bila berlebihan.</td></tr>
+    <tr><td><strong>Reliability</strong></td><td>Bagaimana workload pulih dari kegagalan dan memenuhi target ketersediaan?</td><td>Redundansi multi-AZ, backup, dan DR menambah biaya (bertabrakan dengan cost optimization).</td></tr>
+    <tr><td><strong>Performance Efficiency</strong></td><td>Apakah kita memakai resource yang tepat dan seefisien mungkin untuk beban ini?</td><td>Resource paling cepat sering paling mahal dan paling boros energi (menekan cost dan sustainability).</td></tr>
+    <tr><td><strong>Cost Optimization</strong></td><td>Apakah kita mendapat nilai bisnis maksimum dengan biaya yang wajar?</td><td>Memangkas biaya terlalu agresif bisa mengorbankan reliability dan performa.</td></tr>
+    <tr><td><strong>Sustainability</strong></td><td>Bagaimana kita meminimalkan dampak lingkungan dari workload?</td><td>Mengejar utilisasi maksimum bisa mengurangi headroom yang dibutuhkan reliability saat lonjakan.</td></tr>
+  </tbody>
+</table></div>
+
+<Box variant="tip" icon="⚖️" label="Inti trade-off"><p>Arsitektur yang baik bukan yang menang di satu pilar, tetapi yang sengaja memilih keseimbangan sesuai kebutuhan bisnis. Reliability lawan cost, performa lawan sustainability, security lawan kecepatan, semuanya keputusan sadar, bukan kebetulan.</p></Box>
+
+<h3>Dari gejala ke pilar</h3>
+
+<p>Cara tercepat menjawab soal pilar adalah membaca gejala lalu memetakannya ke satu pilar yang paling langsung terdampak. Gambar berikut melatih refleks itu dengan enam gejala konkret.</p>
+
+<Figure><ArcFig06 /><Fragment slot="caption"><b>Gambar 3.</b> Petakan satu gejala ke satu pilar: crash saat promo &rarr; reliability, tagihan tinggi &rarr; cost, kredensial bocor &rarr; security, instance salah ukuran &rarr; performance efficiency, tanpa monitoring &rarr; operational excellence, target karbon &rarr; sustainability.</Fragment></Figure>
+
+<Compare aLabel="Reliability &middot; bertahan dari kegagalan" bLabel="Performance Efficiency &middot; resource tepat untuk beban" aTone="blue" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Pertanyaannya: apakah sistem tetap hidup dan bisa pulih saat ada gangguan?</li><li>Alat khasnya: multi-AZ, backup teruji, health check, Auto Scaling untuk ketersediaan, dan disaster recovery.</li><li>Kata kunci soal: availability, recover, failover, backup, fault tolerance.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Pertanyaannya: apakah kita memakai jenis dan ukuran resource yang paling pas untuk beban?</li><li>Alat khasnya: pemilihan instance type, serverless, caching, dan database sesuai pola akses.</li><li>Kata kunci soal: right resource, instance type, latency, throughput, scale efficiently.</li></ul></Fragment>
+</Compare>
+
+<Compare aLabel="Cost Optimization &middot; hemat biaya" bLabel="Sustainability &middot; hemat dampak lingkungan" aTone="violet" bTone="teal" vs="vs">
+  <Fragment slot="a"><ul><li>Tujuan akhirnya: nilai bisnis maksimum dengan rupiah seminimal mungkin.</li><li>Alat khasnya: rightsizing, Savings Plans, Reserved Instances, Budgets, Cost Explorer.</li><li>Kata kunci soal: bill, spend, price, lowest cost, budget.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Tujuan akhirnya: jejak karbon dan pemborosan resource sekecil mungkin.</li><li>Alat khasnya: maksimalkan utilisasi, pilih managed service dan region efisien, hapus resource idle.</li><li>Kata kunci soal: environmental, carbon, ESG, energy, sustainability.</li></ul></Fragment>
+</Compare>
+
+<Box variant="exam" icon="🎯" label="Cost vs Sustainability"><p>Keduanya sama-sama suka mematikan resource idle, jadi mudah tertukar. Pegang kata kuncinya: bila soal berbicara tentang uang, tagihan, atau harga, jawab cost optimization. Bila berbicara tentang lingkungan, karbon, atau ESG, jawab sustainability.</p></Box>
+
+<h3>Cara cepat membedakan pilar</h3>
+
+<ul>
+  <li><strong>Operational Excellence</strong>: bagaimana tim menjalankan dan memperbaiki sistem setiap hari.</li>
+  <li><strong>Security</strong>: siapa boleh mengakses apa, bagaimana data dilindungi, dan bagaimana ancaman dideteksi.</li>
+  <li><strong>Reliability</strong>: bagaimana sistem bertahan dan pulih saat terjadi kegagalan.</li>
+  <li><strong>Performance Efficiency</strong>: apakah resource yang dipilih cocok untuk beban kerja.</li>
+  <li><strong>Cost Optimization</strong>: apakah biaya sepadan dengan nilai bisnis.</li>
+  <li><strong>Sustainability</strong>: apakah sistem mengurangi pemborosan resource dan dampak lingkungan.</li>
+</ul>
+
+<Box variant="tip" icon="💡" label="Mnemonik"><p>Pikirkan rumah: operasi adalah perawatan, security adalah kunci dan CCTV, reliability adalah struktur tahan gangguan, performance adalah ukuran ruangan pas, cost adalah tagihan, sustainability adalah hemat energi.</p></Box>
+
+</Section>
+
+<Section num="05" id="review-workload" title="Review Workload dengan AWS WA Tool" sub="Dari pertanyaan menuju improvement plan.">
+
+<p class="lead">AWS Well-Architected Tool membantu mendokumentasikan workload, menjawab pertanyaan lens, menemukan risiko, dan menyusun rencana perbaikan.</p>
+
+[AWS WA Tool](https://docs.aws.amazon.com/wellarchitected/latest/userguide/tutorial.html) dipakai untuk mendokumentasikan kondisi workload. Alur resminya sederhana: define workload, document workload state, review improvement plan, lalu make improvements and measure progress. Untuk pemula, bayangkan seperti checklist berkala sebelum aplikasi masuk produksi dan sesudah aplikasi berjalan.
+
+<Figure><ArcFig07 /><Fragment slot="caption"><b>Gambar 4.</b> Review WA Tool adalah siklus berulang: define workload &rarr; document state &rarr; improvement plan (HRI dan MRI) &rarr; make improvements dan catat milestone &rarr; ukur ulang.</Fragment></Figure>
+
+<Steps>
+  <Step><b>Define workload</b><p>Tulis nama workload, pemilik review, lingkungan, region, akun terkait, dan konteks bisnisnya.</p></Step>
+  <Step><b>Document workload state</b><p>Jawab pertanyaan berdasarkan lens yang dipilih, misalnya AWS Well-Architected Framework lens.</p></Step>
+  <Step><b>Review improvement plan</b><p>Lihat risiko tinggi dan risiko sedang, lalu kelompokkan mana yang harus diperbaiki lebih dulu.</p></Step>
+  <Step><b>Make improvements</b><p>Lakukan perbaikan bertahap, catat milestone, dan ukur ulang setelah perubahan.</p></Step>
+</Steps>
+
+<Box variant="warn" icon="⚠️" label="Kesalahan pemula"><p>Menjawab review dengan terlalu optimis membuat hasil review tidak berguna. Lebih baik jujur mencatat risiko daripada menyembunyikan masalah sampai menjadi insiden.</p></Box>
+
+<h3>Fitur yang mempercepat review</h3>
+
+<p>Selain alur dasar, WA Tool punya dua fitur yang membuat review lebih terarah dan konsisten. Keduanya jarang jadi inti soal CLF-C02, tetapi mengenal namanya membantu kamu tidak bingung bila muncul di pilihan jawaban.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Profiles</h4><p>Kamu mendefinisikan tujuan bisnis lebih dulu (misalnya prioritas keamanan atau kecepatan rilis), lalu WA Tool menyusun daftar pertanyaan yang sudah diprioritaskan sesuai konteks itu.</p></Card>
+  <Card><h4>Review Templates</h4><p>Kumpulan jawaban umum yang bisa dipakai ulang di banyak workload sejenis, sehingga tim tidak menjawab pertanyaan dasar yang sama berulang kali.</p></Card>
+</CardGrid>
+
+<h3>WA Tool bukan Trusted Advisor</h3>
+
+<p>Ini salah satu jebakan paling sering di topik ini. Keduanya sama-sama membicarakan kualitas, tetapi sudut pandangnya berbeda: WA Tool menilai satu workload lewat pertanyaan yang kamu jawab, sedangkan Trusted Advisor memindai akun secara otomatis. Mengenal kategori cek Trusted Advisor membantu memilah keduanya.</p>
+
+<Compare aLabel="WA Tool &middot; nilai satu workload" bLabel="Trusted Advisor &middot; pindai akun otomatis" aTone="violet" bTone="blue" vs="vs">
+  <Fragment slot="a"><ul><li>Kamu yang menjawab pertanyaan lens; hasilnya improvement plan berisi HRI dan MRI.</li><li>Fokus pada satu workload terhadap enam pilar Well-Architected.</li><li>Bersifat dokumentasi keputusan dan diskusi, bukan pemeriksaan otomatis.</li><li>Kata kunci soal: evaluate architecture, pillars, best practices, workload review.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Memberi rekomendasi otomatis lintas akun, tanpa kamu menjawab kuesioner.</li><li>Memeriksa lima sampai enam kategori: cost optimization, security, fault tolerance, performance, service limits/quotas, dan operational excellence.</li><li>Cakupan cek penuh bergantung pada level AWS Support (Business atau Enterprise lebih lengkap).</li><li>Kata kunci soal: account checks, recommendations, service limits, automatic.</li></ul></Fragment>
+</Compare>
+
+<h3>Contoh mini dengan bahasa WA Tool</h3>
+
+Sebuah backend toko online berjalan di satu EC2 instance tanpa backup database teruji. Di WA Tool, ini akan muncul sebagai high risk issue (HRI) pada pilar reliability, karena satu gangguan instance atau data bisa menghentikan bisnis. Improvement plan-nya bisa berupa database managed multi-AZ, backup terjadwal, health check, Auto Scaling, dan dokumentasi prosedur pemulihan. Setelah perbaikan, kamu catat milestone (misalnya "go live setelah hardening reliability") lalu ukur ulang. Dari pilar cost optimization, jangan langsung memilih konfigurasi terbesar. Ukur beban, rightsizing, lalu pakai model harga yang sesuai agar HRI reliability tidak diganti dengan masalah biaya.
+
+<Box variant="exam" icon="🧠" label="Tips ujian"><p>Jika soal menanyakan tool untuk mengevaluasi satu workload terhadap Well-Architected Framework, jawabannya AWS Well-Architected Tool, bukan Trusted Advisor, Cost Explorer, atau CloudTrail. Jika soal menyebut rekomendasi otomatis lintas akun pada cost, security, dan service limits, jawabannya Trusted Advisor.</p></Box>
+
+</Section>
+
+<Section num="06" id="caf" title="AWS Cloud Adoption Framework" sub="Framework untuk transformasi organisasi, bukan hanya desain aplikasi.">
+
+<p class="lead">AWS CAF membantu organisasi merencanakan dan menjalankan adopsi cloud lewat perspektif bisnis, manusia, tata kelola, platform, keamanan, dan operasi.</p>
+
+Jika Well-Architected memeriksa kualitas workload, maka [AWS Cloud Adoption Framework](https://docs.aws.amazon.com/whitepapers/latest/overview-aws-cloud-adoption-framework/welcome.html) melihat perjalanan organisasi. Analogi sederhananya: Well-Architected mengecek apakah satu rumah dirancang baik, sedangkan CAF membantu satu perusahaan memindahkan banyak tim, proses, kebijakan, dan sistem ke kota baru bernama cloud.
+
+<Figure><ArcFig02 /><Fragment slot="caption"><b>Gambar 5.</b> CAF membantu organisasi menghubungkan hasil bisnis, orang, tata kelola, platform, keamanan, dan operasi.</Fragment></Figure>
+
+<h3>Enam perspektif CAF</h3>
+
+<CardGrid cols={3}>
+  <Card><h4>Business</h4><p>Memastikan investasi cloud mendukung hasil bisnis, pendapatan, pengalaman pelanggan, dan prioritas eksekutif.</p></Card>
+  <Card><h4>People</h4><p>Mengembangkan kemampuan tim, perubahan peran, budaya belajar, dan kesiapan organisasi.</p></Card>
+  <Card><h4>Governance</h4><p>Membantu pengambilan keputusan, manajemen risiko, kepatuhan, finansial, dan kontrol portofolio.</p></Card>
+  <Card><h4>Platform</h4><p>Membangun lingkungan cloud, landing zone, jaringan, akun, dan fondasi teknis yang bisa dipakai tim.</p></Card>
+  <Card><h4>Security</h4><p>Mengatur identitas, proteksi data, deteksi ancaman, respons insiden, dan kepatuhan keamanan.</p></Card>
+  <Card><h4>Operations</h4><p>Mengelola monitoring, incident management, change management, service management, dan perbaikan berkelanjutan.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Bedakan CAF dan Well-Architected"><p>CAF menjawab "bagaimana organisasi berhasil mengadopsi cloud", Well-Architected menjawab "apakah workload ini dirancang dan dioperasikan dengan baik".</p></Box>
+
+<h3>CAF 3.0 lebih dari enam perspektif</h3>
+
+<p>Banyak materi lama berhenti di enam perspektif, padahal CAF versi 3.0 (yang masih berlaku) menambahkan dua hal penting. Pertama, empat <strong>transformation domains</strong>: Technology, Process, Organization, dan Product, yaitu area apa saja yang berubah saat organisasi pindah ke cloud. Kedua, empat <strong>transformation phases</strong> yang berjalan iteratif: Envision &rarr; Align &rarr; Launch &rarr; Scale, yaitu tahapan perjalanan transformasi. Untuk CLF-C02 kamu cukup mengenali namanya, bukan menghafal detailnya.</p>
+
+<Figure><ArcFig08 /><Fragment slot="caption"><b>Gambar 6.</b> Gambaran utuh CAF 3.0: enam perspektif, empat fase (Envision, Align, Launch, Scale), empat domain (Technology, Process, Organization, Product), dan empat manfaat yang paling sering diuji.</Fragment></Figure>
+
+<h3>Empat manfaat CAF yang paling sering diuji</h3>
+
+<p>Ini bagian yang sering terlewat. Exam Guide CLF-C02 justru menyebut komponen CAF lewat <strong>manfaat</strong>, bukan lewat enam perspektif. Jadi bila soal menanyakan manfaat CAF, jawaban yang dicari hampir selalu salah satu dari empat ini, bukan "Platform perspective".</p>
+
+<CardGrid cols={2}>
+  <Card><h4>Reduced business risk</h4><p>Adopsi cloud yang terencana menurunkan risiko bisnis lewat tata kelola, keamanan, dan operasi yang lebih matang.</p></Card>
+  <Card><h4>Improved ESG performance</h4><p>Cloud membantu memperbaiki kinerja environmental, social, dan governance, termasuk efisiensi energi dan jejak karbon.</p></Card>
+  <Card><h4>Increased revenue</h4><p>Kemampuan baru, kecepatan rilis, dan jangkauan global membuka peluang pendapatan baru.</p></Card>
+  <Card><h4>Increased operational efficiency</h4><p>Otomasi dan managed service mengurangi beban operasi, sehingga tim lebih produktif dengan sumber daya yang sama.</p></Card>
+</CardGrid>
+
+<Box variant="exam" icon="🎯" label="Jebakan manfaat CAF"><p>Perspektif menjawab "area apa yang berubah", manfaat menjawab "untuk apa transformasi dilakukan". Bila soal berbunyi "what is a benefit of AWS CAF", pilih reduced business risk, improved ESG, increased revenue, atau increased operational efficiency, bukan salah satu nama perspektif.</p></Box>
+
+<h3>Jangan tertukar: enam perspektif CAF vs enam pilar Well-Architected</h3>
+
+<p>Keduanya sama-sama berjumlah enam dan sama-sama punya item "Security" serta item operasi, jadi sangat mudah tertukar. Bedakan dari pertanyaan besarnya: CAF mengurus transformasi organisasi, Well-Architected mengurus kualitas satu workload.</p>
+
+<Figure><ArcFig05 /><Fragment slot="caption"><b>Gambar 7.</b> CAF (transformasi organisasi) vs Well-Architected (kualitas workload). Security dan operasi muncul di kedua sisi, itulah sumber jebakan yang sering muncul di soal.</Fragment></Figure>
+
+<Compare aLabel="CAF &middot; enam perspektif" bLabel="Well-Architected &middot; enam pilar" aTone="blue" bTone="violet" vs="vs">
+  <Fragment slot="a"><ul><li>Pertanyaan besar: bagaimana ORGANISASI berhasil pindah ke cloud?</li><li>Itemnya: Business, People, Governance, Platform, Security, Operations.</li><li>Hasil yang diukur: readiness, roadmap, dan empat manfaat transformasi.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Pertanyaan besar: apakah satu WORKLOAD dirancang dan dioperasikan dengan baik?</li><li>Itemnya: Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, Sustainability.</li><li>Hasil yang diukur: risiko (HRI/MRI) dan improvement plan per pilar.</li></ul></Fragment>
+</Compare>
+
+<h3>Kenapa CAF muncul di CLF-C02?</h3>
+
+Domain Cloud Concepts mencakup strategi adopsi cloud, manfaat migrasi, dan sumber daya untuk perjalanan cloud. Karena itu, CAF penting untuk memahami bahasa transformasi: business risk, operational efficiency, revenue, ESG, readiness, roadmap, dan stakeholder. Kamu tidak perlu menghafal semua capability detail, tetapi enam perspektif dan empat manfaat wajib dikenali.
+
+</Section>
+
+<Section num="07" id="ecosystem" title="Ecosystem: Partner, Marketplace, dan Sumber Resmi" sub="Tahu ke mana mencari bantuan sama pentingnya dengan tahu layanan apa yang dipakai.">
+
+<p class="lead">Ekosistem AWS membantu pelanggan belajar, membeli solusi, mencari partner, dan menemukan panduan resmi ketika menghadapi skenario nyata.</p>
+
+Dalam ujian CLF-C02, beberapa opsi jawaban bukan layanan compute, storage, atau database, melainkan sumber bantuan. Pemula sering salah karena semua terdengar seperti "tempat membaca artikel". Bedakan fungsi utamanya.
+
+<CardGrid cols={2}>
+  <Card><h4><a href="https://aws.amazon.com/partners/">AWS Partner Network (APN)</a></h4><p>Komunitas global organisasi partner pihak ketiga (ISV, data provider, dan consulting partner) yang memakai teknologi, program, funding, dan tool AWS untuk membangun solusi bagi pelanggan.</p></Card>
+  <Card><h4><a href="https://aws.amazon.com/professional-services/">AWS Professional Services</a></h4><p>Tim konsultan milik AWS sendiri (first-party), bukan partner. Membantu migrasi, modernisasi, data/AI, serta scale dan security, dan sering bekerja berdampingan dengan APN partner.</p></Card>
+  <Card><h4><a href="https://docs.aws.amazon.com/marketplace/latest/buyerguide/what-is-marketplace.html">AWS Marketplace</a></h4><p>Katalog digital terkurasi untuk menemukan, membeli, men-deploy, dan mengelola software, data, dan layanan pihak ketiga, dengan tagihan langsung muncul di AWS bill.</p></Card>
+  <Card><h4><a href="https://docs.aws.amazon.com/whitepapers/">AWS Whitepapers & Guides</a></h4><p>Kumpulan konten teknis, decision guide, reference material, dan reference architecture untuk memperdalam pengetahuan cloud.</p></Card>
+  <Card><h4><a href="https://docs.aws.amazon.com/prescriptive-guidance/latest/patterns/welcome.html">AWS Prescriptive Guidance</a></h4><p>Panduan langkah demi langkah, arsitektur, tool, dan kode untuk skenario migrasi, modernisasi, optimasi, deployment, dan keamanan.</p></Card>
+  <Card><h4><a href="https://aws.amazon.com/architecture/">AWS Architecture Center</a></h4><p>Tempat mencari contoh reference architecture, diagram, best practices, dan decision guides untuk merancang solusi.</p></Card>
+</CardGrid>
+
+<CardGrid cols={2}>
+  <Card><h4><a href="https://repost.aws/knowledge-center/all">AWS re:Post Knowledge Center</a></h4><p>Sumber tanya jawab, troubleshooting, dan artikel Knowledge Center resmi (kini menyatu di re:Post) untuk masalah teknis yang sering muncul.</p></Card>
+  <Card><h4>Catatan nama</h4><p>Sejak Maret 2023, artikel Knowledge Center bermigrasi ke AWS re:Post, jadi URL lama mengarah ke repost.aws. Materi modern menyebutnya re:Post Knowledge Center.</p></Card>
+</CardGrid>
+
+<Box variant="analogy" icon="🧭" label="Analogi peta bantuan"><p>Architecture Center adalah atlas desain, Prescriptive Guidance adalah resep langkah demi langkah, Marketplace adalah toko solusi, APN adalah jaringan konsultan dan vendor, re:Post adalah meja tanya jawab, whitepapers adalah buku referensi.</p></Box>
+
+<h3>Kapan memakai yang mana?</h3>
+
+<p>Cara paling cepat memilih adalah mencocokkan kata kerja di soal dengan sumber yang tepat. Gambar berikut adalah decision-tree yang langsung melatih refleks itu.</p>
+
+<Figure><ArcFig04 /><Fragment slot="caption"><b>Gambar 8.</b> Decision-tree memilih sumber bantuan AWS dari kata kerja soal: design &rarr; Architecture Center, implement bertahap &rarr; Prescriptive Guidance, learn &rarr; Whitepapers, buy software &rarr; Marketplace, cari partner &rarr; APN, konsultan AWS sendiri &rarr; Professional Services, troubleshoot &rarr; re:Post, evaluate workload &rarr; WA Tool.</Fragment></Figure>
+
+<ul>
+  <li><strong>Butuh contoh desain dan decision guide:</strong> mulai dari AWS Architecture Center.</li>
+  <li><strong>Butuh panduan implementasi bertahap:</strong> cari AWS Prescriptive Guidance.</li>
+  <li><strong>Butuh software pihak ketiga dengan procurement terpusat:</strong> gunakan AWS Marketplace.</li>
+  <li><strong>Butuh partner pihak ketiga untuk migrasi, audit, atau managed service:</strong> cari AWS Partner Network.</li>
+  <li><strong>Butuh konsultan dari AWS sendiri untuk proyek besar:</strong> pakai AWS Professional Services.</li>
+  <li><strong>Butuh jawaban troubleshooting:</strong> cek AWS re:Post Knowledge Center dan dokumentasi layanan.</li>
+  <li><strong>Butuh pembelajaran konseptual mendalam:</strong> baca AWS Whitepapers & Guides.</li>
+</ul>
+
+<h3>Marketplace vs APN: katalog vs komunitas</h3>
+
+<p>Dua nama ini paling sering tertukar karena keduanya berurusan dengan "pihak ketiga". Pegang bedanya: Marketplace adalah toko untuk membeli software, APN adalah jaringan perusahaan partner.</p>
+
+<Compare aLabel="AWS Marketplace &middot; katalog beli software" bLabel="AWS Partner Network &middot; komunitas partner" aTone="teal" bTone="blue" vs="vs">
+  <Fragment slot="a"><ul><li>Tempat menemukan, membeli, dan men-deploy software/data pihak ketiga.</li><li>Model harga fleksibel: free trial, hourly, monthly, annual, multi-year, dan BYOL.</li><li>Semua tagihan terpusat di AWS bill, termasuk private offer dengan harga dan EULA khusus.</li><li>Kata kunci soal: find, buy, subscribe, deploy third-party software.</li></ul></Fragment>
+  <Fragment slot="b"><ul><li>Jaringan perusahaan partner: ISV, data provider, dan consulting/MSP partner.</li><li>Kamu mencari rekan untuk membangun, migrasi, audit, atau mengelola workload.</li><li>Bukan tempat transaksi software langsung, melainkan tempat menemukan keahlian.</li><li>Kata kunci soal: find a partner, consulting, certified SI, managed service provider.</li></ul></Fragment>
+</Compare>
+
+<Box variant="tip" icon="🤝" label="Pro Services vs APN partner"><p>AWS Professional Services adalah konsultan milik AWS sendiri (first-party). APN partner adalah perusahaan pihak ketiga (third-party) yang tersertifikasi. Bila soal menyebut "AWS's own consultants" jawab Professional Services; bila menyebut "certified third-party consultant atau SI" jawab APN partner.</p></Box>
+
+<h3>Trust & Safety dan Acceptable Use Policy</h3>
+
+<p>Selain sumber bantuan, ekosistem AWS juga punya aturan main. <a href="https://aws.amazon.com/aup/">AWS Acceptable Use Policy (AUP)</a> mengatur bagaimana pelanggan boleh memakai layanan AWS, dan melanggarnya bisa berujung penangguhan akun.</p>
+
+<Box variant="warn" icon="🚫" label="Yang dilarang AUP"><p>AUP melarang antara lain aktivitas ilegal atau penipuan, melanggar hak orang lain, kekerasan/terorisme, konten eksploitasi anak (CSAM), upaya merusak keamanan/integritas/ketersediaan sistem, serta spam. Dugaan penyalahgunaan dilaporkan ke AWS Trust & Safety lewat jalur abuse resmi AWS.</p></Box>
+
+<Box variant="exam" icon="🎯" label="Tips ujian"><p>Jika pertanyaan menyebut membeli solusi pihak ketiga, pikirkan Marketplace. Jika menyebut mencari partner konsultasi pihak ketiga, pikirkan APN. Jika menyebut konsultan milik AWS, pikirkan Professional Services. Jika menyebut aturan pemakaian yang boleh dan dilarang, pikirkan Acceptable Use Policy. Jika menyebut troubleshooting artikel resmi, pikirkan re:Post Knowledge Center.</p></Box>
+
+</Section>
+
+<Section num="08" id="service-picker" title="Service Picker Berbasis Prinsip" sub="Pilih layanan dari kebutuhan, bukan dari hafalan daftar produk.">
+
+<p class="lead">Service picker yang baik dimulai dari kualitas arsitektur yang dibutuhkan, lalu memilih layanan yang mengurangi risiko dan beban operasi.</p>
+
+Modul sebelumnya sudah membahas banyak layanan. Di sini, kita mengikatnya dengan cara pikir architecting. Pertanyaan service picker untuk CLF-C02 biasanya sederhana: "layanan apa yang paling sesuai untuk use case ini?" Jawaban terbaik sering terlihat jika kamu tahu prinsipnya.
+
+<CardGrid cols={2}>
+  <Card><h4>Butuh mengurangi operasi server</h4><p>Pertimbangkan managed service atau serverless seperti Lambda, Fargate, RDS, DynamoDB, S3, SQS, SNS, atau EventBridge sesuai use case.</p></Card>
+  <Card><h4>Butuh high availability</h4><p>Pikirkan multi-AZ, load balancer, Auto Scaling, health check, managed database, backup, dan desain tanpa single point of failure.</p></Card>
+  <Card><h4>Butuh security kuat</h4><p>Pikirkan IAM least privilege, MFA, KMS, Secrets Manager, WAF, Shield, GuardDuty, CloudTrail, Config, dan pemisahan akun.</p></Card>
+  <Card><h4>Butuh performa global</h4><p>Pikirkan Region dekat pengguna, CloudFront, Global Accelerator, caching, database yang sesuai pola akses, dan pilihan compute yang tepat.</p></Card>
+  <Card><h4>Butuh biaya terkendali</h4><p>Pikirkan rightsizing, autoscaling, storage class, Savings Plans, Reserved Instances, Cost Explorer, Budgets, dan penghapusan resource idle.</p></Card>
+  <Card><h4>Butuh adopsi organisasi</h4><p>Pikirkan CAF, landing zone, AWS Organizations, multi-account, governance, training, partner, dan roadmap transformasi.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Jangan over-engineering"><p>CLF-C02 tidak menuntut desain paling rumit. Banyak soal menguji apakah kamu memilih layanan paling sederhana yang memenuhi kebutuhan, bukan arsitektur paling canggih.</p></Box>
+
+<h3>Contoh keputusan sederhana</h3>
+
+<ul>
+  <li><strong>Upload file statis dan akses publik terkontrol:</strong> S3, mungkin CloudFront bila perlu distribusi global.</li>
+  <li><strong>Pesan antar komponen agar tidak saling menunggu:</strong> SQS untuk antrean, SNS untuk fan-out notifikasi, EventBridge untuk event bus.</li>
+  <li><strong>Database relasional managed:</strong> RDS atau Aurora, bukan EC2 manual kecuali ada alasan khusus.</li>
+  <li><strong>Contact center cloud:</strong> Amazon Connect, bukan membangun PBX sendiri di EC2.</li>
+  <li><strong>Menilai risiko desain:</strong> AWS Well-Architected Tool, bukan AWS Marketplace.</li>
+</ul>
+
+<Box variant="tip" icon="💡" label="Formula jawaban"><p>Baca kebutuhan bisnis, cari kata kunci kualitas, petakan ke pilar, lalu pilih layanan atau sumber AWS yang paling langsung menyelesaikan masalah.</p></Box>
+
+</Section>
+
+<Section num="09" id="hands-on" title="Hands-on Ringan: Mini Review Arsitektur" sub="Latihan konseptual tanpa perlu membuat resource mahal.">
+
+<p class="lead">Hands-on modul ini adalah walkthrough berpikir: ambil satu aplikasi sederhana, lalu review dengan enam pilar.</p>
+
+Bayangkan aplikasi backend online shop skincare. Aplikasi menerima request dari mobile app, menyimpan produk dan pesanan, mengirim email transaksi, dan menampilkan gambar produk. Kita belum menggambar arsitektur lengkap. Kita hanya melakukan mini review untuk melatih cara pikir.
+
+<Steps>
+  <Step><b>Tulis workload</b><p>Nama: Backend Online Shop Skincare. Tujuan: pelanggan bisa melihat produk, checkout, menerima email, dan admin bisa mengelola pesanan.</p></Step>
+  <Step><b>Operational Excellence</b><p>Apa ada monitoring, alarm, deployment terulang, log terpusat, dan runbook ketika checkout gagal?</p></Step>
+  <Step><b>Security</b><p>Apakah admin memakai MFA, akses IAM least privilege, data pelanggan dienkripsi, secret tidak ditaruh di kode, dan audit log aktif?</p></Step>
+  <Step><b>Reliability</b><p>Apakah database punya backup, komponen penting tidak single point of failure, dan sistem bisa pulih saat traffic promo meningkat?</p></Step>
+  <Step><b>Performance Efficiency</b><p>Apakah gambar produk memakai storage dan caching yang tepat, API bisa scale, dan database sesuai pola query?</p></Step>
+  <Step><b>Cost Optimization</b><p>Apakah resource idle dimatikan, kapasitas menyesuaikan traffic, dan alert budget sudah dibuat?</p></Step>
+  <Step><b>Sustainability</b><p>Apakah sistem mengurangi resource tidak terpakai, ukuran gambar dioptimalkan, dan kapasitas mengikuti kebutuhan aktual?</p></Step>
+</Steps>
+
+<Box variant="exam" icon="🧠" label="Latihan soal mini"><p>Jika backend sering gagal saat traffic promo dan belum punya Auto Scaling atau database multi-AZ, pilar yang paling jelas terdampak adalah reliability. Jika biaya naik karena resource besar selalu menyala, pilar yang paling jelas adalah cost optimization.</p></Box>
+
+<h3>Output latihan</h3>
+
+Buat daftar tiga risiko prioritas. Contoh: tidak ada backup teruji, IAM admin terlalu luas, dan tidak ada alarm untuk error checkout. Lalu buat improvement plan sederhana: aktifkan backup dan restore test, batasi IAM role, aktifkan CloudWatch alarm, dokumentasikan runbook, dan review ulang setelah perubahan. Inilah inti architecting di level Cloud Practitioner: memahami risiko dan perbaikan tanpa harus menjadi arsitek senior.
+
+</Section>
+
+<Section num="10" id="kesalahan-jebakan" title="Kesalahan Umum & Jebakan Soal" sub="Bagian ini menyelamatkan poin ujian yang sering hilang karena istilah mirip.">
+
+<p class="lead">Sebagian besar jebakan topik ini berasal dari mencampuradukkan framework, tool, marketplace, partner, dan dokumentasi.</p>
+
+<CardGrid cols={2}>
+  <Card><h4>CAF disamakan dengan Well-Architected</h4><p>CAF untuk transformasi organisasi dan readiness. Well-Architected untuk review kualitas workload.</p></Card>
+  <Card><h4>Marketplace disamakan dengan APN</h4><p>Marketplace untuk membeli dan mengelola solusi pihak ketiga. APN untuk jaringan partner, layanan profesional, dan kolaborasi partner.</p></Card>
+  <Card><h4>WA Tool disamakan dengan Trusted Advisor</h4><p>WA Tool mengevaluasi workload terhadap framework. Trusted Advisor memberi rekomendasi akun pada area seperti cost, security, fault tolerance, performance, dan service limits sesuai cakupan support.</p></Card>
+  <Card><h4>Whitepaper disamakan dengan Knowledge Center</h4><p>Whitepapers untuk pembelajaran dan panduan mendalam. Knowledge Center untuk pertanyaan umum dan troubleshooting resmi yang sering dialami pelanggan.</p></Card>
+  <Card><h4>Performance disamakan dengan reliability</h4><p>Performance membahas resource tepat dan efisien untuk beban. Reliability membahas kemampuan bertahan dan pulih dari kegagalan.</p></Card>
+  <Card><h4>Cost disamakan dengan sustainability</h4><p>Keduanya bisa sama-sama mengurangi resource idle, tetapi cost fokus biaya, sustainability fokus dampak lingkungan dan efisiensi resource.</p></Card>
+  <Card><h4>Professional Services disamakan dengan APN</h4><p>Professional Services adalah konsultan milik AWS (first-party). APN adalah jaringan partner pihak ketiga (third-party) yang tersertifikasi.</p></Card>
+  <Card><h4>Perspektif CAF disamakan dengan manfaat CAF</h4><p>Perspektif menjawab "area apa yang berubah" (Business, People, ...). Manfaat menjawab "untuk apa" (reduced risk, ESG, revenue, efficiency), dan ini yang sering ditanya.</p></Card>
+</CardGrid>
+
+<Box variant="warn" icon="⚠️" label="Jebakan absolut"><p>Hindari jawaban yang terdengar absolut seperti selalu multi-region atau selalu serverless. Arsitektur yang baik bergantung pada kebutuhan bisnis, risiko, biaya, dan kompleksitas operasional.</p></Box>
+
+<h3>Kata kunci soal</h3>
+
+<ul>
+  <li><strong>"Evaluate architecture", "risk", "pillars", "best practices":</strong> Well-Architected atau AWS WA Tool.</li>
+  <li><strong>"Cloud adoption", "readiness", "transformation roadmap", "stakeholders":</strong> AWS CAF.</li>
+  <li><strong>"Find, buy, deploy third-party software":</strong> AWS Marketplace.</li>
+  <li><strong>"Work with certified third-party partner", "consulting partner", "MSP":</strong> AWS Partner Network.</li>
+  <li><strong>"AWS's own consultants", "first-party AWS consulting team":</strong> AWS Professional Services.</li>
+  <li><strong>"Step-by-step migration or modernization guidance":</strong> AWS Prescriptive Guidance.</li>
+  <li><strong>"Acceptable use", "prohibited activity", "report abuse":</strong> AWS Acceptable Use Policy dan Trust & Safety.</li>
+  <li><strong>"Automatic account checks on cost, security, service limits":</strong> AWS Trusted Advisor (bukan WA Tool).</li>
+  <li><strong>"Troubleshoot common AWS issue":</strong> AWS re:Post Knowledge Center.</li>
+</ul>
+
+<Box variant="exam" icon="🎯" label="Strategi eliminasi"><p>Jika dua jawaban sama-sama terdengar benar, pilih yang paling langsung menjawab kata kerja soal: evaluate, adopt, buy, partner, troubleshoot, atau learn.</p></Box>
+
+</Section>
+
+<Section num="11" id="ringkasan" title="Ringkasan & Tips Ujian" sub="Peta akhir untuk mengikat modul ke domain CLF-C02.">
+
+<p class="lead">Modul ini mengajarkan cara membaca keputusan arsitektur AWS dari sisi kualitas, risiko, organisasi, dan ekosistem resmi.</p>
+
+<Recap title="Poin Penting"><ul><li>Architecting bukan sekadar diagram, tetapi proses memilih trade-off yang mendukung tujuan bisnis; ingat enam general design principles (stop guessing capacity, test at scale, automate, evolutionary, drive with data, game days).</li><li>AWS Well-Architected Framework mengevaluasi workload melalui enam pilar: operational excellence, security, reliability, performance efficiency, cost optimization, dan sustainability, masing-masing dengan pertanyaan kunci dan trade-off.</li><li>AWS WA Tool (gratis) dipakai untuk mendokumentasikan workload, menjawab pertanyaan lens, melihat improvement plan berisi HRI dan MRI, mencatat milestone, lalu ukur ulang; bukan Trusted Advisor yang memindai akun otomatis.</li><li>AWS CAF punya enam perspektif (Business, People, Governance, Platform, Security, Operations), empat domain dan empat fase, tetapi yang paling sering diuji adalah empat manfaatnya: reduced business risk, improved ESG, increased revenue, increased operational efficiency.</li><li>Marketplace = beli software pihak ketiga (tagihan di AWS bill), APN = komunitas partner pihak ketiga, Professional Services = konsultan AWS sendiri, Prescriptive Guidance = panduan implementasi, Architecture Center = reference architecture, Whitepapers = belajar mendalam, re:Post = troubleshooting, AUP = aturan pemakaian.</li></ul></Recap>
+
+<h3>Pemetaan ke domain CLF-C02</h3>
+
+<ul>
+  <li><strong>Domain 1, Cloud Concepts 24%:</strong> sangat relevan untuk design principles, Well-Architected, cloud adoption, CAF, manfaat cloud, dan konsep cloud economics.</li>
+  <li><strong>Domain 2, Security and Compliance 30%:</strong> relevan ketika membahas pilar security, shared responsibility, identitas, enkripsi, audit, compliance, dan sumber seperti AWS Artifact.</li>
+  <li><strong>Domain 3, Cloud Technology and Services 34%:</strong> relevan untuk memilih layanan berdasarkan kebutuhan, misalnya storage, compute, database, networking, monitoring, integration, dan managed services.</li>
+  <li><strong>Domain 4, Billing, Pricing, and Support 12%:</strong> relevan untuk cost optimization, AWS Marketplace billing, model lisensi, Support, Trusted Advisor, Cost Explorer, Budgets, dan Pricing Calculator.</li>
+</ul>
+
+<Box variant="exam" icon="🧠" label="Checklist sebelum ujian"><p>Hafalkan enam pilar Well-Architected dan pertanyaan kuncinya, enam general design principles, enam perspektif plus empat manfaat CAF, fungsi WA Tool (gratis) vs Trusted Advisor, beda Marketplace vs APN vs Professional Services, isi AUP, serta kapan memakai Prescriptive Guidance, Whitepapers, Architecture Center, dan re:Post Knowledge Center.</p></Box>
+
+<h3>Latihan cepat</h3>
+
+<ul>
+  <li>Soal menyebut "mengukur workload terhadap best practices", jawab AWS Well-Architected Tool.</li>
+  <li>Soal menyebut "perusahaan ingin roadmap transformasi cloud lintas bisnis dan teknologi", jawab AWS CAF.</li>
+  <li>Soal menyebut "membeli software firewall pihak ketiga dan tagihannya muncul di AWS bill", jawab AWS Marketplace.</li>
+  <li>Soal menyebut "mencari partner pihak ketiga untuk membantu migrasi", jawab AWS Partner Network.</li>
+  <li>Soal menyebut "konsultan dari AWS sendiri untuk proyek transformasi besar", jawab AWS Professional Services.</li>
+  <li>Soal menyebut "manfaat dari AWS CAF", jawab salah satu dari reduced business risk, improved ESG, increased revenue, atau increased operational efficiency.</li>
+  <li>Soal menyebut "panduan langkah demi langkah untuk modernisasi aplikasi", jawab AWS Prescriptive Guidance.</li>
+</ul>
+
+<Box variant="tip" icon="💡" label="Penutup"><p>Untuk Cloud Practitioner, kemampuan terbaik bukan menggambar arsitektur paling kompleks, tetapi memahami alasan keputusan, risiko yang dikurangi, dan sumber resmi yang tepat untuk langkah berikutnya.</p></Box>
+
+</Section>

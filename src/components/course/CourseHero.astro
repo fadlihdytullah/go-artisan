@@ -1,0 +1,166 @@
+---
+// Hero bersama untuk halaman Course bertipe "Tracks" (go-luminas & aws) —
+// satu sumber agar styling kedua halaman tidak pernah drift. Dipakai di dalam
+// kolom berbingkai (.shell-col → .shell-band.course-hero-band) sehingga padding
+// vertikal + garis sisi/horizontal disuplai band, bukan komponen ini.
+interface Props {
+  eyebrow: string;
+  title: string;
+  sub?: string;
+  lede?: string;
+  /** Baris fakta mono, mis. "73 modul · 9 tahap" atau "19 modul". */
+  facts?: string;
+  image: string;
+  imageAlt?: string;
+  primaryHref: string;
+  primaryLabel?: string;
+  /** true → CTA pakai hook progress (data-continue-link/label) agar adaptif. */
+  adaptiveProgress?: boolean;
+  secondaryHref?: string;
+  secondaryLabel?: string;
+}
+const {
+  eyebrow,
+  title,
+  sub,
+  lede,
+  facts,
+  image,
+  imageAlt = '',
+  primaryHref,
+  primaryLabel = 'Start learning',
+  adaptiveProgress = false,
+  secondaryHref = '#kurikulum',
+  secondaryLabel = 'Lihat kurikulum',
+} = Astro.props;
+---
+<section class="course-hero">
+  <div class="course-hero-copy">
+    <p class="course-eyebrow">{eyebrow}</p>
+    <h1 class="course-title">{title}</h1>
+    {sub && <p class="course-sub">{sub}</p>}
+    {lede && <p class="course-lede">{lede}</p>}
+    {facts && <p class="course-facts">{facts}</p>}
+
+    <div class="course-actions">
+      <a class="course-cta" href={primaryHref} data-continue-link={adaptiveProgress ? true : undefined}>
+        <span data-continue-label={adaptiveProgress ? true : undefined}>{primaryLabel}</span>
+        <span class="course-cta-arrow" aria-hidden="true">→</span>
+      </a>
+      <a class="course-secondary" href={secondaryHref}>{secondaryLabel}</a>
+    </div>
+  </div>
+
+  <div class="course-hero-media" aria-hidden="true">
+    <img src={image} alt={imageAlt} width="460" height="320" decoding="async" />
+  </div>
+</section>
+
+<style>
+  /* Hero (frame XM9X0 → M4Vf5p). Tanpa padding luar — band (.course-hero-band)
+     yang menyuplai padding + garis. Flat, rounded, token-driven (light+reader). */
+  .course-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 460px;
+    gap: 48px;
+    align-items: start;
+  }
+  .course-hero-copy { min-width: 0; }
+
+  .course-eyebrow {
+    margin: 0 0 16px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--blue-bright);
+  }
+  .course-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(40px, 5vw, 54px);
+    font-weight: 600;
+    letter-spacing: -1.2px;
+    line-height: 1.02;
+    color: var(--ink);
+  }
+  .course-sub {
+    margin: 18px 0 0;
+    max-width: 560px;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--ink-muted);
+  }
+  .course-lede {
+    margin: 14px 0 0;
+    max-width: 560px;
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+  .course-facts {
+    margin: 14px 0 0;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    color: var(--ink-muted);
+  }
+
+  .course-actions {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    margin-top: 26px;
+  }
+  .course-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 22px;
+    border-radius: 9px;
+    background: var(--blue-bright);
+    color: #fcfbf7;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.16s ease;
+  }
+  .course-cta:hover { background: var(--blue); }
+  .course-cta:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+  .course-cta-arrow { font-size: 15px; line-height: 1; }
+  .course-secondary {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .course-secondary:hover { color: var(--blue); }
+  .course-secondary:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: var(--radius-xs, 4px); }
+
+  .course-hero-media {
+    width: 460px;
+    max-width: 100%;
+    aspect-ratio: 460 / 320;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+  }
+  .course-hero-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  @media (max-width: 920px) {
+    .course-hero {
+      grid-template-columns: 1fr;
+      gap: 32px;
+    }
+    .course-hero-media {
+      width: 100%;
+      max-width: 460px;
+    }
+  }
+</style>

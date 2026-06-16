@@ -8,8 +8,10 @@ export async function getStaticPaths() {
   // prev/next dihitung HANYA di dalam himpunan courses, terpisah dari roadmap modules.
   // go-luminas DIKECUALIKAN: punya halaman statis khusus (courses/go-luminas.astro)
   // yang membungkus 73 modul, jadi tidak boleh dobel di rute dinamis ini.
+  // aws DIKECUALIKAN juga: dilayani wrapper statis (courses/aws.astro) yang
+  // membungkus 19 modul koleksi `aws`, bukan renderer mdx dinamis ini.
   const courses = (await getCollection('courses'))
-    .filter((c) => c.id !== 'go-luminas')
+    .filter((c) => c.id !== 'go-luminas' && c.id !== 'aws')
     .sort((a, b) => a.data.order - b.data.order);
   return courses.map((course, i) => {
     const toLink = (c) =>

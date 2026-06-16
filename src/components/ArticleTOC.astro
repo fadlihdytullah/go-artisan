@@ -1,0 +1,161 @@
+---
+// ArticleTOC.astro — "On this page" sticky sidebar.
+// Ported from frame d4lirQ (Course Detail — Article/Direct). Mirrors the lesson
+// TOC markup (data-toc-link anchors + .num + .active) so the existing scroll-spy
+// script in ModuleLayout/BaseLayout lights the active item. Flat, rounded, v2
+// tokens; scoped styles only (does NOT touch globals.css). Light + reader themes.
+
+export interface ArticleTocItem {
+  /** Optional ordinal, e.g. "01". Rendered in the mono num slot when present. */
+  num?: string;
+  /** Heading id — the anchor target (without the leading "#"). */
+  id: string;
+  /** Section title. May contain inline HTML (rendered via set:html). */
+  title: string;
+}
+
+interface Props {
+  toc: ArticleTocItem[];
+  /** Eyebrow label above the list. */
+  heading?: string;
+}
+
+const { toc, heading = 'On this page' } = Astro.props;
+---
+
+<nav class="article-toc" aria-label={heading}>
+  <span class="article-toc-eyebrow">{heading}</span>
+  <ul class="article-toc-list">
+    {toc.map((item) => (
+      <li class="article-toc-item">
+        <a href={`#${item.id}`} data-toc-link>
+          {item.num && <span class="num">{item.num}</span>}
+          <span class="t" set:html={item.title} />
+        </a>
+      </li>
+    ))}
+  </ul>
+</nav>
+
+<style>
+  /* Container — frame pNyWh: 330w, right hairline, padded column, sticky. */
+  .article-toc {
+    position: sticky;
+    top: 88px;
+    align-self: start;
+    max-height: calc(100vh - 108px);
+    overflow-y: auto;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 56px 36px 56px 44px;
+    border-right: 1px solid var(--line);
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+  .article-toc::-webkit-scrollbar {
+    width: 6px;
+  }
+  .article-toc::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 999px;
+  }
+
+  /* Eyebrow — node TJsjU: "ON THIS PAGE", mono 11 / 600, +1.5 tracking, faint. */
+  .article-toc-eyebrow {
+    display: block;
+    margin: 0 0 18px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  /* List — node Vbq1W: vertical, 2px gap. */
+  .article-toc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .article-toc-item {
+    margin: 0;
+  }
+
+  /* Item — frame VH5q8/z3cdm: radius 8, pad 9/12, num↔title gap 13. */
+  .article-toc a {
+    display: flex;
+    align-items: baseline;
+    gap: 13px;
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+
+  /* Num — mono 12 / 600, faint when idle. */
+  .article-toc a .num {
+    flex: none;
+    min-width: 15px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--faint);
+    transition: color 0.15s ease;
+  }
+
+  /* Title — Inter 14, line-height 1.4. Idle = ink / 500. */
+  .article-toc a .t {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--ink);
+    transition: color 0.15s ease;
+  }
+
+  .article-toc a:hover {
+    background: var(--paper-soft);
+  }
+
+  /* Active — frame VH5q8: accent-soft pill, accent-deep num + 600 title. */
+  .article-toc a.active {
+    background: var(--blue-soft);
+  }
+  .article-toc a.active .num,
+  .article-toc a.active .t {
+    color: var(--blue);
+  }
+  .article-toc a.active .t {
+    font-weight: 600;
+  }
+
+  /* Narrow viewports: kotak TOC jadi KARTU yang duduk di bawah course overview
+     (frame jW89L → U6lWey: radius 12, fill paper, hairline, pad 20/18, gap 12).
+     Inset kiri/kanan via margin agar sejajar dengan header & body (28→20px). */
+  @media (max-width: 920px) {
+    .article-toc {
+      position: static;
+      max-height: none;
+      width: auto;
+      margin: 0 28px;
+      padding: 20px 18px;
+      border-right: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-card);
+      background: var(--paper);
+    }
+    .article-toc-eyebrow {
+      margin-bottom: 12px;
+    }
+  }
+  @media (max-width: 680px) {
+    .article-toc {
+      margin: 0 20px;
+    }
+  }
+</style>

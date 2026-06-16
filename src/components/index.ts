@@ -13,3 +13,4 @@ export { default as Compare } from './Compare.astro';
 export { default as FileTree } from './FileTree.astro';
 export { default as Endpoint } from './Endpoint.astro';
 export { default as Def } from './Def.astro';
+export { default as SectionHeader } from './SectionHeader.astro';

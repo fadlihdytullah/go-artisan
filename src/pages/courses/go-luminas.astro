@@ -34,123 +34,147 @@ for (const mod of mods) {
 const roadmaps = Array.from(roadmapMap.values()).sort((a, b) => a.num - b.num);
 ---
 <BaseLayout title={cd.title} nav={{ variant: 'home' }}>
-  <main class="course-landing" data-home-progress data-module-ids={JSON.stringify(moduleIds)}>
-    <section class="course-landing-hero">
-      <div class="course-landing-hero-grid">
-        <div class="course-landing-hero-copy">
-          <p class="home-eyebrow"><span class="dot" aria-hidden="true"></span>{cd.target ?? 'Course unggulan'}</p>
-          <h1 class="course-landing-title">{cd.topTitle ?? cd.title}</h1>
-          {cd.topSub && <p class="course-landing-sub">{cd.topSub}</p>}
-          {cd.summary && <p class="course-landing-lede">{cd.summary}</p>}
+  <main class="gl" data-home-progress data-module-ids={JSON.stringify(moduleIds)}>
+    {/* ── HERO (full-width, no side lines) ────────────────────────────── */}
+    <div class="shell-bleed gl-hero-bleed">
+      <div class="shell-bleed-inner">
+        <section class="gl-hero">
+          <div class="gl-hero-copy">
+            <p class="gl-eyebrow">{cd.target ?? 'Course · Go Luminas'}</p>
+            <h1 class="gl-title">{cd.topTitle ?? cd.title}</h1>
+            {cd.topSub && <p class="gl-sub">{cd.topSub}</p>}
+            {cd.summary && <p class="gl-lede">{cd.summary}</p>}
 
-          <div class="home-actions">
-            <a class="home-cta" href={`/lessons/${mods[0]?.id ?? ''}`} data-continue-link>
-              <span data-continue-label>Mulai belajar</span>
-              <Icon name="arrow-right" size={17} />
-            </a>
-            <a class="home-secondary-link" href="#kurikulum">Lihat kurikulum</a>
+            <div class="gl-actions">
+              <a class="gl-cta" href={`/lessons/${mods[0]?.id ?? ''}`} data-continue-link>
+                <span data-continue-label>Start learning</span>
+                <span class="gl-cta-arrow" aria-hidden="true">→</span>
+              </a>
+              <a class="gl-secondary" href="#kurikulum">Lihat kurikulum</a>
+            </div>
+
+            {/* Progress card — JS hooks dipertahankan (data-learning-progress dll.) */}
+            <section
+              class="gl-progress"
+              data-learning-progress
+              data-module-ids={JSON.stringify(moduleIds)}
+              aria-label="Progress belajar"
+            >
+              <div class="gl-progress-top">
+                <div class="gl-progress-lead">
+                  <p class="gl-progress-kicker">PROGRESS BELAJAR</p>
+                  <p class="gl-progress-context">Tersimpan lokal di browser ini</p>
+                </div>
+                <p class="gl-progress-stats">
+                  <span class="gl-progress-value" data-learning-progress-value>0%</span>
+                  <span class="gl-progress-count" data-learning-progress-count>0/{moduleIds.length} modul selesai</span>
+                </p>
+              </div>
+              <div
+                class="gl-progress-track"
+                data-learning-progress-meter
+                role="progressbar"
+                aria-label="Progress kursus"
+                aria-valuemin="0"
+                aria-valuemax={moduleIds.length}
+                aria-valuenow="0"
+              >
+                <span class="gl-progress-fill" data-learning-progress-fill></span>
+              </div>
+              <p class="gl-progress-copy" data-learning-progress-copy>
+                Belum ada progres tersimpan. Mulai dari modul pertama atau masuk ke tahap yang paling relevan untuk kerja backend-mu sekarang.
+              </p>
+            </section>
           </div>
 
-          <section
-            class="learning-progress-panel learning-progress-panel-home"
-            data-learning-progress
-            data-module-ids={JSON.stringify(moduleIds)}
-            aria-label="Progress belajar"
-          >
-            <div class="learning-progress-head">
-              <div>
-                <p class="learning-progress-kicker">Progress belajar</p>
-                <p class="learning-progress-context">Tersimpan lokal di browser ini</p>
-              </div>
-              <p class="learning-progress-stats">
-                <span data-learning-progress-value>0%</span>
-                <span data-learning-progress-count>0/{moduleIds.length} modul selesai</span>
-              </p>
-            </div>
-            <div
-              class="learning-progress-meter"
-              data-learning-progress-meter
-              role="progressbar"
-              aria-label="Progress kursus"
-              aria-valuemin="0"
-              aria-valuemax={moduleIds.length}
-              aria-valuenow="0"
+          <div class="gl-hero-media" aria-hidden="true">
+            <img src="/go-luminas.png" alt="" width="460" height="440" decoding="async" />
+          </div>
+        </section>
+      </div>
+    </div>
+
+    {/* ── BORDERED 1180 COLUMN (continuous side hairlines) ────────────── */}
+    <div class="shell-col">
+      <section class="shell-band gl-intro">
+        <div class="gl-overview">
+          <Content />
+        </div>
+      </section>
+
+      <section class="shell-band gl-curriculum" id="kurikulum">
+        <header class="gl-cur-head">
+          <h2 class="gl-cur-title">Kurikulum</h2>
+          <span class="gl-cur-count">{mods.length} modul tersedia</span>
+        </header>
+
+        <div class="gl-stages">
+          {roadmaps.map((roadmap) => (
+            <details
+              class="gl-stage"
+              id={`roadmap-${roadmap.num}`}
+              open={roadmap.num === 1}
+              data-roadmap-group={roadmap.num}
             >
-              <span class="learning-progress-fill" data-learning-progress-fill></span>
-            </div>
-            <p class="learning-progress-copy" data-learning-progress-copy>
-              Belum ada progres tersimpan. Mulai dari modul pertama atau masuk ke tahap yang paling relevan untuk kerja backend-mu sekarang.
-            </p>
-          </section>
+              <summary class="gl-stage-head">
+                <span class="gl-stage-lead">
+                  <span class="gl-stage-tag">Tahap {roadmap.num}</span>
+                  <span class="gl-stage-name">{roadmap.name}</span>
+                </span>
+                <span class="gl-stage-meta">
+                  <span class="gl-stage-progress" data-roadmap-progress hidden></span>
+                  <span class="gl-stage-total">{roadmap.modules.length} modul</span>
+                  <span class="gl-stage-chevron" aria-hidden="true"><Icon name="chevron-down" size={18} /></span>
+                </span>
+              </summary>
+
+              <ol class="gl-modules">
+                {roadmap.modules.map((mod, localIdx) => {
+                  const gi = globalIndexMap.get(mod.id) ?? 0;
+                  const chMatch = mod.id.match(/c(\d+)/);
+                  const chNum = chMatch ? parseInt(chMatch[1]) : gi + 1;
+                  return (
+                    <li class="gl-module" style={`--i:${localIdx}`} data-module-item data-module-id={mod.id}>
+                      <a href={`/lessons/${mod.id}`} class="gl-module-link" data-module-link>
+                        <span class="gl-module-ico" aria-hidden="true">
+                          {/* circle (todo) */}
+                          <svg class="ico-todo" viewBox="0 0 24 24" width="18" height="18" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+                          </svg>
+                          {/* circle-dot (current) */}
+                          <svg class="ico-current" viewBox="0 0 24 24" width="18" height="18" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+                            <path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+                          </svg>
+                          {/* circle-check (done) */}
+                          <svg class="ico-done" viewBox="0 0 24 24" width="18" height="18" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+                            <path d="M9 12l2 2l4 -4" />
+                          </svg>
+                        </span>
+                        <span class="gl-module-title">
+                          {mod.data.topTitle}
+                          {mod.data.order === 1 && <span class="gl-module-flag">Mulai di sini</span>}
+                          <span class="gl-module-state" data-module-state hidden>Belum mulai</span>
+                        </span>
+                        <span class="gl-module-meta">
+                          {mod.data.readingTime
+                            ? mod.data.readingTime.replace(' baca', '').replace('menit', 'min')
+                            : `${mod.data.toc.length} bagian`}
+                        </span>
+                      </a>
+                    </li>
+                  );
+                })}
+              </ol>
+            </details>
+          ))}
         </div>
-
-        <div class="course-landing-hero-media" aria-hidden="true">
-          <img src="/go-luminas.png" alt="" width="480" height="480" decoding="async" />
-        </div>
-      </div>
-    </section>
-
-    <section class="course-landing-overview">
-      <Content />
-    </section>
-
-    <section class="home-modules" id="kurikulum">
-      <div class="home-modules-head">
-        <h2>Kurikulum</h2>
-        <span class="count">{mods.length} modul tersedia</span>
-      </div>
-
-      {roadmaps.map((roadmap) => (
-        <details
-          class="curr-roadmap"
-          id={`roadmap-${roadmap.num}`}
-          open={roadmap.num === 1}
-          data-roadmap-group={roadmap.num}
-        >
-          <summary class="curr-roadmap-head">
-            <span class="curr-roadmap-label">Tahap {roadmap.num}</span>
-            <span class="curr-roadmap-name">{roadmap.name}</span>
-            <span class="curr-roadmap-count">
-              <span class="curr-roadmap-progress" data-roadmap-progress hidden></span>
-              <span class="curr-roadmap-total">{roadmap.modules.length} modul</span>
-            </span>
-            <span class="curr-roadmap-chevron" aria-hidden="true"><Icon name="chevron-down" size={18} /></span>
-          </summary>
-          <ol class="curr">
-            {roadmap.modules.map((mod, localIdx) => {
-              const gi = globalIndexMap.get(mod.id) ?? 0;
-              const chMatch = mod.id.match(/c(\d+)/);
-              const chNum = chMatch ? parseInt(chMatch[1]) : gi + 1;
-              return (
-                <li class="curr-item" style={`--i:${localIdx}`} data-module-item data-module-id={mod.id}>
-                  <a href={`/lessons/${mod.id}`} data-module-link>
-                    <span class="curr-index" aria-hidden="true">
-                      <span class="curr-index-num">{String(chNum).padStart(2, '0')}</span>
-                      <span class="curr-index-check">✓</span>
-                    </span>
-                    <span class="curr-title-row">
-                      <span class="curr-title">{mod.data.topTitle}</span>
-                      <span class="curr-badge" aria-hidden="true">{mod.data.badge}</span>
-                      {mod.data.order === 1 && <span class="curr-flag">Mulai di sini</span>}
-                      <span class="curr-state" data-module-state hidden>Belum mulai</span>
-                    </span>
-                    <span class="curr-sum-row">
-                      <span class="curr-sum">{mod.data.summary}</span>
-                      <span class="curr-meta">
-                        {mod.data.readingTime && <span>{mod.data.readingTime.replace(' baca', '')}</span>}
-                        <span class="dotsep" aria-hidden="true">&middot;</span>
-                        <span>{mod.data.toc.length} bagian</span>
-                      </span>
-                    </span>
-                    <span class="curr-go" aria-hidden="true"><Icon name="chevron-right" size={17} /></span>
-                  </a>
-                </li>
-              );
-            })}
-          </ol>
-        </details>
-      ))}
-    </section>
+      </section>
+    </div>
   </main>
 
   <script is:inline>
@@ -175,7 +199,7 @@ const roadmaps = Array.from(roadmapMap.values()).sort((a, b) => a.num - b.num);
         var allDone = completedCount === moduleIds.length;
 
         continueLink.setAttribute('href', '/lessons/' + nextId);
-        continueLabel.textContent = allDone ? 'Review belajar' : completedCount > 0 ? 'Continue learning' : 'Mulai belajar';
+        continueLabel.textContent = allDone ? 'Review course' : completedCount > 0 ? 'Continue learning' : 'Start learning';
 
         document.querySelectorAll('[data-module-item]').forEach(function (item) {
           var moduleId = item.getAttribute('data-module-id');
@@ -242,4 +266,405 @@ const roadmaps = Array.from(roadmapMap.values()).sort((a, b) => a.num - b.num);
       window.addEventListener('module-progress:change', sync);
     })();
   </script>
+
+  <style>
+    /* ════════════════════════════════════════════════════════════════════
+       Go Luminas — tracks/overview (frame XM9X0). Page-scoped, v2 tokens only
+       (theme-reactive light + reader). Flat (no shadow), rounded.
+       UI copy English; course summary stays Bahasa Indonesia (frame text).
+       ════════════════════════════════════════════════════════════════════ */
+    .gl { display: block; font-family: var(--font-body); }
+
+    /* ── Hero (full-bleed, no side lines) ───────────────────────────────── */
+    .gl-hero-bleed { background: var(--bg); }
+    .gl-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 460px;
+      gap: 48px;
+      align-items: start;
+      padding: 56px 0;
+    }
+    .gl-hero-copy { min-width: 0; }
+
+    .gl-eyebrow {
+      margin: 0 0 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--blue-bright);
+    }
+    .gl-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(40px, 5vw, 54px);
+      font-weight: 600;
+      letter-spacing: -1.2px;
+      line-height: 1.02;
+      color: var(--ink);
+    }
+    .gl-sub {
+      margin: 18px 0 0;
+      max-width: 560px;
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--ink-muted);
+    }
+    .gl-lede {
+      margin: 14px 0 0;
+      max-width: 560px;
+      font-size: 16px;
+      line-height: 1.65;
+      color: var(--ink);
+    }
+
+    /* ── Actions ────────────────────────────────────────────────────────── */
+    .gl-actions {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      margin-top: 26px;
+    }
+    .gl-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 22px;
+      border-radius: 9px;
+      background: var(--blue-bright);
+      color: #fcfbf7;
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.16s ease;
+    }
+    .gl-cta:hover { background: var(--blue); }
+    .gl-cta:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+    .gl-cta-arrow { font-size: 15px; line-height: 1; }
+    .gl-secondary {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink);
+      text-decoration: none;
+    }
+    .gl-secondary:hover { color: var(--blue); }
+    .gl-secondary:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: var(--radius-xs, 4px); }
+
+    /* ── Progress card ──────────────────────────────────────────────────── */
+    .gl-progress {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 28px;
+      max-width: 560px;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper-soft);
+    }
+    .gl-progress-top {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .gl-progress-lead { display: flex; flex-direction: column; gap: 3px; }
+    .gl-progress-kicker {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      color: var(--faint);
+    }
+    .gl-progress-context {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ink-muted);
+    }
+    .gl-progress-stats {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+      text-align: right;
+    }
+    .gl-progress-value {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--blue-bright);
+    }
+    .gl-progress-count {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--faint);
+    }
+    .gl-progress-track {
+      height: 8px;
+      border-radius: 99px;
+      background: var(--line);
+      overflow: hidden;
+    }
+    .gl-progress-fill {
+      display: block;
+      height: 100%;
+      width: 100%;
+      border-radius: 99px;
+      background: var(--blue-bright);
+      transform: scaleX(0);
+      transform-origin: left center;
+      transition: transform 0.4s var(--ease-spring, ease);
+    }
+    .gl-progress-copy {
+      margin: 0;
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: var(--ink-muted);
+    }
+
+    /* ── Hero media ─────────────────────────────────────────────────────── */
+    .gl-hero-media {
+      width: 460px;
+      max-width: 100%;
+      aspect-ratio: 460 / 440;
+      border-radius: var(--radius-card);
+      overflow: hidden;
+    }
+    .gl-hero-media img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* ── Intro / overview band ──────────────────────────────────────────── */
+    .gl-overview {
+      max-width: 1068px;
+      color: var(--ink);
+      font-size: 16px;
+      line-height: 1.7;
+    }
+    .gl-overview :global(p) { margin: 0 0 1em; }
+    .gl-overview :global(p:last-child) { margin-bottom: 0; }
+
+    /* ── Curriculum header ──────────────────────────────────────────────── */
+    .gl-cur-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .gl-cur-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+      color: var(--ink);
+    }
+    .gl-cur-count {
+      flex: none;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--faint);
+    }
+
+    /* ── Stages (accordion) ─────────────────────────────────────────────── */
+    .gl-stages { display: flex; flex-direction: column; gap: 12px; }
+
+    .gl-stage {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+    }
+
+    .gl-stage-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 22px;
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+    .gl-stage-head::-webkit-details-marker { display: none; }
+    .gl-stage-head:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; border-radius: var(--radius-card); }
+
+    .gl-stage-lead {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+    .gl-stage-tag {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 9px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--paper-soft);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--faint);
+      white-space: nowrap;
+    }
+    .gl-stage-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--ink);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .gl-stage-meta {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .gl-stage-progress {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--blue);
+    }
+    .gl-stage.is-complete .gl-stage-progress { color: var(--green, #2f7d4f); }
+    .gl-stage-total {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--faint);
+    }
+    .gl-stage-chevron {
+      flex: none;
+      display: inline-flex;
+      color: var(--faint);
+      transition: transform 0.18s ease;
+    }
+    .gl-stage[open] .gl-stage-chevron { transform: rotate(180deg); }
+    .gl-stage-head:hover .gl-stage-name { color: var(--blue); }
+
+    /* ── Modules ────────────────────────────────────────────────────────── */
+    .gl-modules {
+      list-style: none;
+      max-width: none; /* batalkan aturan prosa global `ol { max-width: 720px }` */
+      margin: 0;
+      padding: 8px 0;
+      border-top: 1px solid var(--line);
+    }
+    .gl-module { margin: 0; }
+
+    .gl-module-link {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 22px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .gl-module-link:hover { background: var(--paper-soft); }
+    .gl-module-link:hover .gl-module-title { color: var(--blue); }
+
+    .gl-module-ico { flex: none; display: inline-flex; }
+    /* default state = todo (hollow circle, faint). JS toggles is-next/is-complete. */
+    .gl-module-ico .ico-current,
+    .gl-module-ico .ico-done { display: none; }
+    .gl-module-ico .ico-todo { display: block; color: var(--faint); }
+
+    .gl-module.is-next .gl-module-ico .ico-todo { display: none; }
+    .gl-module.is-next .gl-module-ico .ico-current { display: block; color: var(--blue-bright); }
+
+    .gl-module.is-complete .gl-module-ico .ico-todo { display: none; }
+    .gl-module.is-complete .gl-module-ico .ico-done { display: block; color: var(--blue-bright); }
+
+    .gl-module-title {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ink);
+      overflow: hidden;
+    }
+    .gl-module.is-next .gl-module-title { font-weight: 600; }
+    .gl-module:not(.is-next):not(.is-complete) .gl-module-title { color: var(--ink-muted); }
+
+    .gl-module-flag {
+      flex: none;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      color: var(--blue);
+      white-space: nowrap;
+    }
+    .gl-module-state {
+      flex: none;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--faint);
+      white-space: nowrap;
+    }
+    .gl-module.is-next .gl-module-state { color: var(--blue); }
+    .gl-module.is-complete .gl-module-state { color: var(--green, #2f7d4f); }
+
+    .gl-module-meta {
+      flex: none;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--faint);
+      white-space: nowrap;
+    }
+
+    /* ── Responsive ─────────────────────────────────────────────────────── */
+    @media (max-width: 920px) {
+      .gl-hero {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+      .gl-hero-media {
+        /* Tetap setelah copy → hero text-led (judul dulu) sesuai frame mz72j;
+           sebelumnya order:-1 menaruh cover DI ATAS judul. */
+        width: 100%;
+        max-width: 460px;
+      }
+    }
+    @media (max-width: 560px) {
+      .gl-hero { padding: 40px 0; }
+      .gl-stage-head { padding: 16px 16px; gap: 10px; }
+      .gl-stage-lead { gap: 10px; }
+      .gl-stage-meta { gap: 10px; }
+      .gl-stage-progress { display: none; }
+      .gl-module-link { padding: 11px 16px; }
+      .gl-module-flag,
+      .gl-module-state { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .gl-stage-chevron,
+      .gl-progress-fill { transition: none; }
+    }
+  </style>
 </BaseLayout>

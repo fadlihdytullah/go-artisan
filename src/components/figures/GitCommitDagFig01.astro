@@ -1,0 +1,39 @@
+<svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram branch sebagai pointer pada graf commit dengan main, feature, dan HEAD">
+  <defs>
+    <marker id="gcdArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#a3461f" />
+    </marker>
+  </defs>
+  <rect x="20" y="20" width="720" height="280" rx="20" fill="#f6fafb" stroke="#cfd8dc" />
+  <text x="48" y="56" fill="#0f1f24" font-size="21" font-weight="700">Branch adalah pointer ringan ke commit</text>
+
+  <!-- Edges main -->
+  <line x1="140" y1="210" x2="260" y2="210" stroke="#9aa7ab" stroke-width="2.5" />
+  <line x1="260" y1="210" x2="380" y2="210" stroke="#9aa7ab" stroke-width="2.5" />
+  <line x1="380" y1="210" x2="480" y2="210" stroke="#9aa7ab" stroke-width="2.5" />
+  <!-- Edge ke feature -->
+  <line x1="260" y1="210" x2="380" y2="120" stroke="#9aa7ab" stroke-width="2.5" />
+  <line x1="380" y1="120" x2="480" y2="120" stroke="#9aa7ab" stroke-width="2.5" />
+
+  <!-- Commits main -->
+  <circle cx="140" cy="210" r="16" fill="#f7e7df" stroke="#a3461f" stroke-width="2" />
+  <circle cx="260" cy="210" r="16" fill="#f7e7df" stroke="#a3461f" stroke-width="2" />
+  <circle cx="380" cy="210" r="16" fill="#f7e7df" stroke="#a3461f" stroke-width="2" />
+  <circle cx="480" cy="210" r="16" fill="#f7e7df" stroke="#a3461f" stroke-width="2" />
+  <!-- Commits feature -->
+  <circle cx="380" cy="120" r="16" fill="#f7e7df" stroke="#a3461f" stroke-width="2" />
+  <circle cx="480" cy="120" r="16" fill="#f7e7df" stroke="#a3461f" stroke-width="2" />
+
+  <!-- Branch tags -->
+  <rect x="512" y="196" width="74" height="28" rx="7" fill="#ffffff" stroke="#a3461f" />
+  <text x="524" y="215" fill="#a3461f" font-size="13" font-weight="700">main</text>
+  <rect x="512" y="106" width="130" height="28" rx="7" fill="#ffffff" stroke="#a3461f" />
+  <text x="524" y="125" fill="#a3461f" font-size="13" font-weight="700">feature/login</text>
+
+  <!-- HEAD -->
+  <rect x="512" y="56" width="74" height="28" rx="7" fill="#f7e7df" stroke="#a3461f" stroke-width="2" />
+  <text x="524" y="75" fill="#0f1f24" font-size="13" font-weight="700">HEAD</text>
+  <path d="M 549 84 L 549 104" fill="none" stroke="#a3461f" stroke-width="2.4" marker-end="url(#gcdArrow)" />
+
+  <text x="48" y="288" fill="#516469" font-size="13.5">Tiap commit menunjuk parent-nya; branch hanya menyimpan satu hash, HEAD menandai branch aktif.</text>
+</svg>

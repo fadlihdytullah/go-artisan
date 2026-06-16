@@ -1,0 +1,258 @@
+---
+/*
+  Footer.astro — v2 site footer (frame nr1kS / hVGBd, node hVGBd).
+
+  Rendered INSIDE PageShell's `.shell-col`, so the continuous full-height
+  left+right hairlines run through it (SPEC §3). Composition:
+
+    ┌─ shell-col (side lines) ───────────────────────────────┐
+    │  .ft-band (menu groups, bg-alt)                         │
+    │    Brand col  │ LEARN │ COURSES │ PLATFORM              │
+    │   (full-height vertical hairline dividers between cols) │
+    │ ────────────────── full-width rule ────────────────────│
+    │  .ft-copy (copyright row, bg-alt)                       │
+    └────────────────────────────────────────────────────────┘
+
+  All UI copy is English (per SPEC §0). Pulled verbatim from the frame's
+  text nodes. Flat, rounded, no shadow; token-driven (light + reader).
+*/
+interface FooterGroup {
+  heading: string;
+  links: { label: string; href: string }[];
+}
+interface Props {
+  /** Brand wordmark (kata terakhir di-aksen). */
+  siteName?: string;
+  /** Tagline kecil di bawah brand. */
+  tagline?: string;
+  /** Baris copyright kiri. */
+  copyright?: string;
+  /** Catatan kanan (mono). */
+  note?: string;
+  /** Kelompok menu footer (default = peta v2 dari frame). */
+  groups?: FooterGroup[];
+}
+
+const {
+  siteName = 'Web Artisan',
+  tagline = 'A platform for learning web development.',
+  copyright = '© 2026 Web Artisan. Made for people building for the web.',
+  note = 'Progress saved in this browser.',
+  groups = [
+    {
+      heading: 'LEARN',
+      links: [
+        { label: 'Roadmap', href: '/roadmaps' },
+        { label: 'Courses', href: '/courses' },
+        { label: 'All lessons', href: '/courses/go-luminas#kurikulum' },
+        { label: 'Go Luminas', href: '/courses/go-luminas' },
+      ],
+    },
+    {
+      heading: 'COURSES',
+      links: [
+        { label: 'Learn HTTP', href: '/courses/http' },
+        { label: 'Learn OpenAPI', href: '/courses/openapi' },
+        { label: 'Learn Redis', href: '/courses/redis' },
+      ],
+    },
+    {
+      heading: 'PLATFORM',
+      links: [
+        { label: 'About', href: '/' },
+        { label: 'Local progress', href: '/' },
+        { label: 'Frontend (soon)', href: '/' },
+      ],
+    },
+  ],
+} = Astro.props;
+
+const words = siteName.trim().split(/\s+/);
+const lead = words.slice(0, -1).join(' ');
+const tail = words[words.length - 1];
+---
+<div class="ft">
+  <div class="ft-band">
+    <div class="ft-brand">
+      <a class="ft-logo" href="/" aria-label={`${siteName} — beranda`}>
+        <span class="ft-mark" aria-hidden="true">
+          <img src="/logo.png" alt="" width="30" height="30" decoding="async" />
+        </span>
+        <span class="ft-wordmark">{lead}{lead && ' '}<span class="ft-wordmark-accent">{tail}</span></span>
+      </a>
+      <p class="ft-tagline">{tagline}</p>
+    </div>
+
+    <div class="ft-cols">
+      {groups.map((group) => (
+        <nav class="ft-col" aria-label={group.heading}>
+          <p class="ft-heading">{group.heading}</p>
+          <ul class="ft-list">
+            {group.links.map((link) => (
+              <li><a class="ft-link" href={link.href}>{link.label}</a></li>
+            ))}
+          </ul>
+        </nav>
+      ))}
+    </div>
+  </div>
+
+  <div class="ft-copy">
+    <span class="ft-copy-text">{copyright}</span>
+    <span class="ft-copy-note">{note}</span>
+  </div>
+</div>
+
+<style>
+  /* Footer berdiri DI DALAM .shell-col → garis sisi 1180 menerus lewat sini.
+     Tint bg-alt full-width disuplai .shell-footer-wrap (BaseLayout); di sini
+     hanya struktur band. Token-driven (light + reader). */
+  .ft { display: block; }
+
+  /* — Band menu: brand kiri + 3 kolom tautan kanan — */
+  .ft-band {
+    display: flex;
+    gap: 48px;
+    justify-content: space-between;
+    padding: 0 var(--shell-band-px, clamp(28px, 4vw, 56px));
+  }
+
+  .ft-brand {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 320px;
+    max-width: 320px;
+    padding-top: 64px;
+  }
+  .ft-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 11px;
+    text-decoration: none;
+    border-radius: var(--radius-xs);
+    width: fit-content;
+    transition: opacity .15s ease;
+  }
+  .ft-logo:hover { opacity: .85; }
+  .ft-logo:focus-visible { outline: 2px solid var(--blue-bright); outline-offset: 3px; }
+  .ft-mark {
+    width: 30px;
+    height: 30px;
+    flex: none;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--lav-soft);
+    display: grid;
+    place-items: center;
+  }
+  .ft-mark img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .ft-wordmark {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.2px;
+    color: var(--ink);
+  }
+  .ft-wordmark-accent { color: var(--ink); }
+  .ft-tagline {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--ink-muted);
+    max-width: 30ch;
+  }
+
+  /* — Kolom tautan dipisah hairline vertikal FULL-HEIGHT — */
+  .ft-cols {
+    display: flex;
+    align-items: stretch;
+  }
+  .ft-col {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: 232px;
+    padding: 64px 0 40px 56px;
+    border-left: 1px solid var(--line);
+  }
+  .ft-heading {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 2px;
+    color: var(--faint);
+  }
+  .ft-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .ft-link {
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--ink-muted);
+    text-decoration: none;
+    transition: color .15s ease;
+  }
+  .ft-link:hover { color: var(--blue); }
+  .ft-link:focus-visible { outline: 2px solid var(--blue-bright); outline-offset: 2px; border-radius: var(--radius-xs); }
+
+  /* Mobile: perbesar target sentuh link footer ke >=44px (WCAG 2.5.5/2.5.8). */
+  @media (max-width: 640px) {
+    .ft-list { gap: 0; }
+    .ft-link { display: flex; align-items: center; min-height: 44px; }
+  }
+
+  /* — Baris copyright: aturan horizontal full-width di atasnya — */
+  .ft-copy {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding: 28px var(--shell-band-px, clamp(28px, 4vw, 56px)) 36px;
+    border-top: 1px solid var(--line);
+  }
+  .ft-copy-text {
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--faint);
+  }
+  .ft-copy-note {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--faint);
+  }
+
+  /* — Responsif — */
+  /* Mobile: brand + kolom menumpuk SATU lajur penuh, TANPA garis pemisah antar
+     grup (frame e0S0X / CNlyk). Hairline yang tersisa hanya di atas baris
+     copyright (.ft-copy border-top). */
+  @media (max-width: 860px) {
+    .ft-band {
+      flex-direction: column;
+      gap: 30px;
+      padding-bottom: 12px;
+    }
+    .ft-brand { width: auto; max-width: none; padding-top: 40px; gap: 12px; }
+    .ft-cols { flex-direction: column; gap: 30px; }
+    .ft-col {
+      flex: none;
+      width: auto;
+      gap: 14px;
+      padding: 0;
+      border-left: 0;
+      border-top: 0;
+    }
+  }
+  @media (max-width: 680px) {
+    .ft-band { padding-left: 20px; padding-right: 20px; }
+    .ft-copy { padding-left: 20px; padding-right: 20px; }
+  }
+</style>

@@ -1,0 +1,392 @@
+---
+// RoadmapTimeline.astro — vertical learning-path timeline (frame D5LI78, spine ma5qn).
+// A coral spine threads course → course down numbered nodes, ending at a FINISH LINE
+// (flag) row. Flat, rounded, no shadow. Token-driven → reactive to light/reader themes.
+// Do NOT edit globals.css; all styling is scoped here.
+//
+// Copy: UI labels are English EXCEPT the per-item `summary` (Bahasa Indonesia, pulled
+// verbatim from the caller / frame text nodes). The header + meta + start/finish labels
+// mirror the frame exactly ("Jalur belajar", "MULAI DI SINI", "Garis finish: siap kerja").
+
+interface TimelineItem {
+  index: number;          // node number (1-based) shown in the coral node
+  title: string;          // course title — Fraunces (e.g. "Go Luminas")
+  summary: string;        // Bahasa Indonesia one-liner — pulled from the frame/caller
+  href: string;           // link target for "Open course →"
+  thumb?: string;         // optional 1:1 thumbnail (e.g. "/go-luminas.png")
+  meta?: string;          // optional right-side meta (e.g. "9 tahap · 73 lessons")
+}
+
+interface Props {
+  items: TimelineItem[];
+  finishLabel?: string;   // optional override for the finish-row title
+}
+
+const { items = [], finishLabel = 'Garis finish: siap kerja' } = Astro.props;
+const count = items.length;
+---
+
+<section class="tl" aria-label="Jalur belajar">
+  <header class="tl-head">
+    <h2 class="tl-title">Jalur belajar</h2>
+    <span class="tl-sub">{count} course · ikuti berurutan</span>
+  </header>
+
+  <ol class="tl-spine" role="list">
+    <!-- Start cap -->
+    <li class="tl-start" aria-hidden="true">
+      <span class="tl-rail tl-rail-start"></span>
+      <span class="tl-dot"></span>
+      <span class="tl-start-label">MULAI DI SINI</span>
+    </li>
+
+    {items.map((item, i) => (
+      <li class="tl-row">
+        <span class="tl-rail"></span>
+        <span class="tl-node"><span class="tl-num">{item.index}</span></span>
+        <a class="tl-card" href={item.href}>
+          {item.thumb && (
+            <span class="tl-thumb">
+              <img
+                src={item.thumb}
+                alt={`Ilustrasi course ${item.title}`}
+                width="240"
+                height="240"
+                loading="lazy"
+                decoding="async"
+              />
+            </span>
+          )}
+          <span class="tl-body">
+            <span class="tl-top">
+              <span class="tl-course-num">COURSE {String(item.index).padStart(2, '0')}</span>
+              {item.meta && <span class="tl-course-meta">{item.meta}</span>}
+            </span>
+            <span class="tl-card-title">{item.title}</span>
+            <span class="tl-card-sum">{item.summary}</span>
+            <span class="tl-link">
+              <span class="tl-link-text">Open course</span>
+              <span class="tl-link-arrow" aria-hidden="true">&rarr;</span>
+            </span>
+          </span>
+        </a>
+      </li>
+    ))}
+
+    <!-- Finish line -->
+    <li class="tl-finish">
+      <span class="tl-rail tl-rail-finish"></span>
+      <span class="tl-flag">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+             stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+          <line x1="4" x2="4" y1="22" y2="15"></line>
+        </svg>
+      </span>
+      <span class="tl-fcard">
+        <span class="tl-ftitle">{finishLabel}</span>
+        <span class="tl-fsum">Selesaikan keempat course dan kamu siap membangun serta men-deploy backend produksi, end to end.</span>
+      </span>
+    </li>
+  </ol>
+</section>
+
+<style>
+  /* ── Timeline section ─────────────────────────────────────────────────────
+     Geometry mirrors frame ma5qn: rail at x≈36 (center 36px), 28px nodes ride
+     the rail, cards begin at x≈72. Flat, rounded (14px), no shadow. */
+  .tl {
+    --tl-rail-x: 36px;        /* horizontal center of the spine rail */
+    --tl-node: 28px;          /* numbered node diameter */
+    --tl-card-x: 72px;        /* left edge of the card column */
+    color: var(--ink);
+  }
+
+  /* Header row ------------------------------------------------------------- */
+  .tl-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 0 0 18px;
+    padding-bottom: 0;
+  }
+  .tl-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+    color: var(--ink);
+  }
+  .tl-sub {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--faint);
+    white-space: nowrap;
+  }
+
+  /* Spine list ------------------------------------------------------------- */
+  .tl-spine {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .tl-row,
+  .tl-start,
+  .tl-finish {
+    position: relative;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* The vertical rail — one segment per row, stacked edge-to-edge so the line
+     reads continuous. Terracotta tint, reactive to theme. */
+  .tl-rail {
+    position: absolute;
+    left: var(--tl-rail-x);
+    transform: translateX(-50%);
+    width: 2px;
+    background: var(--blue-mid);
+  }
+
+  /* Start cap: short rail entering the first node + small dot + label. */
+  .tl-start {
+    height: 54px;
+  }
+  .tl-rail-start {
+    top: 27px;
+    bottom: 0;
+  }
+  .tl-dot {
+    position: absolute;
+    left: var(--tl-rail-x);
+    top: 18px;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    background: var(--blue-bright);
+    box-shadow: 0 0 0 3px var(--bg);   /* cream ring (not a drop shadow — flat) */
+  }
+  .tl-start-label {
+    position: absolute;
+    left: var(--tl-card-x);
+    top: 16px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    color: var(--faint);
+  }
+
+  /* Course rows: full-height rail + numbered node + card. */
+  .tl-row {
+    min-height: 156px;
+    padding-bottom: 16px;
+  }
+  .tl-row:last-of-type {
+    padding-bottom: 0;
+  }
+  .tl-row .tl-rail {
+    top: 0;
+    bottom: 0;
+  }
+  .tl-node {
+    position: absolute;
+    left: var(--tl-rail-x);
+    top: 64px;
+    transform: translateX(-50%);
+    z-index: 1;
+    width: var(--tl-node);
+    height: var(--tl-node);
+    border-radius: 999px;
+    background: var(--blue-bright);
+    box-shadow: 0 0 0 3px var(--bg);   /* cream ring */
+    display: grid;
+    place-items: center;
+  }
+  .tl-num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    color: #fcfbf7;                    /* near-white numeral on terracotta */
+  }
+
+  /* Card ------------------------------------------------------------------- */
+  .tl-card {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    margin-left: var(--tl-card-x);
+    min-height: 140px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.18s ease, background-color 0.18s ease;
+  }
+  .tl-card:hover {
+    border-color: var(--blue-mid);
+    background: color-mix(in srgb, var(--blue-soft) 28%, var(--paper));
+  }
+  .tl-card:focus-visible {
+    outline: 2px solid var(--blue-bright);
+    outline-offset: 3px;
+  }
+
+  .tl-thumb {
+    flex: 0 0 140px;
+    align-self: stretch;
+    background: var(--paper-soft);
+    border-right: 1px solid var(--line);
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+  }
+  .tl-thumb img {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    display: block;
+  }
+
+  .tl-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 7px;
+    padding: 18px 26px;
+  }
+  .tl-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .tl-course-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--blue);
+  }
+  .tl-course-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--faint);
+  }
+  .tl-card-title {
+    font-family: var(--font-display);
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+    color: var(--ink);
+  }
+  .tl-card-sum {
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--ink-muted);
+  }
+  .tl-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-top: 3px;
+  }
+  .tl-link-text,
+  .tl-link-arrow {
+    font-family: var(--font-body);
+    color: var(--blue-bright);
+  }
+  .tl-link-text {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .tl-link-arrow {
+    font-size: 14px;
+    transition: transform 0.18s ease;
+  }
+  .tl-card:hover .tl-link-arrow {
+    transform: translateX(3px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tl-card,
+    .tl-link-arrow { transition: none; }
+    .tl-card:hover .tl-link-arrow { transform: none; }
+  }
+
+  /* Finish line ------------------------------------------------------------ */
+  .tl-finish {
+    min-height: 112px;
+  }
+  .tl-rail-finish {
+    top: 0;
+    height: 46px;
+  }
+  .tl-flag {
+    position: absolute;
+    left: var(--tl-rail-x);
+    top: 30px;
+    transform: translateX(-50%);
+    z-index: 1;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    background: var(--blue-bright);
+    box-shadow: 0 0 0 3px var(--bg);   /* cream ring */
+    display: grid;
+    place-items: center;
+    color: #fcfbf7;
+  }
+  .tl-fcard {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-left: var(--tl-card-x);
+    padding: 18px 24px;
+    background: var(--blue-soft);
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+  }
+  .tl-ftitle {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--ink);
+  }
+  .tl-fsum {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--ink-muted);
+  }
+
+  /* Responsive: drop the thumbnail, tighten the card column on narrow screens. */
+  @media (max-width: 640px) {
+    .tl {
+      --tl-card-x: 56px;
+    }
+    .tl-thumb {
+      display: none;
+    }
+    .tl-card-title {
+      font-size: 19px;
+    }
+  }
+</style>

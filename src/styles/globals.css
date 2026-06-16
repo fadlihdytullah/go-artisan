@@ -34,10 +34,12 @@
   --color-lav-soft: var(--lav-soft);
   --color-lav-line: var(--lav-line);
   --color-paper-illus: var(--paper-illus);
+  --color-faint: var(--faint);
 
-  --font-display: "Geist", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Newsreader", Georgia, serif;
-  --font-mono: "Geist Mono", ui-monospace, monospace;
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-body: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   --radius-card: 12px;
   --radius-sm: 8px;
@@ -46,44 +48,52 @@
 }
 
 :root {
-  /* base hangat (Anthropic-derived) */
-  --bg:          #faf9f5;   /* ivory parchment */
-  --paper:       #fffdf8;   /* kertas, lebih terang dari bg, tetap hangat (BUKAN #fff murni) */
-  --paper-soft:  #f4f1e8;   /* zebra row / surface tenang */
-  --ink:         #1f1c17;   /* near-black hangat */
-  --ink-soft:    #544e44;   /* body sekunder */
-  --ink-muted:   #6b6457;   /* meta/caption — titik AA paling ketat, JANGAN dibuat lebih terang */
-  --line:        #e6e1d6;   /* hairline hangat */
-  --line-strong: #d2cabb;   /* divider tegas */
+  /* ── v2 base (cream / terracotta) — Web Artisan design.pen ───────────────
+     Token NAMES dipertahankan (kompatibilitas component CSS); hanya VALUES
+     yang di-repoint ke v2. accent-deep #9C4A2F = teks/link (AA di cream),
+     accent #BD5D3E = isi/dekorasi. */
+  --bg:          #f3f1e9;   /* v2 bg — page background (cream) */
+  --paper:       #fbfaf5;   /* v2 card — kertas/surface */
+  --paper-soft:  #edeadf;   /* v2 bg-alt — calm surface / zebra */
+  --ink:         #22201a;   /* v2 ink — headings / strong ink */
+  --ink-soft:    #4a4639;   /* body sekunder (antara ink & muted, AA kuat) */
+  --ink-muted:   #6e6a5c;   /* v2 muted — meta/caption (titik AA paling ketat) */
+  --line:        #d9d4c4;   /* v2 border — hairline */
+  --line-strong: #c6c0ac;   /* v2 border-strong — divider tegas */
 
-  /* AKSEN — Coral/Clay ala Claude, SATU-SATUNYA aksen (repoint dari Go cyan) */
-  --blue:        #a3461f;   /* coral GELAP — teks/link/interaktif, AA >=4.5 di atas cream */
-  --blue-bright: #d97757;   /* coral terang Claude — dekoratif/aksen besar SAJA (bukan teks) */
-  --blue-soft:   #f9ebe3;   /* tint hangat untuk badge/section-num */
-  --blue-mid:    #e8c3b0;   /* tint border coral (ganti #99dff0) */
+  /* AKSEN — terracotta/clay v2, SATU-SATUNYA aksen.
+     --blue* = accent-deep (teks/link, AA) + accent (fill/dekorasi) + tint. */
+  --blue:        #9c4a2f;   /* v2 accent-deep — teks/link/interaktif, AA >=4.5 di cream */
+  --blue-bright: #bd5d3e;   /* v2 accent — terracotta isi/dekorasi (bukan teks) */
+  --blue-soft:   #f0e3d8;   /* v2 accent-soft — tint hangat untuk badge/section-num */
+  --blue-mid:    #e1c3b2;   /* tint border terracotta (turunan accent) */
 
-  /* alias → coral (repoint, sama persis dengan --blue*) */
-  --orange:        #a3461f;
-  --orange-bright: #d97757;
-  --orange-soft:   #f9ebe3;
+  /* alias → terracotta (repoint, sama persis dengan --blue*) */
+  --orange:        #9c4a2f;
+  --orange-bright: #bd5d3e;
+  --orange-soft:   #f0e3d8;
 
-  /* struktural — ungu-tinta gelap (echo lavender), bukan navy dingin */
-  --navy:        #211d33;
-  --navy-soft:   #2c2742;
+  /* struktural — coklat-tinta gelap hangat (selaras cream v2, bukan navy dingin) */
+  --navy:        #2a261d;
+  --navy-soft:   #383327;
+
+  /* faint — caption paling samar / placeholder (v2 faint).
+     Digelapkan agar lolos kontras WCAG AA (>=4.5:1) di cream; #9a9582 lama = 2.65:1. */
+  --faint:       #726d5b;
 
   /* ILUSTRASI / panel lavender — TOKEN BARU (bukan aksen UI, tidak pernah jadi tombol/link/teks) */
-  --paper-illus: #f3efe6;   /* "kertas" off-white di balik objek ilustrasi */
+  --paper-illus: #f1ede2;   /* "kertas" off-white di balik objek ilustrasi (cream v2) */
   --lav:         #c6c2de;   /* lavender backplate — IDENTIK dgn latar PNG (full-bleed thumb) */
   --lav-soft:    #ece9f5;   /* lavender sangat ringan untuk panel hero/section */
   --lav-line:    #b6b1d2;   /* hairline lavender untuk bingkai panel */
 
-  /* semantic — -soft dihangatkan agar duduk di cream */
-  --teal:   #087f73;  --teal-soft:   #e2f3ef;
-  --green:  #16794f;  --green-soft:  #e3f2e8;
-  --red:    #bb3a32;  --red-soft:    #fbeeec;
-  --violet: #5d4b9c;  --violet-soft: #efe9fb;
+  /* semantic — -soft dihangatkan agar duduk di cream v2 */
+  --teal:   #0a7d6e;  --teal-soft:   #e1f1ec;
+  --green:  #2f7d4f;  --green-soft:  #e6f0e6;
+  --red:    #c14a39;  --red-soft:    #f7e6df;
+  --violet: #6a5aa6;  --violet-soft: #ece6f3;
 
-  --code-bg: #1c1830;   /* permukaan kode: ungu-tinta gelap hangat */
+  --code-bg: #241f17;   /* permukaan kode: coklat-tinta gelap hangat (v2) */
   --shadow: none;       /* FLAT — wajib */
   --shadow-lg: none;    /* FLAT — wajib */
   --shell-max: 1180px;  /* pertahankan */
@@ -114,13 +124,10 @@ html {
 
 body {
   margin: 0;
-  background:
-    linear-gradient(180deg, rgba(255,253,248,.6), rgba(255,253,248,0) 320px),
-    radial-gradient(var(--line) .7px, transparent .7px),
-    var(--bg);
-  background-size: auto, 22px 22px, auto;
+  /* v2: flat cream — NO dotted/gradient texture (SPEC §3). */
+  background: var(--bg);
   color: var(--ink);
-  font-family: "Geist", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-body);
   font-size: calc(17px * var(--scale));
   line-height: 1.72;
   -webkit-font-smoothing: antialiased;
@@ -128,12 +135,18 @@ body {
   transition: background-color .2s ease, color .2s ease;
 }
 
+/* h1/h2 = Fraunces serif (display). h3/h4/eyebrows/meta tetap Inter agar
+   legibel di ukuran kecil (SPEC §2). */
 h1,
-h2,
+h2 {
+  font-family: var(--font-display);
+  letter-spacing: 0;
+}
+
 h3,
 h4,
 .ui {
-  font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body);
   letter-spacing: 0;
 }
 
@@ -147,65 +160,82 @@ code,
 pre,
 .mono,
 .codetag {
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
 }
 
 ::selection {
-  background: var(--blue-bright);
-  color: #0f172a;
+  background: var(--blue-soft);
+  color: var(--ink);
 }
 
-/* ── Topbar — floating island nav (melayang, contained, tidak full-width) ── */
+/* ── Topbar — v2 home nav (full-width, flat, no side lines) ──
+   Frame nr1kS / MtVvn: cream background, full bleed, satu hairline bawah
+   (var(--line)) — TANPA garis sisi, TANPA shadow, TANPA radius. Inner ter-
+   center ke kolom 1180px agar selaras dengan kolom berbingkai di bawahnya. */
 
 .topbar {
   /* Kontrol nav memakai variabel scoped ini → otomatis reaktif tema.
-     Kedua tema (light/reader) = kaca terang hangat, ink gelap. */
+     Kedua tema (light/reader) = cream/parchment hangat, ink gelap. */
   --nav-ink: var(--ink);
   --nav-dim: var(--ink-muted);
-  --nav-line: color-mix(in srgb, var(--ink) 14%, transparent);
-  --nav-fill: color-mix(in srgb, var(--ink) 5%, transparent);
-  --nav-fill-hover: color-mix(in srgb, var(--ink) 10%, transparent);
+  --nav-line: var(--line);
+  --nav-fill: var(--paper);
+  --nav-fill-hover: var(--paper-soft);
 
   position: sticky;
-  top: 12px;
+  top: 0;
   z-index: 50;
-  width: min(
-    calc(var(--shell-max) + (var(--shell-gutter) * 2)),
-    calc(100% - (var(--shell-gutter) * 2))
-  );
-  margin: 14px auto 0;
-  border-radius: var(--radius-card);
-  background: color-mix(in srgb, var(--paper) 90%, transparent);
-  backdrop-filter: blur(8px) saturate(1.15);
-  border: 1px solid var(--hair);
+  width: 100%;
+  margin: 0;
+  border-radius: 0;
+  background: var(--bg);
+  border: 0;
+  border-bottom: 1px solid var(--line);
   transition: border-color .25s ease, background-color .25s ease;
 }
 .topbar[data-scrolled] {
-  background: color-mix(in srgb, var(--paper) 96%, transparent);
-  border-color: var(--hair-strong);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(1.05) blur(6px);
+  border-bottom-color: var(--line-strong);
 }
 
 .topbar-inner {
-  max-width: none;
-  margin: 0;
-  padding: 12px 14px 12px 16px;
+  /* Lebar + posisi IDENTIK dgn .shell-col (kolom 1180 berbingkai di bawah) dan
+     TANPA padding gutter → logo mepet garis sisi kiri (x=130 @1440) dan grup
+     aksi mepet garis sisi kanan (x=1310), selaras frame nr1kS/c2hcp. */
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: 0;
+  min-height: 72px;
   display: flex;
   align-items: center;
   gap: 12px;
 }
+@media (max-width: 680px) {
+  /* Layar sempit: garis kolom menempel tepi viewport; beri ruang sentuh kecil. */
+  .topbar-inner { padding: 0 20px; }
+}
 
+/* Logo mark v2: rounded-square pakai logo.png (browser+brush). */
 .logo-badge {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
   flex: none;
+  overflow: hidden;
   display: grid;
   place-items: center;
-  background: var(--blue);
+  background: var(--lav-soft);
   color: #fff;
-  transition: background .15s ease;
+  transition: filter .15s ease;
 }
 .logo-badge svg { display: block; }
+.logo-badge img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
 .topbar-title {
   font-weight: 700;
@@ -223,18 +253,22 @@ pre,
 
 .topbar-link {
   margin-left: auto;
-  padding: 7px 10px;
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 14px;
   border-radius: var(--radius-sm);
-  color: var(--nav-dim);
-  font-size: 13px;
+  background: var(--blue);
+  color: #FCFBF7;
+  font-size: 14px;
   font-weight: 600;
   text-decoration: none;
-  transition: color .15s ease, background-color .15s ease;
+  transition: background-color .15s ease;
 }
 
 .topbar-link:hover {
-  color: var(--nav-ink);
-  background: var(--nav-fill);
+  background: var(--blue-bright);
+  color: #FCFBF7;
 }
 
 /* ── Layout ─────────────────────────────────────────────────── */
@@ -254,7 +288,14 @@ pre,
 
 main {
   min-width: 0;
-  padding: 0 0 112px;
+}
+
+/* Hanya layout-baca (lesson/modul) yang perlu ruang napas sebelum footer.
+   Halaman shell v2 menempelkan footer flush ke kolom berbingkai, jadi TIDAK
+   boleh mewarisi padding ini (kalau tidak, garis sisi putus + muncul celah
+   cream antara .shell-col dan footer). */
+main[data-module-root] {
+  padding-bottom: 112px;
 }
 
 /* ── TOC ─────────────────────────────────────────────────────── */
@@ -309,7 +350,7 @@ nav.toc a {
 nav.toc a .num {
   flex: none;
   min-width: 16px;
-  font-family: "Geist Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -338,13 +379,15 @@ nav.toc a.active .num {
 
 /* ── Hero ────────────────────────────────────────────────────── */
 
+/* v2 article header (frame d4lirQ): eyebrow (mono, accent-deep, uppercase) →
+   Fraunces title → muted Inter lede → meta chips, closed by a hairline rule. */
 .hero,
 header.hero {
-  padding: clamp(40px, 5vw, 52px) 0 40px;
+  padding: clamp(40px, 5vw, 52px) 0 36px;
   margin-bottom: 8px;
   color: var(--ink);
   background: transparent;
-  border-bottom: 1px solid var(--hair-soft);
+  border-bottom: 1px solid var(--line);
 }
 
 .hero .eyebrow,
@@ -354,8 +397,9 @@ header.hero {
   gap: 9px;
   margin: 0 0 16px;
   color: var(--blue);
+  font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: .12em;
   text-transform: uppercase;
 }
@@ -372,30 +416,32 @@ header.hero h1 {
   max-width: 900px;
   margin: 0 0 16px;
   color: var(--ink);
-  font-size: clamp(36px, 5.2vw, 54px);
-  font-weight: 800;
-  line-height: 1.06;
+  font-family: var(--font-display);
+  font-size: clamp(34px, 5vw, 46px);
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.08;
 }
 
 .hero h1 em,
 header.hero h1 em {
   color: var(--blue);
-  font-family: "Newsreader", Georgia, serif;
+  font-family: var(--font-display);
   font-style: italic;
   font-weight: 500;
 }
 
-/* hanya lede (anak langsung hero), bukan <p> di dalam chip/card/komponen lain.
-   Serif editorial (Newsreader) = sumber "kehangatan Anthropic" pada lede besar. */
+/* Article lede (frame d4lirQ): Inter, muted, 18px — NOT the big serif lede.
+   Only the hero's direct <p>/.lede, not <p> nested in chips/cards. */
 .hero > p,
 header.hero > p.lede,
 .lede,
 .lead {
   max-width: 720px;
-  color: var(--ink-soft);
-  font-family: var(--font-serif);
-  font-weight: 450;
-  font-size: calc(clamp(18px, 2.1vw, 22px) * var(--scale));
+  color: var(--ink-muted);
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: calc(clamp(16px, 1.9vw, 18px) * var(--scale));
   line-height: 1.6;
 }
 
@@ -407,17 +453,18 @@ header.hero > p.lede,
   margin-top: 24px;
 }
 
+/* v2 kit (NWG8T): full pill, parchment fill, hairline border, ink Inter text. */
 .chip {
   display: inline-flex;
   align-items: center;
-  min-height: 34px;
-  padding: 7px 13px;
+  min-height: 30px;
+  padding: 6px 13px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-xs);
-  background: color-mix(in srgb, var(--paper) 88%, transparent);
-  color: var(--ink-soft);
-  font-size: 12px;
-  font-weight: 650;
+  border-radius: 999px;
+  background: var(--paper-soft);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
 
 }
 
@@ -529,7 +576,7 @@ strong {
 
 em.term {
   color: var(--blue);
-  font-family: "Geist", sans-serif;
+  font-family: var(--font-body);
   font-style: normal;
   font-weight: 720;
 }
@@ -580,82 +627,89 @@ ul.clean li::before {
 
 /* ── Boxes ───────────────────────────────────────────────────── */
 
+/* v2 Material Kit (NWG8T): flat solid-tint callouts, rounded ~10px, hairline
+   border, sentence-case bold label (Inter) with a small emoji icon — no
+   uppercase mono tag, no gradient. Each tone = a solid wash + matching border
+   + accent-deep (AA) label color. Note = neutral parchment. */
 .box {
   max-width: 860px;
-  margin: 30px 0;
-  padding: 24px 26px;
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-card);
-  background: var(--paper);
+  margin: 26px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper-soft);
 }
 
 .box-tag,
 .b-head {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  margin-bottom: 9px;
+  gap: 8px;
+  margin-bottom: 5px;
   color: var(--ink);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .12em;
-  text-transform: uppercase;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
+/* Inline emoji icon (kit: plain glyph beside the label, no chip frame). */
 .b-icon {
-  width: 29px;
-  height: 29px;
-  display: inline-grid;
-  place-items: center;
-  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
-  border-radius: var(--radius-sm);
-  background: var(--tint-soft);
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-size: 13px;
+  line-height: 1;
   letter-spacing: 0;
 }
 
 .box p {
-  margin: 8px 0;
-  font-size: calc(16px * var(--scale));
+  margin: 6px 0;
+  color: var(--ink);
+  font-size: calc(13.5px * var(--scale));
+  font-weight: 500;
+  line-height: 1.55;
 }
 
 .box p:last-child {
   margin-bottom: 0;
 }
 
+/* Tone: tip / analogy — warm accent-soft wash, accent-deep label (AA). */
+.tip,
 .analogy {
-  background: linear-gradient(180deg, var(--teal-soft), var(--paper));
-  border-color: color-mix(in srgb, var(--teal) 18%, transparent);
-}
-
-.analogy .box-tag,
-.analogy .b-head {
-  color: var(--teal);
-}
-
-.tip {
-  background: linear-gradient(180deg, var(--blue-soft), var(--paper));
-  border-color: color-mix(in srgb, var(--blue) 18%, transparent);
+  background: var(--blue-soft);
+  border-color: var(--line);
 }
 
 .tip .box-tag,
-.tip .b-head {
+.tip .b-head,
+.analogy .box-tag,
+.analogy .b-head {
   color: var(--blue);
 }
 
+/* Tone: warn / "hati-hati" — amber-clay wash + amber border, amber-deep label. */
 .warn {
-  background: linear-gradient(180deg, var(--red-soft), var(--paper));
-  border-color: color-mix(in srgb, var(--red) 18%, transparent);
+  background: #f7e8d6;
+  border-color: #e6c7a1;
 }
 
 .warn .box-tag,
 .warn .b-head {
-  color: var(--red);
+  color: #9c5a2a;
 }
 
+/* Tone: exam — violet wash, violet label. */
 .exam {
-  background: linear-gradient(180deg, var(--violet-soft), var(--paper));
-  border-color: color-mix(in srgb, var(--violet) 18%, transparent);
+  background: var(--violet-soft);
+  border-color: color-mix(in srgb, var(--violet) 28%, var(--line));
 }
 
 .exam .box-tag,
@@ -665,14 +719,16 @@ ul.clean li::before {
 
 /* ── Figures ─────────────────────────────────────────────────── */
 
+/* v2: flat figure card — parchment surface, hairline border, rounded. Caption
+   is muted Inter with a hairline rule above. */
 figure {
   max-width: 920px;
-  margin: 30px 0;
-  padding: 24px;
+  margin: 28px 0;
+  padding: 22px 24px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  border: 1px solid var(--line);
   border-radius: var(--radius-card);
-  background: var(--tint-paper);
+  background: var(--paper-soft);
 }
 
 figure svg {
@@ -682,12 +738,12 @@ figure svg {
 }
 
 figcaption {
-  margin-top: 18px;
-  padding-top: 14px;
-  border-top: 1px solid var(--hair-soft);
-  color: var(--ink-soft);
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-muted);
   font-size: 13px;
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.55;
   text-align: center;
 }
@@ -713,41 +769,52 @@ figcaption b {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* v2 kit (NWG8T): parchment card, rounded, hairline border. Title = Fraunces
+   (display) 16px 600, with a leading emoji glyph OR a small accent-soft icon
+   badge (.ci). Description = muted Inter 13px. */
 .card {
   min-width: 0;
-  padding: 20px;
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-card);
-  background: var(--tint-paper);
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper-soft);
 }
 
 .card h4 {
   display: flex;
   align-items: center;
-  gap: 9px;
-  margin: 0 0 7px;
+  gap: 8px;
+  margin: 0 0 6px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
 }
 
 .card p {
   margin: 0;
-  color: var(--ink-soft);
-  font-size: calc(14px * var(--scale));
-  line-height: 1.6;
+  color: var(--ink-muted);
+  font-size: calc(13px * var(--scale));
+  font-weight: 500;
+  line-height: 1.5;
 }
 
+/* Optional icon badge variant (.ci span around an svg) — accent-soft chip. */
 .ci {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   flex: none;
   display: grid;
   place-items: center;
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--blue-soft);
 }
 
 .ci svg {
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
   stroke: var(--blue);
 }
 
@@ -761,19 +828,26 @@ figcaption b {
   list-style: none;
 }
 
+/* v2 kit (NWG8T): no dashed dividers — just a 14px gap between rows. Counter
+   badge = round (radius 99) 28px, accent-soft fill, hairline border, number in
+   mono accent-deep. Title = Inter 14.5/600 ink, body = muted Inter 13. */
 .step,
 .steps > li {
   position: relative;
   display: flex;
-  gap: 16px;
+  gap: 14px;
   margin: 0;
-  padding: 16px 0;
-  border-bottom: 1px dashed var(--line);
+  padding: 0;
+  border-bottom: 0;
+}
+.steps > .step + .step,
+.steps > li + li {
+  margin-top: 14px;
 }
 
 .steps > li {
   display: block;
-  padding-left: 50px;
+  padding-left: 42px;
 }
 
 .step:last-child,
@@ -784,17 +858,18 @@ figcaption b {
 .sn,
 .steps > li::before {
   counter-increment: step;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   flex: none;
   display: grid;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--blue) 20%, transparent);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  border-radius: 999px;
   background: var(--blue-soft);
   color: var(--blue);
+  font-family: var(--font-mono);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .sn::before,
@@ -805,26 +880,28 @@ figcaption b {
 .steps > li::before {
   position: absolute;
   left: 0;
-  top: 16px;
+  top: 0;
 }
 
 .st {
   flex: 1;
+  padding-top: 2px;
 }
 
 .st b,
 .steps > li b {
   display: block;
   color: var(--ink);
-  font-size: 15px;
-  font-weight: 760;
+  font-size: 14.5px;
+  font-weight: 600;
 }
 
 .st p {
-  margin: 4px 0 0;
-  color: var(--ink-soft);
-  font-size: calc(14px * var(--scale));
-  line-height: 1.6;
+  margin: 3px 0 0;
+  color: var(--ink-muted);
+  font-size: calc(13px * var(--scale));
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 /* ── Tables ──────────────────────────────────────────────────── */
@@ -836,8 +913,25 @@ figcaption b {
   overflow-x: auto;
   border: 1px solid var(--hair);
   border-radius: var(--radius-card);
-  background: var(--paper);
+  /* Scroll-shadow: bayangan tepi muncul saat tabel masih bisa di-geser horizontal
+     (petunjuk swipe di mobile), otomatis hilang di kedua ujung. Teknik Lea Verou:
+     2 lapisan "cover" (background-attachment:local) menutup bayangan di ujung,
+     2 lapisan bayangan (scroll) menempel ke kotak elemen. */
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(to right, var(--paper), transparent 42px),
+    linear-gradient(to left, var(--paper), transparent 42px),
+    radial-gradient(farthest-side at left, rgba(34, 32, 26, 0.14), transparent),
+    radial-gradient(farthest-side at right, rgba(34, 32, 26, 0.14), transparent);
+  background-position: left center, right center, left center, right center;
+  background-repeat: no-repeat;
+  background-size: 42px 100%, 42px 100%, 16px 100%, 16px 100%;
+  background-attachment: local, local, scroll, scroll;
 }
+/* Tabel yang dibungkus dibuat transparan agar scroll-shadow wrapper tembus;
+   tabel markdown tanpa wrapper tetap pakai latar --paper global di bawah. */
+.tbl-wrap table,
+.tblwrap table { background: transparent; }
 
 table {
   width: 100%;
@@ -893,31 +987,44 @@ td strong {
 
 /* ── Definitions ─────────────────────────────────────────────── */
 
+/* v2 kit Definition: parchment card with a 3px terracotta left rule; term is
+   Fraunces (display) serif, body is Inter. No full border tint — just the
+   accent spine + hairline. */
 .def {
   max-width: 800px;
   margin: 20px 0;
-  padding: 16px 20px;
-  border: 1px solid color-mix(in srgb, var(--blue) 18%, transparent);
-  border-radius: var(--radius-card);
-  background: color-mix(in srgb, var(--blue-soft) 55%, var(--paper));
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--blue-bright);
+  border-radius: var(--radius-sm);
+  background: var(--paper-soft);
 }
 
 .dterm {
+  display: block;
+  margin-bottom: 4px;
   color: var(--ink);
-  font-weight: 780;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
 }
 
 .def p {
   margin: 4px 0 0;
-  color: var(--ink-soft);
+  color: var(--ink);
+  font-size: calc(13.5px * var(--scale));
+  font-weight: 500;
+  line-height: 1.55;
 }
 
 /* ── Blockquote — kutipan editorial tenang (serif, aksen coral kiri) ──── */
+/* v2 editorial quote: Fraunces italic, terracotta left spine (matches .def). */
 blockquote {
   max-width: 720px;
   margin: 22px 0;
   padding: 4px 0 4px 20px;
-  border-left: 2px solid var(--blue-mid);
+  border-left: 3px solid var(--blue-bright);
   color: var(--ink-soft);
   font-family: var(--font-serif);
   font-style: italic;
@@ -991,26 +1098,28 @@ pre .o {
 /* Recap = kartu ringkasan tenang: permukaan hangat (tint coral di atas paper)
    + hairline lembut, BUKAN slab gelap. De-boxy & selaras target Anthropic.
    Semua teks pakai token ink → AA terjaga di light & reader. */
+/* v2 kit (NWG8T): solid accent-soft wash, hairline border, rounded. Title
+   "Poin Penting" in Fraunces (display), accent-deep, sentence case (NOT
+   uppercase). Bullets use a terracotta "→" arrow (accent fill) instead of a dot. */
 .recap {
   max-width: 920px;
-  margin: 34px 0 8px;
-  padding: 28px 30px;
-  border: 1px solid color-mix(in srgb, var(--blue) 16%, transparent);
-  border-radius: var(--radius-card);
-  background: linear-gradient(165deg,
-              color-mix(in srgb, var(--blue-soft) 72%, var(--paper)),
-              color-mix(in srgb, var(--blue-soft) 30%, var(--paper)));
-  color: var(--ink-soft);
+  margin: 30px 0 8px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--blue-soft);
+  color: var(--ink);
 }
 
 .recap h3,
 .recap h4 {
-  margin: 0 0 14px;
+  margin: 0 0 10px;
   color: var(--blue);
+  font-family: var(--font-display);
   font-size: 16px;
-  font-weight: 780;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .recap ul {
@@ -1021,21 +1130,28 @@ pre .o {
 
 .recap li {
   position: relative;
-  margin: 9px 0;
-  padding-left: 22px;
-  color: var(--ink-soft);
-  font-size: 15px;
+  margin: 8px 0;
+  padding-left: 24px;
+  color: var(--ink);
+  font-size: calc(13.5px * var(--scale));
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 .recap li::before {
-  content: "";
+  content: "→";
   position: absolute;
   left: 0;
-  top: .72em;
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: var(--blue);
+  top: 0;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: none;
+  color: var(--blue-bright);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 .recap b,
@@ -1056,22 +1172,16 @@ pre .o {
 
 /* ── Footer ──────────────────────────────────────────────────── */
 
-footer {
-  padding: 56px 28px 64px;
-  border-top: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
-  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--paper-soft) 60%, transparent));
+/* Footer v2 = komponen Footer.astro di dalam .shell-footer (PageShell/BaseLayout).
+   Reset elemen <footer>: semua visual (tint, border, padding) disuplai oleh
+   .shell-footer-wrap + .ft — flat, tanpa gradien (SPEC §3). */
+footer.shell-footer {
+  padding: 0;
+  border: 0;
+  background: none;
   color: var(--ink-soft);
-  font-size: 13px;
-  text-align: center;
-}
-
-footer p {
-  max-width: none;
-  margin: 0;
-}
-
-footer b {
-  color: var(--ink);
+  font-size: inherit;
+  text-align: left;
 }
 
 /* ── Back-to-top ─────────────────────────────────────────────── */
@@ -1172,15 +1282,15 @@ footer b {
   display: inline-flex;
   align-items: center;
   padding: 2px;
-  border: 1px solid var(--nav-line);
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: var(--nav-fill);
+  background: var(--paper);
 }
 
 .rc-sep {
   width: 1px;
   height: 16px;
-  background: var(--nav-line);
+  background: var(--line);
 }
 
 .rc-btn {
@@ -1188,14 +1298,14 @@ footer b {
   align-items: center;
   justify-content: center;
   gap: 1px;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 38px;
+  min-height: 38px;
   padding: 0 11px;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   background: transparent;
-  color: var(--nav-dim);
-  font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
+  color: var(--ink-muted);
+  font-family: var(--font-body);
   font-size: 13px;
   font-weight: 700;
   line-height: 1;
@@ -1220,13 +1330,14 @@ footer b {
 }
 
 .rc-theme {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   min-width: 0;
   padding: 0;
   font-size: 15px;
-  border: 1px solid var(--nav-line);
-  background: var(--nav-fill);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
 }
 
 .rc-theme:hover {
@@ -1247,53 +1358,56 @@ footer b {
 
 /* ── Theme: Reader (reading mode) ───────────────────────────── */
 
+/* Reader = parchment lebih hangat dari hue v2 yang SAMA (terracotta + cream),
+   bukan palet berbeda. Kontras sedikit dilembutkan untuk baca panjang; teks/
+   link tetap AA. */
 [data-theme="reader"] {
-  --bg:          #f0e8d8;   /* parchment hangat, lebih kalem dari sepia lama */
-  --paper:       #f8f1e0;
-  --paper-soft:  #efe6d2;
-  --ink:         #34291a;   /* kontras lebih lembut dari light */
-  --ink-soft:    #5f5238;
-  --ink-muted:   #6d6044;
-  --line:        #ddd0b3;
-  --line-strong: #ccba93;
+  --bg:          #efe9da;   /* parchment hangat (turunan v2 bg) */
+  --paper:       #f7f2e6;   /* kertas reader (turunan v2 card) */
+  --paper-soft:  #e9e2cf;   /* surface tenang reader (turunan v2 bg-alt) */
+  --ink:         #2c281e;   /* ink hangat, sedikit lebih lembut dari light */
+  --ink-soft:    #534c3b;
+  --ink-muted:   #6c6450;
+  --line:        #d6cdb6;   /* hairline parchment (turunan v2 border) */
+  --line-strong: #c4b896;   /* divider parchment (turunan v2 border-strong) */
 
-  /* Coral diredam untuk baca panjang, tetap AA (repoint dari Go cyan) */
-  --blue:        #964020;   /* coral-clay gelap reader */
-  --blue-bright: #c56a4a;   /* coral terang reader, dekoratif */
-  --blue-soft:   rgba(150,64,32,.12);   /* tint coral transparan; komposit tetap AA */
-  --blue-mid:    #d4ad97;   /* tint border coral reader (ganti #8fc9d8) */
-  /* alias coral untuk reader */
-  --orange:        #964020;
-  --orange-bright: #c56a4a;
-  --orange-soft:   rgba(150,64,32,.12);
+  /* Terracotta diredam untuk baca panjang, tetap AA */
+  --blue:        #95442b;   /* accent-deep reader (terracotta-clay gelap) */
+  --blue-bright: #b35636;   /* accent reader (terracotta isi/dekorasi) */
+  --blue-soft:   #ecdcce;   /* tint terracotta solid reader */
+  --blue-mid:    #ddc1ad;   /* tint border terracotta reader */
+  /* alias terracotta untuk reader */
+  --orange:        #95442b;
+  --orange-bright: #b35636;
+  --orange-soft:   #ecdcce;
 
-  /* WAJIB ditambahkan (sepia lama tidak set ini → tabel/code/steps tampak dingin di reader) */
-  --navy:        #3a2f1f;   /* th/steps/thead: coklat-tinta, bukan ungu */
-  --navy-soft:   #4a3c28;
-  --code-bg:     #2a2218;   /* kode di reader: coklat gelap hangat */
+  /* WAJIB: th/steps/thead & kode tetap hangat di reader */
+  --navy:        #322d20;   /* th/steps/thead: coklat-tinta */
+  --navy-soft:   #423b29;
+  --code-bg:     #2a2419;   /* kode reader: coklat gelap hangat */
 
-  --paper-illus: #efe5cf;
+  --faint:       #6e6857;   /* digelapkan utk kontras AA di parchment reader */
+
+  --paper-illus: #ede6d3;
   --lav:         #c6c2de;   /* TETAP konstan = warna brand ilustrasi (thumb tema-invariant) */
   --lav-soft:    #e8e2d8;   /* panel lavender ringan versi reader (lebih hangat) */
   --lav-line:    #c4bcc9;
 
-  /* semantic reader (pertahankan dari sepia bila ada; -soft dihangatkan) */
-  --teal:   #087f73;  --teal-soft:   #e2eee9;
-  --green:  #16794f;  --green-soft:  #e3eee5;
-  --red:    #bb3a32;  --red-soft:    #f6e9e3;
-  --violet: #5d4b9c;  --violet-soft: #e9e2e2;
+  /* semantic reader (-soft dihangatkan agar duduk di parchment) */
+  --teal:   #0a7d6e;  --teal-soft:   #e0ede6;
+  --green:  #2f7d4f;  --green-soft:  #e6eddf;
+  --red:    #c14a39;  --red-soft:    #f2e1d6;
+  --violet: #6a5aa6;  --violet-soft: #e8e0e6;
 
   --shadow: none; --shadow-lg: none;
 }
 
+/* Reader background: flat parchment — NO dotted texture (SPEC §3). */
 [data-theme="reader"] body {
-  background:
-    radial-gradient(var(--line) .7px, transparent .7px),
-    var(--bg);
-  background-size: 22px 22px, auto;
+  background: var(--bg);
 }
 
-[data-theme="reader"] .chip { background: color-mix(in srgb, var(--paper) 55%, transparent); }
+[data-theme="reader"] .chip { background: var(--paper-soft); }
 
 @media (prefers-reduced-motion: reduce) {
   body { transition: none; }
@@ -1310,20 +1424,21 @@ footer b {
   transition: opacity .15s ease;
 }
 .nav-brand:hover { opacity: .85; }
-.nav-brand:hover .logo-badge { background: var(--blue-bright); }
+.nav-brand:hover .logo-badge { filter: brightness(.96); }
 .nav-brand:focus-visible {
   outline: 2px solid var(--blue-bright);
   outline-offset: 3px;
 }
 .nav-wordmark {
-  color: var(--nav-ink);
-  font-weight: 600;
-  font-size: 15px;
-  letter-spacing: -0.015em;
+  font-family: var(--font-display);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.2px;
   white-space: nowrap;
 }
 .nav-wordmark-accent {
-  color: var(--blue-bright);
+  color: var(--ink);
   font-weight: 700;
 }
 .nav-context {
@@ -2049,12 +2164,11 @@ nav.toc a.active {
 .pager-name { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.3; }
 .pager-empty { visibility: hidden; }
 
-/* ── Shared content cards: gentle hover (lifts module grids to life) ──── */
+/* ── Shared content cards: gentle FLAT hover (v2 = no lift/shadow) ──────── */
 .card {
-  transition: transform .22s var(--ease-spring), border-color .2s ease, background-color .18s ease;
+  transition: border-color .2s ease, background-color .18s ease;
 }
 .card:hover {
-  transform: translateY(-2px);
   border-color: var(--hair-accent);
   background: var(--wash-coral);
 }
@@ -2395,31 +2509,42 @@ nav.toc a.active {
    Badge "vs" memakai var(--ink)/var(--paper) sehingga selalu kontras dengan
    latar di kedua tema (light/reader) tanpa aturan khusus per tema.
    ══════════════════════════════════════════════════════════════════════ */
+/* v2 kit (NWG8T): two panels JOINED edge-to-edge (no gap) with a round "vs"
+   coin centered on the seam. Left = muted parchment (--paper-soft), right =
+   accent-soft wash (--blue-soft). Labels are mono, 11px, uppercase; left faint,
+   right accent-deep. Tone variants recolor the right label + soften its wash. */
 .compare {
   position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18px;
+  gap: 0;
   max-width: 920px;
   margin: 26px 0;
 }
 .cmp-side {
   min-width: 0;
-  padding: 18px 20px 20px;
-  border: 1px solid var(--hair);
-  border-top: 2px solid var(--line-strong);
-  border-radius: var(--radius-card);
-  background: color-mix(in srgb, var(--paper-soft) 45%, var(--paper));
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  background: var(--paper-soft);
+}
+.cmp-side:first-child {
+  border-right-width: 0;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.cmp-side:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--blue-soft);
 }
 .cmp-label {
-  margin-bottom: 9px;
-  color: var(--ink);
-  font-family: var(--font-display);
+  margin-bottom: 8px;
+  color: var(--faint);
+  font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .1em;
+  font-weight: 600;
+  letter-spacing: .06em;
   text-transform: uppercase;
 }
+.cmp-side:last-child .cmp-label { color: var(--blue); }
 .cmp-body p,
 .cmp-body ul {
   margin: 0;
@@ -2440,27 +2565,32 @@ nav.toc a.active {
   z-index: 2;
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-sm);
-  background: var(--ink);
-  color: var(--paper);
-  font-family: var(--font-display);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .04em;
-  text-transform: uppercase;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  text-transform: lowercase;
 
   transform: translate(-50%, -50%);
 }
 
-.cmp-blue   { border-top-color: color-mix(in srgb, var(--blue)   55%, transparent); }
-.cmp-teal   { border-top-color: color-mix(in srgb, var(--teal)   55%, transparent); }
-.cmp-red    { border-top-color: color-mix(in srgb, var(--red)    55%, transparent); }
-.cmp-violet { border-top-color: color-mix(in srgb, var(--violet) 55%, transparent); }
-.cmp-blue .cmp-label   { color: var(--blue); }
-.cmp-teal .cmp-label   { color: var(--teal); }
-.cmp-red .cmp-label    { color: var(--red); }
+/* Tone variants recolor the RIGHT (B) panel's wash + label. `muted` keeps the
+   neutral parchment. Authors pick via aTone / bTone props. */
+.cmp-side.cmp-muted  { background: var(--paper-soft); }
+.cmp-side.cmp-blue   { background: var(--blue-soft); }
+.cmp-side.cmp-teal   { background: var(--teal-soft); }
+.cmp-side.cmp-red    { background: var(--red-soft); }
+.cmp-side.cmp-violet { background: var(--violet-soft); }
+.cmp-muted  .cmp-label { color: var(--faint); }
+.cmp-blue   .cmp-label { color: var(--blue); }
+.cmp-teal   .cmp-label { color: var(--teal); }
+.cmp-red    .cmp-label { color: var(--red); }
 .cmp-violet .cmp-label { color: var(--violet); }
 
 @media (max-width: 600px) {
@@ -2498,16 +2628,18 @@ nav.toc a.active {
 
 /* ── Box: varian Go-Artisan ───────────────────────────────────────────── */
 /* note = catatan netral; bridge = "jembatan" dari konsep JS/React/PHP/Laravel. */
+/* note = neutral parchment "Catatan" (kit: --paper-soft fill, hairline border,
+   plain ink label). bridge = "jembatan" dari JS/React/PHP/Laravel (violet). */
 .note {
-  background: linear-gradient(180deg, var(--paper-soft), var(--paper));
-  border-color: var(--line-strong);
+  background: var(--paper-soft);
+  border-color: var(--line);
 }
 .note .box-tag,
-.note .b-head { color: var(--ink-soft); }
+.note .b-head { color: var(--ink); }
 
 .bridge {
-  background: linear-gradient(180deg, var(--violet-soft), var(--paper));
-  border-color: color-mix(in srgb, var(--violet) 18%, transparent);
+  background: var(--violet-soft);
+  border-color: color-mix(in srgb, var(--violet) 28%, var(--line));
 }
 .bridge .box-tag,
 .bridge .b-head { color: var(--violet); }
@@ -2742,84 +2874,110 @@ pre.astro-code > code {
 .fig-cap b { color: var(--ink); }
 
 /* ── FileTree — struktur folder/file proyek ───────────────────────────── */
+/* v2 kit (NWG8T): one parchment (--paper-soft) panel, rounded, hairline border,
+   padded 14/16; rows are tight (gap 5). Folder icon = terracotta (--blue-bright),
+   file icon = faint; dir name = ink 600, file name = ink 500; comment = faint
+   mono with a leading "#". Indentation via --d (kit ~18px/level). */
 .filetree {
   max-width: 720px;
   margin: 26px 0;
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-card);
-  background: var(--paper);
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper-soft);
   overflow: hidden;
 }
 .ft-head {
+  margin: -14px -16px 8px;
   padding: 10px 16px;
-  border-bottom: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
-  background: var(--tint-soft);
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
   color: var(--ink-soft);
   font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: .02em;
 }
 .ft-list {
   list-style: none;
   max-width: none;
   margin: 0;
-  padding: 10px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 .ft-row {
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 0;
-  padding: 3px 16px 3px calc(16px + var(--d, 0) * 20px);
+  padding: 0 0 0 calc(var(--d, 0) * 18px);
   font-family: var(--font-mono);
   font-size: 13px;
-  line-height: 1.55;
-  transition: background-color .14s ease;
+  line-height: 1.5;
 }
-.ft-row:hover { background: color-mix(in srgb, var(--blue-soft) 40%, transparent); }
+.ft-row:hover { background: none; }
 .ft-row::marker { content: ""; }
-.ft-ic { flex: none; display: inline-flex; color: var(--ink-muted); }
-.ft-dir > .ft-ic { color: var(--blue); }
-.ft-name { color: var(--ink-soft); }
-.ft-dir > .ft-name { color: var(--ink); font-weight: 650; }
-.ft-slash { color: var(--ink-muted); }
+.ft-ic { flex: none; display: inline-flex; color: var(--faint); }
+.ft-dir > .ft-ic { color: var(--blue-bright); }
+.ft-name { color: var(--ink); font-weight: 500; }
+.ft-dir > .ft-name { color: var(--ink); font-weight: 600; }
+.ft-slash { color: var(--ink); }
 .ft-cmt {
-  margin-left: 8px;
-  color: var(--ink-muted);
-  font-family: var(--font-display);
-  font-size: 12px;
+  margin-left: 6px;
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
 }
-.ft-cmt::before { content: "# "; opacity: .7; }
+.ft-cmt::before { content: "# "; opacity: 1; }
 
-/* ── Endpoint — satu baris REST (method + path + deskripsi) ────────────── */
+/* ── Endpoint — REST rows that MERGE into one bordered list ─────────────── */
+/* v2 kit (NWG8T): adjacent <Endpoint> rows fuse into a single rounded card
+   (outer hairline + clipped corners); each row carries a bottom hairline,
+   the last loses it. method badge = solid hue (white text), radius 5,
+   62px wide; path mono ink; desc faint, pushed right. */
 .endpoint {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 12px;
   max-width: 880px;
-  margin: 12px 0;
-  padding: 13px 16px;
-  border: 1px solid var(--hair);
+  margin: 14px 0;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: var(--tint-soft);
-  transition: border-color .18s ease, background-color .18s ease, transform .2s var(--ease-spring);
+  background: var(--paper);
+  transition: background-color .18s ease;
+}
+/* Adjacent <Endpoint>s FUSE into one list: a row following another collapses
+   the seam (no extra top border, no vertical margin, square top corners); a row
+   that HAS a following endpoint squares its bottom corners. Standalone rows keep
+   the full rounded card. */
+.endpoint + .endpoint {
+  margin-top: 0;
+  border-top: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.endpoint:has(+ .endpoint) {
+  margin-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 .endpoint:hover {
-  border-color: var(--blue-mid);
   background: var(--wash-coral);
-  transform: translateX(2px);
 }
 .ep-method {
   flex: none;
   min-width: 62px;
-  padding: 4px 10px;
+  padding: 3px 7px;
   border-radius: var(--radius-xs);
   color: #fff;
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: .04em;
   text-align: center;
 }
@@ -2836,17 +2994,20 @@ pre.astro-code > code {
   background: none;
   color: var(--ink);
   font-family: var(--font-mono);
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
 }
 .ep-desc {
-  color: var(--ink-soft);
-  font-size: 13.5px;
+  margin-left: auto;
+  color: var(--faint);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: right;
 }
 
 @media (max-width: 680px) {
   .endpoint { gap: 8px 12px; }
-  .ep-desc { flex-basis: 100%; }
+  .ep-desc { flex-basis: 100%; margin-left: 0; text-align: left; }
 }
 
 /* ── Progress Tracking ────────────────────────────────────────────────── */
@@ -3358,6 +3519,12 @@ pre.astro-code > code {
 }
 
 /* ── Item nav top-bar: Roadmap & Courses (tautan teks tegas) ─────────────── */
+.nav-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 28px;
+  margin-right: 6px;
+}
 .nav-item {
   display: inline-flex;
   align-items: center;
@@ -3366,21 +3533,24 @@ pre.astro-code > code {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--nav-dim, var(--ink-soft));
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-muted);
   text-decoration: none;
-  padding: 7px 10px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  padding: 8px 4px;
+  border: 0;
+  border-radius: var(--radius-xs);
   white-space: nowrap;
-  transition: color .15s ease, background-color .15s ease;
+  transition: color .15s ease;
 }
-.nav-link:hover,
+.nav-link:hover {
+  color: var(--ink);
+}
 .nav-link.is-active,
 .nav-link[aria-current="page"] {
-  color: var(--blue);
-  background: var(--nav-fill);
+  color: var(--ink);
+  font-weight: 600;
 }
 .nav-link:focus-visible {
   outline: 2px solid var(--blue-bright);
@@ -3476,9 +3646,9 @@ pre.astro-code > code {
   align-self: center;
   overflow: hidden;
   aspect-ratio: 1 / 1;
-  border: 1px solid var(--lav-line);
+  border: 1px solid var(--line);
   border-radius: var(--radius-card);
-  background: var(--lav);
+  background: var(--paper-illus);
 }
 .course-landing-hero-media img {
   width: 100%;
@@ -3496,4 +3666,169 @@ pre.astro-code > code {
   .roadmap-banner-title { font-size: 19px; }
   .roadmap-detail-title,
   .roadmap-detail-hero-title { font-size: clamp(28px, 9vw, 40px); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SHELL / LINE SYSTEM ("Anthropic lines") — SPEC §3.
+   Dipakai oleh PageShell.astro. Konten hidup di kolom 1180px terpusat yang
+   punya DUA hairline vertikal full-height (kiri+kanan) menerus dari band
+   pertama sampai dasar footer. Nav & hero = full-width TANPA garis sisi.
+   Padding vertikal section ada DI DALAM kolom agar border tak putus.
+   Semua token-driven (var(--line)/var(--bg)) → reaktif tema light + reader.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Bleed full-width (nav, hero): rentang penuh viewport, tanpa garis sisi. */
+.shell-bleed {
+  width: 100%;
+  background: var(--bg);
+}
+.shell-bleed-inner {
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: 0 var(--shell-gutter);
+}
+
+/* Kolom berbingkai: hairline vertikal kiri+kanan, full-height tiap band.
+   .shell-col membungkus SELURUH tubuh berbingkai (band + footer) sehingga
+   garis sisi menerus; tiap band menaruh padding vertikalnya sendiri. */
+.shell-col {
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+}
+
+/* Band berbingkai di dalam kolom. Padding (termasuk vertikal) ada DI SINI,
+   bukan di wrapper, agar border kolom = tinggi penuh tanpa celah. */
+.shell-band {
+  padding: var(--shell-band-py, clamp(40px, 5vw, 64px)) var(--shell-band-px, clamp(28px, 4vw, 56px));
+}
+.shell-band + .shell-band {
+  border-top: 1px solid var(--line);   /* aturan horizontal antar-band */
+}
+.shell-band-flush { padding-top: 0; padding-bottom: 0; }        /* band tanpa py */
+.shell-band-tint  { background: var(--paper-soft); }            /* zebra / calm band */
+
+/* Aturan horizontal full-width (mengurung Stats band, dsb). Helper mandiri. */
+.shell-rule {
+  height: 0;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+.shell-rule-strong { border-top-color: var(--line-strong); }
+
+/* Footer berbingkai: garis sisi MENERUS lewat footer; baris copyright dipisah
+   aturan horizontal full-width di dalam kolom; tint bg-alt opsional. */
+.shell-footer { /* kolom border sudah dari .shell-col; ini hanya hook semantik */ }
+
+/* Pembungkus footer v2 (BaseLayout): tint bg-alt full-width edge-to-edge +
+   hairline atas full-width; .shell-col di dalamnya menyuplai garis sisi 1180.
+   Frame nr1kS/hVGBd: section footer = bg-alt menerus, garis sisi = kolom. */
+.shell-footer-wrap {
+  background: var(--paper-soft);
+  border-top: 1px solid var(--line);
+}
+.shell-footer-wrap .shell-col {
+  background: var(--paper-soft);
+}
+.shell-footer-rule { border-top: 1px solid var(--line); }
+.shell-footer-copy {
+  padding: 28px var(--shell-band-px, clamp(28px, 4vw, 56px)) 36px;
+  border-top: 1px solid var(--line);
+  background: var(--paper-soft);
+}
+
+@media (max-width: 680px) {
+  .shell-band {
+    padding-left: var(--shell-band-px-sm, 20px);
+    padding-right: var(--shell-band-px-sm, 20px);
+  }
+  .shell-bleed-inner { padding-left: 20px; padding-right: 20px; }
+  /* Mobile = full-bleed (frame 390): hapus rail sisi kolom 1180 (kiri+kanan)
+     pada SEMUA pemakai .shell-col (kolom Roadmaps/Courses + footer) agar tak ada
+     garis vertikal di tepi layar. Aturan horizontal antar-band tetap. */
+  .shell-col { border-left: 0; border-right: 0; }
+}
+
+/* ── Mobile menu: hamburger + sheet (home & module nav, ≤640px) ─────────────
+   Frame mobile 390px: brand kiri; kanan = theme toggle + hamburger. Inline
+   Roadmap/Courses pindah ke sheet full-width di bawah bar. Desktop tak berubah. */
+.nav-burger {
+  display: none; /* hanya muncul ≤640px; popover sheet default tersembunyi */
+}
+.nav-sheet { display: none; } /* >640px: tak pernah tampil walau popover terbuka */
+
+@media (max-width: 640px) {
+  /* Sembunyikan tautan inline; reachable lewat sheet hamburger. */
+  .nav-primary { display: none; }
+
+  /* Topbar lebih ramping (56px) menyamai frame mobile. */
+  .topbar-inner { min-height: 56px; }
+
+  .nav-burger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex: none;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--paper);
+    color: var(--ink);
+    cursor: pointer;
+    transition: background .15s ease;
+  }
+  .nav-burger:hover { background: var(--paper-soft); }
+  .nav-burger:focus-visible {
+    outline: 2px solid var(--blue-bright);
+    outline-offset: 2px;
+  }
+  .nav-burger svg { display: block; }
+
+  /* Sheet: panel full-width disematkan di bawah bar 56px. [popover] default
+     ter-center di top-layer → override jadi pita lebar penuh. */
+  .nav-sheet {
+    display: block;
+    position: fixed;
+    margin: 0;
+    inset: 56px 0 auto 0;
+    width: auto;
+    max-width: none;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    background: var(--bg);
+    padding: 8px 20px 16px;
+  }
+  .nav-sheet:not(:popover-open) { display: none; }
+  .nav-sheet::backdrop {
+    background: color-mix(in srgb, var(--ink) 28%, transparent);
+  }
+
+  .nav-sheet-link {
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 0 4px;
+    font-family: var(--font-body);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: 1px solid var(--line);
+    transition: color .15s ease;
+  }
+  .nav-sheet-link:last-child { border-bottom: 0; }
+  .nav-sheet-link:hover { color: var(--blue); }
+  .nav-sheet-link.is-active,
+  .nav-sheet-link[aria-current="page"] {
+    color: var(--blue);
+    font-weight: 700;
+  }
+  .nav-sheet-link:focus-visible {
+    outline: 2px solid var(--blue-bright);
+    outline-offset: 2px;
+  }
 }

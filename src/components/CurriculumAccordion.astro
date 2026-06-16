@@ -1,0 +1,286 @@
+---
+// CurriculumAccordion.astro — stage → modules accordion (frame XM9X0 "Kurikulum").
+// Native <details>/<summary>: zero JS, accessible, keyboard-toggleable.
+// v2 tokens only; flat (no shadow), rounded. Light + reader themes inherit via tokens.
+// UI copy in English; per-stage SUMMARY (Bahasa Indonesia) is author-supplied via props.
+
+interface Module {
+  title: string;
+  href: string;
+  done?: boolean;
+}
+interface Stage {
+  title: string;
+  summary?: string;
+  modules: Module[];
+}
+interface Props {
+  stages: Stage[];
+  /** Title above the accordion (default "Kurikulum"). */
+  heading?: string;
+  /** Which stage starts open (0-based). Default 0 = first stage. Pass -1 for all closed. */
+  openIndex?: number;
+}
+
+const { stages, heading = 'Kurikulum', openIndex = 0 } = Astro.props;
+
+const totalModules = stages.reduce((n, s) => n + s.modules.length, 0);
+
+// First not-done module across the whole curriculum is the "current" one.
+let currentSeen = false;
+const computed = stages.map((stage) => {
+  const total = stage.modules.length;
+  const doneCount = stage.modules.filter((m) => m.done).length;
+  const mods = stage.modules.map((m) => {
+    let state: 'done' | 'current' | 'todo' = m.done ? 'done' : 'todo';
+    if (!m.done && !currentSeen) {
+      state = 'current';
+      currentSeen = true;
+    }
+    return { ...m, state };
+  });
+  return { ...stage, total, doneCount, mods };
+});
+---
+
+<section class="cur" aria-label={heading}>
+  <header class="cur-head">
+    <h2 class="cur-title">{heading}</h2>
+    <span class="cur-count">{totalModules} modul tersedia</span>
+  </header>
+
+  <div class="cur-stages">
+    {computed.map((stage, i) => (
+      <details class="stage" open={i === openIndex}>
+        <summary class="stage-head">
+          <span class="stage-lead">
+            <span class="stage-tag">Tahap {i + 1}</span>
+            <span class="stage-name">{stage.title}</span>
+          </span>
+          <span class="stage-meta">
+            {stage.doneCount > 0 && (
+              <span class="stage-done">{stage.doneCount}/{stage.total} selesai</span>
+            )}
+            <span class="stage-cnt">{stage.total} modul</span>
+            <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" aria-hidden="true">
+              <path d="M6 9l6 6l6 -6" />
+            </svg>
+          </span>
+        </summary>
+
+        {stage.summary && <p class="stage-summary">{stage.summary}</p>}
+
+        <ul class="modules">
+          {stage.mods.map((m) => (
+            <li class={`module module-${m.state}`}>
+              <a class="module-link" href={m.href}>
+                {m.state === 'done' && (
+                  <svg class="m-ico" viewBox="0 0 24 24" width="18" height="18" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+                    <path d="M9 12l2 2l4 -4" />
+                  </svg>
+                )}
+                {m.state === 'current' && (
+                  <svg class="m-ico" viewBox="0 0 24 24" width="18" height="18" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+                    <path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+                  </svg>
+                )}
+                {m.state === 'todo' && (
+                  <svg class="m-ico" viewBox="0 0 24 24" width="18" height="18" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+                  </svg>
+                )}
+                <span class="m-title">{m.title}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </details>
+    ))}
+  </div>
+</section>
+
+<style>
+  .cur {
+    display: block;
+    font-family: var(--font-body);
+  }
+
+  /* ── Header row ─────────────────────────────────────────── */
+  .cur-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .cur-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+  .cur-count {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--faint);
+  }
+
+  /* ── Stage list ─────────────────────────────────────────── */
+  .cur-stages {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .stage {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+  }
+
+  /* ── Stage header (summary) ─────────────────────────────── */
+  .stage-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 22px;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+  .stage-head::-webkit-details-marker { display: none; }
+
+  .stage-lead {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+  }
+  .stage-tag {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 9px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--paper-soft);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--faint);
+    white-space: nowrap;
+  }
+  .stage-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .stage-meta {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .stage-done {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--blue);
+  }
+  .stage-cnt {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--faint);
+  }
+  .chev {
+    flex: none;
+    color: var(--faint);
+    transition: transform 0.18s ease;
+  }
+  .stage[open] .chev { transform: rotate(180deg); }
+
+  /* hover affordance on the whole header */
+  .stage-head:hover .stage-name { color: var(--blue); }
+
+  /* ── Optional Bahasa-Indonesia stage summary ────────────── */
+  .stage-summary {
+    margin: 0;
+    padding: 0 22px 14px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+
+  /* ── Modules ────────────────────────────────────────────── */
+  .modules {
+    list-style: none;
+    max-width: none; /* batalkan aturan prosa global `ol { max-width: 720px }` */
+    margin: 0;
+    padding: 8px 0;
+    border-top: 1px solid var(--line);
+  }
+  .module { margin: 0; }
+
+  .module-link {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 22px;
+    text-decoration: none;
+    color: inherit;
+  }
+  .module-link:hover { background: var(--paper-soft); }
+  .module-link:hover .m-title { color: var(--blue); }
+
+  .m-ico { flex: none; }
+  .module-done .m-ico,
+  .module-current .m-ico { color: var(--blue-bright); }
+  .module-todo .m-ico { color: var(--faint); }
+
+  .m-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .module-done .m-title,
+  .module-current .m-title { color: var(--ink); }
+  .module-current .m-title { font-weight: 600; }
+  .module-todo .m-title { color: var(--ink-muted); }
+
+  @media (max-width: 560px) {
+    .stage-head { padding: 16px 16px; gap: 10px; }
+    .stage-lead { gap: 10px; }
+    .stage-meta { gap: 10px; }
+    .stage-done { display: none; }
+    .module-link { padding: 11px 16px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chev { transition: none; }
+  }
+</style>

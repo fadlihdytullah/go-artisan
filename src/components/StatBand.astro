@@ -1,0 +1,132 @@
+---
+/*
+  StatBand.astro — v2 stats band (Home frame nr1kS → "Stats" node Pad8h).
+
+  A row of stat cells bracketed by full-width horizontal hairlines (top + bottom),
+  sitting on the cream page background. The inner row is the centered 1180 column
+  carrying continuous left+right hairlines; each cell is divided by a vertical
+  hairline (matching the "Anthropic lines" system). Big numbers in Fraunces,
+  labels + captions in Inter. Flat, rounded, no shadow — light + reader themes.
+
+  Frame measurements (Pad8h / ZLMDL):
+    band     — fill #F3F1E9 (--bg), top+bottom 1px #D9D4C4 (--line), centered
+    inner    — 1180px, left+right 1px --line
+    cell     — padding 36/40, vertical, gap 6, right 1px --line (last cell none)
+    number   — Fraunces 42 / 600 / letter-spacing -1, #1A1916 (--ink)
+    label    — Inter 15 / 600, --ink
+    caption  — Inter 12 / 500, #9A9582 (--faint)
+*/
+export interface Stat {
+  value: string | number;
+  label: string;
+  /** Optional third line (frame's faint caption, e.g. "curated learning paths"). */
+  caption?: string;
+}
+
+interface Props {
+  stats: Stat[];
+  class?: string;
+}
+
+const { stats, class: className = "" } = Astro.props;
+---
+
+<section class:list={["statband", className]} aria-label="Highlights">
+  <div class="statband__inner">
+    {
+      stats.map((s) => (
+        <div class="statband__cell">
+          <div class="statband__num">{s.value}</div>
+          <div class="statband__label">{s.label}</div>
+          {s.caption && <div class="statband__cap">{s.caption}</div>}
+        </div>
+      ))
+    }
+  </div>
+</section>
+
+<style>
+  /* Full-width band on the cream page, bracketed by horizontal hairlines.
+     padding:0 menetralkan default global `section { padding:56px 0 }` (warisan v1)
+     yang membocorkan 56px atas/bawah — tanpa ini kolom-inner tak setinggi band,
+     hairline vertikal jadi pendek & tak menyentuh rule atas/bawah. */
+  .statband {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    padding: 0;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  /* Centered 1180 column with continuous left + right hairlines. */
+  .statband__inner {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    width: 100%;
+    max-width: var(--shell-max, 1180px);
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+  }
+
+  /* Each stat cell — vertical, padded, divided by a vertical hairline. */
+  .statband__cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 36px 40px;
+    border-right: 1px solid var(--line);
+  }
+  .statband__cell:last-child {
+    border-right: 0;
+  }
+
+  .statband__num {
+    font-family: var(--font-display, "Fraunces", Georgia, serif);
+    font-weight: 600;
+    font-size: 42px;
+    line-height: 1;
+    letter-spacing: -1px;
+    color: var(--ink);
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+
+  .statband__label {
+    font-family: var(--font-body, "Inter", system-ui, sans-serif);
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.2;
+    color: var(--ink);
+  }
+
+  .statband__cap {
+    font-family: var(--font-body, "Inter", system-ui, sans-serif);
+    font-weight: 500;
+    font-size: 12px;
+    line-height: 1.25;
+    color: var(--faint);
+  }
+
+  /* Responsive: 4 → 2 columns on narrow viewports, redraw the grid hairlines. */
+  @media (max-width: 720px) {
+    .statband__inner {
+      grid-template-columns: repeat(2, 1fr);
+      /* Mobile full-bleed: buang rail sisi kiri+kanan; divider tengah (kolom 2n)
+         tetap sebagai garis bagi grid 2×2. */
+      border-left: 0;
+      border-right: 0;
+    }
+    .statband__cell {
+      padding: 22px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    /* keep only the left column's right divider, drop trailing row borders */
+    .statband__cell:nth-child(2n) {
+      border-right: 0;
+    }
+    .statband__cell:nth-last-child(-n + 2) {
+      border-bottom: 0;
+    }
+  }
+</style>

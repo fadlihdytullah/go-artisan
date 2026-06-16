@@ -1,0 +1,209 @@
+---
+/*
+  WhyBand.astro — homepage "Why us" marketing band (frame nr1kS → "Section — Why").
+
+  A cream panel that frames a heading block (eyebrow + Fraunces title + Inter
+  subtitle) above a 3-column grid of bordered feature cells. Each cell carries an
+  auto-numbered mono index (01, 02, …), a Fraunces title and an Inter description.
+
+  Flat (no shadow), rounded, token-driven → reaktif tema light + reader.
+  All values re-point to the v2 tokens established in Phase 1a (no globals.css edits).
+
+  Props:
+    - title   string                     — section heading (Fraunces). Required.
+    - items?  { title, body }[]           — feature cells; auto-numbered 01..NN.
+
+  Slots:
+    - default — optional extra content rendered below the grid (e.g. a CTA row).
+
+  Note: the eyebrow ("WHY US") and the subtitle copy match the frame's text nodes.
+*/
+interface Item {
+  title: string;
+  body: string;
+}
+interface Props {
+  title: string;
+  items?: Item[];
+}
+const { title, items = [] } = Astro.props;
+const hasExtra = Astro.slots.has('default');
+const pad2 = (n: number) => String(n + 1).padStart(2, '0');
+---
+<section class="why-band">
+  <div class="why-inner">
+    <header class="why-head">
+      <span class="why-eyebrow">WHY US</span>
+      <h2 class="why-title">{title}</h2>
+      <p class="why-sub">Six reasons our roadmaps and courses actually get you to production.</p>
+    </header>
+
+    {items.length > 0 && (
+      <ul class="why-grid" role="list">
+        {items.map((item, i) => (
+          <li class="why-cell">
+            <span class="why-index">{pad2(i)}</span>
+            <h3 class="why-cell-title">{item.title}</h3>
+            <p class="why-cell-body">{item.body}</p>
+          </li>
+        ))}
+      </ul>
+    )}
+
+    {hasExtra && (
+      <div class="why-extra">
+        <slot />
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  /* ── Section — Why ──────────────────────────────────────────────────────────
+     Cream band (var(--bg)) with the centered 1180 column carrying the continuous
+     left/right hairlines; a bottom hairline closes the band into the line-system.
+     Frame: heading block (96px top pad) + 56px gap + bordered 3×2 grid. */
+  .why-band {
+    background: var(--bg);
+    /* Separator horizontal ke section di ATAS (Courses) — garis menyambung
+       kolom. border-bottom dimatikan (override global `section`) agar separator
+       ke CTA tunggal (disuplai border-top .cta-band), tidak dobel. */
+    border-top: 1px solid var(--line);
+    border-bottom: 0;
+    /* WAJIB override padding global `section{padding:56px 0}` → 0. Bila tidak,
+       .why-inner (pemegang border sisi) ter-inset 56px atas/bawah sehingga garis
+       vertikal PUTUS di tiap junction. Dengan 0, border .why-inner span penuh
+       tinggi band → garis sisi menerus dgn .shell-col & .cta-band.
+       Centering kolom 1180 ditangani .why-inner via margin:auto (IDENTIK .shell-col;
+       jangan hardcode padding 130px — itu hanya pas di 1440). */
+    padding: 0;
+  }
+  /* FULL-WIDTH: tanpa batas 1180 & tanpa garis sisi vertikal (rail) — section
+     Why sengaja keluar dari sistem garis agar membentang penuh (permintaan
+     desain terbaru). Tanda plus/crosshair juga dihapus. */
+  .why-inner {
+    max-width: none;
+    margin: 0;
+    padding: clamp(56px, 7vw, 96px) 0;
+    border-left: 0;
+    border-right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(36px, 4.5vw, 56px);
+  }
+
+  /* Heading block — eyebrow (mono accent), Fraunces title, muted Inter sub. */
+  .why-head {
+    padding: 0 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .why-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.16em;
+    color: var(--blue-bright); /* v2 accent #BD5D3E */
+  }
+  .why-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(30px, 4vw, 42px);
+    font-weight: 500;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .why-sub {
+    margin: 0;
+    max-width: 680px;
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.5;
+    color: var(--ink-muted);
+  }
+
+  /* Grid — three columns; cells share inner hairlines (right + bottom) so the
+     block reads as one ruled 3×N matrix. Top hairline closes the top edge. */
+  .why-grid {
+    position: relative;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    /* Override aturan prosa global `ul,ol{max-width:720px}` yang bocor ke <ul>
+       grid ini & menahannya di 720px (kolom jadi 240px, kosong di kanan). */
+    max-width: none;
+    border-top: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 1fr;
+  }
+
+  .why-cell {
+    /* margin:0 WAJIB override global `li{margin:8px 0}` — kalau tidak, sel tak
+       mengisi penuh track grid (gap 8/16px), garis divider terputus & garis
+       horizontal bergeser dari crosshair. */
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 36px;
+    min-height: 240px;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  /* Drop the outer right edge (the column border already draws it). */
+  .why-cell:nth-child(3n) {
+    border-right: 0;
+  }
+
+  .why-index {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    color: var(--faint);
+  }
+  .why-cell-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 21px;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .why-cell-body {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--ink-muted);
+  }
+
+  .why-extra {
+    padding: 0 48px;
+  }
+
+  /* Responsive: 2-up on tablets, 1-up on phones — keep the ruled look intact. */
+  @media (max-width: 900px) {
+    .why-grid { grid-template-columns: repeat(2, 1fr); }
+    .why-cell:nth-child(3n) { border-right: 1px solid var(--line); }
+    .why-cell:nth-child(2n) { border-right: 0; }
+  }
+  @media (max-width: 600px) {
+    /* Lepas padding sisi band → separator horizontal (border-top grid +
+       border-bottom tiap sel) membentang FULL-WIDTH tepi-ke-tepi. Gutter teks
+       disuplai padding internal head/cell/extra (24px). */
+    .why-band { padding: 0; }
+    .why-head, .why-extra { padding: 0 24px; }
+    .why-grid { grid-template-columns: 1fr; }
+    .why-cell { border-right: 0 !important; min-height: 0; padding: 28px 24px; }
+    /* Item terakhir menyatu ke CTA/footer: buang jarak bawah .why-inner & garis
+       bawah sel terakhir → separator tunggal disuplai border-top .cta-band
+       (tanpa gap, tanpa garis dobel). */
+    .why-inner { padding-bottom: 0; }
+    .why-cell:last-child { border-bottom: 0; }
+  }
+</style>

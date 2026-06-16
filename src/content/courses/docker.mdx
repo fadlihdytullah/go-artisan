@@ -1,0 +1,1119 @@
+---
+title: "Modul Belajar Docker - Web Artisan"
+badge: "DOCK"
+topTitle: "Belajar Docker"
+topSub: "Go untuk Developer JavaScript & PHP"
+summary: "Memahami Docker sebagai packaging dan runtime aplikasi backend: image, container, Dockerfile multi-stage, networking, volume, dan Compose untuk menjalankan stack Go yang konsisten dari laptop sampai production."
+order: 4
+target: "Course · Docker"
+readingTime: "~95 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "kenapa-docker", title: "Kenapa Backend Developer Perlu Docker" }
+  - { num: "02", id: "mental-model", title: "Mental Model: Image, Container, Registry" }
+  - { num: "03", id: "container-pertama", title: "Menjalankan Container Pertama" }
+  - { num: "04", id: "filesystem-layer", title: "Filesystem Container dan Layer" }
+  - { num: "05", id: "dockerfile", title: "Dockerfile: Resep Image" }
+  - { num: "06", id: "multistage", title: "Multi-stage Build untuk Go" }
+  - { num: "07", id: "cmd-entrypoint", title: "CMD vs ENTRYPOINT" }
+  - { num: "08", id: "env-config", title: "Environment Variables dan Config" }
+  - { num: "09", id: "networking", title: "Docker Networking Dasar" }
+  - { num: "10", id: "volumes", title: "Volumes dan Bind Mounts" }
+  - { num: "11", id: "compose", title: "Docker Compose: Multi-Container Stack" }
+  - { num: "12", id: "logs-debug", title: "Logs, Exec, dan Resource" }
+  - { num: "13", id: "registry", title: "Image Tagging, Versioning, dan Registry" }
+  - { num: "14", id: "security-prod", title: "Security Dockerfile dan Image Production" }
+  - { num: "15", id: "studi-kasus", title: "Studi Kasus: Containerize Go API Skincare" }
+  - { num: "16", id: "topik-lanjutan", title: "Topik Lanjutan dan Peta ke Deploy" }
+  - { num: "17", id: "ringkasan", title: "Ringkasan dan Poin Penting" }
+footerTitle: "Modul Belajar Docker - Web Artisan"
+footerSub: "Bagian dari Course Web Artisan, memperdalam backend Go di luar jalur roadmap"
+---
+
+import { Section, Box, Steps, Step, Recap, CardGrid, Card, Chip, Hero, Compare, FileTree, Endpoint, Def, Figure } from "@components";
+import DockerLayersFig01 from "@figures/DockerLayersFig01.astro";
+import DockerPortMapFig01 from "@figures/DockerPortMapFig01.astro";
+import DockerVolumeBindFig01 from "@figures/DockerVolumeBindFig01.astro";
+
+<Hero eyebrow="Course &middot; Docker" title="Belajar <em>Docker</em><br />Container untuk Backend Developer">
+  <p>Docker mengemas aplikasi beserta seluruh runtime-nya menjadi image yang berjalan sama di mana saja, dari laptop, CI, staging, sampai production.</p>
+  <Fragment slot="meta">
+    <Chip icon="package">Container <b>runtime</b></Chip>
+    <Chip icon="server">Compose <b>stack lokal</b></Chip>
+    <Chip icon="clock">~95 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+
+<Section num="01" id="kenapa-docker" title="Kenapa Backend Developer Perlu Docker" sub="Dari &quot;works on my machine&quot; ke runtime yang konsisten">
+
+<p class="lead">Docker mengubah pertanyaan "kok jalan di laptopku tapi mati di server" menjadi tidak relevan, karena yang dikirim bukan kode mentah melainkan seluruh runtime yang sudah jadi.</p>
+
+Setiap backend punya ketergantungan tak kasat mata: versi Go, library sistem, variabel lingkungan, sertifikat CA, hingga timezone. Di laptopmu semuanya pas, di server staging sedikit berbeda, dan binary yang sama tiba-tiba gagal. Inilah inti "works on my machine": runtime tidak pernah benar-benar sama antar mesin. Docker menyelesaikannya dengan membungkus aplikasi beserta seluruh runtime-nya ke dalam satu **image** yang immutable, lalu menjalankan image itu sebagai **container** di mana saja secara identik.
+
+Penting dipahami sejak awal: container **bukan** VM ringan. VM menjalankan kernel dan OS tamu penuh di atas hypervisor, berat dan lambat boot. Container berbagi kernel host, dan isolasi antar proses dicapai lewat fitur kernel Linux: **namespaces** (memberi proses pandangan terpisah atas PID, jaringan, mount, hostname) dan **cgroups** (membatasi CPU dan memori). Jadi container itu cuma proses biasa di host yang "dipagari", bukan sistem operasi tersendiri. Itu sebabnya ia start dalam milidetik dan ringan.
+
+<div class="tbl-wrap"><table><thead><tr><th>Aspek</th><th>Virtual Machine</th><th>Container</th></tr></thead><tbody><tr><td>Isolasi</td><td>OS tamu penuh + kernel sendiri</td><td>Proses terisolasi, berbagi kernel host</td></tr><tr><td>Boot</td><td>Detik sampai menit</td><td>Milidetik</td></tr><tr><td>Ukuran</td><td>Gigabyte</td><td>Megabyte</td></tr><tr><td>Overhead</td><td>Hypervisor</td><td>Nyaris nol</td></tr></tbody></table></div>
+
+<Box variant="analogy" icon="📦" label="Analogi: kontainer pengapalan"><p>Sebelum kontainer standar, barang dimuat manual dan tiap pelabuhan menanganinya beda. Kontainer baja berukuran seragam membuat kapal, truk, dan derek tak peduli isinya, sama seperti image yang jalan identik di laptop maupun server.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: node_modules dan Laravel Sail"><p>Pernah `npm install` menghasilkan dependensi beda antar mesin karena versi Node berbeda, atau pakai Laravel Sail yang sebenarnya Docker? Image membawa runtime Go, library sistem, dan config sekaligus, jadi tidak ada lagi langkah "install dulu di server".</p></Box>
+
+Manfaat utamanya adalah **reproducibility**: image yang sama persis mengalir dari laptop developer ke CI, ke staging, lalu ke production tanpa rebuild ulang yang bisa menghasilkan hasil berbeda. Bonusnya **dependency isolation**: layanan A butuh PostgreSQL 16 dan layanan B butuh 17, keduanya hidup berdampingan tanpa bentrok di host.
+
+```mermaid
+flowchart LR
+  D[Dev<br/>laptop] -->|image yang sama| CI[CI<br/>pipeline]
+  CI -->|image yang sama| S[Staging]
+  S -->|image yang sama| P[Production]
+```
+
+<p class="fig-cap"><b>Satu image, banyak tahap.</b> Artefak yang diuji di CI adalah artefak yang berjalan di production.</p>
+
+Ayo buktikan dengan satu perintah. Jalankan `docker run hello-world`. Yang terjadi di balik layar: Docker mencari image `hello-world` di cache lokal, tidak menemukannya lalu menarik (pull) dari Docker Hub, membuat container baru dari image itu, menjalankan proses di dalamnya yang mencetak pesan, lalu proses selesai dan container berhenti.
+
+```bash title="Terminal"
+docker run hello-world
+# Unable to find image 'hello-world:latest' locally
+# latest: Pulling from library/hello-world
+# Hello from Docker!
+```
+
+<Box variant="note" icon="📝" label="Yang baru kamu pelajari"><p>Docker adalah mekanisme packaging plus runtime aplikasi: ia membungkus aplikasi beserta runtime-nya menjadi image, lalu menjalankannya sebagai proses terisolasi yang konsisten di mesin mana pun.</p></Box>
+
+</Section>
+
+<Section num="02" id="mental-model" title="Mental Model: Image, Container, Registry" sub="Plus Docker Engine, daemon, dan CLI">
+
+<p class="lead">Tiga kata kunci Docker, image, container, dan registry, akan terus muncul, jadi mari kunci maknanya dulu sebelum menyentuh perintah yang lebih dalam.</p>
+
+Sebuah **image** adalah template yang immutable: ia membekukan sebuah filesystem lengkap berisi dependensi, konfigurasi, dan metadata (perintah default, port, environment). Image tidak pernah berubah setelah dibuat. Sebuah **container** adalah proses yang berjalan dari sebuah image, dengan satu lapisan **writable** miliknya sendiri di atas lapisan image yang read-only. Sebuah **registry** adalah tempat menyimpan dan berbagi image, seperti Docker Hub (`docker.io`), GitHub Container Registry (`ghcr.io`), atau AWS ECR.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: class vs instance"><p>Image itu seperti class atau package npm yang terpasang: definisi diam. Container itu instance dari class tersebut, atau proses `node` yang berjalan dari package itu. Satu definisi, banyak proses hidup.</p></Box>
+
+Image diidentifikasi lewat **tag** dan **digest**. Tag seperti `nginx:1.27` adalah label yang ramah manusia tapi **mutable**, pemiliknya bisa menggeser `1.27` ke build yang berbeda kapan saja. Digest seperti `nginx@sha256:abc...` adalah sidik jari kriptografis dari isi image, **immutable** dan menjamin kamu menarik bit yang persis sama. Untuk deploy yang reproducible, tag dipakai untuk keterbacaan, digest untuk kepastian.
+
+<div class="tbl-wrap"><table><thead><tr><th>Konsep</th><th>Sifat</th><th>Analogi</th></tr></thead><tbody><tr><td>Image</td><td>Template immutable</td><td>Class / package</td></tr><tr><td>Container</td><td>Proses + writable layer</td><td>Instance / proses berjalan</td></tr><tr><td>Registry</td><td>Penyimpanan & distribusi</td><td>npm registry / Packagist</td></tr></tbody></table></div>
+
+Secara arsitektur, perintah `docker` yang kamu ketik berasal dari **Docker CLI**. CLI tidak melakukan pekerjaan berat; ia mengirim permintaan ke **Docker daemon** (`dockerd`), bagian inti dari **Docker Engine**. Daemon inilah yang benar-benar mengelola image, container, network, dan volume, menarik image dari registry, dan menjalankan proses container.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: CLI seperti artisan atau npm script"><p>Sama seperti `php artisan` atau `npm run` hanyalah penyetir yang memerintahkan mesin di belakangnya, `docker` CLI menyetir `dockerd`. Yang melakukan pekerjaan nyata adalah daemon, bukan baris perintahmu.</p></Box>
+
+```mermaid
+flowchart LR
+  CLI[docker CLI] -->|API request| D[dockerd<br/>Docker Engine]
+  D --- IM[Images]
+  D --- CT[Containers]
+  D --- NW[Networks]
+  D --- VOL[Volumes]
+  REG[(Registry)] <-->|pull / push| D
+```
+
+<p class="fig-cap"><b>Alur perintah Docker.</b> CLI mengirim ke daemon; daemon mengelola objek lokal dan bertukar image dengan registry.</p>
+
+Mari rasakan lifecycle-nya. `docker pull nginx` menarik image dari Docker Hub. `docker images` menampilkan image yang tersimpan lokal. `docker run` membuat lalu menjalankan container dari image. `docker ps` menampilkan container yang sedang berjalan, sementara `docker ps -a` menampilkan semua container termasuk yang sudah berhenti.
+
+```bash title="Terminal"
+docker pull nginx          # tarik image ke cache lokal
+docker images              # daftar image lokal
+docker run -d nginx        # buat & jalankan container (detached)
+docker ps                  # container yang sedang jalan
+docker ps -a               # semua container, termasuk yang exited
+```
+
+<Box variant="note" icon="📝" label="Satu image, banyak container"><p>Dari satu image `nginx` kamu bisa menjalankan puluhan container sekaligus, masing-masing proses terpisah dengan writable layer sendiri. Image tetap satu dan tak berubah.</p></Box>
+
+</Section>
+
+<Section num="03" id="container-pertama" title="Menjalankan Container Pertama" sub="Foreground vs detached, publish port, name, env">
+
+<p class="lead">Sebuah container hidup selama satu proses utamanya berjalan, jadi memahami cara mengikat, menamai, dan mengintip proses itu adalah keterampilan harian seorang backend developer.</p>
+
+Container menjalankan **satu proses utama** (PID 1 di dalamnya). Ketika proses itu keluar, container ikut berhenti. Saat dijalankan **foreground**, terminalmu menempel ke output proses dan tertahan sampai proses selesai. Dengan flag `-d` (**detached**), container berjalan di latar dan terminalmu langsung bebas.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari npm run dev"><p>`npm run dev` menahan terminalmu selama server hidup, itu mode foreground. Flag `-d` pada `docker run` seperti menjalankan proses yang sama di background, terminal kembali bisa dipakai sementara container tetap melayani.</p></Box>
+
+Agar container bisa diakses dari host, kamu perlu **publish port** dengan `-p host:container`. Tanpa ini, port yang dibuka di dalam container tidak terjangkau dari mesinmu. Flag lain yang sering dipakai: `--name` memberi nama yang mudah diingat (ganti ID heksadesimal acak), `-e KEY=val` atau `--env-file .env` menyuntikkan environment variable, dan `--rm` otomatis menghapus container saat ia berhenti agar tidak menumpuk.
+
+<Figure><DockerPortMapFig01 /><Fragment slot="caption"><b>Publish port.</b> -p 8080:80 memetakan port 8080 host ke 80 container.</Fragment></Figure>
+
+Mari jalankan server web sungguhan. Perintah berikut menjalankan nginx secara detached, menamainya `web`, dan memetakan port 80 container ke 8080 host.
+
+```bash title="Terminal"
+docker run -d --name web -p 8080:80 nginx
+# buka http://localhost:8080 di browser, halaman selamat datang nginx muncul
+docker logs web        # intip output proses di dalam container
+docker stop web        # hentikan container (kirim sinyal ke proses utama)
+docker rm web          # hapus container yang sudah berhenti
+```
+
+Karena container berjalan detached, kamu tidak melihat log-nya langsung di terminal. Di situlah `docker logs web` berguna: ia mengalirkan apa pun yang ditulis proses utama ke stdout dan stderr, persis output yang akan kamu lihat seandainya menjalankannya foreground.
+
+```mermaid
+sequenceDiagram
+  participant U as Browser
+  participant H as Host :8080
+  participant C as Container :80
+  U->>H: GET http://localhost:8080
+  H->>C: teruskan ke port 80
+  C-->>H: respons nginx
+  H-->>U: halaman tampil
+```
+
+<p class="fig-cap"><b>Jalur permintaan.</b> Host menerima di 8080 lalu meneruskan ke port 80 di dalam container.</p>
+
+<Box variant="warn" icon="⚠️" label="Jebakan: lupa -p"><p>Tanpa `-p`, proses di dalam container boleh saja mendengarkan di port 80, tetapi port itu tidak terekspos ke host. Browser akan gagal konek, dan banyak pemula mengira aplikasinya rusak padahal hanya kurang publish port.</p></Box>
+
+<Box variant="tip" icon="💡" label="Pakai --rm untuk percobaan singkat"><p>Saat sekadar mencoba sebuah image, tambahkan `--rm` agar container otomatis terhapus begitu berhenti. Kamu terhindar dari menumpuknya container `exited` yang harus dibersihkan manual lewat `docker rm`.</p></Box>
+
+</Section>
+
+
+<Section num="04" id="filesystem-layer" title="Filesystem Container dan Layer" sub="Layer image immutable plus writable layer container">
+
+<p class="lead">Image Docker bukan satu blok utuh, melainkan tumpukan layer read-only, dan container hanyalah satu lapisan tipis yang bisa ditulis di atasnya.</p>
+
+Setiap instruksi di Dockerfile (`FROM`, `COPY`, `RUN`, ...) menghasilkan satu **layer** baru yang immutable. Layer ini disimpan terpisah, di-hash, dan di-cache. Saat Docker membangun image, ia menumpuk layer-layer itu dari bawah ke atas. Karena immutable, layer yang sama bisa dipakai ulang oleh banyak image yang berbeda, dan tidak pernah berubah setelah dibuat.
+
+Ketika kamu menjalankan `docker run`, daemon tidak menyalin seluruh image. Ia hanya menambahkan satu **writable layer** (sering disebut container layer) tepat di atas tumpukan image. Semua tulisan baru, file yang kamu buat, log yang dihasilkan, perubahan konfigurasi, mendarat di layer writable ini, bukan di layer image di bawahnya.
+
+<Figure><DockerLayersFig01 /><Fragment slot="caption"><b>Layer image dan writable layer.</b> Image bersifat immutable; container menambah satu lapisan writable yang hilang saat container dihapus.</Fragment></Figure>
+
+Mekanisme ini disebut **copy-on-write (CoW)**. Selama container hanya membaca file, ia membaca langsung dari layer image yang dibagikan. Begitu container mengubah sebuah file, Docker menyalin file itu ke writable layer lebih dulu, lalu menulis perubahan di salinan tersebut. Layer image asli tidak pernah tersentuh. Inilah kenapa banyak container dari satu image yang sama nyaris tidak memakan disk tambahan: mereka berbagi layer read-only yang sama dan hanya membayar untuk perubahan masing-masing.
+
+<Box variant="analogy" icon="🧊" label="Analogi: lembar transparansi di atas peta"><p>Image adalah peta cetak yang permanen; writable layer adalah lembar transparansi di atasnya tempat kamu mencoret-coret. Buang transparansinya, petanya tetap bersih seperti semula.</p></Box>
+
+Konsekuensi penting: **menghapus container berarti membuang writable layer-nya**, dan semua yang ditulis di sana ikut hilang. Image di bawahnya sama sekali tidak terpengaruh. Ini sengaja: container dirancang sebagai sesuatu yang sekali pakai (ephemeral). Mari buktikan langsung di terminal.
+
+```bash title="Terminal"
+docker run -it --name tmp alpine sh
+# di dalam container:
+mkdir -p /data && echo "halo skincare" > /data/catatan.txt
+cat /data/catatan.txt   # -> halo skincare
+exit
+docker rm tmp                     # buang container + writable layer-nya
+docker run -it --name tmp alpine sh
+cat /data/catatan.txt   # -> No such file or directory
+```
+
+File `/data/catatan.txt` tadi hidup di writable layer container pertama. Saat `docker rm tmp` menghapus container, layer itu lenyap bersama isinya. Container kedua mulai dari layer image `alpine` yang bersih, jadi `/data` kosong lagi. Bedakan ini dari `docker rmi alpine` yang menghapus image-nya: `docker rm` membuang instance, `docker rmi` membuang resepnya.
+
+<div class="tbl-wrap"><table><thead><tr><th>Aksi</th><th>Yang dibuang</th><th>Yang tetap</th></tr></thead><tbody><tr><td><code>docker rm tmp</code></td><td>Writable layer + data di dalamnya</td><td>Layer image (di-cache)</td></tr><tr><td><code>docker rmi alpine</code></td><td>Layer image alpine</td><td>Container lain yang masih jalan</td></tr></tbody></table></div>
+
+<Box variant="warn" icon="⚠️" label="Jangan simpan data penting di filesystem container"><p>Data di writable layer hilang permanen saat container dihapus, di-recreate, atau saat deploy versi baru. Database, file upload produk skincare, dan log audit harus keluar dari container lewat volume (Section 10), bukan ditulis ke filesystem-nya.</p></Box>
+
+Soal "ke mana datanya pergi kalau bukan ke container" inilah yang memotivasi **volume** di Section 10. Untuk sekarang, cukup tanamkan model mentalnya: image = tumpukan layer beku, container = satu lapisan cair di atasnya yang menguap saat container dibuang.
+
+</Section>
+
+<Section num="05" id="dockerfile" title="Dockerfile: Resep Image" sub="FROM sampai CMD, build context, dan .dockerignore">
+
+<p class="lead">Dockerfile adalah resep deklaratif: deretan instruksi yang Docker eksekusi dari atas ke bawah untuk merakit sebuah image.</p>
+
+Setiap instruksi menambah satu layer (lihat Section 04), dan urutannya bukan sekadar gaya, ia menentukan seberapa sering cache build kamu meleset. Mari kenali instruksi inti lebih dulu, lalu bahas kenapa urutan itu penting.
+
+<div class="tbl-wrap"><table><thead><tr><th>Instruksi</th><th>Fungsi</th></tr></thead><tbody><tr><td><code>FROM</code></td><td>Image dasar tempat semuanya ditumpuk</td></tr><tr><td><code>WORKDIR</code></td><td>Set direktori kerja (dan membuatnya bila perlu)</td></tr><tr><td><code>COPY</code></td><td>Salin file dari build context ke image</td></tr><tr><td><code>RUN</code></td><td>Jalankan perintah saat build (compile, install)</td></tr><tr><td><code>ENV</code></td><td>Set variabel environment di image</td></tr><tr><td><code>EXPOSE</code></td><td>Dokumentasi port yang didengarkan (tidak membuka port)</td></tr><tr><td><code>CMD</code></td><td>Perintah default saat container dijalankan</td></tr></tbody></table></div>
+
+Saat kamu menjalankan `docker build .`, titik di akhir itu adalah **build context**: seluruh isi folder tersebut di-paket dan dikirim ke daemon Docker sebelum build dimulai. Kalau folder itu berisi `.git`, `node_modules`, atau binary lokal berukuran ratusan MB, semuanya ikut terkirim, build jadi lambat dan ada risiko file rahasia (seperti `.env`) bocor masuk ke image.
+
+```mermaid
+flowchart LR
+  A[Folder proyek] -->|paket build context| B[Docker daemon]
+  B -->|baca Dockerfile| C[Rakit layer]
+  C --> D[Image jadi]
+  E[.dockerignore] -.->|saring sebelum kirim| A
+```
+
+<p class="fig-cap"><b>Build context dikirim ke daemon.</b> .dockerignore menyaring file sebelum apa pun dikirim, jadi konteks tetap ramping.</p>
+
+Solusinya `.dockerignore`: daftar pola file yang tidak ikut dikirim sebagai build context. Polanya mirip `.gitignore`, tapi tujuannya berbeda.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari .gitignore ke .dockerignore"><p>.gitignore mencegah file masuk riwayat Git; .dockerignore mencegah file masuk build context dan image. Sintaks pola-nya mirip, tapi keduanya independen, kamu tetap perlu .dockerignore sendiri meski sudah punya .gitignore.</p></Box>
+
+```text title=".dockerignore"
+.git
+node_modules
+*.env
+.env
+dist/
+tmp/
+skincare-backend          # binary hasil build lokal
+Dockerfile
+.dockerignore
+```
+
+Sekarang resep paling sederhana untuk API Go kita, satu tahap (multi-stage menyusul di Section 06). Perhatikan urutan `COPY`-nya.
+
+```dockerfile title="Dockerfile"
+FROM golang:1.26
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN go build -o /skincare-api ./cmd/server
+EXPOSE 8080
+CMD ["/skincare-api"]
+```
+
+Kenapa `go.mod` dan `go.sum` disalin lebih dulu, terpisah dari `COPY . .`? Karena cache. Docker meng-cache setiap layer berdasarkan input instruksinya. Layer `RUN go mod download` hanya akan di-build ulang bila `go.mod`/`go.sum` berubah. Selama dependency tetap, mengubah satu file handler di `internal/product/` tidak membatalkan cache download dependency, build berikutnya lompat langsung ke `go build`. Kalau kamu menulis `COPY . .` sebelum `go mod download`, perubahan kode apa pun akan membuang cache dependency dan mengunduh ulang semua modul tiap build.
+
+<Box variant="tip" icon="💡" label="Letakkan yang jarang berubah di atas"><p>Susun instruksi dari yang paling stabil (base image, dependency) ke yang paling sering berubah (kode aplikasi). Semakin tinggi sebuah layer di-cache awet, semakin banyak build di bawahnya yang ikut cepat.</p></Box>
+
+<Box variant="note" icon="📝" label="EXPOSE itu dokumentasi"><p>EXPOSE 8080 tidak benar-benar membuka port ke host; ia hanya menandai port yang dipakai container. Yang memetakan port ke host adalah flag -p saat docker run (dibahas di section networking).</p></Box>
+
+</Section>
+
+<Section num="06" id="multistage" title="Multi-stage Build untuk Go" sub="Image kecil: pisahkan tahap compile dan runtime">
+
+<p class="lead">Multi-stage build memisahkan tahap meng-compile dari tahap menjalankan, sehingga toolchain Go yang berat tidak pernah ikut ke image produksi.</p>
+
+Image single-stage di Section 05 berfungsi, tapi gemuk. `golang:1.26` membawa compiler Go, git, header C, dan ratusan MB tooling yang hanya berguna saat build, sama sekali tidak dibutuhkan untuk menjalankan binary yang sudah jadi. Membawa semua itu ke produksi berarti image besar (lambat di-pull, lambat deploy) dan permukaan serangan yang luas (makin banyak paket, makin banyak CVE potensial).
+
+Ide multi-stage: pakai satu stage `golang` untuk compile, lalu mulai stage runtime baru dari image super-minimal dan `COPY --from` hanya binary-nya. Semua isi stage build (compiler, source, cache) ditinggal dan tidak ikut ke image akhir.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: seperti build frontend lalu serve dist"><p>Di React kamu menjalankan build (Vite, webpack) lalu hanya men-deploy folder dist; Node, dependency dev, dan source map dibuang. Multi-stage Go persis ide yang sama: build dengan toolchain penuh, lalu kirim hanya binary hasilnya ke runtime.</p></Box>
+
+```mermaid
+flowchart LR
+  subgraph S1[Stage build: golang:1.26]
+    A[go mod download] --> B[go build CGO_ENABLED=0]
+    B --> C[/skincare-api binary/]
+  end
+  C -->|COPY --from=build| D
+  subgraph S2[Stage runtime: distroless static]
+    D[/api/] --> E[Image kecil, non-root]
+  end
+```
+
+<p class="fig-cap"><b>Dua tahap, satu artifact.</b> Hanya binary yang menyeberang dari stage build ke stage runtime.</p>
+
+Berikut Dockerfile multi-stage untuk skincare-api kita. Modul Go memakai `github.com/kamu/skincare-backend`.
+
+```dockerfile title="Dockerfile"
+# --- build ---
+FROM golang:1.26 AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/api ./cmd/server
+
+# --- runtime ---
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /app/api /api
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["/api"]
+```
+
+Dua detail krusial di stage build. `CGO_ENABLED=0` mematikan linking ke pustaka C, sehingga Go menghasilkan **binary statis** yang tidak bergantung pada glibc apa pun, syarat agar bisa berjalan di image kosong seperti distroless static atau scratch. Flag `-ldflags="-s -w"` membuang tabel simbol dan info debug, memangkas ukuran binary tanpa mengubah perilakunya.
+
+Untuk runtime kita pakai `gcr.io/distroless/static-debian12` dengan tag `:nonroot`. **Distroless** adalah image yang hanya berisi runtime minimal: tidak ada shell, tidak ada package manager, tidak ada `bin/sh`. Hasilnya image akhir berukuran beberapa MB saja (binary kamu plus CA cert), dibanding ratusan MB versi single-stage. `USER nonroot:nonroot` membuat proses berjalan sebagai user tak-berhak, sehingga andai ada celah di aplikasi, penyerang tidak otomatis jadi root di dalam container.
+
+<Box variant="tip" icon="💡" label="Kecilkan attack surface, dan pin versinya"><p>Distroless dan scratch menghilangkan shell serta utilitas yang biasa dipakai penyerang setelah berhasil masuk. Selalu pin tag base image (mis. golang:1.26, bukan golang:latest) agar build kamu reprodusibel dan tidak diam-diam berubah saat upstream merilis versi baru.</p></Box>
+
+<Box variant="note" icon="📝" label="Distroless tidak punya shell"><p>Karena tidak ada bin/sh, kamu tidak bisa docker exec lalu masuk ke shell untuk debugging, dan HEALTHCHECK harus exec-form yang memanggil binary-mu langsung, bukan perintah shell. Bila kamu butuh shell ringan, alpine adalah kompromi (sekitar 5 MB).</p></Box>
+
+</Section>
+
+
+<Section num="07" id="cmd-entrypoint" title="CMD vs ENTRYPOINT" sub="Menentukan proses default container dengan benar">
+
+<p class="lead">CMD dan ENTRYPOINT sama-sama menetapkan proses default, tapi keduanya menjawab pertanyaan yang berbeda: "apa yang dijalankan" versus "ini memang program apa".</p>
+
+Sebuah image perlu tahu satu hal saat `docker run` dipanggil tanpa argumen: perintah apa yang menjadi proses pertama di dalam container. Di Go, jawabannya hampir selalu binary tunggal hasil build, misalnya server API skincare. Dua instruksi mengatur ini, dan memilih yang tepat menentukan apakah container kamu mau berhenti dengan rapi saat di-deploy ulang.
+
+<Compare aLabel="CMD" bLabel="ENTRYPOINT" aTone="muted" bTone="violet">
+<Fragment slot="a">
+<ul>
+<li>Memberi <b>perintah default yang mudah ditimpa</b> dari `docker run image arg`.</li>
+<li>Cocok untuk image serba-guna: default jalankan server, tapi pengguna bebas mengganti dengan `sh` atau perintah lain.</li>
+<li>Argumen di `docker run` <b>mengganti seluruh</b> CMD.</li>
+</ul>
+</Fragment>
+<Fragment slot="b">
+<ul>
+<li>Menetapkan <b>program yang selalu jalan</b>, container "adalah" binary itu.</li>
+<li>Cocok saat image punya satu tujuan jelas: ini server, titik.</li>
+<li>Argumen di `docker run` menjadi <b>argumen tambahan</b> untuk ENTRYPOINT, bukan menggantinya.</li>
+</ul>
+</Fragment>
+</Compare>
+
+Pola paling kokoh untuk service Go: pakai ENTRYPOINT untuk binary dan CMD untuk argumen default. ENTRYPOINT mengunci "ini server", sementara CMD memberi flag default yang masih bisa diganti tanpa menyentuh binary-nya.
+
+```dockerfile title="Dockerfile"
+ENTRYPOINT ["/api"]
+CMD ["--http-addr=:8080"]
+```
+
+Dengan kombinasi di atas, `docker run img` menjalankan `/api --http-addr=:8080`. Sementara `docker run img --http-addr=:9090` menjalankan `/api --http-addr=:9090`: binary tetap, hanya argumennya yang ditimpa. Inilah yang membuat satu image bisa dipakai untuk port berbeda tanpa rebuild.
+
+Yang krusial adalah perbedaan exec form dan shell form. Exec form (array JSON, `["/api"]`) menjalankan binary secara langsung sebagai PID 1. Shell form (string, `"/api"`) diam-diam dibungkus menjadi `/bin/sh -c "/api"`, sehingga PID 1 adalah `sh`, dan binary Go kamu hanya anak proses.
+
+```mermaid
+flowchart TB
+  subgraph exec["Exec form: ENTRYPOINT [&quot;/api&quot;]"]
+    K1[Kernel] -->|SIGTERM| P1["PID 1 = /api"]
+    P1 -->|graceful shutdown| OK[Tutup koneksi, drain]
+  end
+  subgraph shell["Shell form: ENTRYPOINT &quot;/api&quot;"]
+    K2[Kernel] -->|SIGTERM| S1["PID 1 = /bin/sh"]
+    S1 -.->|sinyal tidak diteruskan| P2["/api anak proses"]
+    P2 -.->|tidak tahu mau stop| KILL["dipaksa SIGKILL setelah timeout"]
+  end
+```
+
+<p class="fig-cap"><b>Jalur sinyal SIGTERM.</b> Hanya exec form yang menjadikan binary Go sebagai PID 1, sehingga ia menerima sinyal stop dan bisa shutdown bersih.</p>
+
+Kenapa ini penting di produksi? Saat orchestrator (Compose, Kubernetes, ECS) ingin menghentikan container, ia mengirim SIGTERM ke PID 1, menunggu beberapa detik, lalu SIGKILL paksa bila belum mati. Server Go yang baik menangkap SIGTERM untuk menghentikan terima request baru, menyelesaikan request yang sedang jalan, lalu menutup koneksi database. Itu semua hanya terjadi bila SIGTERM benar-benar sampai ke binary kamu.
+
+```go title="cmd/server/main.go"
+ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+defer stop()
+
+go func() {
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("listen: %v", err)
+	}
+}()
+
+<-ctx.Done() // SIGTERM tiba di sini (hanya jika binary PID 1)
+shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+defer cancel()
+_ = srv.Shutdown(shutdownCtx)
+```
+
+<Box variant="warn" icon="⚠️" label="Shell form membunuh graceful shutdown"><p>Tulis `ENTRYPOINT "/api"` (string) dan PID 1 menjadi `/bin/sh`, bukan binary kamu; `sh` tidak meneruskan SIGTERM, jadi `signal.NotifyContext` di Go tidak pernah terpicu dan container dibunuh paksa setelah timeout, memutus request yang sedang berjalan.</p></Box>
+
+<Box variant="tip" icon="💡" label="Selalu array JSON"><p>Pakai bentuk exec untuk ENTRYPOINT/CMD: `["/api"]`, bukan `/api`. Selain meneruskan sinyal dengan benar, ia juga menghindari binary distroless yang tidak punya `/bin/sh` sama sekali (shell form akan langsung gagal di sana).</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari npm scripts ke entrypoint"><p>Di proyek Node, `npm start` memetakan ke satu perintah default di package.json; ENTRYPOINT + CMD adalah versi container dari ide itu, tapi dengan konsekuensi sinyal yang nyata, karena proses ini benar-benar menjadi PID 1 di namespace-nya sendiri.</p></Box>
+
+</Section>
+
+<Section num="08" id="env-config" title="Environment Variables dan Config" sub="Config lewat env, secret tidak di-bake ke image">
+
+<p class="lead">Satu image yang sama harus bisa berjalan di laptop, staging, dan produksi; yang membedakan hanyalah environment variable yang disuntikkan saat runtime.</p>
+
+Prinsip ini berasal dari twelve-factor app: simpan config di environment, bukan di kode atau di image. Image adalah artefak yang immutable dan bisa dibagikan; begitu kamu memanggang nilai spesifik produksi ke dalamnya, image itu tidak lagi portabel dan, lebih buruk, bisa membocorkan rahasia. Go membuat pola ini nyaman lewat `os.Getenv`, tanpa library tambahan apa pun.
+
+```go title="internal/config/config.go"
+package config
+
+import (
+	"fmt"
+	"os"
+)
+
+type Config struct {
+	AppEnv      string
+	Port        string
+	DatabaseURL string
+	RedisAddr   string
+}
+
+func Load() (Config, error) {
+	c := Config{
+		AppEnv:    getEnv("APP_ENV", "development"),
+		Port:      getEnv("PORT", "8080"),
+		RedisAddr: getEnv("REDIS_ADDR", "localhost:6379"),
+	}
+	c.DatabaseURL = os.Getenv("DATABASE_URL") // wajib, tanpa default
+	if c.DatabaseURL == "" {
+		return c, fmt.Errorf("DATABASE_URL wajib diisi")
+	}
+	return c, nil
+}
+
+func getEnv(key, fallback string) string {
+	if v, ok := os.LookupEnv(key); ok {
+		return v
+	}
+	return fallback
+}
+```
+
+Perhatikan dua sikap berbeda: nilai non-sensitif seperti `PORT` punya default aman, sedangkan `DATABASE_URL` yang berisi kredensial sengaja tanpa default dan gagal cepat bila kosong. Lebih baik container menolak start daripada diam-diam menyambung ke database yang salah.
+
+Di Dockerfile, `ENV` hanya pantas untuk default non-rahasia, misalnya `ENV PORT=8080`. Saat run, suntikkan nilai nyata lewat `-e` per variabel atau `--env-file` untuk berkas:
+
+```bash title="Terminal"
+docker run --rm -p 8080:8080 \
+  --env-file .env \
+  -e APP_ENV=production \
+  ghcr.io/kamu/skincare-backend:1.4.0
+```
+
+```mermaid
+flowchart LR
+  IMG["Image yang sama
+  skincare-backend:1.4.0"]
+  IMG --> DEV["dev
+  APP_ENV=development
+  DATABASE_URL=...localhost"]
+  IMG --> STG["staging
+  APP_ENV=staging
+  DATABASE_URL=...rds-stg"]
+  IMG --> PRD["prod
+  APP_ENV=production
+  DATABASE_URL=...rds-prod"]
+```
+
+<p class="fig-cap"><b>Satu artefak, banyak environment.</b> Image dibangun sekali; perbedaan tiap lingkungan murni datang dari env yang disuntikkan saat runtime.</p>
+
+Bagian paling berbahaya adalah secret. Ada tiga cara salah yang sering tidak disadari. Pertama, `COPY .env /app/`: berkas kredensial ikut tersimpan permanen di layer image. Kedua, mengirim secret lewat `--build-arg`: nilai ARG tercatat di metadata image dan terlihat lewat `docker history`. Ketiga, menaruh secret di `ENV` Dockerfile: ia tertulis di setiap layer dan terbaca siapa pun yang menarik image.
+
+<Box variant="warn" icon="⚠️" label="Secret tidak pernah masuk image"><p>Jangan `COPY .env` ke image, jangan kirim kredensial via `ARG`/`--build-arg` (terlihat di `docker history`), dan jangan tulis secret di `ENV` Dockerfile. Secret hanya disuntikkan saat runtime lewat `--env-file`, secret manager, atau orchestrator.</p></Box>
+
+<Box variant="tip" icon="💡" label="Kunci .dockerignore"><p>Pastikan `.env` ada di `.dockerignore` agar tidak pernah ikut ke build context, bahkan saat kamu menulis `COPY . .`. Tanpa baris ini, satu COPY ceroboh cukup untuk membocorkan seluruh kredensial lokalmu ke dalam image.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari .env Laravel/Vite"><p>`.env` di Laravel dibaca lewat `env()`/`config()` dan di Vite lewat `import.meta.env`; ide bahwa config datang dari environment identik. Bedanya, di container `.env` bukan dibaca dari berkas yang ikut image, melainkan disuntikkan dari luar ke proses Go yang membacanya via `os.Getenv`.</p></Box>
+
+</Section>
+
+<Section num="09" id="networking" title="Docker Networking Dasar" sub="Bridge network, DNS service, dan jebakan localhost">
+
+<p class="lead">Setiap container hidup di network namespace-nya sendiri, jadi `localhost` di dalam container API menunjuk container itu sendiri, bukan laptop dan bukan container database.</p>
+
+Inilah sumber kebingungan paling umum saat pertama menjalankan beberapa container. Di laptop, frontend dan backend sama-sama di `localhost`, jadi memanggil `localhost:5432` untuk Postgres terasa alami. Di Docker, tiap container punya stack jaringan terisolasi: `localhost` selalu berarti "diri sendiri". Container API yang mencoba menyambung ke `localhost:5432` sedang mencari Postgres di dalam dirinya sendiri, yang tidak ada di sana.
+
+Solusinya adalah user-defined bridge network. Network bawaan bernama `bridge` tidak menyediakan DNS antar container, jadi container harus saling kenal lewat IP yang berubah-ubah. Begitu kamu membuat network sendiri, Docker mengaktifkan DNS internal: tiap container bisa dipanggil lewat nama service atau nama container-nya.
+
+```mermaid
+flowchart LR
+  subgraph host["Host (laptop)"]
+    BROWSER["curl localhost:8080"]
+  end
+  subgraph net["network: app (user-defined bridge)"]
+    API["container: api
+    listen :8080"]
+    DB[("container: db
+    postgres :5432")]
+  end
+  BROWSER -->|"-p 8080:8080"| API
+  API -->|"connect db:5432
+  via DNS internal"| DB
+```
+
+<p class="fig-cap"><b>Dua container dalam satu network.</b> Host menjangkau `api` lewat port yang di-publish; di dalam network, `api` menjangkau `db` lewat nama service, bukan localhost.</p>
+
+Coba sendiri. Buat network, jalankan Postgres dan API di network yang sama, lalu API menyambung ke host bernama `db`:
+
+```bash title="Terminal"
+docker network create app
+
+docker run -d --name db --network app \
+  -e POSTGRES_PASSWORD=secret postgres:17
+
+docker run -d --name api --network app \
+  -p 8080:8080 \
+  -e DATABASE_URL="postgres://postgres:secret@db:5432/postgres?sslmode=disable" \
+  ghcr.io/kamu/skincare-backend:1.4.0
+```
+
+Di Go, tidak ada yang istimewa: kode tetap memanggil `DATABASE_URL`. Yang berubah hanya host di dalam URL, dari `localhost` saat dev lokal menjadi `db` (nama container) saat di dalam network Docker. DNS internal Docker menerjemahkan `db` ke IP container Postgres saat itu juga.
+
+Flag `-p 8080:8080` adalah hal terpisah: ia mem-publish port container ke host (`host:container`), supaya browser di laptop bisa menjangkau API. Tanpa `-p`, API tetap saling bicara dengan `db` di dalam network, tapi tidak terjangkau dari luar. Database biasanya justru tidak di-publish: cukup terjangkau API lewat DNS internal, dan tidak terekspos ke jaringan host demi keamanan.
+
+<Box variant="warn" icon="⚠️" label="localhost di container bukan laptopmu"><p>Di dalam container API, `localhost` menunjuk container itu sendiri. Untuk menjangkau service lain pakai nama service/container (`db:5432`); untuk menjangkau proses yang berjalan di host laptop, gunakan `host.docker.internal`, bukan `localhost`.</p></Box>
+
+<Box variant="tip" icon="💡" label="Default bridge tidak punya DNS"><p>Hanya user-defined bridge (`docker network create app`) yang memberi resolusi nama antar container; network `bridge` bawaan tidak. Di Compose, kamu mendapat user-defined network otomatis, sehingga service saling memanggil lewat namanya tanpa konfigurasi tambahan.</p></Box>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari localhost:3000 ke db:5432"><p>Saat dev frontend memanggil `localhost:3000` karena semua proses berbagi satu mesin, di Docker tiap container adalah "mesin" sendiri. Memanggil database menjadi `db:5432` (nama service di network), persis seperti memanggil host yang berbeda di jaringan nyata.</p></Box>
+
+</Section>
+
+
+<Section num="10" id="volumes" title="Volumes dan Bind Mounts" sub="Data yang harus bertahan di luar lifecycle container">
+
+<p class="lead">Writable layer sebuah container itu fana, jadi data yang harus hidup lebih lama dari container wajib ditaruh di luar lapisan itu.</p>
+
+Di section 04 kita lihat container menambahkan satu writable layer tipis di atas image yang read-only. Semua tulisan baru, file PostgreSQL, log, upload, mendarat di lapisan itu. Begitu container dihapus dengan `docker rm`, lapisan itu ikut hilang permanen. Untuk stateless API hal ini justru sehat: container boleh dibuang dan dibuat ulang tanpa beban. Tapi database tidak boleh kehilangan datanya hanya karena kita `docker compose down` lalu `up` lagi.
+
+Docker menawarkan dua mekanisme untuk menyimpan data di luar writable layer: **named volume** dan **bind mount**. Keduanya memetakan sebuah path di dalam container ke penyimpanan persisten di host, tapi siapa yang mengelolanya dan untuk apa pemakaiannya berbeda.
+
+<Figure><DockerVolumeBindFig01 /><Fragment slot="caption"><b>Named volume vs bind mount.</b> Volume dikelola Docker dan bertahan; bind mount memetakan folder host ke container.</Fragment></Figure>
+
+<h3>Named volume: dikelola Docker</h3>
+
+Named volume adalah penyimpanan yang Docker buat dan kelola sendiri di area internalnya (di Linux biasanya `/var/lib/docker/volumes`). Kamu cukup menyebut namanya, tidak perlu tahu path fisiknya. Volume ini bertahan walau container dihapus, dan bisa dipasang ulang ke container baru. Inilah pilihan tepat untuk data database.
+
+```bash title="Terminal"
+docker volume create pgdata
+docker run -d --name db \
+  -e POSTGRES_PASSWORD=rahasia \
+  -v pgdata:/var/lib/postgresql/data \
+  postgres:17
+```
+
+<p>Sintaks `-v pgdata:/var/lib/postgresql/data` artinya: pasang named volume bernama `pgdata` ke path data internal PostgreSQL. Hapus container `db`, jalankan ulang dengan flag `-v` yang sama, dan semua tabel produk skincare tetap utuh.</p>
+
+<Box variant="analogy" icon="🧳" label="Analogi: loker bagasi"><p>Named volume seperti loker bagasi berlabel di stasiun, kamu titip barang dengan nomor loker tanpa peduli rak fisiknya, dan bisa ambil lagi kapan pun walau gerbongmu (container) sudah ganti.</p></Box>
+
+<h3>Bind mount: folder host langsung</h3>
+
+Bind mount memetakan folder konkret di mesin host ke path di dalam container. Kamu yang menunjuk path host-nya secara eksplisit. Karena perubahan di host langsung terlihat di container (dan sebaliknya), bind mount ideal untuk development: edit source di editor, container melihat file baru tanpa rebuild image.
+
+```bash title="Terminal"
+docker run -d --name api-dev \
+  -v "$(pwd)":/src \
+  -p 8080:8080 \
+  golang:1.26 \
+  sh -c "cd /src && go run ./cmd/server"
+```
+
+<p>Di sini folder proyek lokal (`$(pwd)`) terhubung ke `/src` di container, cocok dipadukan dengan tool hot reload seperti Air untuk siklus edit-jalan yang cepat di proyek `github.com/kamu/skincare-backend`.</p>
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari folder proyek lokal ke container"><p>Bayangkan folder proyekmu di laptop dan folder di dalam container sebagai dua jendela yang menatap rak file yang sama; ubah satu sisi, sisi lain langsung ikut, persis seperti volume mount di docker-compose Laravel Sail untuk source aplikasi.</p></Box>
+
+<h3>Kapan memakai yang mana</h3>
+
+<div class="tbl-wrap"><table><thead><tr><th>Aspek</th><th>Named volume</th><th>Bind mount</th></tr></thead><tbody><tr><td>Pengelola</td><td>Docker</td><td>Kamu (path host eksplisit)</td></tr><tr><td>Pemakaian utama</td><td>Data database, state produksi</td><td>Source code dev, file konfigurasi</td></tr><tr><td>Portabilitas</td><td>Tinggi, lepas dari path host</td><td>Terikat struktur folder host</td></tr><tr><td>Kecocokan</td><td>Persistensi jangka panjang</td><td>Iterasi cepat & hot reload</td></tr></tbody></table></div>
+
+<Box variant="warn" icon="⚠️" label="Jebakan: bind mount menutupi folder bawaan image"><p>Bila kamu bind-mount folder proyek ke `/app` padahal image sudah berisi dependensi terinstal di sana (mis. `node_modules` hasil install), mount itu menimpa dan menyembunyikan folder bawaan image sehingga dependensi seolah hilang; solusinya pisahkan path data dari path yang di-mount.</p></Box>
+
+<Recap title="Inti volume & bind mount"><ul><li>Writable layer hilang saat container dihapus, data penting harus keluar dari sana.</li><li>Named volume dikelola Docker dan bertahan, pakai untuk data PostgreSQL.</li><li>Bind mount memetakan folder host, pakai untuk source code saat development.</li><li>Hati-hati bind mount menutupi folder bawaan image seperti `node_modules`.</li></ul></Recap>
+
+</Section>
+
+<Section num="11" id="compose" title="Docker Compose: Multi-Container Stack" sub="Satu compose.yaml plus healthcheck dan startup order">
+
+<p class="lead">Compose menggantikan deretan perintah `docker run` panjang dengan satu file YAML yang mendeskripsikan seluruh stack lokalmu.</p>
+
+Aplikasi backend nyata jarang berdiri sendiri. Proyek `github.com/kamu/skincare-backend` butuh API Go, PostgreSQL untuk data, Redis untuk cache, dan satu langkah migrasi skema. Menjalankan semuanya manual dengan `docker run` dan `--network` yang benar itu repetitif dan rawan salah. Docker Compose mendefinisikan **services**, masing-masing dengan `build`/`image`, `ports`, `environment`, `depends_on`, `volumes`, dan `networks`, semuanya dalam satu `compose.yaml`.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari Sail atau multi-terminal ke satu file stack"><p>Jika di JS kamu terbiasa membuka tiga terminal (`npm run dev`, server db, worker) atau di Laravel memakai Sail, Compose adalah satu file deklaratif yang menggantikan ritual itu; `docker compose up` menyalakan seluruh stack sekaligus.</p></Box>
+
+```mermaid
+flowchart LR
+  M[migrate one-off] -->|run sekali| DB[(postgres)]
+  API[api Go] --> DB
+  API --> R[(redis)]
+  API -.depends_on service_healthy.-> DB
+```
+
+<p class="fig-cap"><b>Topologi stack lokal.</b> API bicara ke PostgreSQL dan Redis; migrasi jalan sekali sebelum API melayani trafik.</p>
+
+<h3>compose.yaml lengkap</h3>
+
+```yaml title="compose.yaml"
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: rahasia
+      POSTGRES_DB: skincare
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7
+
+  migrate:
+    image: migrate/migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/migrations
+    command:
+      ["-path", "/migrations",
+       "-database", "postgres://postgres:rahasia@postgres:5432/skincare?sslmode=disable",
+       "up"]
+
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://postgres:rahasia@postgres:5432/skincare?sslmode=disable
+      REDIS_ADDR: redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+```
+
+<p>Perhatikan tidak ada field `version:` di atas; field itu kini obsolete dan diabaikan, gaya Compose modern cukup mulai langsung dari `services:`. Layanan saling memanggil lewat nama (`postgres`, `redis`) karena Compose membuat jaringan default dengan DNS internal antar-service.</p>
+
+<h3>depends_on tidak menjamin "siap menerima koneksi"</h3>
+
+Ini sumber bug yang paling sering menggigit. `depends_on` polos hanya menjamin container PostgreSQL sudah **started**, bukan bahwa proses di dalamnya sudah **ready** menerima koneksi. PostgreSQL butuh beberapa detik untuk inisialisasi sebelum membuka socket. Tanpa pengaman, API-mu menembak database yang belum siap dan langsung mati.
+
+<Box variant="warn" icon="⚠️" label="Jebakan: started bukan berarti ready"><p>`depends_on` saja hanya menunggu container hidup; tambahkan `healthcheck` pada postgres plus `condition: service_healthy` agar Compose menunggu sampai `pg_isready` lulus, dan tetap pasang retry koneksi di aplikasi sebagai jaring pengaman.</p></Box>
+
+```go title="internal/db/connect.go"
+func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
+	var pool *pgxpool.Pool
+	var err error
+	for attempt := 1; attempt <= 5; attempt++ {
+		pool, err = pgxpool.New(ctx, url)
+		if err == nil && pool.Ping(ctx) == nil {
+			return pool, nil
+		}
+		time.Sleep(time.Duration(attempt) * time.Second)
+	}
+	return nil, fmt.Errorf("gagal konek db setelah retry: %w", err)
+}
+```
+
+<h3>Menjalankan stack</h3>
+
+<Steps><Step><b>Nyalakan di background</b><p>`docker compose up -d` membangun image API, menarik image lain, lalu menjalankan semua service sesuai urutan dependensi.</p></Step><Step><b>Pantau log API</b><p>`docker compose logs -f api` mengikuti output API secara live untuk memastikan ia terhubung ke database dan Redis.</p></Step><Step><b>Bersihkan total</b><p>`docker compose down -v` menghentikan dan menghapus container beserta named volume `pgdata`, mengembalikan stack ke kondisi bersih.</p></Step></Steps>
+
+<Box variant="note" icon="📝" label="-v menghapus data"><p>Tambahkan `-v` pada `down` hanya saat kamu memang ingin membuang data; tanpa `-v`, volume `pgdata` tetap aman dan data PostgreSQL bertahan antar-restart.</p></Box>
+
+</Section>
+
+<Section num="12" id="logs-debug" title="Logs, Exec, dan Resource" sub="stdout/stderr, debugging interaktif, dan batas resource">
+
+<p class="lead">Container yang baik tidak menulis log ke file, ia mencetak ke stdout dan membiarkan platform yang mengumpulkannya.</p>
+
+Di dunia container, konvensinya jelas: aplikasi menulis log ke **stdout** dan **stderr**, bukan ke file di dalam container. Alasannya praktis. Writable layer container itu fana (lihat section 10), jadi log yang ditulis ke file ikut hilang saat container dibuang. Dengan mencetak ke stdout/stderr, log otomatis ditangkap oleh Docker, CI, dan platform cloud, lalu bisa dibaca dengan satu perintah seragam.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari log file ke stdout container-native"><p>Jika kamu terbiasa `console.log` yang mendarat di file atau `storage/logs/laravel.log` ala Laravel, dalam container lupakan file itu; cukup tulis ke stdout (di Go cukup `log.Print` atau logger terstruktur ke `os.Stdout`) dan platform yang mengurus pengumpulan serta rotasi.</p></Box>
+
+<h3>Membaca log dan exit code</h3>
+
+```bash title="Terminal"
+docker compose logs -f api          # ikuti log API live
+docker logs --tail 50 db            # 50 baris terakhir container db
+docker inspect -f '{{.State.ExitCode}}' api   # exit code terakhir
+```
+
+<p>Exit code memberi sinyal cepat: `0` artinya keluar normal, `1` error aplikasi, `137` umumnya berarti container di-kill karena melewati batas memori (OOM). `docker inspect` membuka seluruh metadata container, dari status, mount, sampai konfigurasi jaringan.</p>
+
+<h3>Skenario: API Go gagal konek database</h3>
+
+Misalkan `docker compose logs api` menampilkan `gagal konek db setelah retry`. Langkah debug interaktif: masuk ke container dan periksa lingkungannya dari dalam.
+
+```bash title="Terminal"
+docker exec -it api sh                       # masuk shell container api
+env | grep DATABASE_URL                       # cek env yang benar-benar terbaca
+docker exec -it db psql -U postgres -d skincare -c '\dt'   # uji koneksi dari sisi db
+```
+
+<p>Pola ini menyingkap penyebab umum: `DATABASE_URL` menunjuk `localhost` (salah, harusnya nama service `postgres`), password tidak cocok, atau database memang belum siap. `docker exec` menjalankan perintah baru di container yang sudah hidup, sementara flag `-it` memberi terminal interaktif.</p>
+
+<Box variant="note" icon="📝" label="exec untuk inspeksi, bukan maintenance"><p>`docker exec` cocok untuk mengintip kondisi sesaat, tapi bukan cara merawat container produksi jangka panjang; perubahan yang kamu lakukan dari dalam hilang saat container diganti, jadi perbaikan sejati selalu lewat image atau konfigurasi.</p></Box>
+
+<h3>Batas resource dan OOM</h3>
+
+Container bukan VM, ia berbagi CPU dan memori host yang sama. Tanpa batas, satu container bocor memori bisa menjerumuskan seluruh mesin. Docker memberi rem lewat `--memory` dan `--cpus`. Saat pemakaian memori melewati batas, kernel melakukan OOM kill dan container mati dengan exit code `137`.
+
+```bash title="Terminal"
+docker run --rm --memory=128m --cpus=1.5 \
+  ghcr.io/kamu/skincare-backend:1.0.0
+```
+
+<p>Di Compose, batas serupa diatur lewat `deploy.resources.limits` (atau `mem_limit` untuk gaya ringkas). Menetapkan batas sejak development membantu menemukan kebocoran lebih awal, sebelum tagihan produksi yang mengingatkanmu.</p>
+
+```yaml title="compose.yaml"
+services:
+  api:
+    build: .
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "1.5"
+```
+
+<Recap title="Inti logs, exec, dan resource"><ul><li>Tulis log ke stdout/stderr, biarkan Docker dan platform yang mengumpulkan serta merotasi.</li><li>`docker logs` dan `docker inspect` membaca output dan exit code; `137` menandai OOM kill.</li><li>`docker exec -it` untuk inspeksi sesaat, bukan jalur maintenance produksi.</li><li>Batasi memori dan CPU dengan `--memory`/`--cpus` atau `deploy.resources` untuk melindungi host.</li></ul></Recap>
+
+</Section>
+
+
+<Section num="13" id="registry" title="Image Tagging, Versioning, dan Registry" sub="Tag yang jelas supaya deploy terlacak dan rollback mudah">
+
+<p class="lead">Image yang sudah dibangun tidak ada gunanya kalau tidak bisa kamu temukan lagi dengan pasti versi mana yang sedang berjalan di production.</p>
+
+Tag adalah alamat manusiawi untuk sebuah image. Tanpa disiplin penamaan, kamu akan terjebak pertanyaan klasik saat insiden: "yang lagi jalan di production itu build yang mana?" Jawaban yang baik bukan "yang terbaru", tapi sebuah identitas yang bisa ditelusuri sampai ke commit Git tertentu. Registry adalah tempat image itu disimpan dan dibagikan, persis seperti registry npm menyimpan paket, hanya saja yang kita simpan adalah artefak runtime yang sudah jadi, bukan sumber.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari versi paket npm ke versi artefak image"><p>Di npm kamu kunci versi lewat <code>package-lock.json</code> agar instalasi deterministik; di Docker, tag semver plus digest adalah penguncinya, supaya "yang dideploy" selalu artefak yang sama persis.</p></Box>
+
+<h3>Jebakan tag <code>latest</code></h3>
+
+<code>latest</code> hanyalah label biasa yang menunjuk ke image terakhir yang kamu tag dengan nama itu. Ia tidak berarti "versi paling baru" secara semantik dan tidak deterministik: dua server yang menjalankan <code>docker pull skincare-api:latest</code> pada waktu berbeda bisa mendapat biner yang berbeda. Saat terjadi bug, kamu kehilangan kemampuan rollback karena tidak tahu versi sebelumnya bernama apa.
+
+<Box variant="warn" icon="⚠️" label="Jangan andalkan latest untuk deploy serius"><p>Pin tag semver atau git SHA, dan untuk jaminan penuh referensikan digest <code>image@sha256:...</code>; <code>latest</code> mutable dan membuat deploy tidak reproducible.</p></Box>
+
+<h3>Tiga lapis penamaan</h3>
+
+<div class="tbl-wrap"><table><thead><tr><th>Jenis</th><th>Contoh</th><th>Sifat</th></tr></thead><tbody><tr><td>Semantic tag</td><td><code>skincare-api:1.4.0</code></td><td>Dibaca manusia, mengikuti rilis</td></tr><tr><td>Git SHA tag</td><td><code>skincare-api:9f3a1c2</code></td><td>Telusur balik ke commit persis</td></tr><tr><td>Immutable digest</td><td><code>skincare-api@sha256:ab12...</code></td><td>Tidak bisa berubah, jaminan byte-identik</td></tr></tbody></table></div>
+
+Praktik yang sehat: satu image fisik diberi beberapa tag sekaligus saat build, sehingga satu artefak bisa dirujuk lewat versi semver yang ramah manusia maupun SHA yang presisi.
+
+```bash title="Terminal"
+# satu build, beberapa tag menunjuk image fisik yang sama
+docker build \
+  -t skincare-api:dev \
+  -t skincare-api:$(git rev-parse --short HEAD) \
+  .
+
+# beri ulang tag image yang sudah ada untuk tujuan registry
+docker tag skincare-api:$(git rev-parse --short HEAD) \
+  ghcr.io/owner/skincare-api:$(git rev-parse --short HEAD)
+```
+
+<h3>Registry: tempat image tinggal</h3>
+
+Ada beberapa registry umum, semuanya bicara protokol yang sama sehingga alur login, build, tag, push, pull identik; yang berbeda hanya nama host dan cara autentikasinya.
+
+<div class="tbl-wrap"><table><thead><tr><th>Registry</th><th>Host</th><th>Cocok untuk</th></tr></thead><tbody><tr><td>Docker Hub</td><td><code>docker.io</code></td><td>Image publik, base image resmi</td></tr><tr><td>GitHub Container Registry</td><td><code>ghcr.io</code></td><td>Image privat menyatu dengan repo &amp; CI</td></tr><tr><td>AWS ECR</td><td><code>&lt;acct&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com</code></td><td>Deploy di ekosistem AWS</td></tr></tbody></table></div>
+
+```bash title="Terminal"
+# login ke ghcr.io (token via stdin, jangan tempel di argumen)
+echo "$GHCR_TOKEN" | docker login ghcr.io -u owner --password-stdin
+
+# push tag SHA yang sudah diberi prefix host registry
+docker push ghcr.io/owner/skincare-api:$(git rev-parse --short HEAD)
+
+# di sisi lain (CI/staging/prod) tarik versi yang sama persis
+docker pull ghcr.io/owner/skincare-api:9f3a1c2
+```
+
+<Box variant="tip" icon="💡" label="Login ECR berumur pendek"><p>ECR memberi password sementara, jadi alur login-nya: <code>aws ecr get-login-password --region eu-west-1 | docker login --username AWS --password-stdin &lt;acct&gt;.dkr.ecr.eu-west-1.amazonaws.com</code>, lalu push seperti biasa.</p></Box>
+
+<h3>Build once, run anywhere</h3>
+
+Inti dari registry adalah memisahkan kapan image dibangun dari kapan ia dijalankan. Image dibangun sekali di CI, lalu artefak yang sama persis ditarik oleh staging dan production. Tidak ada lagi "build ulang di server" yang berisiko menghasilkan biner berbeda karena perbedaan lingkungan.
+
+```mermaid
+flowchart LR
+  CI["CI: docker build + push"] --> REG["Registry<br/>ghcr.io/owner/skincare-api:9f3a1c2"]
+  REG --> STG["Staging<br/>docker pull :9f3a1c2"]
+  REG --> PRD["Production<br/>docker pull :9f3a1c2"]
+```
+
+<p class="fig-cap"><b>Satu artefak, banyak target.</b> Staging dan production menarik tag SHA yang sama, sehingga apa yang diuji adalah apa yang dirilis.</p>
+
+<Recap title="Yang perlu menempel"><ul><li>Tag adalah identitas yang bisa ditelusuri, bukan sekadar label "terbaru".</li><li><code>latest</code> mutable dan merusak rollback; pin semver, SHA, atau digest.</li><li>Beri satu image beberapa tag dalam satu build agar fleksibel dirujuk.</li><li>Build sekali di CI, tarik artefak identik di setiap lingkungan.</li></ul></Recap>
+
+</Section>
+
+<Section num="14" id="security-prod" title="Security Dockerfile dan Image Production" sub="Non-root, base minimal, dev vs prod, migration terkontrol">
+
+<p class="lead">Image production yang baik membawa sesedikit mungkin: satu biner, tanpa shell, tanpa secret, dan berjalan sebagai user biasa.</p>
+
+Setiap hal yang ada di dalam image adalah permukaan serang. Shell, package manager, compiler, dan tool debug semuanya berguna saat mengembangkan, tapi di production mereka hanya menambah cara bagi penyerang untuk bergerak setelah masuk. Prinsipnya sederhana: image production harus kecil, berjalan non-root, dan tidak menyimpan kredensial di dalam layer.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari audit dependensi ke pemindaian image"><p>Sama seperti <code>npm audit</code> memeriksa kerentanan di pohon dependensi JS, <code>docker scout cves</code> atau <code>trivy image</code> memindai kerentanan di image kamu, termasuk paket OS pada base image, bukan cuma kode aplikasi.</p></Box>
+
+<h3>Dockerfile yang diperketat</h3>
+
+Tiga pengetatan penting: pin versi base image (jangan biarkan mengambang), pakai base runtime minimal, dan jalankan sebagai user non-root. Distroless cocok untuk biner Go statis karena hampir kosong, tidak punya shell sama sekali.
+
+```dockerfile title="Dockerfile"
+# --- build ---
+FROM golang:1.26 AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app ./cmd/server
+
+# --- runtime ---
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /app /app
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["/app"]
+```
+
+<Box variant="warn" icon="⚠️" label="Jangan jalankan proses sebagai root"><p>Default container berjalan sebagai root; bila penyerang menembus aplikasi, root di dalam container memperbesar dampaknya. Selalu set <code>USER</code> non-root, lewat tag <code>:nonroot</code> distroless atau <code>adduser</code> pada alpine.</p></Box>
+
+<h3>Dua image untuk dua dunia</h3>
+
+Kesalahan umum adalah mengirim image development ke production. Image dev sengaja gemuk: ada hot reload, bind mount ke kode sumber, dan tool debug. Image production justru kebalikannya, sengaja kurus dan tertutup.
+
+<Compare aLabel="Image development" bLabel="Image production" aTone="muted" bTone="violet">
+<Fragment slot="a"><ul><li>Hot reload &amp; rebuild cepat</li><li>Bind mount ke kode sumber host</li><li>Shell, debugger, tool jaringan ikut</li><li>Berjalan root demi kenyamanan</li></ul></Fragment>
+<Fragment slot="b"><ul><li>Satu biner statis, tanpa shell</li><li>Base distroless yang dipin</li><li>Permukaan serang minimal</li><li>Berjalan sebagai user non-root</li></ul></Fragment>
+</Compare>
+
+<Box variant="warn" icon="⚠️" label="Jangan kirim image dev ke production"><p>Image dev membawa tool dan bind mount yang tidak ada di server, sehingga rawan dan tidak deterministik; bangun image production terpisah lewat multistage.</p></Box>
+
+<h3>Memindai sebelum rilis</h3>
+
+Jadikan pemindaian bagian dari pipeline, bukan ritual sesekali. Pindai image hasil build, dan jangan sertakan secret di dalam layer (suntikkan via environment atau secret manager saat runtime).
+
+```bash title="Terminal"
+docker scout cves ghcr.io/owner/skincare-api:9f3a1c2
+docker scout quickview ghcr.io/owner/skincare-api:9f3a1c2
+trivy image ghcr.io/owner/skincare-api:9f3a1c2
+```
+
+<h3>Migration terkontrol, bukan otomatis tiap startup</h3>
+
+Godaan besar adalah menjalankan migrasi skema saat aplikasi boot. Itu berbahaya: bila kamu menjalankan tiga replika API, ketiganya akan berlomba menjalankan migrasi yang sama, dan satu migrasi gagal bisa menahan seluruh layanan naik. Migrasi sebaiknya menjadi langkah terpisah dan terkontrol, dijalankan satu kali sebelum API yang baru menerima trafik.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari php artisan migrate ke tool migrasi Go"><p>Di Laravel migrasi adalah perintah eksplisit (<code>php artisan migrate</code>) yang kamu jalankan sadar, bukan saat tiap request; di Go pakai pola sama dengan tool seperti golang-migrate sebagai job one-off, terpisah dari proses API.</p></Box>
+
+```yaml title="compose.yaml"
+services:
+  db:
+    image: postgres:17
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+  migrate:
+    image: migrate/migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/m
+    command: ["-path", "/m", "-database", "${DATABASE_URL}", "up"]
+  api:
+    build: .
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+```
+
+<p class="fig-cap"><b>Migrasi sebagai service one-off.</b> Service <code>migrate</code> selesai dulu (exit 0), baru API naik, sehingga skema selalu siap sebelum trafik masuk.</p>
+
+<Recap title="Yang perlu menempel"><ul><li>Image production kecil, non-root, tanpa shell, tanpa secret di layer.</li><li>Pin versi base image dan pindai dengan scout atau trivy di pipeline.</li><li>Pisahkan image dev (hot reload, bind mount) dari image prod yang kurus.</li><li>Migrasi adalah langkah one-off terkontrol, bukan efek samping startup API.</li></ul></Recap>
+
+</Section>
+
+
+<Section num="15" id="studi-kasus" title="Studi Kasus: Containerize Go API Skincare" sub="Stack lengkap plus pitfalls khas developer JS/PHP">
+
+<p class="lead">Saatnya menyatukan semua konsep menjadi satu stack lokal yang realistis: API Go, PostgreSQL, dan Redis, dijalankan dengan satu perintah.</p>
+
+Target kita adalah `skincare-api`, backend online shop skincare yang sudah kamu kenal sepanjang course ini. API ini membaca produk dari PostgreSQL, men-cache hasilnya di Redis, dan mengekspos `GET /healthz` agar Compose tahu kapan container siap melayani. Tujuannya bukan sekadar "bisa jalan", tapi menyusun stack yang mirip produksi: build kecil dengan multi-stage, config lewat env, dan dependency yang digerbangi healthcheck.
+
+<h3>Dockerfile final skincare-api</h3>
+
+Kita pakai pola multi-stage yang sudah dibahas: stage `golang:1.26` untuk compile, lalu runtime distroless yang ramping dan non-root. Biner Go statis (`CGO_ENABLED=0`) muat di `distroless/static-debian12` tanpa shell, jadi permukaan serangan tipis.
+
+```dockerfile title="Dockerfile"
+# --- build ---
+FROM golang:1.26 AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app ./cmd/server
+
+# --- runtime ---
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /app /app
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["/app"]
+```
+
+Perhatikan `COPY go.mod go.sum` lebih dulu sebelum `COPY . .`. Itu bukan gaya, melainkan trik cache layer: selama dependency tidak berubah, `go mod download` tidak dijalankan ulang walau kode handler kamu berubah ratusan kali.
+
+<h3>Config env dan health endpoint</h3>
+
+Aplikasi membaca semuanya dari environment, tidak ada nilai hardcode. Health endpoint dibuat ringan, tidak menyentuh database, agar cepat dan tidak ikut menumbangkan API saat DB lambat.
+
+```go title="cmd/server/main.go"
+package main
+
+import (
+	"net/http"
+	"os"
+
+	"github.com/kamu/skincare-backend/internal/server"
+)
+
+func main() {
+	cfg := server.Config{
+		Addr:        ":" + envOr("PORT", "8080"),
+		DatabaseURL: os.Getenv("DATABASE_URL"),
+		RedisAddr:   os.Getenv("REDIS_ADDR"),
+	}
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	})
+	server.Run(cfg)
+}
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari .env Laravel ke env container"><p>Di Laravel, `.env` dibaca proses PHP saat boot; di sini env disuntik Compose ke proses container, jadi satu image yang sama bisa jalan beda config tanpa rebuild.</p></Box>
+
+<h3>Arsitektur stack final</h3>
+
+```mermaid
+flowchart LR
+  Dev["curl :8080"] --> API["skincare-api\n(EXPOSE 8080)"]
+  API -->|appnet DNS: db:5432| DB[("postgres:17")]
+  API -->|appnet DNS: cache:6379| R[("redis:7")]
+  DB -.named volume.-> V[("pgdata")]
+```
+
+<p class="fig-cap"><b>Stack lokal skincare.</b> API bicara ke `db` dan `cache` lewat nama service, bukan IP; data Postgres bertahan di named volume `pgdata`.</p>
+
+<h3>Compose stack final</h3>
+
+```yaml title="compose.yaml"
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      DATABASE_URL: "postgres://app:secret@db:5432/skincare?sslmode=disable"
+      REDIS_ADDR: "cache:6379"
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_started
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: skincare
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+  cache:
+    image: redis:7
+volumes:
+  pgdata:
+```
+
+Tidak ada `version:` di atas. Atribut itu sudah usang dan diabaikan Compose modern, malah memunculkan peringatan. Service bernama `db` dan `cache`, persis nama yang dipakai API di `DATABASE_URL` dan `REDIS_ADDR`, karena Compose membuat user-defined network dengan DNS antar service otomatis.
+
+<h3>Lima pitfalls khas dan cara debug</h3>
+
+Inilah lima jebakan yang paling sering menjatuhkan developer yang baru pindah dari `npm run dev` atau `php artisan serve`. Sebagian besar bukan bug Docker, melainkan beda mental model antara "proses di laptop" dan "proses di dalam container".
+
+<div class="tbl-wrap"><table>
+<thead><tr><th>Pitfall</th><th>Gejala</th><th>Sebab</th><th>Solusi</th></tr></thead>
+<tbody>
+<tr><td>Localhost trap</td><td>API gagal connect DB walau Postgres "jalan"</td><td>Kode pakai `localhost:5432`; di dalam container, localhost = container itu sendiri, bukan host</td><td>Pakai nama service: `db:5432`, andalkan DNS Compose</td></tr>
+<tr><td>Stale image</td><td>Perubahan kode tidak muncul setelah `up`</td><td>Lupa rebuild; Compose pakai image lama yang sudah ter-cache</td><td>`docker compose up --build` atau `docker compose build api`</td></tr>
+<tr><td>Wrong port mapping</td><td>`curl :8080` connection refused</td><td>App listen `:3000` tapi mapping `8080:8080`, atau urutan host:container terbalik</td><td>Samakan `ports` dengan port app; ingat format `host:container`</td></tr>
+<tr><td>Missing env</td><td>App panic atau koneksi kosong saat start</td><td>`DATABASE_URL` tidak diset, `os.Getenv` mengembalikan string kosong</td><td>Definisikan di `environment`/`env_file`; cek `docker compose config`</td></tr>
+<tr><td>Volume shadowing</td><td>File yang sudah di-build hilang di container</td><td>Bind mount menimpa direktori berisi artefak image dengan folder host kosong</td><td>Jangan mount over path build; mount hanya source yang memang perlu</td></tr>
+</tbody>
+</table></div>
+
+<Box variant="warn" icon="⚠️" label="Localhost trap adalah jebakan nomor satu"><p>Di dalam container, `127.0.0.1` menunjuk ke container itu sendiri. Postgres ada di container lain, jadi alamatnya `db:5432`, bukan `localhost:5432`.</p></Box>
+
+<Box variant="tip" icon="💡" label="Debug cepat: config dan logs"><p>Jalankan `docker compose config` untuk melihat env final yang ter-resolve, dan `docker compose logs -f api` untuk membaca alasan crash sebelum menebak-nebak.</p></Box>
+
+<h3>Hands-on: bangun, jalankan, cek health</h3>
+
+<Steps>
+<Step><b>Build image API</b><p>Jalankan `docker compose build api` agar Dockerfile multi-stage dieksekusi dan layer dependency masuk cache untuk build berikutnya.</p></Step>
+<Step><b>Jalankan seluruh stack</b><p>`docker compose up -d` menyalakan db, cache, lalu api; `depends_on: condition: service_healthy` menahan API sampai `pg_isready` lulus.</p></Step>
+<Step><b>Cek health endpoint</b><p>`curl localhost:8080/healthz` harus mengembalikan `{"status":"ok"}`; bila refused, periksa `docker compose ps` dan `logs api`.</p></Step>
+</Steps>
+
+<Box variant="analogy" icon="🔗" label="Satu perintah, satu lingkungan"><p>Compose ke stack ini seperti `docker-compose` resep dapur: satu file mendeklarasikan bahan (image), takaran (env), dan urutan masak (depends_on), lalu `up` memasaknya identik di laptop siapa pun.</p></Box>
+
+Dengan ini kamu punya backend skincare yang berjalan lokal layaknya produksi mini: build ramping, dependency tergerbang sehat, dan config yang bisa dipindah tanpa menyentuh image. Inilah fondasi yang sama yang nanti diangkat ke cloud.
+
+</Section>
+
+<Section num="16" id="topik-lanjutan" title="Topik Lanjutan dan Peta ke Deploy" sub="Dari image lokal ke CI/CD dan AWS">
+
+<p class="lead">Image yang jalan di laptop adalah setengah cerita; setengah lainnya adalah membawanya ke registry dan menjalankannya di cloud secara otomatis.</p>
+
+Setelah `skincare-api` containerized, langkah dewasa berikutnya adalah menghapus tahap manual. Alih-alih `docker build` lalu `docker push` dari laptop, sebuah CI pipeline melakukannya setiap kali kamu merge ke main: build image, jalankan test, lalu push ke registry. Dari registry, platform orkestrasi menarik image dan menjalankannya. Course ini berhenti di gerbang itu, tapi penting kamu lihat petanya supaya tahu ke mana arah berikutnya.
+
+<h3>Peta pipeline ke AWS</h3>
+
+```mermaid
+flowchart LR
+  Push["git push main"] --> CI["CI: build + test"]
+  CI --> Img["docker build\n-t ...:sha"]
+  Img --> ECR["push ke AWS ECR\n(registry)"]
+  ECR --> ECS["deploy ECS Fargate\n(jalankan container)"]
+  ECS --> RDS[("RDS PostgreSQL")]
+```
+
+<p class="fig-cap"><b>Dari commit ke produksi.</b> CI membangun dan menguji, mendorong image ke ECR, lalu ECS Fargate menjalankan container yang sama, terhubung ke database RDS terkelola.</p>
+
+<h3>Potongan-potongan yang akan kamu temui</h3>
+
+Beberapa istilah AWS akan muncul, dan masing-masing memetakan rapi ke konsep yang sudah kamu kuasai. ECR hanyalah registry privat (seperti GHCR, tapi milik AWS). ECS Fargate adalah cara menjalankan container tanpa mengurus server. RDS adalah Postgres terkelola, pengganti container `db` lokalmu. Untuk konteks resmi, lihat [dokumentasi Amazon ECR](https://docs.aws.amazon.com/ecr/) dan [panduan AWS Fargate](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html).
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari Vercel/Forge ke ECS"><p>Kalau terbiasa deploy Next.js di Vercel atau Laravel via Forge, ECS Fargate adalah ide serupa untuk container: kamu serahkan artefak (image), platform yang menjalankan dan menskalakannya.</p></Box>
+
+<h3>Akselerasi build: BuildKit dan cache mounts</h3>
+
+BuildKit sudah jadi builder default, jadi kamu otomatis menikmati build paralel dan cache layer. Lebih jauh, cache mount membuat cache modul Go bertahan antar build tanpa masuk ke image final, memangkas waktu `go mod download` di CI.
+
+```dockerfile title="Dockerfile (cache mount)"
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -o /app ./cmd/server
+```
+
+<Box variant="tip" icon="💡" label="compose watch untuk loop dev"><p>`docker compose watch` menyinkronkan perubahan source ke container dan me-rebuild saat perlu, mendekati pengalaman hot-reload `npm run dev` tanpa meninggalkan stack Compose.</p></Box>
+
+<h3>Arah lanjutan</h3>
+
+<CardGrid cols={3}>
+<Card><h4>CI/CD pipeline</h4><p>Otomatiskan build, test, dan push image bertag digest tiap merge, agar deploy reproducible dan bebas langkah manual dari laptop.</p></Card>
+<Card><h4>Registry dan ECR</h4><p>Login ke `ghcr.io` atau ECR, push tag semver, dan referensikan via `image@sha256:` untuk image yang immutable di produksi.</p></Card>
+<Card><h4>ECS Fargate dan RDS</h4><p>Jalankan container tanpa server, sambungkan ke Postgres terkelola RDS, dan atur scaling tanpa menyentuh OS host.</p></Card>
+</CardGrid>
+
+Untuk runtime, ingat kembali pilihan base image ramping seperti [distroless dari Google](https://github.com/GoogleContainerTools/distroless): image kecil non-root mempercepat pull di CI dan ECS sekaligus mengecilkan permukaan serangan. Referensi perintah dan praktik terbaik lain selalu bisa kamu cek di [docs.docker.com](https://docs.docker.com/).
+
+<Box variant="note" icon="📝" label="Course ini fondasi, deploy AWS di jalur lanjutan"><p>Tujuan course ini menanamkan fondasi container yang kokoh. Detail end-to-end ECR, ECS Fargate, dan RDS dibahas tuntas di jalur deploy lanjutan.</p></Box>
+
+</Section>
+
+<Section num="17" id="ringkasan" title="Ringkasan dan Poin Penting" sub="Checklist Docker untuk backend Go">
+
+<p class="lead">Kamu sekarang bisa mengubah biner Go menjadi container yang ramping, aman, dan reproducible, lalu menjalankannya sebagai bagian dari stack multi-service.</p>
+
+Mari petakan ulang perjalanan ini. Kita mulai dari membedakan image (cetakan immutable) dan container (instance yang berjalan), lalu menulis Dockerfile yang sadar cache layer. Multi-stage memisahkan toolchain build dari runtime sehingga image akhir hanya berisi biner dan sertifikat. Config masuk lewat env, bukan hardcode. Networking mengandalkan DNS antar service di user-defined network. Volume menjaga data Postgres tetap hidup melewati restart. Compose merangkai semuanya, dengan healthcheck menggerbangi urutan start. Terakhir, tag dan registry membuat image bisa dibagikan, sementara non-root dan scanning menjaga keamanan.
+
+<Recap title="Yang Wajib Menempel">
+<ul>
+<li>Image adalah cetakan immutable; container adalah instance berjalan dari image, dan registry tempat image dibagikan.</li>
+<li>Urutkan Dockerfile dari yang jarang berubah ke yang sering: `COPY go.mod go.sum` lalu `go mod download` sebelum `COPY . .`.</li>
+<li>Multi-stage plus `CGO_ENABLED=0` menghasilkan biner statis yang muat di `distroless/static-debian12`, kecil dan tanpa shell.</li>
+<li>Config selalu lewat env (`environment`/`env_file`); jangan hardcode kredensial atau alamat ke dalam image.</li>
+<li>Di dalam container, `localhost` adalah container itu sendiri; service lain dipanggil lewat nama via DNS user-defined network.</li>
+<li>Named volume menjaga data stateful (Postgres) bertahan lintas `docker compose down` dan restart.</li>
+<li>Compose plus healthcheck dan `depends_on: condition: service_healthy` memastikan API start setelah DB benar-benar siap.</li>
+<li>`docker compose logs`, `exec`, dan flag resource (`--memory`, `--cpus`) adalah alat debug dan pembatas dasar.</li>
+<li>Pin tag semver dan referensi digest untuk deploy reproducible; jalankan sebagai non-root dan pindai dengan `docker scout` atau `trivy`.</li>
+</ul>
+</Recap>
+
+<Box variant="tip" icon="💡" label="Aturan emas image produksi"><p>Image akhir yang baik: kecil, non-root, tanpa shell bila bisa, bertag immutable, dan tidak membawa satu pun secret di dalam layer-nya.</p></Box>
+
+<h3>Tiga arah langkah berikutnya</h3>
+
+<CardGrid cols={3}>
+<Card><h4>CI/CD</h4><p>Pindahkan build, test, dan push image ke pipeline otomatis agar setiap merge menghasilkan artefak yang konsisten dan teruji.</p></Card>
+<Card><h4>AWS ECR dan ECS</h4><p>Simpan image di registry ECR, lalu jalankan container di ECS Fargate yang tersambung ke Postgres terkelola RDS.</p></Card>
+<Card><h4>Observability dan scaling</h4><p>Tambahkan metrik, log terpusat, dan health probe agar container bisa di-scale dan dipantau dengan percaya diri.</p></Card>
+</CardGrid>
+
+Dari sini, lanjutkan ke Docker Compose tingkat lanjut untuk environment dev yang lebih kaya, lalu rakit CI pipeline yang membangun dan menguji image setiap commit. Setelah itu, bawa `skincare-api` ke produksi nyata lewat AWS ECR sebagai registry dan ECS Fargate sebagai runtime, dengan RDS sebagai database. Fondasi container yang kamu kuasai di sini adalah tiket masuk ke seluruh jalur deploy itu.
+
+</Section>
+

@@ -1,42 +1,132 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import SectionHeader from '../../components/SectionHeader.astro';
+import RoadmapCard from '../../components/RoadmapCard.astro';
 
 // Indeks roadmap: jalur kurasi yang mereferensikan course.
-// Saat ini hanya satu (Backend Artisan); grid siap untuk multi-roadmap ke depan.
+// Data fetching DIPRESERVASI dari versi sebelumnya — hanya markup/layout yang berubah
+// agar cocok dengan frame nRB05. Saat ini hanya satu roadmap nyata (Backend Artisan,
+// available); Laravel & AI ditampilkan sebagai placeholder "coming soon" (dimmed),
+// sesuai frame yang jelas menunjukkan dua kartu placeholder.
 const roadmaps = (await getCollection('roadmaps')).sort(
   (a, b) => a.data.order - b.data.order
 );
----
-<BaseLayout title="Roadmap - Web Artisan" nav={{ variant: 'home' }}>
-  <main class="roadmaps-index">
-    <header class="roadmaps-index-head">
-      <p class="roadmaps-index-eyebrow"><span class="dot" aria-hidden="true"></span>Web Artisan</p>
-      <h1 class="roadmaps-index-title">Roadmap</h1>
-      <p class="roadmaps-index-lede">
-        Roadmap adalah jalur belajar terkurasi yang merangkai beberapa course jadi satu urutan
-        jelas, dari nol sampai siap kerja. Pilih jalur, lalu ikuti course di dalamnya secara berurutan.
-      </p>
-    </header>
 
-    <div class="roadmap-grid">
-      {roadmaps.map((roadmap) => (
-        <a class="roadmap-banner" href={`/roadmaps/${roadmap.id}`}>
-          <span class="roadmap-banner-media">
-            <img
-              src={roadmap.data.cover}
-              alt={`Banner roadmap ${roadmap.data.title}`}
-              loading="lazy"
-              decoding="async"
-            />
-          </span>
-          <span class="roadmap-banner-body">
-            <span class="roadmap-banner-badge">{roadmap.data.badge}</span>
-            <span class="roadmap-banner-title">{roadmap.data.title}</span>
-            <span class="roadmap-banner-sum">{roadmap.data.summary}</span>
-          </span>
-        </a>
-      ))}
+// Map collection entry → props RoadmapCard. Summary tetap Bahasa Indonesia (pull dari
+// frontmatter `summary`). INCLUDES chips = nama course-nya. Meta = "N courses · M lessons".
+// Sumber konten nyata: hanya Backend Artisan ada di koleksi. Course count diturunkan
+// dari `data.courses`; lesson count tidak tersimpan di koleksi → total path = Go Luminas
+// 73 modul + HTTP 15 + OpenAPI 14 + Redis 15 = 117 (selaras halaman detail roadmap).
+const COURSE_LABEL: Record<string, string> = {
+  'go-luminas': 'Go Luminas',
+  http: 'HTTP',
+  openapi: 'OpenAPI',
+  redis: 'Redis',
+};
+const LESSON_COUNT: Record<string, number> = {
+  'backend-artisan': 117,
+};
+
+const realRoadmaps = roadmaps.map((roadmap) => {
+  const courseIds: string[] = roadmap.data.courses ?? [];
+  const courseCount = courseIds.length;
+  const lessons = LESSON_COUNT[roadmap.id];
+  const includes = courseIds.map((id) => COURSE_LABEL[id] ?? id);
+  const metaParts = [`${courseCount} course${courseCount === 1 ? '' : 's'}`];
+  if (lessons) metaParts.push(`${lessons} lessons`);
+  return {
+    cover: roadmap.data.cover,
+    href: `/roadmaps/${roadmap.id}`,
+    summary: roadmap.data.summary as string,
+    includes,
+    meta: metaParts.join(' · '),
+    status: 'available' as const,
+    coverAlt: `Cover roadmap ${roadmap.data.title}`,
+  };
+});
+
+// Placeholder "coming soon" (dimmed, non-interaktif) — frame nRB05 menampilkan dua
+// kartu ini. Belum ada konten nyata di koleksi, jadi pakai copy persis dari text node
+// frame (ringkasan + chips Bahasa Indonesia). Saat course-nya nanti dibuat, pindahkan
+// ke koleksi `roadmaps` dan kartu otomatis jadi available.
+const soonRoadmaps = [
+  {
+    cover: '/laravel-artisan.png',
+    href: '/roadmaps/laravel-artisan',
+    summary:
+      'Bangun aplikasi web modern dengan Laravel: dari routing, Eloquent, dan Blade, sampai REST API dan deployment.',
+    includes: ['Routing', 'Eloquent', 'Blade', 'REST API'],
+    coverAlt: 'Cover roadmap Laravel Artisan',
+  },
+  {
+    cover: '/ai-expeditions.png',
+    href: '/roadmaps/ai-expeditions',
+    summary:
+      'Petualangan membangun produk AI: LLM, RAG, embeddings, dan agent, langsung lewat proyek nyata.',
+    includes: ['LLM', 'RAG', 'Embeddings', 'Agents'],
+    coverAlt: 'Cover roadmap AI Expeditions',
+  },
+];
+---
+<BaseLayout title="Roadmaps - Web Artisan" nav={{ variant: 'home' }}>
+  {/* Tubuh berbingkai: garis sisi 1180 menerus (SPEC §3) — sejajar dengan footer
+      yang juga di dalam .shell-col. Nav penuh-lebar disuplai BaseLayout. */}
+  <div class="shell-bleed">
+    <div class="shell-col">
+      {/* Header berbingkai — self-padded, JANGAN dibungkus .shell-band (SPEC §3). */}
+      <SectionHeader
+        eyebrow="ROADMAPS"
+        title="Explore our roadmaps"
+        lede="Curated paths that bundle courses into one clear sequence, from zero to job-ready. Pick a path, then follow its courses in order."
+      />
+
+      {/* Baris kartu roadmap kaya (cover + ringkasan Indonesia + chip INCLUDES + meta/CTA). */}
+      <section class="rm-rows" aria-label="Roadmaps">
+        {realRoadmaps.map((rm) => (
+          <RoadmapCard
+            variant="list"
+            cover={rm.cover}
+            href={rm.href}
+            summary={rm.summary}
+            includes={rm.includes}
+            meta={rm.meta}
+            status="available"
+            coverAlt={rm.coverAlt}
+          />
+        ))}
+        {soonRoadmaps.map((rm) => (
+          <RoadmapCard
+            variant="list"
+            cover={rm.cover}
+            href={rm.href}
+            summary={rm.summary}
+            includes={rm.includes}
+            status="soon"
+            coverAlt={rm.coverAlt}
+          />
+        ))}
+      </section>
     </div>
-  </main>
+  </div>
 </BaseLayout>
+
+<style>
+  /* Band baris roadmap — self-padded (padding ada DI SINI, bukan wrapper) agar garis
+     sisi .shell-col tetap full-height (SPEC §3). Tidak ada aturan horizontal di antara
+     header & baris (frame nRB05 tidak menampilkannya). Frame: padding 56 + gap antar
+     baris 28 (row 300h, panel 240h → gap visual 28). */
+  .rm-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    padding: 56px;
+  }
+
+  @media (max-width: 640px) {
+    .rm-rows {
+      gap: 24px;
+      padding: 40px 28px;
+    }
+  }
+</style>

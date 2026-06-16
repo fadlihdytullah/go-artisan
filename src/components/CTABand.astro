@@ -1,0 +1,187 @@
+---
+/*
+  CTABand.astro — final call-to-action band (frame nr1kS → "Section — CTA").
+
+  A centered terracotta-tint (accent-soft) panel that closes the homepage:
+  eyebrow ("READY TO START?") + Fraunces heading + muted sub + a button row
+  (primary terracotta button, plus the frame's secondary "Browse all courses"
+  text-link). Top + bottom strong hairlines tie it into the line-system; the
+  centered 1180 column keeps its continuous left/right hairlines.
+
+  Flat (no shadow), rounded, token-driven → reaktif tema light + reader.
+  Re-points to the v2 tokens from Phase 1a (no globals.css edits).
+
+  Props:
+    - title     string  — heading (Fraunces). Required.
+    - sub?      string  — supporting line under the heading (Inter). Optional.
+    - ctaLabel  string  — primary button label. Required.
+    - ctaHref   string  — primary button href. Required.
+
+  Slots: none.
+*/
+interface Props {
+  title: string;
+  sub?: string;
+  ctaLabel: string;
+  ctaHref: string;
+}
+const { title, sub, ctaLabel, ctaHref } = Astro.props;
+---
+<section class="cta-band">
+  <div class="cta-inner">
+    <span class="cta-eyebrow">READY TO START?</span>
+    <h2 class="cta-title">{title}</h2>
+    {sub && <p class="cta-sub">{sub}</p>}
+    <div class="cta-buttons">
+      <a class="cta-primary" href={ctaHref}>{ctaLabel}</a>
+      <a class="cta-secondary" href="/courses">
+        Browse all courses
+        <span class="cta-arrow" aria-hidden="true">&rarr;</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ── Section — CTA ──────────────────────────────────────────────────────────
+     Accent-soft wash (var(--blue-soft) = v2 accent-soft #F0E3D8) with top+bottom
+     strong dividers; centered column carries the continuous side hairlines. */
+  .cta-band {
+    background: var(--blue-soft);
+    border-top: 1px solid var(--line-strong);    /* separator dari WHY di atas */
+    /* border-bottom dimatikan: footer (.shell-footer-wrap) menyuplai border-top
+       sebagai separator tunggal ke footer → tak dobel saat CTA menyatu ke footer. */
+    border-bottom: 0;
+    /* WAJIB override padding global `section{padding:56px 0}` → 0 agar border sisi
+       .cta-inner span penuh tinggi band → garis vertikal menerus (lihat .why-band).
+       Centering 1180 dari .cta-inner via margin:auto. */
+    padding: 0;
+  }
+  .cta-inner {
+    max-width: var(--shell-max, 1180px);
+    margin: 0 auto;
+    padding: clamp(64px, 9vw, 120px) 48px;
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 24px;
+  }
+  .cta-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.16em;
+    color: var(--blue); /* v2 accent-deep #9C4A2F — AA on the soft wash */
+  }
+  .cta-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(32px, 4.5vw, 44px);
+    font-weight: 500;
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .cta-sub {
+    margin: 0;
+    max-width: 560px;
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.5;
+    color: var(--ink-muted);
+  }
+
+  /* Buttons — primary terracotta fill + secondary underline text-link. */
+  .cta-buttons {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .cta-primary {
+    display: inline-flex;
+    align-items: center;
+    padding: 15px 30px;
+    border-radius: 6px; /* matches frame button cornerRadius */
+    background: var(--blue-bright); /* v2 accent #BD5D3E */
+    color: var(--paper);
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+    transition: background-color 0.18s ease;
+  }
+  .cta-primary:hover {
+    background: var(--blue); /* accent-deep on hover */
+  }
+  .cta-primary:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 3px;
+  }
+  .cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--line-strong);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1;
+    text-decoration: none;
+    transition: color 0.18s ease, border-color 0.18s ease;
+  }
+  .cta-secondary:hover {
+    color: var(--blue);
+    border-color: var(--blue);
+  }
+  .cta-secondary:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 3px;
+  }
+  .cta-arrow {
+    transition: transform 0.2s ease;
+  }
+  .cta-secondary:hover .cta-arrow {
+    transform: translateX(2px);
+  }
+
+  @media (max-width: 600px) {
+    .cta-band { padding: 0 20px; }
+    /* Mobile full-bleed: buang rail sisi kiri+kanan kolom 1180 (tak ada garis
+       vertikal di tepi); separator atas/bawah ke section lain tetap. */
+    .cta-inner { padding: clamp(56px, 12vw, 72px) 24px; border-left: 0; border-right: 0; }
+    /* Tombol: tumpuk vertikal & full-width sesuai frame mobile (bukan baris). */
+    .cta-buttons {
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .cta-primary {
+      justify-content: center;
+      padding: 18px 24px;
+      font-size: 16px;
+    }
+    /* Secondary jadi tombol ber-OUTLINE (box border penuh + radius), bukan
+       text-link garis-bawah. Tinggi disamakan primary (17+1px border = 18px). */
+    .cta-secondary {
+      justify-content: center;
+      padding: 17px 24px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      font-size: 16px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cta-secondary:hover .cta-arrow { transform: none; }
+  }
+</style>

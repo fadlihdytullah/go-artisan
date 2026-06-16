@@ -1,0 +1,82 @@
+---
+/*
+  PageShell.astro — v2 line-system shell (SPEC §3, Phase 1a foundation).
+
+  Renders the "Anthropic lines" page chrome:
+
+    full-width nav  (no side lines)
+    full-width hero (optional, no side lines, edge-to-edge)
+    ┌──────────────────────────────┐  ← centered 1180px column
+    │  bordered body bands         │     CONTINUOUS full-height left+right
+    │  …                           │     hairlines (var(--line)) unbroken from
+    │  bordered footer             │     the first band through the footer.
+    └──────────────────────────────┘
+
+  The continuous side borders live on a single `.shell-col` wrapper that
+  contains BOTH the body slot and the footer slot, so the lines never break.
+  Each band supplies its OWN vertical padding (use the `.shell-band` utility,
+  or `band` boolean on a <section>) so the column border = full section height.
+
+  Slots:
+    - "nav"    — full-width nav row (no side lines). If omitted, the default
+                 (unnamed) slot's leading content can carry the nav; but the
+                 recommended pattern is to pass <Navbar/> into the "nav" slot.
+    - "hero"   — full-width hero band (edge-to-edge, NO side lines). Optional.
+    - default  — bordered body bands; rendered INSIDE the 1180 column with the
+                 continuous side hairlines. Wrap each band in `.shell-band`.
+    - "footer" — bordered footer; rendered inside the SAME column so the side
+                 lines continue through it. Use `.shell-footer-*` utilities.
+
+  This component is presentation-only: it does NOT render Navbar or Footer
+  markup itself (Phase 2 owns that). Pages compose those into the slots.
+*/
+interface Props {
+  /** Max width of the bordered column. Defaults to the global --shell-max (1180px). */
+  maxWidth?: string;
+  /** Extra class(es) on the outer wrapper. */
+  class?: string;
+  /** Render the bordered column with a tint background (var(--paper)). Default false (bg cream). */
+  paper?: boolean;
+}
+const { maxWidth, class: extraClass = '', paper = false } = Astro.props;
+const colStyle = maxWidth ? `max-width:${maxWidth}` : undefined;
+const hasHero = Astro.slots.has('hero');
+const hasNav = Astro.slots.has('nav');
+const hasFooter = Astro.slots.has('footer');
+---
+<div class:list={['page-shell-v2', extraClass]}>
+  {hasNav && (
+    <div class="shell-bleed shell-nav">
+      <slot name="nav" />
+    </div>
+  )}
+
+  {hasHero && (
+    <div class="shell-bleed shell-hero">
+      <slot name="hero" />
+    </div>
+  )}
+
+  <div class:list={['shell-col', { 'shell-col-paper': paper }]} style={colStyle}>
+    <slot />
+    {hasFooter && (
+      <footer class="shell-footer">
+        <slot name="footer" />
+      </footer>
+    )}
+  </div>
+</div>
+
+<style>
+  /* Hook classes only; visual rules (borders, padding) live in globals.css so
+     the utilities (.shell-band, .shell-rule, .shell-footer-*) stay reusable in
+     page markup and MDX. Token-driven → reaktif tema light + reader. */
+  .page-shell-v2 {
+    display: flow-root;
+    min-height: 100%;
+    background: var(--bg);
+  }
+  .shell-col-paper {
+    background: var(--paper);
+  }
+</style>

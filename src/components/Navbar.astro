@@ -109,15 +109,12 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
 
     <a class="nav-brand" href="/" aria-label="Ke beranda, semua modul" title="Beranda">
       <span class="logo-badge" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor">
-          <rect x="7" y="4" width="10" height="3.3" rx="1.4" />
-          <rect x="4.5" y="10.35" width="15" height="3.3" rx="1.4" opacity=".8" />
-          <rect x="2" y="16.7" width="20" height="3.3" rx="1.4" opacity=".58" />
-        </svg>
+        <img src="/logo.png" alt="" width="38" height="38" decoding="async" />
       </span>
       <span class="nav-wordmark">{lead}{lead && ' '}<span class="nav-wordmark-accent">{tail}</span></span>
     </a>
 
+    {variant === 'module' && (
     <div class="nav-switch">
       <button
         type="button"
@@ -203,6 +200,7 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
         </div>
       </div>
     </div>
+    )}
 
     <div class="topbar-actions">
       <nav class="nav-primary" aria-label="Navigasi utama">
@@ -227,10 +225,33 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
       <button type="button" class="rc-btn rc-theme" data-theme-toggle aria-label="Ganti mode baca (Terang / Reader)">
         <span class="ti" aria-hidden="true"><Icon name="sun" size={18} /></span>
       </button>
+      <button
+        type="button"
+        class="nav-burger"
+        popovertarget="nav-sheet"
+        aria-controls="nav-sheet"
+        aria-expanded="false"
+        aria-label="Buka menu"
+      >
+        <Icon name="menu" size={20} />
+      </button>
       {variant === 'module' && summaryHref && (
         <a class="topbar-link" href={summaryHref}>Ringkasan</a>
       )}
     </div>
+  </div>
+
+  <div id="nav-sheet" popover="auto" class="nav-sheet">
+    <a
+      class={`nav-sheet-link${path === '/roadmaps' || path.startsWith('/roadmaps/') ? ' is-active' : ''}`}
+      href="/roadmaps"
+      aria-current={path === '/roadmaps' || path.startsWith('/roadmaps/') ? 'page' : undefined}
+    >Roadmap</a>
+    <a
+      class={`nav-sheet-link${path === '/courses' || path.startsWith('/courses/') ? ' is-active' : ''}`}
+      href="/courses"
+      aria-current={path === '/courses' || path.startsWith('/courses/') ? 'page' : undefined}
+    >Courses</a>
   </div>
 </header>
 
@@ -354,5 +375,15 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
     }
     window.addEventListener('scroll', sync, { passive: true });
     sync();
+  })();
+
+  // Mobile menu sheet: native popover tidak auto-sync aria-expanded di trigger.
+  (function () {
+    var sheet = document.getElementById('nav-sheet');
+    var burger = document.querySelector('.nav-burger');
+    if (!sheet || !burger || typeof sheet.showPopover !== 'function') return;
+    sheet.addEventListener('toggle', function () {
+      burger.setAttribute('aria-expanded', sheet.matches(':popover-open') ? 'true' : 'false');
+    });
   })();
 </script>

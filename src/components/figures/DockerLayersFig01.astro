@@ -1,0 +1,39 @@
+<svg viewBox="0 0 760 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram layer image immutable dengan writable layer milik container di atasnya">
+  <defs>
+    <marker id="dlArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#a3461f" />
+    </marker>
+  </defs>
+  <rect x="20" y="20" width="720" height="380" rx="20" fill="#f6fafb" stroke="#cfd8dc" />
+  <text x="48" y="58" fill="#0f1f24" font-size="21" font-weight="700">Layer image immutable dan writable layer container</text>
+
+  <!-- Tower: writable (atas) lalu 3 layer image read-only -->
+  <rect x="80" y="150" width="300" height="50" rx="8" fill="#f7e7df" stroke="#a3461f" stroke-width="2" />
+  <text x="100" y="174" fill="#0f1f24" font-size="15" font-weight="700">writable layer</text>
+  <text x="100" y="192" fill="#516469" font-size="12.5">milik container &middot; bisa ditulis</text>
+
+  <rect x="80" y="220" width="300" height="50" rx="8" fill="#ffffff" stroke="#9aa7ab" />
+  <text x="100" y="244" fill="#0f1f24" font-size="15" font-weight="700">app binary</text>
+  <text x="100" y="262" fill="#516469" font-size="12.5">COPY /api</text>
+
+  <rect x="80" y="276" width="300" height="50" rx="8" fill="#ffffff" stroke="#9aa7ab" />
+  <text x="100" y="300" fill="#0f1f24" font-size="15" font-weight="700">dependencies</text>
+  <text x="100" y="318" fill="#516469" font-size="12.5">go mod download</text>
+
+  <rect x="80" y="332" width="300" height="50" rx="8" fill="#ffffff" stroke="#9aa7ab" />
+  <text x="100" y="356" fill="#0f1f24" font-size="15" font-weight="700">base image</text>
+  <text x="100" y="374" fill="#516469" font-size="12.5">distroless / golang</text>
+
+  <!-- Callout writable -->
+  <rect x="440" y="150" width="280" height="74" rx="12" fill="#f7e7df" stroke="#a3461f" />
+  <text x="462" y="180" fill="#0f1f24" font-size="13.5" font-weight="700">Writable layer milik container.</text>
+  <text x="462" y="202" fill="#516469" font-size="13">Hilang saat container dihapus.</text>
+  <path d="M 440 186 C 412 186, 400 178, 382 176" fill="none" stroke="#a3461f" stroke-width="2.5" marker-end="url(#dlArrow)" />
+
+  <!-- Callout image stack -->
+  <rect x="440" y="272" width="280" height="96" rx="12" fill="#ffffff" stroke="#9aa7ab" />
+  <text x="462" y="300" fill="#0f1f24" font-size="13.5" font-weight="700">Layer image read-only dan immutable.</text>
+  <text x="462" y="322" fill="#516469" font-size="13">Tiap instruksi Dockerfile = satu layer.</text>
+  <text x="462" y="344" fill="#516469" font-size="13">Di-cache dan dibagi banyak container.</text>
+  <path d="M 440 312 C 414 308, 400 304, 382 302" fill="none" stroke="#a3461f" stroke-width="2.5" marker-end="url(#dlArrow)" />
+</svg>

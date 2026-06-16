@@ -1,0 +1,38 @@
+<svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram tiga area Git: working tree, staging area, dan repository">
+  <defs>
+    <marker id="gttArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#a3461f" />
+    </marker>
+  </defs>
+  <rect x="20" y="20" width="720" height="300" rx="20" fill="#f6fafb" stroke="#cfd8dc" />
+  <text x="48" y="56" fill="#0f1f24" font-size="21" font-weight="700">Tiga area Git: working tree, staging, repository</text>
+
+  <!-- Working tree -->
+  <rect x="44" y="100" width="176" height="110" rx="12" fill="#ffffff" stroke="#9aa7ab" />
+  <text x="64" y="138" fill="#0f1f24" font-size="15.5" font-weight="700">Working tree</text>
+  <text x="64" y="164" fill="#516469" font-size="12.5">file yang kamu edit</text>
+
+  <!-- Staging area -->
+  <rect x="292" y="100" width="176" height="110" rx="12" fill="#f7e7df" stroke="#a3461f" stroke-width="2" />
+  <text x="312" y="138" fill="#0f1f24" font-size="15.5" font-weight="700">Staging area</text>
+  <text x="312" y="164" fill="#516469" font-size="12.5">(index) yang dipilih</text>
+
+  <!-- Repository -->
+  <rect x="540" y="100" width="176" height="110" rx="12" fill="#ffffff" stroke="#9aa7ab" />
+  <text x="560" y="138" fill="#0f1f24" font-size="15.5" font-weight="700">Repository</text>
+  <text x="560" y="164" fill="#516469" font-size="12.5">(.git) history</text>
+
+  <!-- Top arrows: add, commit -->
+  <path d="M 224 140 L 288 140" fill="none" stroke="#a3461f" stroke-width="2.5" marker-end="url(#gttArrow)" />
+  <text x="230" y="130" fill="#a3461f" font-size="12.5" font-weight="700">git add</text>
+  <path d="M 472 140 L 536 140" fill="none" stroke="#a3461f" stroke-width="2.5" marker-end="url(#gttArrow)" />
+  <text x="476" y="130" fill="#a3461f" font-size="12.5" font-weight="700">git commit</text>
+
+  <!-- Bottom arrows: restore (pointing left) -->
+  <path d="M 288 184 L 224 184" fill="none" stroke="#64748b" stroke-width="2.2" marker-end="url(#gttArrow)" />
+  <path d="M 536 184 L 472 184" fill="none" stroke="#64748b" stroke-width="2.2" marker-end="url(#gttArrow)" />
+  <text x="214" y="246" fill="#516469" font-size="12">git restore</text>
+  <text x="424" y="246" fill="#516469" font-size="12">git restore --staged</text>
+
+  <text x="48" y="300" fill="#516469" font-size="13.5">add memajukan ke staging, commit menyimpan ke history, restore membatalkan kembali.</text>
+</svg>

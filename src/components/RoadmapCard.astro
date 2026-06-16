@@ -1,0 +1,304 @@
+---
+// RoadmapCard — kartu roadmap "magazine cutout" (flat, rounded, token-driven v2).
+//
+// Visual: cover 16:9 dengan PANEL cream yang MENINDIH (overlapping). Judul roadmap
+// sudah ter-bake di artwork cover, jadi panel hanya membawa: ringkasan (Bahasa
+// Indonesia), chip INCLUDES, lalu baris meta + CTA. TIDAK ada badge angka, TIDAK ada
+// tag "available". State `soon` di-render DIMMED (opacity ~0.6, non-interaktif).
+//
+// Dua treatment lewat prop `variant`:
+//   - "list" (default) → baris lebar; cover di KIRI, panel menindih ke kanan
+//       (frame nRB05, mis. L4MtT). Chip selalu tampil.
+//   - "home" → kartu kolom; cover di ATAS, panel menindih ke atas
+//       (frame nr1kS / row e5k6lK). Lebih ringkas; chip opsional & badge COMING SOON
+//       duduk di ATAS cover.
+//
+// Sumber warna semuanya var(--…) → reaktif tema (light + reader). Tanpa shadow.
+// Aset cover: konvensi public/ root 16:9 (mis. /backend-artisan.png).
+
+interface Props {
+  /** URL gambar cover 16:9 (judul ter-bake di artwork). Mis. "/backend-artisan.png". */
+  cover: string;
+  /** Tautan tujuan roadmap. */
+  href: string;
+  /** Ringkasan singkat — Bahasa Indonesia (pull copy persis dari konten). */
+  summary: string;
+  /** Chip INCLUDES — daftar nama course/topik. */
+  includes?: string[];
+  /** Baris meta kiri (mis. "4 courses · 73 lessons"). Default "Coming soon" saat soon. */
+  meta?: string;
+  /** Status ketersediaan. "soon" → dimmed + non-interaktif. */
+  status?: 'available' | 'soon';
+  /** Treatment: baris lebar (list) atau kartu kolom homepage (home). */
+  variant?: 'list' | 'home';
+  /** Teks alternatif cover; default diturunkan dari summary. */
+  coverAlt?: string;
+  class?: string;
+}
+
+const {
+  cover,
+  href,
+  summary,
+  includes = [],
+  meta,
+  status = 'available',
+  variant = 'list',
+  coverAlt,
+  class: className,
+} = Astro.props;
+
+const isSoon = status === 'soon';
+const metaText = meta ?? (isSoon ? 'Coming soon' : null);
+// Saat soon kartu non-interaktif → bukan <a>; saat available bungkus penuh sebagai tautan.
+const Tag = isSoon ? 'div' : 'a';
+const tagProps = isSoon
+  ? { 'aria-disabled': 'true' }
+  : { href };
+---
+<Tag
+  class:list={['rmc', `rmc-${variant}`, isSoon && 'is-soon', className]}
+  {...tagProps}
+>
+  <span class="rmc-cover">
+    <img
+      src={cover}
+      alt={coverAlt ?? `Cover roadmap — ${summary}`}
+      width="540"
+      height="300"
+      loading="lazy"
+      decoding="async"
+    />
+    {isSoon && variant === 'home' && (
+      <span class="rmc-soon-badge">COMING SOON</span>
+    )}
+  </span>
+
+  <span class="rmc-panel">
+    {isSoon && variant === 'list' && (
+      <span class="rmc-soon-row"><span class="rmc-soon-badge rmc-soon-inline">COMING SOON</span></span>
+    )}
+
+    <span class="rmc-summary">{summary}</span>
+
+    {includes.length > 0 && (
+      <span class="rmc-chips">
+        {includes.map((c) => <span class="rmc-chip">{c}</span>)}
+      </span>
+    )}
+
+    <span class="rmc-foot">
+      {metaText && <span class="rmc-meta">{metaText}</span>}
+      <span class="rmc-cta" aria-hidden="true">→</span>
+    </span>
+  </span>
+</Tag>
+
+<style>
+  /* ─────────────────────────────────────────────────────────────────────────
+     RoadmapCard — magazine cutout. Cover (image) + panel cream yang menindih.
+     Flat (no shadow), rounded (radius-card). Token v2 → reaktif tema light/reader.
+     ───────────────────────────────────────────────────────────────────────── */
+  .rmc {
+    position: relative;
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    isolation: isolate;
+  }
+  .rmc.is-soon {
+    opacity: 0.6;
+    cursor: default;
+    pointer-events: none;
+  }
+
+  /* ── Cover (16:9) ── */
+  .rmc-cover {
+    display: block;
+    position: relative;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    background: var(--paper-illus); /* fallback cream hangat saat cover lazy-load; cover mengisi penuh */
+    border: 1px solid var(--hair);
+  }
+  .rmc-cover img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    height: auto;
+    object-fit: cover;
+  }
+
+  /* COMING SOON badge yang duduk DI ATAS cover (varian home) */
+  .rmc-soon-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--ink-muted);
+    background: color-mix(in srgb, var(--paper) 94%, transparent);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-xs);
+    padding: 5px 10px;
+    white-space: nowrap;
+  }
+  .rmc-home .rmc-soon-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 1;
+  }
+  /* Varian list: badge inline di baris atas panel (fill solid bg-alt) */
+  .rmc-soon-row { display: block; }
+  .rmc-soon-inline {
+    display: inline-block;
+    background: var(--paper-soft);
+    padding: 4px 9px;
+  }
+
+  /* ── Panel cream yang MENINDIH cover ── */
+  .rmc-panel {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+  }
+
+  /* List: cover kiri (540×300), panel kanan menindih ~44px, ter-center vertikal.
+     Pakai grid agar cover & panel saling tumpuk pada lebar yang sama. */
+  .rmc-list {
+    display: grid;
+    grid-template-columns: 540fr 528fr; /* cover : sisa, total ~1068 */
+    align-items: center;
+  }
+  .rmc-list .rmc-cover {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .rmc-list .rmc-panel {
+    grid-column: 2;
+    grid-row: 1;
+    margin-left: -44px;      /* tindih ke atas cover */
+    padding: 26px 30px;
+  }
+  .rmc-list .rmc-summary {
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  /* Home: cover atas (16:9), panel di bawah menindih ke atas, lebih sempit. */
+  .rmc-home {
+    display: block;
+  }
+  .rmc-home .rmc-panel {
+    margin: -26px 14px 0;    /* tindih ke atas cover + inset sisi */
+    padding: 15px 16px;
+    gap: 12px;
+  }
+  .rmc-home .rmc-summary {
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+
+  /* ── Ringkasan (Bahasa Indonesia) ── */
+  .rmc-summary {
+    color: var(--ink-muted);
+    font-weight: 500;
+  }
+
+  /* ── Chip INCLUDES ── */
+  .rmc-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .rmc-chip {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink);
+    background: var(--paper-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-xs);
+    padding: 5px 11px;
+    white-space: nowrap;
+  }
+
+  /* ── Baris kaki: meta kiri + CTA bulat kanan ── */
+  .rmc-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .rmc-meta {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--faint);
+  }
+  .rmc-home .rmc-meta { font-size: 12px; }
+
+  .rmc-cta {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    border: 1.5px solid var(--blue-bright);
+    color: var(--blue-bright);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1;
+    margin-left: auto;
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.2s var(--ease-spring);
+  }
+  .rmc-home .rmc-cta {
+    width: 34px;
+    height: 34px;
+    font-size: 15px;
+  }
+  /* Soon: lingkaran CTA pakai border netral (line-strong), tanpa warna aksen. */
+  .rmc.is-soon .rmc-cta {
+    border-color: var(--line-strong);
+    color: var(--line-strong);
+  }
+
+  /* ── Interaksi (hanya available) ── */
+  .rmc:not(.is-soon):hover .rmc-cta {
+    background: var(--blue-bright);
+    color: var(--paper);
+    transform: translateX(2px);
+  }
+  .rmc:not(.is-soon):hover .rmc-panel {
+    border-color: var(--hair-accent);
+  }
+  .rmc:focus-visible {
+    outline: 2px solid var(--blue-bright);
+    outline-offset: 3px;
+    border-radius: var(--radius-card);
+  }
+
+  /* ── Responsif ── */
+  @media (max-width: 720px) {
+    /* List jatuh ke tumpuk kolom (mirip home) di layar sempit */
+    .rmc-list {
+      display: block;
+    }
+    .rmc-list .rmc-panel {
+      margin: -26px 14px 0;
+      padding: 18px 18px;
+    }
+    .rmc-list .rmc-summary { font-size: 14px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rmc:not(.is-soon):hover .rmc-cta { transform: none; }
+  }
+</style>

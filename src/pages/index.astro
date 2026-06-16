@@ -3,6 +3,11 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Icon from '../components/Icon.astro';
 import CourseCard from '../components/CourseCard.astro';
+import RoadmapCard from '../components/RoadmapCard.astro';
+import StatBand from '../components/StatBand.astro';
+import SectionHeader from '../components/SectionHeader.astro';
+import WhyBand from '../components/WhyBand.astro';
+import CTABand from '../components/CTABand.astro';
 
 // Seluruh modul backend (koleksi `modules`) → dipakai untuk continue-link & progress.
 const mods = (await getCollection('modules')).sort(
@@ -14,8 +19,12 @@ const moduleIds = mods.map((mod) => mod.id);
 const courses = (await getCollection('courses')).sort(
   (a, b) => a.data.order - b.data.order
 );
+// "Latest courses" frame nr1kS → DRVjW: 3 course TERBARU (order tertinggi) + promo
+// "More courses" sebagai item terakhir. slice(-3) mengambil 3 paling baru; bila course
+// bertambah, daftar tetap 3 kartu dan sisanya dijangkau lewat kartu browse-all.
+const latestCourses = courses.filter((c) => c.id !== 'go-luminas').slice(-3);
 
-// Roadmap unggulan untuk kartu banner (saat ini: Backend Artisan).
+// Roadmap unggulan (Backend Artisan tersedia; Laravel & AI menyusul/dimmed).
 const roadmaps = (await getCollection('roadmaps')).sort(
   (a, b) => a.data.order - b.data.order
 );
@@ -25,142 +34,162 @@ const featuredRoadmap =
 // Statistik ringkas platform (dihitung langsung dari koleksi modul & course).
 const totalModules = mods.length;
 const totalCourses = courses.length;
+const totalRoadmaps = roadmaps.length || 3;
 
-// Cuplikan Go untuk visual hero - idiomatik & relevan dengan jalur backend (chi router).
-// Di-render via set:html agar kurung kurawal tidak bentrok dengan ekspresi Astro.
-const heroCode = [
-  '<span class="k">package</span> main',
-  '',
-  '<span class="k">import</span> (',
-  '\t<span class="s">"net/http"</span>',
-  '',
-  '\t<span class="s">"github.com/go-chi/chi/v5"</span>',
-  ')',
-  '',
-  '<span class="k">func</span> <span class="f">main</span>() {',
-  '\tr := chi.<span class="f">NewRouter</span>()',
-  '',
-  '\t<span class="c">// daftar produk skincare</span>',
-  '\tr.<span class="f">Get</span>(<span class="s">"/produk"</span>, listProduk)',
-  '',
-  '\thttp.<span class="f">ListenAndServe</span>(<span class="s">":8080"</span>, r)',
-  '}',
-].join('\n');
+// Stat band (frame nr1kS → Pad8h). Angka real dari koleksi; caption persis frame.
+const heroStats = [
+  { value: totalRoadmaps, label: 'Roadmaps', caption: 'curated learning paths' },
+  { value: totalCourses, label: 'Courses', caption: 'focused & practical' },
+  { value: totalModules, label: 'Lessons', caption: 'in-depth written guides' },
+  { value: 1, label: 'Real project', caption: 'built end to end' },
+];
+
+// "Why us" — 6 alasan (copy persis frame nr1kS → x71Z5F, UI English).
+const whyItems = [
+  { title: 'One clear path', body: 'No guessing where to start. Follow an ordered path from fundamentals to production.' },
+  { title: 'Progress saved automatically', body: 'Stored locally in your browser. Pick up any time, no account required.' },
+  { title: 'A real case study', body: 'Build a real backend end to end: catalog, cart, checkout, inventory, payments, and order lifecycle.' },
+  { title: 'All the way to production', body: 'Theory plus practice: Docker, CI/CD, and deploying to the cloud the way real teams do.' },
+  { title: 'Modern, idiomatic patterns', body: 'Routing, databases, caching, testing, and observability: patterns used on the job.' },
+  { title: 'Dense, readable lessons', body: 'Each lesson is a focused ~60–80 minute read. No padding, no endless video.' },
+];
+
+// Tile cluster isometrik hero (frame nr1kS → RcEVn): 01 paling bawah (accent).
+const heroTiles = [
+  { n: '06', title: 'Deploy', sub: 'Ship it' },
+  { n: '05', title: 'Caching', sub: 'Performance' },
+  { n: '04', title: 'Database', sub: 'Store & query' },
+  { n: '03', title: 'APIs', sub: 'Design & docs' },
+  { n: '02', title: 'HTTP', sub: 'Servers & routing' },
+  { n: '01', title: 'Foundations', sub: 'Start here', accent: true },
+];
+
+// CTA "Get started" → modul pertama (di-rewrite oleh script progress jadi continue).
+const firstLessonHref = `/lessons/${mods[0]?.id ?? ''}`;
+
+// Promo cell "More courses" di akhir grid courses (frame nr1kS → L8HB9u).
+const moreCoursesHref = '/courses';
 ---
-<BaseLayout title="Web Artisan - Belajar Web Development" nav={{ variant: 'home' }}>
-  <main class="home" data-home-progress data-module-ids={JSON.stringify(moduleIds)}>
-    <section class="home-hero">
-      <div class="home-hero-grid">
-        <div class="home-hero-copy">
-          <p class="home-eyebrow"><span class="dot" aria-hidden="true"></span>Platform belajar web development</p>
-
-          <h1 class="home-title">Belajar web development, satu jalur jelas dari nol</h1>
-
-          <p class="home-lede">
-            <b>Web Artisan</b> adalah platform belajar web development yang terus tumbuh.
-            Jalur yang tersedia sekarang adalah <b>backend</b>: kuasai Go dari fondasi bahasa,
-            HTTP, kontrak API, sampai caching dan deploy produksi. Jalur frontend menyusul.
+<BaseLayout title="Web Artisan: Learn web development, one clear path" nav={{ variant: 'home' }}>
+  <main class="home-v2" data-home-progress data-module-ids={JSON.stringify(moduleIds)}>
+    {/* ── Hero (full-width, NO side lines) — frame nr1kS → PF0nx ───────────── */}
+    <section class="shell-bleed hero-v2" aria-label="Web Artisan">
+      <div class="hero-v2-inner">
+        <div class="hero-v2-copy">
+          <h1 class="hero-v2-title">One clear path,<br />from zero to production.</h1>
+          <p class="hero-v2-sub">
+            A growing platform for learning web development. Follow clear roadmaps and
+            focused courses, one step at a time. Backend is live now; more tracks
+            coming soon.
           </p>
 
-          <dl class="home-stats">
-            <div><dt>{totalCourses}</dt><dd>course</dd></div>
-            <div><dt>{totalModules}</dt><dd>modul</dd></div>
-            <div><dt>1</dt><dd>roadmap</dd></div>
-            <div><dt>1</dt><dd>proyek nyata</dd></div>
-          </dl>
+          <p class="hero-v2-tag">
+            <span class="hero-v2-pill">FREE</span>
+            <span class="hero-v2-note">No account needed · progress saved locally</span>
+          </p>
 
-          <div class="home-actions">
-            <a class="home-cta" href={`/lessons/${mods[0]?.id ?? ''}`} data-continue-link>
-              <span data-continue-label>Mulai belajar</span>
-              <Icon name="arrow-right" size={17} />
+          <div class="hero-v2-ctas">
+            <a class="hero-v2-primary" href={firstLessonHref} data-continue-link>
+              <span data-continue-label>Get started</span>
+              <Icon name="arrow-right" size={16} />
             </a>
-            <a class="home-secondary-link" href="/courses/go-luminas">Lihat kurikulum Go Luminas</a>
+            <a class="hero-v2-secondary" href="/roadmaps">Browse roadmaps</a>
           </div>
-
-          <section
-            class="learning-progress-panel learning-progress-panel-home"
-            data-learning-progress
-            data-module-ids={JSON.stringify(moduleIds)}
-            aria-label="Progress belajar"
-          >
-            <div class="learning-progress-head">
-              <div>
-                <p class="learning-progress-kicker">Progress belajar</p>
-                <p class="learning-progress-context">Tersimpan lokal di browser ini</p>
-              </div>
-              <p class="learning-progress-stats">
-                <span data-learning-progress-value>0%</span>
-                <span data-learning-progress-count>0/{moduleIds.length} modul selesai</span>
-              </p>
-            </div>
-            <div
-              class="learning-progress-meter"
-              data-learning-progress-meter
-              role="progressbar"
-              aria-label="Progress kursus"
-              aria-valuemin="0"
-              aria-valuemax={moduleIds.length}
-              aria-valuenow="0"
-            >
-              <span class="learning-progress-fill" data-learning-progress-fill></span>
-            </div>
-            <p class="learning-progress-copy" data-learning-progress-copy>
-              Belum ada progres tersimpan. Mulai dari modul pertama atau masuk ke topik yang paling relevan untuk kerja backend-mu sekarang.
-            </p>
-          </section>
         </div>
 
-        <div class="home-code" aria-hidden="true">
-          <div class="home-code-bar">
-            <span class="home-code-dots"><i></i><i></i><i></i></span>
-            <span class="home-code-file">main.go</span>
-            <span class="home-code-tag">Go + chi</span>
+        <div class="hero-v2-cluster" aria-hidden="true">
+          <div class="hero-v2-stack">
+            {heroTiles.map((t) => (
+              <div class:list={['hero-tile', t.accent && 'hero-tile-accent']}>
+                <span class="hero-tile-index">{t.n}</span>
+                <span class="hero-tile-txt">
+                  <span class="hero-tile-title">{t.title}</span>
+                  <span class="hero-tile-sub">{t.sub}</span>
+                </span>
+              </div>
+            ))}
+            {/* Connector spine — anchored to the stack so it stays glued under
+               the Foundations card (tile #6 sits at translateX(0) = stack left). */}
+            <div class="hero-v2-spine">
+              <span class="hero-spine-line"></span>
+              <span class="hero-spine-rail"></span>
+              <span class="hero-spine-node"></span>
+              <span class="hero-spine-node"></span>
+              <span class="hero-spine-node"></span>
+              <span class="hero-spine-node hero-spine-node-active"></span>
+              <span class="hero-spine-cap">learn · build · ship</span>
+            </div>
           </div>
-          <pre class="home-code-body"><code set:html={heroCode}></code></pre>
         </div>
       </div>
     </section>
 
-    {featuredRoadmap && (
-      <section class="home-modules" aria-label="Roadmap unggulan">
-        <div class="home-modules-head">
-          <h2>Roadmap unggulan</h2>
-          <a class="count home-roadmaps-all" href="/roadmaps">Semua roadmap</a>
-        </div>
-        <a class="roadmap-banner" href={`/roadmaps/${featuredRoadmap.id}`}>
-          <span class="roadmap-banner-media">
-            <img
-              src={featuredRoadmap.data.cover}
-              alt={`Banner roadmap ${featuredRoadmap.data.title}`}
-              loading="eager"
-              fetchpriority="high"
-              decoding="async"
-            />
-          </span>
-          <span class="roadmap-banner-body">
-            <span class="roadmap-banner-badge">{featuredRoadmap.data.badge}</span>
-            <span class="roadmap-banner-title">{featuredRoadmap.data.hero}</span>
-            <span class="roadmap-banner-sum">{featuredRoadmap.data.summary}</span>
-          </span>
-        </a>
-      </section>
-    )}
+    {/* ── Stats band (bracketed by full-width rules) — frame Pad8h ─────────── */}
+    <StatBand stats={heroStats} />
 
-    {courses.length > 0 && (
-      <section class="home-modules home-courses" id="courses">
-        <div class="home-modules-head">
-          <h2>Courses</h2>
-          <a class="count home-roadmaps-all" href="/courses">Semua course</a>
-        </div>
-        <p class="home-courses-lede">
-          Tiap course adalah satu unit topik. Mulai dari Go Luminas sebagai fondasi penuh,
-          lalu perdalam HTTP, OpenAPI, dan Redis sesuai kebutuhan backend-mu.
-        </p>
-        <div class="course-grid">
-          {courses.map((course) => <CourseCard course={course} />)}
-        </div>
-      </section>
-    )}
+    {/* ── Bordered 1180 column: Roadmaps + Courses sections ───────────────── */}
+    <div class="shell-bleed">
+      <div class="shell-col">
+        {/* Explore our roadmaps — frame f6AnB / ThDDR */}
+        <SectionHeader eyebrow="ROADMAPS" title="Explore our roadmaps" />
+        <section class="home-v2-band" aria-label="Roadmaps">
+          <div class="rmc-home-grid">
+            <RoadmapCard
+              variant="home"
+              cover={featuredRoadmap?.data.cover ?? '/backend-artisan.png'}
+              href={`/roadmaps/${featuredRoadmap?.id ?? 'backend-artisan'}`}
+              summary="Kuasai Go dari fondasi sampai deploy: HTTP, database, kontrak API, caching, AWS."
+              meta="4 courses · 117 lessons"
+              status="available"
+            />
+            <RoadmapCard
+              variant="home"
+              cover="/laravel-artisan.png"
+              href="/roadmaps/laravel-artisan"
+              summary="Aplikasi web modern dengan Laravel: routing, Eloquent, Blade, sampai REST API."
+              meta="Coming soon"
+              status="soon"
+            />
+            <RoadmapCard
+              variant="home"
+              cover="/ai-expeditions.png"
+              href="/roadmaps/ai-expeditions"
+              summary="Bangun produk AI: LLM, RAG, embeddings, dan agent lewat proyek nyata."
+              meta="Coming soon"
+              status="soon"
+            />
+          </div>
+        </section>
+
+        {/* Latest courses — frame s2XtPk / DRVjW */}
+        <SectionHeader
+          eyebrow="COURSES"
+          title="Latest courses"
+          lede="Focused, self-contained courses on the core building blocks of the web."
+        />
+        <section class="home-v2-band" id="courses" aria-label="Latest courses">
+          <a class="home-v2-viewall" href="/courses">View all courses</a>
+          <div class="cc-home-grid">
+            {latestCourses.map((course) => <CourseCard course={course} variant="row" />)}
+            <a class="cc-seeall" href={moreCoursesHref}>
+              <span class="cc-seeall-title">More courses</span>
+              <span class="cc-seeall-link">Browse the full catalog →</span>
+            </a>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    {/* ── Why us — frame x71Z5F (self-contained full-width band) ──────────── */}
+    <WhyBand title="Built to take you from zero to shipping" items={whyItems} />
+
+    {/* ── Final CTA — frame G1yUk (self-contained full-width band) ────────── */}
+    <CTABand
+      title="Start your first lesson today"
+      sub="Free, no account needed. Your progress saves right in your browser."
+      ctaLabel="Get started"
+      ctaHref={moreCoursesHref}
+    />
   </main>
 
   <script is:inline>
@@ -184,7 +213,7 @@ const heroCode = [
         var allDone = completedCount === moduleIds.length;
 
         continueLink.setAttribute('href', '/lessons/' + nextId);
-        continueLabel.textContent = allDone ? 'Review belajar' : completedCount > 0 ? 'Continue learning' : 'Mulai belajar';
+        continueLabel.textContent = allDone ? 'Review learning' : completedCount > 0 ? 'Continue learning' : 'Get started';
       }
 
       sync();
@@ -192,4 +221,336 @@ const heroCode = [
       window.addEventListener('module-progress:change', sync);
     })();
   </script>
+
+  <style>
+    /* ════════════════════════════════════════════════════════════════════════
+       Home v2 (frame nr1kS). Flat, rounded, no shadow. Token-driven → reaktif
+       tema light + reader. Hero full-width tanpa garis sisi; sisanya pakai
+       komponen ber-band + kolom berbingkai .shell-col.
+       ════════════════════════════════════════════════════════════════════════ */
+    /* padding-bottom:0 override global `main{padding:0 0 112px}` → CTA menyambung
+       LANGSUNG ke footer (kolom & garis sisi menerus tanpa celah cream di antara). */
+    .home-v2 { display: block; padding-bottom: 0; }
+
+    /* ── Hero ─────────────────────────────────────────────────────────────── */
+    /* border-bottom:0 membuang garis bawah warisan default global `section`;
+       tanpa ini garisnya bertumpuk dgn border-top StatBand → tampak ganda. */
+    .hero-v2 { background: var(--bg); border-bottom: 0; }
+    .hero-v2-inner {
+      max-width: var(--shell-max, 1180px);
+      margin: 0 auto;
+      padding: 56px var(--shell-gutter, 28px) 64px;
+      display: grid;
+      grid-template-columns: 500fr 568fr;
+      gap: 56px;
+      align-items: center;
+    }
+    .hero-v2-copy {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .hero-v2-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(40px, 5.4vw, 56px);
+      font-weight: 600;
+      letter-spacing: -1px;
+      line-height: 1.05;
+      color: var(--ink);
+    }
+    .hero-v2-sub {
+      margin: 22px 0 0;
+      max-width: 452px;
+      font-family: var(--font-body);
+      font-size: 17px;
+      font-weight: 500;
+      line-height: 1.6;
+      color: var(--ink-muted);
+    }
+    .hero-v2-tag {
+      margin: 28px 0 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .hero-v2-pill {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--blue);            /* accent-deep #9C4A2F */
+      background: var(--blue-soft);  /* accent-soft #F0E3D8 */
+      border-radius: var(--radius-sm);
+      padding: 4px 9px;
+      line-height: 1;
+    }
+    .hero-v2-note {
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--faint);
+    }
+    .hero-v2-ctas {
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .hero-v2-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 22px;
+      border-radius: 9px;
+      background: var(--blue-bright);   /* accent #BD5D3E */
+      color: #fcfbf7;
+      font-family: var(--font-body);
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 1;
+      text-decoration: none;
+      transition: background-color 0.18s ease, transform 0.2s var(--ease-spring, ease);
+    }
+    .hero-v2-primary :global(svg) { stroke: #fcfbf7; }
+    .hero-v2-primary:hover { background: var(--blue); }
+    .hero-v2-primary:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+    .hero-v2-secondary {
+      display: inline-flex;
+      align-items: center;
+      padding: 14px 20px;
+      border-radius: 9px;
+      border: 1px solid var(--line-strong);
+      color: var(--ink);
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1;
+      text-decoration: none;
+      transition: border-color 0.18s ease, color 0.18s ease;
+    }
+    .hero-v2-secondary:hover { border-color: var(--blue); color: var(--blue); }
+    .hero-v2-secondary:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+
+    /* ── Hero tile cluster (isometric stagger) ────────────────────────────── */
+    .hero-v2-cluster {
+      position: relative;
+      min-height: 460px;
+      align-self: center;
+    }
+    .hero-v2-stack {
+      position: relative;
+      width: 300px;
+      margin-left: auto;
+    }
+    .hero-tile {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 300px;
+      height: 72px;
+      padding: 14px 16px;
+      margin-top: -12px;          /* tumpang-tindih vertikal (frame step 60 on 72) */
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    .hero-tile:first-child { margin-top: 0; }
+    /* Tangga diagonal: tiap tile bergeser ke kiri saat turun (frame x: 110→0). */
+    .hero-tile:nth-child(1) { transform: translateX(110px); z-index: 6; }
+    .hero-tile:nth-child(2) { transform: translateX(88px);  z-index: 5; }
+    .hero-tile:nth-child(3) { transform: translateX(66px);  z-index: 4; }
+    .hero-tile:nth-child(4) { transform: translateX(44px);  z-index: 3; }
+    .hero-tile:nth-child(5) { transform: translateX(22px);  z-index: 2; }
+    .hero-tile:nth-child(6) { transform: translateX(0);     z-index: 1; }
+    .hero-tile-accent {
+      background: var(--blue-bright);     /* accent #BD5D3E */
+      border-color: var(--blue);
+    }
+    .hero-tile-index {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1;
+    }
+    .hero-tile-accent .hero-tile-index {
+      background: rgba(255, 255, 255, 0.18);
+      color: #fcfbf7;
+    }
+    .hero-tile-txt {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+    .hero-tile-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 1.1;
+      color: var(--ink);
+    }
+    .hero-tile-accent .hero-tile-title { color: #fcfbf7; }
+    .hero-tile-sub {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.1;
+      color: var(--faint);
+    }
+    .hero-tile-accent .hero-tile-sub { color: #f4dacf; }
+
+    /* Connector spine: drops from the Foundations card's lower-left, then a rail
+       trails LEFT with 3 hollow nodes; the active (coral) node sits under the
+       connector. Anchored to the stack (top:100%/left:0 = Foundations bottom-left)
+       so it stays glued to the card at any column width. Geometry in CSS vars. */
+    .hero-v2-spine {
+      --conn: 56px;                /* connector x, from the Foundations left edge */
+      --gap: 64px;                 /* spacing between rail nodes */
+      --node: 11px;                /* node diameter */
+      --drop: 22px;                /* vertical connector length */
+      position: absolute;
+      left: 0;                     /* = Foundations card left edge */
+      top: calc(100% + 16px);      /* just below the card (stack bottom) */
+      height: 0;
+    }
+    .hero-spine-line {
+      position: absolute;
+      left: var(--conn); top: 0;
+      transform: translateX(-50%);
+      width: 2px; height: var(--drop);
+      background: var(--line-strong);
+    }
+    .hero-spine-rail {
+      position: absolute;
+      left: calc(var(--conn) - 3 * var(--gap));
+      top: var(--drop);
+      width: calc(3 * var(--gap)); height: 2px;
+      background: var(--line-strong);
+    }
+    .hero-spine-node {
+      position: absolute;
+      top: var(--drop);
+      width: var(--node); height: var(--node);
+      border-radius: 999px;
+      background: var(--bg);
+      border: 2px solid var(--line-strong);
+      transform: translate(-50%, -50%);
+    }
+    .hero-spine-node:nth-of-type(3) { left: calc(var(--conn) - 3 * var(--gap)); }
+    .hero-spine-node:nth-of-type(4) { left: calc(var(--conn) - 2 * var(--gap)); }
+    .hero-spine-node:nth-of-type(5) { left: calc(var(--conn) - 1 * var(--gap)); }
+    .hero-spine-node:nth-of-type(6) { left: var(--conn); }
+    .hero-spine-node-active {
+      background: var(--blue-bright);
+      border-color: var(--blue-bright);
+    }
+    .hero-spine-cap {
+      position: absolute;
+      left: calc(var(--conn) - 3 * var(--gap));
+      top: calc(var(--drop) + 14px);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--faint);
+      white-space: nowrap;
+    }
+
+    /* ── Section bands inside the bordered column ─────────────────────────── */
+    /* SectionHeader sudah ber-padding sendiri; band ini menambah "View all"
+       di pojok kanan + grid. Padding sisi mengikuti SectionHeader (56). */
+    .home-v2-band {
+      position: relative;
+      padding: 0 56px 56px;
+    }
+    .home-v2-viewall {
+      position: absolute;
+      top: -52px;                  /* sejajar baris title SectionHeader */
+      right: 56px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--blue-bright);
+      text-decoration: none;
+    }
+    .home-v2-viewall:hover { color: var(--blue); }
+    .home-v2-viewall:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+
+    /* Roadmaps: 3-kolom kartu home (frame e5k6lK) */
+    .rmc-home-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+    }
+
+    /* Courses: 2-kolom kartu row + promo cell (frame DRVjW) */
+    .cc-home-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+    }
+    .cc-seeall {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 156px;
+      padding: 24px;
+      background: var(--blue-soft);          /* accent-soft #F0E3D8 */
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius-card);
+      text-decoration: none;
+      text-align: center;
+      transition: border-color 0.18s ease;
+    }
+    .cc-seeall:hover { border-color: var(--blue); }
+    .cc-seeall:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+    .cc-seeall-title {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .cc-seeall-link {
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--blue);                    /* accent-deep #9C4A2F */
+    }
+
+    /* ── Responsive ───────────────────────────────────────────────────────── */
+    @media (max-width: 960px) {
+      .hero-v2-inner {
+        grid-template-columns: 1fr;
+        gap: 40px;
+        padding: 40px var(--shell-gutter, 24px) 48px;
+      }
+      .hero-v2-cluster { min-height: 0; }
+      .hero-v2-stack { margin: 0 auto; }
+      .rmc-home-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 760px) {
+      .cc-home-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .home-v2-band { padding: 0 28px 40px; }
+      .home-v2-viewall { right: 28px; top: -44px; }
+      .hero-v2-spine { display: none; }  /* rail can't trail left of a 300px stack on phones */
+      .hero-v2-cluster { display: none; }  /* tile cluster removed on phones (per mobile frame) */
+      .hero-v2-inner { gap: 0; padding-bottom: 40px; }  /* no cluster below: trim hero gap/pad */
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .hero-v2-primary { transition: background-color 0.18s ease; }
+    }
+  </style>
 </BaseLayout>

@@ -1,0 +1,109 @@
+---
+/*
+  SectionHeader.astro — framed section header (v2 line-system).
+
+  Ports the "Header Col" frame shared by the Courses list (zmpXy → GS9YX) and
+  Roadmaps list (nRB05 → fWvVn): a terracotta-dot eyebrow, a large Fraunces
+  title, and an optional muted lede. It is a self-padded BAND that sits INSIDE
+  the bordered 1180 column (.shell-col) — it supplies its OWN vertical+horizontal
+  padding [72,56,56,56] so the column's continuous side hairlines stay
+  full-height (SPEC §3). Do NOT wrap it in an extra .shell-band.
+
+  Flat, rounded, no shadow. All colors via v2 tokens → reaktif tema (light + reader).
+
+  Exact copy lives at the call site (pull from the frame text nodes), e.g.:
+    eyebrow "COURSES" / title "Course catalog" / lede "Self-contained courses…"
+    eyebrow "ROADMAPS" / title "Explore our roadmaps" / lede "Curated paths…"
+*/
+interface Props {
+  /** Small mono kicker above the title (e.g. "COURSES"). Rendered uppercase. Optional. */
+  eyebrow?: string;
+  /** Fraunces display title (required). */
+  title: string;
+  /** Optional muted lede paragraph below the title (max ~760px). */
+  lede?: string;
+  /** Text alignment of the whole header. Default 'left'. */
+  align?: 'left' | 'center';
+}
+const { eyebrow, title, lede, align = 'left' } = Astro.props;
+---
+<header class:list={['section-header', `is-${align}`]}>
+  {eyebrow && (
+    <span class="sh-eyebrow">
+      <span class="sh-dot" aria-hidden="true"></span>
+      <span class="sh-eyebrow-text" set:html={eyebrow} />
+    </span>
+  )}
+  <h2 class="sh-title" set:html={title} />
+  {lede && <p class="sh-lede" set:html={lede} />}
+</header>
+
+<style>
+  /* Frame GS9YX / fWvVn — vertical, gap 18, padding [72,56,56,56].
+     Self-padded band: lives directly inside .shell-col so the side hairlines
+     (owned by .shell-col) run full-height through it. Token-driven, flat. */
+  .section-header {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 72px 56px 56px;
+    background: transparent;
+  }
+  .section-header.is-center {
+    align-items: center;
+    text-align: center;
+  }
+
+  /* Eyebrow: 7px terracotta dot + mono kicker (12px / 1.5 letter-spacing). */
+  .sh-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sh-dot {
+    flex: 0 0 auto;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--blue-bright); /* accent #BD5D3E — decoration only */
+  }
+  .sh-eyebrow-text {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-muted); /* #6E6A5C */
+  }
+
+  /* Title: Fraunces 52px / 600, tight tracking + leading. */
+  .sh-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(34px, 5vw, 52px);
+    font-weight: 600;
+    letter-spacing: -1px;
+    line-height: 1.05;
+    color: var(--ink); /* #1A1916 ≈ --ink */
+  }
+
+  /* Lede: muted Inter, capped at the frame's 760px measure. */
+  .sh-lede {
+    margin: 0;
+    max-width: 760px;
+    font-family: var(--font-body);
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1.55;
+    color: var(--ink-muted); /* #6E6A5C */
+  }
+  .section-header.is-center .sh-lede {
+    margin-inline: auto;
+  }
+
+  @media (max-width: 640px) {
+    .section-header {
+      padding: 48px 28px 40px;
+    }
+  }
+</style>

@@ -1,27 +1,261 @@
 ---
+// ─────────────────────────────────────────────────────────────────────────────
+// Courses — List (zmpXy). v2 port: framed SectionHeader inside the lines →
+// featured Go Luminas banner → 3-col CourseCard grid for the rest (http /
+// openapi / redis). No filters (clean catalog).
+//
+// Data fetching/frontmatter PRESERVED from v1: real `courses` collection,
+// sorted by `order` (go-luminas = 0 first). Only the rendered layout changed
+// to match frame zmpXy. UI copy English; course SUMMARIES stay Bahasa Indonesia
+// (pulled verbatim from the frame / course frontmatter).
+//
+// Chrome: BaseLayout renders the full-width v2 Navbar (top) + the bordered v2
+// Footer (its own .shell-col so the side lines continue through it). Here we
+// wrap the body bands in .shell-bleed > .shell-col so the centered 1180 column
+// carries the continuous full-height left+right hairlines (SPEC §3) from the
+// header straight into the footer column below.
+// ─────────────────────────────────────────────────────────────────────────────
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import SectionHeader from '../../components/SectionHeader.astro';
 import CourseCard from '../../components/CourseCard.astro';
 
-// Semua course (termasuk go-luminas yang punya halaman landing khusus).
-// Diurut berdasar `order`: go-luminas (order 0) tampil pertama, lalu http/openapi/redis.
+// Semua course, diurut berdasar `order`: go-luminas (order 0) tampil pertama,
+// lalu http/openapi/redis. (Data fetching dipertahankan dari v1.)
 const courses = (await getCollection('courses')).sort(
   (a, b) => a.data.order - b.data.order
 );
+
+// Featured Go Luminas = course order 0; sisanya masuk grid 3-kolom.
+const featured = courses.find((c) => c.id === 'go-luminas') ?? courses[0];
+const rest = courses.filter((c) => c.id !== featured?.id);
+
+// Meta banner: "9 stages · 73 lessons" — stages = jumlah tahap (toc), lessons
+// dari readingTime ("~73 modul" → 73). Fallback aman bila data hilang.
+const stages = Array.isArray(featured?.data.toc) ? featured.data.toc.length : 0;
+const lessonsMatch = featured?.data.readingTime?.match(/\d+/);
+const lessonCount = lessonsMatch ? lessonsMatch[0] : null;
+const featuredMeta = [
+  stages ? `${stages} stages` : null,
+  lessonCount ? `${lessonCount} lessons` : null,
+].filter(Boolean).join(' · ');
+
+// Ringkasan banner — Bahasa Indonesia, EXACT dari teks frame (node TUuZ9).
+const featuredSummary =
+  'Seluruh 73 modul backend Go dirangkai jadi satu kurikulum 9 tahap: dari fondasi bahasa, HTTP, dan database, sampai testing, scaling, dan deploy ke AWS.';
 ---
 <BaseLayout title="Courses - Web Artisan" nav={{ variant: 'home' }}>
-  <main class="courses-index">
-    <header class="courses-index-head">
-      <p class="courses-index-eyebrow"><span class="dot" aria-hidden="true"></span>Web Artisan</p>
-      <h1 class="courses-index-title">Courses</h1>
-      <p class="courses-index-lede">
-        Setiap course adalah satu unit topik backend yang bisa kamu ambil sesuai kebutuhan.
-        Mulai dari Go Luminas sebagai fondasi penuh, lalu perdalam HTTP, OpenAPI, dan Redis.
-      </p>
-    </header>
+  {/* Bordered 1180 column with continuous full-height side hairlines. */}
+  <div class="shell-bleed">
+    <main class="shell-col">
+      {/* Framed header — inside the side lines (supplies its own padding). */}
+      <SectionHeader
+        eyebrow="COURSES"
+        title="Course catalog"
+        lede="Self-contained courses on the building blocks of the web. Start with Go Luminas for the full path, or go deep on a single topic when you need it."
+      />
 
-    <div class="course-grid">
-      {courses.map((course) => <CourseCard course={course} />)}
-    </div>
-  </main>
+      {/* Featured Go Luminas banner + the rest as a 3-col grid (one band).
+          Self-padded 56 (NOT .shell-band) so it mirrors the Roadmaps .rm-rows
+          band exactly: fixed 56px aligns the cards under the SectionHeader's
+          56px and keeps both list pages identical (SPEC §3, frame padding 56). */}
+      <section class="courses-grid-band">
+        {featured && (
+          <a class="featured" href={`/courses/${featured.id}`}>
+            <span class="featured-cover">
+              <img
+                src={`/${featured.id}.png`}
+                alt={`Ilustrasi course ${featured.data.topTitle ?? featured.data.title}`}
+                width="300"
+                height="300"
+                loading="eager"
+                decoding="async"
+              />
+            </span>
+            <span class="featured-body">
+              <span class="featured-top">
+                <span class="featured-badge">FLAGSHIP</span>
+                {featuredMeta && <span class="featured-meta">{featuredMeta}</span>}
+              </span>
+              <span class="featured-title">{featured.data.topTitle ?? featured.data.title}</span>
+              <span class="featured-sum">{featuredSummary}</span>
+              <span class="featured-cta">
+                <span class="featured-cta-label">Start the course</span>
+                <span class="featured-cta-arrow" aria-hidden="true">&rarr;</span>
+              </span>
+            </span>
+          </a>
+        )}
+
+        <div class="courses-grid">
+          {rest.map((course) => <CourseCard course={course} variant="grid" />)}
+        </div>
+      </section>
+    </main>
+  </div>
 </BaseLayout>
+
+<style>
+  /* ── Grid band ──────────────────────────────────────────────────────────────
+     Self-padded band inside .shell-col so the side hairlines stay full-height
+     (SPEC §3). Padding mirrors Roadmaps' .rm-rows EXACTLY (fixed 56 → aligns the
+     cards under SectionHeader's 56px and keeps both list pages identical). */
+  .courses-grid-band {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    padding: 56px;
+  }
+
+  /* ── Featured Go Luminas banner (frame v6bF2P) ──────────────────────────────
+     Flat parchment card, hairline, radius 16. Cover 300px on the LEFT, body on
+     the right vertically centered. Token-driven → reaktif tema (light + reader). */
+  .featured {
+    display: flex;
+    align-items: stretch;
+    background: var(--paper);          /* card #FBFAF5 */
+    border: 1px solid var(--line);     /* border #D9D4C4 */
+    border-radius: 16px;
+    overflow: hidden;                  /* clip cover ke sudut membulat */
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.18s ease;
+  }
+  .featured:hover { border-color: var(--line-strong); }
+  .featured:focus-visible { outline: 2px solid var(--blue-bright); outline-offset: 3px; }
+
+  .featured-cover {
+    flex: 0 0 300px;
+    align-self: stretch;
+    background: var(--paper-illus);    /* fallback cream hangat; cover image mengisi penuh */
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    border-right: 1px solid var(--line);
+  }
+  .featured-cover img {
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .featured-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;           /* frame Body justify center */
+    gap: 16px;
+    padding: 40px 44px;                /* frame padding [40,44] */
+  }
+
+  .featured-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  /* Solid terracotta FLAGSHIP badge (frame fill accent, white text). */
+  .featured-badge {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #fcfbf7;                    /* frame text #FCFBF7 */
+    background: var(--blue-bright);    /* accent #BD5D3E (decoration fill) */
+    padding: 5px 10px;
+    border-radius: 6px;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .featured-meta {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--faint);              /* #9A9582 */
+  }
+
+  .featured-title {
+    font-family: var(--font-display); /* Fraunces */
+    font-size: 34px;
+    font-weight: 600;
+    letter-spacing: -0.018em;         /* frame -0.6px @34 */
+    line-height: 1.1;
+    color: var(--ink);
+  }
+
+  /* Summary — Bahasa Indonesia (frame), muted. */
+  .featured-sum {
+    max-width: 680px;
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.55;
+    color: var(--ink-muted);          /* #6E6A5C */
+  }
+
+  /* Primary terracotta CTA pill (frame SDDwJ: fill accent, radius 9, pad [12,20]). */
+  .featured-cta {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    padding: 12px 20px;
+    border-radius: 9px;
+    background: var(--blue-bright);    /* accent #BD5D3E */
+    color: #fcfbf7;
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1;
+    transition: background-color 0.18s ease;
+  }
+  .featured:hover .featured-cta { background: var(--blue); } /* accent-deep on hover */
+  .featured-cta-arrow {
+    font-weight: 400;
+    transition: transform 0.2s ease;
+  }
+  .featured:hover .featured-cta-arrow { transform: translateX(2px); }
+
+  /* ── 3-col grid of the rest (http / openapi / redis) ────────────────────────
+     CourseCard variant="grid" (stacked: 1:1 media on top, body below).
+     Frame: 3 columns, 28px gap. The Courses-list page owns this grid container
+     (per the CourseCard contract). */
+  .courses-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+  }
+
+  /* ── Responsive ─────────────────────────────────────────────────────────────*/
+  @media (max-width: 920px) {
+    .courses-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  /* Mobile band padding mirrors Roadmaps' .rm-rows (40 28 / gap 24) so the cards
+     stay aligned under SectionHeader's 28px mobile inset on both list pages. */
+  @media (max-width: 640px) {
+    .courses-grid-band { gap: 24px; padding: 40px 28px; }
+  }
+  @media (max-width: 760px) {
+    .featured { flex-direction: column; }
+    .featured-cover {
+      flex: none;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border-right: none;
+      border-bottom: 1px solid var(--line);
+    }
+    .featured-cover img { min-height: 0; }
+    .featured-body { padding: 28px 24px; }
+    .featured-title { font-size: 28px; }
+  }
+  @media (max-width: 560px) {
+    .courses-grid { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .featured, .featured-cta, .featured-cta-arrow { transition: none; }
+    .featured:hover .featured-cta-arrow { transform: none; }
+  }
+</style>

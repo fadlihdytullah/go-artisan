@@ -1,8 +1,10 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import CourseCard from '../../components/CourseCard.astro';
+import RoadmapTimeline from '../../components/RoadmapTimeline.astro';
+import Icon from '../../components/Icon.astro';
 
+// PRESERVED: getStaticPaths + the roadmaps collection + its courses array.
 export async function getStaticPaths() {
   const roadmaps = await getCollection('roadmaps');
   return roadmaps.map((r) => ({ params: { slug: r.id }, props: { roadmap: r } }));
@@ -15,37 +17,272 @@ const ordered = roadmap.data.courses
   .map((id) => allCourses.find((c) => c.id === id))
   .filter(Boolean);
 const { title, hero, desc, cover, badge, level, outcome } = roadmap.data;
+
+// ── Condensed Bahasa Indonesia one-liner summaries shown ON the timeline cards
+// (frame D5LI78 uses tighter copy than the long frontmatter `summary`). Falls
+// back to the course's own frontmatter summary for any course not in this map.
+const cardSummary: Record<string, string> = {
+  'go-luminas': 'Fondasi backend Go: bahasa, HTTP, database, sampai arsitektur bersih.',
+  http: 'Cara kerja HTTP: request, response, status code, header, dan routing.',
+  openapi: 'Rancang kontrak API yang rapi, terdokumentasi, dan bisa diverifikasi.',
+  redis: 'Caching, session, rate limiting, dan struktur data in-memory.',
+};
+
+// Per-course right-side meta. Go Luminas is a track (9 tahap · 73 lessons);
+// topic courses report their TOC section count as "N lessons".
+const cardMeta: Record<string, string> = {
+  'go-luminas': '9 tahap · 73 lessons',
+};
+
+// Total lessons across the path: Go Luminas anchors the roadmap at 73 modules;
+// the topic courses contribute their TOC sections. Derived from real content.
+const lessonsTotal = ordered.reduce((sum, c) => {
+  if (!c) return sum;
+  if (c.id === 'go-luminas') return sum + 73;
+  return sum + c.data.toc.length;
+}, 0);
+
+const timelineItems = ordered.map((course, i) => ({
+  index: i + 1,
+  title: course!.data.topTitle ?? course!.data.title,
+  summary: cardSummary[course!.id] ?? course!.data.summary,
+  href: `/courses/${course!.id}`,
+  thumb: `/${course!.id}.png`,
+  meta: cardMeta[course!.id] ?? `${course!.data.toc.length} lessons`,
+}));
+
+const firstCourseHref = ordered[0] ? `/courses/${ordered[0]!.id}` : '/courses';
+
+// Hero chips — real values pulled from the collection (UI labels English).
+const chips: { k: string; v: string }[] = [];
+if (level) chips.push({ k: 'Level', v: level });
+chips.push({ k: 'Courses', v: String(ordered.length) });
+chips.push({ k: 'Lessons', v: String(lessonsTotal) });
 ---
 <BaseLayout title={`${title} - Web Artisan`} nav={{ variant: 'home' }}>
-  <main class="roadmap-detail">
-    <section class="roadmap-detail-hero">
-      <div class="roadmap-detail-hero-media">
-        <img src={cover} alt={`Banner roadmap ${title}`} decoding="async" />
-      </div>
-      <div class="roadmap-detail-hero-body">
-        <span class="roadmap-banner-badge">{badge}</span>
-        <h1 class="roadmap-detail-hero-title">{hero}</h1>
-        <p class="roadmap-detail-hero-desc">{desc}</p>
-        <dl class="roadmap-detail-meta">
-          {level && (
-            <div><dt>Level</dt><dd>{level}</dd></div>
-          )}
-          {outcome && (
-            <div><dt>Hasil</dt><dd>{outcome}</dd></div>
-          )}
-          <div><dt>Course</dt><dd>{ordered.length} course</dd></div>
-        </dl>
-      </div>
-    </section>
+  {/* Bordered 1180 column — continuous full-height side lines (SPEC §3).
+      The v2 Navbar (full-width) is above; the v2 Footer (also in a .shell-col)
+      is below, so the side hairlines read unbroken through nav → body → footer. */}
+  <div class="shell-bleed">
+    <div class="shell-col rmd-col">
+      {/* ── Clean-split hero: text left (520) + 16:9 cover right (504×284) ── */}
+      <section class="rmd-hero" aria-label={`Roadmap ${title}`}>
+        <div class="rmd-hero-text">
+          <p class="rmd-eyebrow">ROADMAP · {title.toUpperCase()}</p>
+          <h1 class="rmd-title">{hero}</h1>
+          <p class="rmd-lede">{desc}</p>
 
-    <section class="roadmap-courses">
-      <div class="roadmap-courses-head">
-        <h2>Course dalam jalur ini</h2>
-        <span class="count">{ordered.length} course</span>
-      </div>
-      <div class="course-grid">
-        {ordered.map((course) => <CourseCard course={course} />)}
-      </div>
-    </section>
-  </main>
+          <dl class="rmd-chips">
+            {chips.map((chip) => (
+              <div class="rmd-chip">
+                <dt>{chip.k}</dt>
+                <dd>{chip.v}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <div class="rmd-cta-wrap">
+            <a class="rmd-cta" href={firstCourseHref}>
+              <span>Mulai roadmap</span>
+              <Icon name="arrow-right" size={15} />
+            </a>
+          </div>
+        </div>
+
+        <div class="rmd-hero-cover">
+          <img
+            src={cover}
+            alt={`Banner roadmap ${title}`}
+            width="504"
+            height="284"
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+          />
+        </div>
+      </section>
+
+      {/* Horizontal rule separating hero from the timeline (frame node BVwAa). */}
+      <hr class="rmd-rule" />
+
+      {/* ── Vertical learning-path timeline: course → course → finish line ── */}
+      <section class="rmd-timeline-band">
+        <RoadmapTimeline items={timelineItems} />
+      </section>
+    </div>
+  </div>
 </BaseLayout>
+
+<style>
+  /* roadmaps/[...slug].astro — Roadmap Detail (frame D5LI78).
+     Flat, rounded, no shadow. All colors via v2 tokens → reactive light + reader.
+     The bordered column + side lines come from the shared `.shell-col`; this file
+     only styles the hero + the band paddings (timeline visuals live in the
+     RoadmapTimeline component). globals.css is NOT edited. */
+
+  .rmd-col {
+    background: var(--bg);
+  }
+
+  /* ── Hero (frame ofowU): padding 56, gap 44, text 520 left + cover 504 right ── */
+  .rmd-hero {
+    display: flex;
+    align-items: center;
+    gap: 44px;
+    padding: 56px;
+  }
+  .rmd-hero-text {
+    flex: 0 1 520px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .rmd-eyebrow {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    color: var(--blue-bright);
+  }
+  .rmd-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(38px, 4.4vw, 54px);
+    font-weight: 600;
+    letter-spacing: -1.2px;
+    line-height: 1.02;
+    color: var(--ink);
+  }
+  .rmd-lede {
+    margin: 0;
+    max-width: 520px;
+    font-family: var(--font-body);
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.6;
+    color: var(--ink-muted);
+  }
+
+  /* Meta chips (frame SLRVw/U0ZwJQ/cZCXK): card fill, hairline, K faint + V deep. */
+  .rmd-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 6px 0 0;
+  }
+  .rmd-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 14px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--paper);
+  }
+  .rmd-chip dt {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--faint);
+  }
+  .rmd-chip dd {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--blue);
+  }
+
+  /* CTA (frame TPoN0): accent fill, near-white label, arrow nudges on hover. */
+  .rmd-cta-wrap {
+    padding-top: 8px;
+  }
+  .rmd-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 22px;
+    border-radius: 9px;
+    background: var(--blue-bright);
+    color: #fcfbf7;
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 0.18s ease;
+  }
+  .rmd-cta:hover {
+    background: var(--blue);
+  }
+  .rmd-cta :global(svg) {
+    transition: transform 0.18s ease;
+  }
+  .rmd-cta:hover :global(svg) {
+    transform: translateX(3px);
+  }
+  .rmd-cta:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 3px;
+  }
+
+  /* 16:9 cover (frame AdT7Q: 504×284, radius 16, image fill). */
+  .rmd-hero-cover {
+    flex: 0 0 504px;
+    max-width: 504px;
+    aspect-ratio: 504 / 284;
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--paper-soft);
+    border: 1px solid var(--line);
+  }
+  .rmd-hero-cover img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Horizontal rule between hero and timeline (frame BVwAa). */
+  .rmd-rule {
+    height: 0;
+    margin: 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  /* Timeline band padding (frame vZ1zQ: 48 top, 56 sides, 56 bottom). */
+  .rmd-timeline-band {
+    padding: 48px 56px 56px;
+  }
+
+  /* ── Responsive ─────────────────────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .rmd-hero {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 32px;
+      padding: 40px;
+    }
+    .rmd-hero-text {
+      flex-basis: auto;
+    }
+    .rmd-hero-cover {
+      flex-basis: auto;
+      max-width: 100%;
+      width: 100%;
+    }
+    .rmd-timeline-band {
+      padding: 40px;
+    }
+  }
+  @media (max-width: 680px) {
+    .rmd-hero {
+      padding: 28px 20px;
+    }
+    .rmd-timeline-band {
+      padding: 32px 20px 40px;
+    }
+  }
+</style>

@@ -1,6 +1,7 @@
 ---
 import '../styles/globals.css';
 import Navbar from '../components/Navbar.astro';
+import Footer from '../components/Footer.astro';
 
 export interface NavProps {
   variant: 'home' | 'module';
@@ -15,9 +16,10 @@ export interface NavProps {
 interface Props {
   title: string;
   nav: NavProps;
-  footer?: { title: string; sub: string };
+  /** Sembunyikan footer v2 (mis. layar penuh tanpa chrome). Default: tampil. */
+  hideFooter?: boolean;
 }
-const { title, nav, footer } = Astro.props;
+const { title, nav, hideFooter = false } = Astro.props;
 ---
 <!DOCTYPE html>
 <html lang="id">
@@ -29,7 +31,7 @@ const { title, nav, footer } = Astro.props;
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Geist+Mono:wght@400;500;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400;1,9..144,500&family=Inter:wght@400;450;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
     rel="stylesheet"
   />
   {/* Cegah FOUC: terapkan tema & skala sebelum render — di SEMUA halaman */}
@@ -124,12 +126,14 @@ const { title, nav, footer } = Astro.props;
 
   <slot />
 
-  {footer && (
-    <footer>
-      <div class="wrap">
-        <p><b set:html={footer.title} /><br /><span set:html={footer.sub} /></p>
+  {!hideFooter && (
+    <div class="shell-bleed shell-footer-wrap">
+      <div class="shell-col">
+        <footer class="shell-footer">
+          <Footer />
+        </footer>
       </div>
-    </footer>
+    </div>
   )}
 
   <script is:inline>

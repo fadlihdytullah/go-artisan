@@ -54,17 +54,17 @@ const whyItems = [
   { title: 'Dense, readable lessons', body: 'Each lesson is a focused ~60–80 minute read. No padding, no endless video.' },
 ];
 
-// Tile cluster isometrik hero (frame nr1kS → RcEVn): 01 paling bawah (accent).
-const heroTiles = [
-  { n: '06', title: 'Deploy', sub: 'Ship it' },
-  { n: '05', title: 'Caching', sub: 'Performance' },
-  { n: '04', title: 'Database', sub: 'Store & query' },
-  { n: '03', title: 'APIs', sub: 'Design & docs' },
-  { n: '02', title: 'HTTP', sub: 'Servers & routing' },
-  { n: '01', title: 'Foundations', sub: 'Start here', accent: true },
+// Disciplines index hero (frame nr1kS → PF0nx → Disciplines Index): empat path
+// inti yang dicakup platform. Semua mengarah ke /roadmaps (listing) untuk kini.
+const heroDisciplines = [
+  { num: '01', name: 'Frontend', tag: 'Interfaces & interaction', href: '/roadmaps' },
+  { num: '02', name: 'Backend', tag: 'APIs & services', href: '/roadmaps' },
+  { num: '03', name: 'Databases', tag: 'Data & modeling', href: '/roadmaps' },
+  { num: '04', name: 'DevOps & Cloud', tag: 'Ship & scale', href: '/roadmaps' },
 ];
 
-// CTA "Get started" → modul pertama (di-rewrite oleh script progress jadi continue).
+// CTA primer default → /roadmaps; script progress me-rewrite jadi "Continue
+// learning" → lesson berikutnya saat ada progres lokal (lihat inline script di bawah).
 const firstLessonHref = `/lessons/${mods[0]?.id ?? ''}`;
 
 // Promo cell "More courses" di akhir grid courses (frame nr1kS → L8HB9u).
@@ -72,54 +72,58 @@ const moreCoursesHref = '/courses';
 ---
 <BaseLayout title="Web Artisan: Learn web development, one clear path" nav={{ variant: 'home' }}>
   <main class="home-v2" data-home-progress data-module-ids={JSON.stringify(moduleIds)}>
-    {/* ── Hero (full-width, NO side lines) — frame nr1kS → PF0nx ───────────── */}
+    {/* ── Hero (bordered 1180 panel + grid backdrop) — frame PF0nx → A4mvA ──── */}
     <section class="shell-bleed hero-v2" aria-label="Web Artisan">
       <div class="hero-v2-inner">
+        {/* Left: copy */}
         <div class="hero-v2-copy">
-          <h1 class="hero-v2-title">One clear path,<br />from zero to production.</h1>
-          <p class="hero-v2-sub">
-            A growing platform for learning web development. Follow clear roadmaps and
-            focused courses, one step at a time. Backend is live now; more tracks
-            coming soon.
+          <p class="hero-v2-kicker">
+            <span class="hero-v2-dot" aria-hidden="true"></span>
+            WEB ARTISAN — LEARN TO BUILD FOR THE WEB
           </p>
-
-          <p class="hero-v2-tag">
-            <span class="hero-v2-pill">FREE</span>
-            <span class="hero-v2-note">No account needed · progress saved locally</span>
+          <h1 class="hero-v2-title">
+            Master the <span class="hero-v2-accent">craft<svg class="hero-v2-underline" viewBox="0 0 200 16" fill="none" aria-hidden="true"><path d="M4 11C54 4 140 3 196 8" stroke="currentColor" stroke-width="5" stroke-linecap="round" /></svg></span><br />
+            of modern<br />
+            web development.
+          </h1>
+          <p class="hero-v2-lead">
+            Opinionated roadmaps and focused, project-based courses across the whole
+            stack — frontend, backend, databases, and deployment. For people who want
+            to ship real things, not collect browser tabs.
           </p>
-
           <div class="hero-v2-ctas">
-            <a class="hero-v2-primary" href={firstLessonHref} data-continue-link>
-              <span data-continue-label>Get started</span>
-              <Icon name="arrow-right" size={16} />
+            <a class="hero-v2-primary" href="/roadmaps" data-continue-link>
+              <span data-continue-label>Explore roadmaps</span>
+              <Icon name="arrow-right" size={18} />
             </a>
-            <a class="hero-v2-secondary" href="/roadmaps">Browse roadmaps</a>
+            <a class="hero-v2-secondary" href={moreCoursesHref}>Browse courses</a>
           </div>
         </div>
 
-        <div class="hero-v2-cluster" aria-hidden="true">
-          <div class="hero-v2-stack">
-            {heroTiles.map((t) => (
-              <div class:list={['hero-tile', t.accent && 'hero-tile-accent']}>
-                <span class="hero-tile-index">{t.n}</span>
-                <span class="hero-tile-txt">
-                  <span class="hero-tile-title">{t.title}</span>
-                  <span class="hero-tile-sub">{t.sub}</span>
-                </span>
-              </div>
-            ))}
-            {/* Connector spine — anchored to the stack so it stays glued under
-               the Foundations card (tile #6 sits at translateX(0) = stack left). */}
-            <div class="hero-v2-spine">
-              <span class="hero-spine-line"></span>
-              <span class="hero-spine-rail"></span>
-              <span class="hero-spine-node"></span>
-              <span class="hero-spine-node"></span>
-              <span class="hero-spine-node"></span>
-              <span class="hero-spine-node hero-spine-node-active"></span>
-              <span class="hero-spine-cap">learn · build · ship</span>
-            </div>
+        {/* Right: disciplines index — floating paper card (plain div: a nested
+           complementary/region landmark inside the hero section is invalid) */}
+        <div class="hero-v2-index">
+          <div class="hero-v2-index-label">
+            <h2 class="hero-v2-index-heading">What you'll master</h2>
+            <span class="hero-v2-index-count" aria-hidden="true">04 PATHS</span>
           </div>
+          <ul class="hero-v2-rows" role="list">
+            {heroDisciplines.map((d) => (
+              <li class="hero-v2-row">
+                <a class="hero-v2-row-link" href={d.href} aria-label={`${d.name}: ${d.tag}`}>
+                  <span class="hero-v2-row-num" aria-hidden="true">{d.num}</span>
+                  <span class="hero-v2-row-info">
+                    <span class="hero-v2-row-name">{d.name}</span>
+                    <span class="hero-v2-row-tag">{d.tag}</span>
+                  </span>
+                  <Icon name="arrow-up-right" size={16} />
+                </a>
+              </li>
+            ))}
+          </ul>
+          <a class="hero-v2-index-foot" href="/roadmaps">
+            View all roadmaps <Icon name="arrow-right" size={15} />
+          </a>
         </div>
       </div>
     </section>
@@ -212,8 +216,15 @@ const moreCoursesHref = '/courses';
         var nextId = api.getNextModuleId(moduleIds);
         var allDone = completedCount === moduleIds.length;
 
-        continueLink.setAttribute('href', '/lessons/' + nextId);
-        continueLabel.textContent = allDone ? 'Review learning' : completedCount > 0 ? 'Continue learning' : 'Get started';
+        // Tanpa progres lokal: biarkan default desain ("Explore roadmaps" → /roadmaps).
+        // Begitu ada progres: jadikan tombol penerus belajar ke lesson berikutnya.
+        if (completedCount > 0) {
+          continueLink.setAttribute('href', '/lessons/' + nextId);
+          continueLabel.textContent = allDone ? 'Review learning' : 'Continue learning';
+        } else {
+          continueLink.setAttribute('href', '/roadmaps');
+          continueLabel.textContent = 'Explore roadmaps';
+        }
       }
 
       sync();
@@ -235,78 +246,114 @@ const moreCoursesHref = '/courses';
     /* ── Hero ─────────────────────────────────────────────────────────────── */
     /* border-bottom:0 membuang garis bawah warisan default global `section`;
        tanpa ini garisnya bertumpuk dgn border-top StatBand → tampak ganda. */
-    .hero-v2 { background: var(--bg); border-bottom: 0; }
+    .hero-v2 { background: var(--bg); border-bottom: 0; padding: clamp(18px, 2.6vw, 34px) 0; }
+    /* 1180 hero band — borderless; the grid pattern + floating card carry it. */
     .hero-v2-inner {
+      position: relative;
       max-width: var(--shell-max, 1180px);
       margin: 0 auto;
-      padding: 56px var(--shell-gutter, 28px) 64px;
+      background: var(--bg);
+      padding: clamp(40px, 5vw, 76px) clamp(24px, 4vw, 56px);
       display: grid;
-      grid-template-columns: 500fr 568fr;
-      gap: 56px;
+      grid-template-columns: minmax(0, 1fr) 332px;
+      gap: 48px;
       align-items: center;
     }
+    /* Grid backdrop — mirrors hero-grid.glsl: warm hairline grid masked by a
+       right-of-centre radial glow (sits behind the disciplines index). */
+    .hero-v2-inner::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, var(--line-strong) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--line-strong) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.55;
+      -webkit-mask-image: radial-gradient(118% 128% at 78% 46%, #000 4%, rgba(0, 0, 0, 0.22) 44%, transparent 74%);
+      mask-image: radial-gradient(118% 128% at 78% 46%, #000 4%, rgba(0, 0, 0, 0.22) 44%, transparent 74%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .hero-v2-copy,
+    .hero-v2-index { position: relative; z-index: 1; }
+
+    /* Left column ───────────────────────────────────────────────────────── */
     .hero-v2-copy {
       display: flex;
       flex-direction: column;
       align-items: flex-start;
+      gap: 26px;
+    }
+    .hero-v2-kicker {
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      color: var(--ink-muted);
+    }
+    .hero-v2-dot {
+      flex: 0 0 auto;
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--blue-bright);
     }
     .hero-v2-title {
       margin: 0;
       font-family: var(--font-display);
-      font-size: clamp(40px, 5.4vw, 56px);
+      font-size: clamp(40px, 6vw, 80px);
       font-weight: 600;
       letter-spacing: -1px;
-      line-height: 1.05;
+      line-height: 1.02;
       color: var(--ink);
     }
-    .hero-v2-sub {
-      margin: 22px 0 0;
+    .hero-v2-accent {
+      position: relative;
+      color: var(--blue-bright);
+      font-style: italic;
+      white-space: nowrap;
+    }
+    .hero-v2-underline {
+      position: absolute;
+      left: 0;
+      bottom: -0.16em;
+      width: 100%;
+      height: 0.3em;
+      color: var(--blue-bright);
+      overflow: visible;
+    }
+    .hero-v2-lead {
+      margin: 0;
       max-width: 452px;
       font-family: var(--font-body);
       font-size: 17px;
-      font-weight: 500;
-      line-height: 1.6;
+      font-weight: 400;
+      line-height: 1.55;
       color: var(--ink-muted);
     }
-    .hero-v2-tag {
-      margin: 28px 0 0;
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .hero-v2-pill {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--blue);            /* accent-deep #9C4A2F */
-      background: var(--blue-soft);  /* accent-soft #F0E3D8 */
-      border-radius: var(--radius-sm);
-      padding: 4px 9px;
-      line-height: 1;
-    }
-    .hero-v2-note {
-      font-family: var(--font-body);
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--faint);
-    }
     .hero-v2-ctas {
-      margin-top: 24px;
+      margin: 0;
+      padding-top: 6px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
       flex-wrap: wrap;
     }
     .hero-v2-primary {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 14px 22px;
-      border-radius: 9px;
+      gap: 10px;
+      padding: 15px 26px;
+      border-radius: 12px;
       background: var(--blue-bright);   /* accent #BD5D3E */
       color: #fcfbf7;
       font-family: var(--font-body);
-      font-size: 16px;
+      font-size: 15.5px;
       font-weight: 600;
       line-height: 1;
       text-decoration: none;
@@ -318,12 +365,12 @@ const moreCoursesHref = '/courses';
     .hero-v2-secondary {
       display: inline-flex;
       align-items: center;
-      padding: 14px 20px;
-      border-radius: 9px;
-      border: 1px solid var(--line-strong);
+      padding: 15px 24px;
+      border-radius: 12px;
+      border: 1.4px solid var(--line-strong);
       color: var(--ink);
       font-family: var(--font-body);
-      font-size: 15px;
+      font-size: 15.5px;
       font-weight: 600;
       line-height: 1;
       text-decoration: none;
@@ -332,138 +379,101 @@ const moreCoursesHref = '/courses';
     .hero-v2-secondary:hover { border-color: var(--blue); color: var(--blue); }
     .hero-v2-secondary:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 
-    /* ── Hero tile cluster (isometric stagger) ────────────────────────────── */
-    .hero-v2-cluster {
-      position: relative;
-      min-height: 460px;
-      align-self: center;
-    }
-    .hero-v2-stack {
-      position: relative;
-      width: 300px;
-      margin-left: auto;
-    }
-    .hero-tile {
-      position: relative;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      width: 300px;
-      height: 72px;
-      padding: 14px 16px;
-      margin-top: -12px;          /* tumpang-tindih vertikal (frame step 60 on 72) */
+    /* ── Disciplines index — floating paper card ──────────────────────────── */
+    /* Paper panel that lifts off the grid pattern; a soft single-layer shadow
+       gives the float without the flat brand reading as a sticker. */
+    .hero-v2-index {
       background: var(--paper);
       border: 1px solid var(--line);
-      border-radius: 12px;
-    }
-    .hero-tile:first-child { margin-top: 0; }
-    /* Tangga diagonal: tiap tile bergeser ke kiri saat turun (frame x: 110→0). */
-    .hero-tile:nth-child(1) { transform: translateX(110px); z-index: 6; }
-    .hero-tile:nth-child(2) { transform: translateX(88px);  z-index: 5; }
-    .hero-tile:nth-child(3) { transform: translateX(66px);  z-index: 4; }
-    .hero-tile:nth-child(4) { transform: translateX(44px);  z-index: 3; }
-    .hero-tile:nth-child(5) { transform: translateX(22px);  z-index: 2; }
-    .hero-tile:nth-child(6) { transform: translateX(0);     z-index: 1; }
-    .hero-tile-accent {
-      background: var(--blue-bright);     /* accent #BD5D3E */
-      border-color: var(--blue);
-    }
-    .hero-tile-index {
-      flex: 0 0 auto;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 4px 8px;
-      border-radius: 6px;
-      background: var(--blue-soft);
-      color: var(--blue);
-      font-family: var(--font-mono);
-      font-size: 12px;
-      font-weight: 600;
-      line-height: 1;
-    }
-    .hero-tile-accent .hero-tile-index {
-      background: rgba(255, 255, 255, 0.18);
-      color: #fcfbf7;
-    }
-    .hero-tile-txt {
+      border-radius: 16px;
+      padding: 0 24px;
+      box-shadow: 0 14px 34px -22px rgba(34, 32, 26, 0.22);
       display: flex;
       flex-direction: column;
-      gap: 3px;
-      min-width: 0;
     }
-    .hero-tile-title {
-      font-family: var(--font-display);
-      font-size: 16px;
+    .hero-v2-index-label {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 22px 0 14px;
+    }
+    .hero-v2-index-heading,
+    .hero-v2-index-count {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      font-weight: 500;
+      letter-spacing: 0.17em;
+      text-transform: uppercase;
+      color: var(--faint);
+    }
+    .hero-v2-rows {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      border-top: 1px solid var(--line);
+    }
+    .hero-v2-row {
+      margin: 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .hero-v2-row-link {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 17px 2px;
+      color: inherit;
+      text-decoration: none;
+    }
+    .hero-v2-row-num {
+      flex: 0 0 auto;
+      font-family: var(--font-mono);
+      font-size: 13px;
       font-weight: 600;
-      line-height: 1.1;
+      letter-spacing: 0.04em;
+      color: var(--faint);
+    }
+    .hero-v2-row-info {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .hero-v2-row-name {
+      font-family: var(--font-body);
+      font-size: 17px;
+      font-weight: 600;
       color: var(--ink);
+      transition: color 0.18s ease;
     }
-    .hero-tile-accent .hero-tile-title { color: #fcfbf7; }
-    .hero-tile-sub {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 500;
-      line-height: 1.1;
+    .hero-v2-row-tag {
+      font-family: var(--font-body);
+      font-size: 13.5px;
+      color: var(--ink-muted);
+    }
+    .hero-v2-row-link :global(svg) {
+      flex: 0 0 auto;
       color: var(--faint);
+      transition: color 0.18s ease, transform 0.18s ease;
     }
-    .hero-tile-accent .hero-tile-sub { color: #f4dacf; }
-
-    /* Connector spine: drops from the Foundations card's lower-left, then a rail
-       trails LEFT with 3 hollow nodes; the active (coral) node sits under the
-       connector. Anchored to the stack (top:100%/left:0 = Foundations bottom-left)
-       so it stays glued to the card at any column width. Geometry in CSS vars. */
-    .hero-v2-spine {
-      --conn: 56px;                /* connector x, from the Foundations left edge */
-      --gap: 64px;                 /* spacing between rail nodes */
-      --node: 11px;                /* node diameter */
-      --drop: 22px;                /* vertical connector length */
-      position: absolute;
-      left: 0;                     /* = Foundations card left edge */
-      top: calc(100% + 16px);      /* just below the card (stack bottom) */
-      height: 0;
+    .hero-v2-row-link:hover .hero-v2-row-name { color: var(--blue); }
+    .hero-v2-row-link:hover :global(svg) { color: var(--blue); transform: translate(2px, -2px); }
+    .hero-v2-row-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .hero-v2-index-foot {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 0 22px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--blue);
+      text-decoration: none;
     }
-    .hero-spine-line {
-      position: absolute;
-      left: var(--conn); top: 0;
-      transform: translateX(-50%);
-      width: 2px; height: var(--drop);
-      background: var(--line-strong);
-    }
-    .hero-spine-rail {
-      position: absolute;
-      left: calc(var(--conn) - 3 * var(--gap));
-      top: var(--drop);
-      width: calc(3 * var(--gap)); height: 2px;
-      background: var(--line-strong);
-    }
-    .hero-spine-node {
-      position: absolute;
-      top: var(--drop);
-      width: var(--node); height: var(--node);
-      border-radius: 999px;
-      background: var(--bg);
-      border: 2px solid var(--line-strong);
-      transform: translate(-50%, -50%);
-    }
-    .hero-spine-node:nth-of-type(3) { left: calc(var(--conn) - 3 * var(--gap)); }
-    .hero-spine-node:nth-of-type(4) { left: calc(var(--conn) - 2 * var(--gap)); }
-    .hero-spine-node:nth-of-type(5) { left: calc(var(--conn) - 1 * var(--gap)); }
-    .hero-spine-node:nth-of-type(6) { left: var(--conn); }
-    .hero-spine-node-active {
-      background: var(--blue-bright);
-      border-color: var(--blue-bright);
-    }
-    .hero-spine-cap {
-      position: absolute;
-      left: calc(var(--conn) - 3 * var(--gap));
-      top: calc(var(--drop) + 14px);
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--faint);
-      white-space: nowrap;
-    }
+    .hero-v2-index-foot:hover { color: var(--blue-bright); }
+    .hero-v2-index-foot:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 
     /* ── Section bands inside the bordered column ─────────────────────────── */
     /* SectionHeader sudah ber-padding sendiri; band ini menambah "View all"
@@ -529,14 +539,29 @@ const moreCoursesHref = '/courses';
     }
 
     /* ── Responsive ───────────────────────────────────────────────────────── */
+    /* Tablet/below: collapse hero to a single column — index stacks under the
+       copy, divider hidden, glow re-centred (mirrors mobile frame OYtAe). */
     @media (max-width: 960px) {
       .hero-v2-inner {
         grid-template-columns: 1fr;
-        gap: 40px;
-        padding: 40px var(--shell-gutter, 24px) 48px;
+        gap: 34px;
+        padding: clamp(32px, 5vw, 48px) clamp(20px, 4vw, 40px);
       }
-      .hero-v2-cluster { min-height: 0; }
-      .hero-v2-stack { margin: 0 auto; }
+      /* Single column: index drops below the copy as a plain list (no card). */
+      .hero-v2-index {
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+        box-shadow: none;
+      }
+      .hero-v2-index-label { padding-top: 0; }
+      .hero-v2-index-foot { padding-bottom: 0; }
+      .hero-v2-inner::before {
+        background-size: 34px 34px;
+        -webkit-mask-image: radial-gradient(130% 72% at 50% 32%, #000 4%, rgba(0, 0, 0, 0.22) 44%, transparent 74%);
+        mask-image: radial-gradient(130% 72% at 50% 32%, #000 4%, rgba(0, 0, 0, 0.22) 44%, transparent 74%);
+      }
       .rmc-home-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 760px) {
@@ -545,9 +570,13 @@ const moreCoursesHref = '/courses';
     @media (max-width: 640px) {
       .home-v2-band { padding: 0 28px 40px; }
       .home-v2-viewall { right: 28px; top: -44px; }
-      .hero-v2-spine { display: none; }  /* rail can't trail left of a 300px stack on phones */
-      .hero-v2-cluster { display: none; }  /* tile cluster removed on phones (per mobile frame) */
-      .hero-v2-inner { gap: 0; padding-bottom: 40px; }  /* no cluster below: trim hero gap/pad */
+      /* Hero goes edge-to-edge on phones: drop the cream gutter + side borders. */
+      .hero-v2 { padding: 0; }
+      .hero-v2-inner { border-left: 0; border-right: 0; }
+      .hero-v2-title { font-size: clamp(31px, 9.5vw, 44px); }
+      .hero-v2-ctas { width: 100%; flex-direction: column; align-items: stretch; }
+      .hero-v2-primary,
+      .hero-v2-secondary { justify-content: center; }
     }
     @media (prefers-reduced-motion: reduce) {
       .hero-v2-primary { transition: background-color 0.18s ease; }

@@ -29,6 +29,19 @@ interface Props {
 const { title, items = [] } = Astro.props;
 const hasExtra = Astro.slots.has('default');
 const pad2 = (n: number) => String(n + 1).padStart(2, '0');
+
+// Plus/crosshair marks at every line intersection of the desktop 3-column grid,
+// including the four outer corners (frame "Section — Why" → 12× "Plus"). Positions
+// are percentages so they track the 1fr cell boundaries at any column width; the
+// overlay is hidden once the grid drops below 3 columns (≤900px).
+const GRID_COLS = 3;
+const gridRows = Math.max(1, Math.ceil(items.length / GRID_COLS));
+const plusMarks: { x: number; y: number }[] = [];
+for (let r = 0; r <= gridRows; r++) {
+  for (let c = 0; c <= GRID_COLS; c++) {
+    plusMarks.push({ x: (c / GRID_COLS) * 100, y: (r / gridRows) * 100 });
+  }
+}
 ---
 <section class="why-band">
   <div class="why-inner">
@@ -39,15 +52,22 @@ const pad2 = (n: number) => String(n + 1).padStart(2, '0');
     </header>
 
     {items.length > 0 && (
-      <ul class="why-grid" role="list">
-        {items.map((item, i) => (
-          <li class="why-cell">
-            <span class="why-index">{pad2(i)}</span>
-            <h3 class="why-cell-title">{item.title}</h3>
-            <p class="why-cell-body">{item.body}</p>
-          </li>
-        ))}
-      </ul>
+      <div class="why-grid-wrap">
+        <ul class="why-grid" role="list">
+          {items.map((item, i) => (
+            <li class="why-cell">
+              <span class="why-index">{pad2(i)}</span>
+              <h3 class="why-cell-title">{item.title}</h3>
+              <p class="why-cell-body">{item.body}</p>
+            </li>
+          ))}
+        </ul>
+        <div class="why-crosshairs" aria-hidden="true">
+          {plusMarks.map((p) => (
+            <span class="why-plus" style={`left:${p.x}%;top:${p.y}%`}></span>
+          ))}
+        </div>
+      </div>
     )}
 
     {hasExtra && (
@@ -65,28 +85,23 @@ const pad2 = (n: number) => String(n + 1).padStart(2, '0');
      Frame: heading block (96px top pad) + 56px gap + bordered 3×2 grid. */
   .why-band {
     background: var(--bg);
-    /* Separator horizontal ke section di ATAS (Courses) — garis menyambung
-       kolom. border-bottom dimatikan (override global `section`) agar separator
-       ke CTA tunggal (disuplai border-top .cta-band), tidak dobel. */
-    border-top: 1px solid var(--line);
-    border-bottom: 0;
-    /* WAJIB override padding global `section{padding:56px 0}` → 0. Bila tidak,
-       .why-inner (pemegang border sisi) ter-inset 56px atas/bawah sehingga garis
-       vertikal PUTUS di tiap junction. Dengan 0, border .why-inner span penuh
-       tinggi band → garis sisi menerus dgn .shell-col & .cta-band.
-       Centering kolom 1180 ditangani .why-inner via margin:auto (IDENTIK .shell-col;
-       jangan hardcode padding 130px — itu hanya pas di 1440). */
+    /* Separator + rail sisi dipindah ke .why-inner agar selebar kolom 1180
+       (menyambung .shell-col di atas & .cta-band di bawah), bukan full-width.
+       border-bottom tetap mati → separator ke CTA disuplai border-top .cta-band. */
+    border: 0;
+    /* WAJIB override padding global `section{padding:56px 0}` → 0 agar border
+       sisi .why-inner span penuh tinggi band (garis vertikal menerus). */
     padding: 0;
   }
-  /* FULL-WIDTH: tanpa batas 1180 & tanpa garis sisi vertikal (rail) — section
-     Why sengaja keluar dari sistem garis agar membentang penuh (permintaan
-     desain terbaru). Tanda plus/crosshair juga dihapus. */
+  /* Kolom 1180 terpusat dgn rail kiri/kanan + garis atas — IDENTIK .shell-col
+     (jangan hardcode padding 130px; itu hanya pas di 1440). */
   .why-inner {
-    max-width: none;
-    margin: 0;
+    max-width: var(--shell-max, 1180px);
+    margin: 0 auto;
     padding: clamp(56px, 7vw, 96px) 0;
-    border-left: 0;
-    border-right: 0;
+    border-top: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
     display: flex;
     flex-direction: column;
     gap: clamp(36px, 4.5vw, 56px);
@@ -126,6 +141,11 @@ const pad2 = (n: number) => String(n + 1).padStart(2, '0');
 
   /* Grid — three columns; cells share inner hairlines (right + bottom) so the
      block reads as one ruled 3×N matrix. Top hairline closes the top edge. */
+  /* Wrapper holds the ruled grid + the crosshair overlay in one positioning
+     context so the plus marks can be placed by percentage on the cell lines. */
+  .why-grid-wrap {
+    position: relative;
+  }
   .why-grid {
     position: relative;
     list-style: none;
@@ -138,6 +158,43 @@ const pad2 = (n: number) => String(n + 1).padStart(2, '0');
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     grid-auto-rows: 1fr;
+  }
+
+  /* Crosshair plus marks at every grid-line intersection (incl. outer corners).
+     Overlay matches the grid box; each mark is two 1px strokes centred on the
+     intersection. Decorative only → aria-hidden, no pointer events. */
+  .why-crosshairs {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .why-plus {
+    position: absolute;
+    width: 13px;
+    height: 13px;
+    transform: translate(-50%, -50%);
+    color: var(--faint);
+  }
+  .why-plus::before,
+  .why-plus::after {
+    content: "";
+    position: absolute;
+    background: currentColor;
+  }
+  .why-plus::before {
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    transform: translateY(-50%);
+  }
+  .why-plus::after {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    transform: translateX(-50%);
   }
 
   .why-cell {
@@ -191,12 +248,15 @@ const pad2 = (n: number) => String(n + 1).padStart(2, '0');
     .why-grid { grid-template-columns: repeat(2, 1fr); }
     .why-cell:nth-child(3n) { border-right: 1px solid var(--line); }
     .why-cell:nth-child(2n) { border-right: 0; }
+    /* Crosshair positions assume a 3-col grid → drop them below that. */
+    .why-crosshairs { display: none; }
   }
   @media (max-width: 600px) {
-    /* Lepas padding sisi band → separator horizontal (border-top grid +
+    /* Lepas rail sisi + padding band → separator horizontal (border-top grid +
        border-bottom tiap sel) membentang FULL-WIDTH tepi-ke-tepi. Gutter teks
        disuplai padding internal head/cell/extra (24px). */
     .why-band { padding: 0; }
+    .why-inner { border-left: 0; border-right: 0; }
     .why-head, .why-extra { padding: 0 24px; }
     .why-grid { grid-template-columns: 1fr; }
     .why-cell { border-right: 0 !important; min-height: 0; padding: 28px 24px; }

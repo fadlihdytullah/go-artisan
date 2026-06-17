@@ -1,0 +1,131 @@
+---
+title: "Skala, Pemulihan & Rangkuman - Belajar Git"
+badge: "GIT07"
+topTitle: "Skala, Pemulihan & Rangkuman"
+topSub: "Repo besar, bisect, reflog, security, dan workflow rekomendasi"
+summary: "Menangani repo skala besar, melacak bug dengan bisect, memulihkan lewat reflog, menjaga security sebagai gerbang, lalu menyatukan semuanya jadi workflow rekomendasi per ukuran tim."
+order: 7
+target: "Course · Git"
+readingTime: "~18 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "advanced-troubleshoot", title: "Topik Lanjutan dan Troubleshooting" }
+  - { num: "02", id: "ringkasan", title: "Ringkasan dan Workflow Rekomendasi" }
+footerTitle: "Skala, Pemulihan & Rangkuman - Belajar Git"
+footerSub: "Chapter 7 dari 7, Course Git Web Artisan"
+---
+
+import { Section, Box, Recap, CardGrid, Card, Chip, Hero, Figure } from "@components";
+import GitDetachedHeadFig01 from "@figures/GitDetachedHeadFig01.astro";
+
+<Hero eyebrow="Chapter 07 &middot; Git" title="Skala, Pemulihan<br />&amp; <em>Rangkuman</em>" sub="Repo besar, bisect, reflog, security, dan workflow rekomendasi">
+  <p>Chapter penutup: kemampuan yang membedakan orang yang panik saat repo kacau dari orang yang tahu di mana commit "hilang" disimpan, lalu satu rangkuman yang menyatukan seluruh course jadi keputusan praktis.</p>
+  <Fragment slot="meta">
+    <Chip icon="stack">Skala &amp; <b>pemulihan</b></Chip>
+    <Chip icon="rocket">Workflow <b>rekomendasi</b></Chip>
+    <Chip icon="clock">~18 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+Enam chapter sebelumnya membangun alur dari fondasi sampai workflow tim. Chapter penutup ini melengkapi dua hal terakhir: **skala dan pemulihan**, bagaimana repo besar dikelola dan bagaimana memulihkan saat sesuatu terlihat lenyap, lalu **rangkuman** yang menjahit semua benang course menjadi satu model mental dan satu rekomendasi praktis per ukuran tim. Kabar baiknya, Git jarang benar-benar membuang data, ia hanya menyembunyikannya sampai kamu tahu cara melihatnya.
+
+<Section num="01" id="advanced-troubleshoot" title="Topik Lanjutan dan Troubleshooting" sub="Monorepo, submodule, bisect, pitfalls, security, CI/CD">
+
+<p class="lead">Kumpulan kemampuan yang membedakan orang yang panik saat repo kacau dari orang yang tahu di mana commit "hilang" disimpan.</p>
+
+Setelah alur dasar lancar, sisa perjalanan adalah skala dan pemulihan, bagaimana repo besar dikelola, bagaimana melacak bug ke commit penyebabnya, dan apa yang dilakukan saat sesuatu terlihat lenyap. Kabar baiknya, Git jarang benar-benar membuang data, ia hanya menyembunyikannya sampai kamu tahu cara melihatnya.
+
+<h3>Skala: monorepo, submodule, subtree</h3>
+
+Monorepo menampung banyak layanan dalam satu repo. Kuncinya kepemilikan path lewat **CODEOWNERS** (yang sudah kamu pasang di Chapter 4), agar PR di area tertentu otomatis meminta review pemilik area. Submodule dan subtree menyematkan repo lain, submodule menyimpan pointer ke commit eksternal, tapi keduanya menambah kompleksitas nyata dan sering lebih baik dihindari kecuali ada kebutuhan kuat. Apa pun pilihannya, PR kecil tetap aturan emas.
+
+Untuk repo yang benar-benar raksasa, Git modern punya beberapa fitur performa yang layak dikenal:
+
+<CardGrid cols={2}>
+<Card><h4>sparse-checkout (cone mode)</h4><p>Hanya meng-checkout sebagian direktori ke disk, sehingga <code>git status</code> dan <code>git add</code> tak perlu memindai file yang tak kamu kerjakan.</p></Card>
+<Card><h4>partial clone</h4><p><code>git clone --filter=blob:none</code> membuat blobless clone: semua commit dan tree ikut, isi file diunduh saat dibutuhkan. Riwayat tetap utuh, clone jauh lebih ringan.</p></Card>
+<Card><h4>scalar</h4><p>Mengaktifkan sparse-checkout dan background maintenance secara default untuk enlistment besar, "membungkus" praktik terbaik repo raksasa jadi satu perintah.</p></Card>
+<Card><h4>git maintenance</h4><p>Menjalankan optimasi (repack, commit-graph, prefetch) di latar belakang agar perintah harian tetap cepat seiring repo membesar.</p></Card>
+</CardGrid>
+
+<Box variant="tip" icon="💡" label="Sparse index + FS monitor untuk monorepo"><p>Di monorepo besar, sparse-checkout cone mode dipasangkan dengan sparse index dan filesystem monitor membuat operasi harian terasa seperti repo kecil: Git tak lagi menyusuri seluruh pohon kerja, hanya bagian yang relevan dengan tugasmu.</p></Box>
+
+<h3>git bisect: berburu commit penyebab bug</h3>
+
+Saat sebuah bug muncul entah kapan, jangan menebak. `git bisect` melakukan pencarian biner di antara commit yang masih baik dan yang sudah rusak, membelah rentang sampai menemukan commit pertama yang merusak.
+
+```bash title="Terminal"
+git bisect start
+git bisect bad                 # commit sekarang rusak
+git bisect good v1.0.0         # versi ini masih sehat
+# Git checkout commit di tengah, kamu uji, lalu beri tahu hasilnya:
+git bisect good                # atau: git bisect bad
+# ulangi sampai Git menunjuk "first bad commit"
+git bisect reset               # kembali ke posisi semula
+```
+
+<p class="fig-cap"><b>Bisect.</b> 1000 commit ditelusuri hanya dalam ~10 langkah karena tiap jawaban memotong setengah ruang pencarian.</p>
+
+<h3>Pitfalls dan pemulihan lewat reflog</h3>
+
+Jebakan tersering, detached HEAD, stale branch yang tertinggal jauh, commit nyasar di branch salah, dan force push yang menimpa kerja orang. Penyelamatnya satu, `git reflog`, catatan setiap pergerakan HEAD di mesinmu. Bahkan setelah `reset --hard` yang kamu pelajari di Chapter 5, commit lama masih tercatat di reflog dan bisa dipulihkan.
+
+<Figure><GitDetachedHeadFig01 /><Fragment slot="caption"><b>Detached HEAD.</b> Saat HEAD menunjuk commit langsung (bukan branch), commit baru mudah hilang tanpa branch yang menahannya.</Fragment></Figure>
+
+```bash title="Terminal"
+git reflog                     # contoh: a1b2c3d HEAD@{2}: commit: add cart
+git switch -c rescue a1b2c3d   # tahan commit "hilang" dengan branch baru
+```
+
+<Box variant="warn" icon="⚠️" label="Detached HEAD & force push"><p>Detached HEAD berarti commit yang tidak dipegang branch mana pun, mudah ter-garbage-collect. Selalu <code>git switch -c &lt;branch&gt;</code> sebelum commit dalam keadaan ini. Dan force push hanya boleh ke branch milikmu sendiri, gunakan <code>--force-with-lease</code> agar batal bila ada commit orang lain yang belum kamu lihat.</p></Box>
+
+<h3>Security dan CI/CD sebagai gerbang</h3>
+
+Hygiene minimal, pastikan `.env` tidak pernah masuk repo, aktifkan secret scanning untuk menangkap kunci yang bocor, pertimbangkan signed commit untuk membuktikan author, dan terapkan least privilege pada akses. Bila secret pernah ter-commit, rotasi (ganti) kuncinya, menghapus dari history saja tidak cukup karena clone lama tetap menyimpannya. CI/CD mengikat semua ini, required status check menjadikan lolosnya test sebagai syarat merge (gerbang), sementara deploy bisa branch-based (merge ke `main` memicu staging) atau tag-based (tag `v*` memicu rilis produksi).
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari debug aplikasi ke debug repo"><p>Mendebug error runtime, kamu mempersempit ke baris kode penyebab. Mendebug repo sama persis, <code>bisect</code> mempersempit ke commit penyebab, dan <code>reflog</code> adalah stack trace pergerakan HEAD-mu.</p></Box>
+
+<Box variant="note" icon="🧭" label="Hands-on"><p>Latih pemulihan nyata, pakai <code>git bisect</code> untuk melacak satu regression, lalu pindahkan sebuah commit yang nyasar di branch salah dan pulihkan hasil <code>reset --hard</code> yang tak sengaja lewat <code>git reflog</code>.</p></Box>
+
+</Section>
+
+<Section num="02" id="ringkasan" title="Ringkasan dan Workflow Rekomendasi" sub="Dari kerja sendiri ke tim yang aman dan scalable">
+
+<p class="lead">Git yang kamu kuasai sekarang bukan kumpulan perintah, melainkan satu model mental yang konsisten dari snapshot sampai kolaborasi tim.</p>
+
+Mari satukan benang seluruh course. Semua dimulai dari satu ide di Chapter 1, Git menyimpan **snapshot**, bukan diff, dengan **tiga area** yang menjelaskan kenapa `add` dan `commit` terpisah. Chapter 2 membangun loop harian: commit atomik dengan pesan yang menjelaskan "kenapa", dibaca kembali lewat history. Chapter 3 membuka kerja paralel lewat **branch dan merge**, plus **conflict** yang kamu selesaikan dengan tenang. Chapter 4 membawa semuanya ke tim lewat **remote, Pull Request, dan branch protection**. Chapter 5 memberi kendali membedah sejarah dengan **rebase** dan **undo** yang aman. Chapter 6 menatanya jadi **konvensi dan workflow**. Dan chapter ini menutup dengan **skala dan pemulihan**. Workflow tim hanyalah cara menata semua itu untuk banyak orang.
+
+<Recap title="Yang Wajib Menempel">
+<ul>
+<li>Git menyimpan snapshot, bukan diff, hash menjamin integritas tiap versi.</li>
+<li>Tiga area (working tree, index, repo) menjelaskan kenapa staging ada dan berguna.</li>
+<li>Commit yang baik bersifat atomik dengan pesan yang menjelaskan "kenapa".</li>
+<li>Branch itu murah, merge menyatukan, fast-forward bila linear, merge commit bila bercabang.</li>
+<li>Conflict itu normal, selesaikan dengan memahami kedua sisi, bukan menghapus salah satunya.</li>
+<li>Remote, PR, dan review adalah tempat kualitas tim benar-benar terjaga.</li>
+<li>Branch protection dan required status check menjadikan standar tidak bisa dilewati.</li>
+<li>Rebase merapikan history (hanya yang belum dibagikan), revert aman untuk history publik.</li>
+<li>reflog adalah jaring pengaman, commit jarang benar-benar hilang.</li>
+</ul>
+</Recap>
+
+Prinsip akhir yang menyatukan semuanya, **mulai dari yang sederhana, tambah kompleksitas hanya saat tim dan deployment benar-benar membutuhkannya**. Workflow yang berat sebelum waktunya adalah pajak harian tanpa imbalan.
+
+<CardGrid cols={3}>
+<Card>
+<h4>Tim kecil / solo</h4>
+<p>GitHub Flow atau Trunk-Based. Satu <code>main</code> yang selalu siap deploy, branch pendek, PR ringan, CI dasar. Tidak perlu environment branch sampai deployment menuntutnya.</p>
+</Card>
+<Card>
+<h4>Tim sedang tumbuh</h4>
+<p>GitHub Flow plus branch protection, required review, dan CODEOWNERS. Tambah staging environment dan deploy branch-based saat rilis mulai perlu tahap.</p>
+</Card>
+<Card>
+<h4>Tim enterprise</h4>
+<p>GitLab Flow dengan environment branch atau Git Flow bila ada rilis berversi terjadwal. Rulesets ketat, signed commit, secret scanning, dan deploy tag-based ke produksi.</p>
+</Card>
+</CardGrid>
+
+Langkah berikutnya bukan lagi membaca, melainkan berkolaborasi nyata, buka PR pertamamu di skincare-backend, minta review, dan biarkan CI menjadi gerbang. Saat alur itu terasa alami, kamu siap menyambungkannya ke pipeline CI/CD penuh, tempat setiap merge ke `main` mengantar kode dengan aman sampai ke pengguna.
+
+</Section>

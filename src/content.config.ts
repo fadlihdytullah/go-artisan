@@ -48,6 +48,15 @@ const aws = defineCollection({
   schema: lessonSchema,
 });
 
+// Koleksi "git": course Git yang sudah di-chunk dari monolit courses/git.mdx menjadi
+// 7 chapter berchapter (busur belajar) di src/content/git. TERPISAH dari 'courses'
+// (yang kini hanya menyimpan entry tipis git.mdx sebagai sumber hero katalog) dan dari
+// 'aws'. Memakai lessonSchema yang sama; dirender lewat src/pages/git/[...slug].astro.
+const git = defineCollection({
+  loader: glob({ pattern: '**/*.mdx', base: './src/content/git' }),
+  schema: lessonSchema,
+});
+
 // Koleksi "roadmaps": jalur kurasi yang MEREFERENSIKAN course (bukan menulis ulang materi).
 // Satu file .mdx per roadmap; body MDX opsional (intro). Data terstruktur di frontmatter.
 const roadmaps = defineCollection({
@@ -66,4 +75,4 @@ const roadmaps = defineCollection({
   }),
 });
 
-export const collections = { modules, courses, aws, roadmaps };
+export const collections = { modules, courses, aws, git, roadmaps };

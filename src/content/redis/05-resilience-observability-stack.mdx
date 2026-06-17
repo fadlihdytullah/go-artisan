@@ -1,0 +1,253 @@
+---
+title: "Redis di Produksi: Resilience & Stack - Belajar Redis"
+badge: "RDIS05"
+topTitle: "Redis di Produksi: Resilience & Stack"
+topSub: "Gagal dengan anggun, dipantau, dan dirakit di Docker Compose"
+summary: "Menjadikan Redis akselerator opsional yang gagal dengan anggun (fallback ke PostgreSQL), memantaunya lewat hit rate dan latency, mengatur memori dengan eviction policy, lalu merakit stack lokal Go plus PostgreSQL plus Redis dengan Docker Compose dan memetakan di mana Redis dipakai."
+order: 5
+target: "Course · Redis"
+readingTime: "~22 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "resilience", title: "Error Handling, Resilience, dan Observability" }
+  - { num: "02", id: "stack-usage-map", title: "Stack Lokal dan Peta Penggunaan Redis" }
+  - { num: "03", id: "ringkasan", title: "Ringkasan" }
+footerTitle: "Redis di Produksi: Resilience & Stack - Belajar Redis"
+footerSub: "Chapter 5 dari 6, Course Redis Web Artisan"
+---
+
+import { Section, Box, Recap, Chip, Hero, FileTree } from "@components";
+
+<Hero eyebrow="Chapter 05 &middot; Redis" title="Redis di <em>Produksi</em><br />Resilience &amp; Stack" sub="Gagal dengan anggun, dipantau, dan dirakit di Docker Compose">
+  <p>Di produksi Redis akan mati suatu saat. Chapter ini memastikan saat itu terjadi, API tetap hidup dari PostgreSQL, cache tetap terpantau, memori terkendali, dan seluruh stack bisa dinyalakan dengan satu perintah.</p>
+  <Fragment slot="meta">
+    <Chip icon="shield">fallback <b>graceful</b></Chip>
+    <Chip icon="server">observability</Chip>
+    <Chip icon="package">Docker <b>Compose</b></Chip>
+  </Fragment>
+</Hero>
+
+Empat chapter pertama mengajarkan apa yang bisa dilakukan Redis dengan asumsi diam-diam bahwa ia selalu hidup. Chapter ini melepas asumsi itu dan menghadapi produksi: pertama membuat Redis **boleh gagal** tanpa menjatuhkan API (fallback ke sumber kebenaran), lalu **memantau** apakah cache benar-benar menolong dan menjaga memori tetap sehat, dan terakhir merakit **stack lokal** yang mencerminkan produksi dengan Docker Compose. Ini adalah lapisan yang membedakan "cache yang jalan di demo" dari "cache yang aman di production".
+
+<Section num="01" id="resilience" title="Error Handling, Resilience, dan Observability" sub="Redis boleh gagal tanpa menjatuhkan API, dan harus dipantau">
+
+<p class="lead">Redis adalah akselerator, jadi ia boleh gagal tanpa membuat API ikut gagal. Bila Redis mati, API harus tetap melayani request dari PostgreSQL, sedikit lebih lambat. Dan agar tahu cache benar-benar menolong, ia harus dipantau.</p>
+
+Inti resilience adalah membedakan cache error dari business error. Cache error (Redis timeout, koneksi putus) tidak boleh menggagalkan request; ia hanya berarti "lewati cache kali ini, ambil dari database". Business error (produk tidak ada, validasi gagal) adalah hasil sah yang memang harus dikembalikan ke client.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari optional cache ke dependency yang graceful"><p>Di Laravel, `Cache::remember` tetap memanggil closure database bila cache miss, jadi kegagalan cache terasa transparan. Di Go kita harus eksplisit: setiap pemanggilan Redis dibungkus timeout pendek, dan kegagalannya di-fallback ke database, bukan dipropagasi sebagai error 500.</p></Box>
+
+Pola fallback: coba cache dengan timeout pendek, dan apa pun yang bukan cache hit (miss atau error) jatuh ke database. Inilah yang membuat Redis bukan single point of failure.
+
+```go title="internal/product/service.go"
+// GetByIDResilient memperlakukan kegagalan Redis sebagai miss, bukan error fatal.
+func (s *Service) GetByIDResilient(ctx context.Context, id int64) (Product, error) {
+	key := productKey(id)
+
+	// Timeout pendek khusus cache: kalau Redis lambat, jangan tahan request.
+	cacheCtx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	cached, err := s.redis.Get(cacheCtx, key).Result()
+	cancel()
+
+	switch {
+	case err == nil:
+		var p Product
+		if json.Unmarshal([]byte(cached), &p) == nil {
+			s.metrics.RecordHit()
+			return p, nil
+		}
+	case errors.Is(err, redis.Nil):
+		s.metrics.RecordMiss()
+	default:
+		// Redis error (timeout, koneksi): catat, lalu lanjut ke database.
+		s.metrics.RecordError()
+		s.log.Warn("redis get gagal, fallback ke database", "key", key, "err", err)
+	}
+
+	// Sumber kebenaran selalu tersedia walau Redis bermasalah.
+	p, dbErr := s.repo.FindByID(ctx, id)
+	if dbErr != nil {
+		return Product{}, dbErr
+	}
+
+	// Isi cache best-effort; abaikan error.
+	if blob, mErr := json.Marshal(p); mErr == nil {
+		setCtx, c := context.WithTimeout(ctx, 100*time.Millisecond)
+		_ = s.redis.Set(setCtx, key, blob, productTTL).Err()
+		c()
+	}
+
+	return p, nil
+}
+```
+
+```mermaid
+flowchart TD
+  Req["GET /v1/products/123"] --> Try["coba Redis (timeout 100ms)"]
+  Try --> R{"hasil?"}
+  R -->|hit| Fast["balas cepat dari cache"]
+  R -->|miss| DB["ambil dari PostgreSQL"]
+  R -->|error / timeout| DB
+  DB --> Resp["balas dari database"]
+  DB --> Fill["isi cache best-effort"]
+```
+
+<p class="fig-cap"><b>Gambar 1.</b> Dengan fallback, mematikan Redis hanya membuat lebih banyak request menyentuh PostgreSQL. API tetap hidup.</p>
+
+<Box variant="tip" icon="💡" label="Uji ketahanan dengan mematikan Redis"><p>Cara terbaik membuktikan Redis bukan single point of failure adalah mematikannya saat development, lalu memastikan `GET /v1/products/{id}` tetap mengembalikan 200 dari PostgreSQL. Bila API ikut mati, berarti ada jalur yang memperlakukan cache error sebagai fatal; perbaiki itu.</p></Box>
+
+### Observability: tahu cache benar-benar efektif
+
+Cache yang tidak dipantau adalah kotak ajaib. Metrik inti yang menentukan apakah cache efektif adalah hit rate (rasio hit terhadap total), latency pemanggilan Redis, pemakaian memori, eviction (key terbuang karena memori penuh), dan slowlog (command yang lambat).
+
+<div class="tbl-wrap"><table><thead><tr><th>Metrik</th><th>Yang dijawab</th><th>Tindakan bila buruk</th></tr></thead><tbody><tr><td>Hit rate</td><td>Seberapa sering cache menolong</td><td>Hit rate rendah berarti TTL terlalu pendek atau data tidak layak di-cache</td></tr><tr><td>Latency Redis call</td><td>Apakah Redis benar-benar cepat</td><td>Latency tinggi berarti masalah jaringan atau command berat</td></tr><tr><td>Memory usage</td><td>Seberapa penuh Redis</td><td>Mendekati batas berarti perlu TTL lebih ketat atau memori lebih besar</td></tr><tr><td>Eviction</td><td>Apakah key dibuang paksa</td><td>Eviction tinggi berarti memori kurang untuk beban cache</td></tr><tr><td>Slowlog</td><td>Command apa yang lambat</td><td>Hindari command yang memindai banyak key (mis. KEYS di produksi)</td></tr></tbody></table></div>
+
+Yang paling mudah dikontrol dari sisi aplikasi adalah hit rate dan latency. Catat hit, miss, dan error di service (seperti `RecordHit`/`RecordMiss` di kode di atas), lalu ukur durasi tiap pemanggilan Redis.
+
+```go title="internal/cache/instrument.go"
+// timed mengukur durasi satu operasi Redis untuk metrik latency.
+func timed(name string, log *slog.Logger, fn func() error) error {
+	start := time.Now()
+	err := fn()
+	log.Info("redis op", "op", name, "ms", time.Since(start).Milliseconds(), "err", err)
+	return err
+}
+```
+
+<Box variant="warn" icon="⚠️" label="KEYS dan SCAN besar bisa menjatuhkan Redis"><p>Jangan memakai `KEYS *` di produksi untuk mencari key; ia memblokir Redis selama memindai seluruh keyspace. Bila perlu iterasi, pakai `SCAN` dengan cursor. Slowlog akan menunjukkan command seperti ini, dan itu sinyal untuk segera mengubah pola akses.</p></Box>
+
+### Atur memori: maxmemory dan eviction policy
+
+Metrik eviction di tabel di atas baru bermakna kalau Redis tahu kapan harus meng-evict. Saat Redis dipakai murni sebagai cache, praktik produksi yang penting adalah memberi batas memori (`maxmemory`) dan kebijakan eviction yang membuang key paling tidak berguna ketika batas tercapai, alih-alih membiarkan Redis kehabisan memori dan ditolak oleh OS. Untuk cache, kebijakan yang umum adalah `allkeys-lru` (buang key yang paling lama tidak diakses) atau `allkeys-lfu` (buang yang paling jarang diakses).
+
+```text title="redis.conf (potongan untuk peran cache)"
+maxmemory 512mb
+maxmemory-policy allkeys-lru
+```
+
+<Box variant="note" icon="🧩" label="Eviction policy menegaskan peran Redis sebagai cache"><p>Dengan `allkeys-lru`, Redis akan dengan tenang membuang cache lama saat penuh, dan itu aman justru karena semua isinya bisa dibangun ulang dari PostgreSQL. Ini cocok untuk peran cache. Untuk data yang TIDAK boleh hilang diam-diam (mis. dipakai sebagai antrian), pertimbangkan kebijakan `noeviction` plus persistence, dan sadari bahwa itu bukan lagi peran "cache murni".</p></Box>
+
+Resilience dan observability memastikan Redis berperilaku baik di produksi. Tetapi sebelum produksi ada development, dan di sanalah kita harus bisa menyalakan seluruh stack dengan mudah.
+
+</Section>
+
+<Section num="02" id="stack-usage-map" title="Stack Lokal dan Peta Penggunaan Redis" sub="Redis di Docker Compose plus peta di mana ia dipasang">
+
+<p class="lead">Bagian ini menyatukan dua hal praktis: menambahkan Redis ke stack lokal lewat Docker Compose, dan memetakan di mana saja Redis dipakai (dan tidak dipakai) di online shop skincare.</p>
+
+Redis mudah dijalankan lokal bersama Go API dan PostgreSQL. Tambahkan satu service ringkas ke `docker-compose.yml`, dengan env `REDIS_ADDR` yang dibaca aplikasi.
+
+```yaml title="docker-compose.yml"
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://app:secret@postgres:5432/skincare?sslmode=disable
+      REDIS_ADDR: redis:6379
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: skincare
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+```
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari Laravel Sail ke stack Go lokal"><p>Laravel Sail memberi `docker-compose.yml` siap pakai dengan app, database, dan Redis. Di sini kita merakit yang setara untuk backend Go: satu service API, satu PostgreSQL sebagai sumber kebenaran, satu Redis sebagai akselerator. Aplikasi membaca alamat Redis dari `REDIS_ADDR`.</p></Box>
+
+```go title="cmd/api/main.go"
+// Baca alamat Redis dari environment, dengan default lokal yang masuk akal.
+addr := os.Getenv("REDIS_ADDR")
+if addr == "" {
+	addr = "localhost:6379"
+}
+
+rdb, err := cache.New(ctx, addr)
+if err != nil {
+	// Redis opsional: log peringatan, tetap jalan tanpa cache bila perlu.
+	log.Printf("redis tidak tersedia, jalan tanpa cache: %v", err)
+}
+```
+
+<FileTree title="Tempat Redis di struktur proyek" tree={`
+cmd/
+  api/
+    main.go          # baca REDIS_ADDR, buat client cache
+internal/
+  cache/
+    redis.go         # client + helper Get/Set
+    instrument.go    # metrik latency cache
+  product/
+    service.go       # cache-aside detail produk
+  ratelimit/
+    fixedwindow.go   # INCR + EXPIRE per-IP / per-user
+  auth/
+    session.go       # session store + token blacklist
+docker-compose.yml   # service redis, postgres, api
+`} />
+
+<Box variant="tip" icon="💡" label="Lebih dalam soal Compose ada di Course Docker"><p>Cara kerja `docker-compose.yml`, jaringan antar service, dan healthcheck dibahas tuntas di Course Docker. Di sini cukup pahami intinya: nama service (`redis`, `postgres`) menjadi hostname antar container, jadi `REDIS_ADDR=redis:6379` menunjuk ke service Redis di jaringan Compose yang sama.</p></Box>
+
+### Peta penggunaan Redis di online shop
+
+Berikut peta selektif: bagian mana memakai Redis, dan bagian mana tetap murni di PostgreSQL. Ini ringkasan keputusan dari seluruh course.
+
+<div class="tbl-wrap"><table><thead><tr><th>Bagian</th><th>Pakai Redis?</th><th>Caranya</th></tr></thead><tbody><tr><td>Detail produk dan kategori</td><td>Ya</td><td>Cache-aside dengan TTL pendek, delete-on-write saat admin update</td></tr><tr><td>Session login</td><td>Ya</td><td>Session store `session:{id}` dengan TTL alami</td></tr><tr><td>Login dan checkout throttle</td><td>Ya</td><td>Rate limit fixed window dengan INCR + EXPIRE</td></tr><tr><td>Top viewed products</td><td>Ya</td><td>Sorted Set untuk ranking</td></tr><tr><td>Stok inventory</td><td>Tidak</td><td>Selalu dari PostgreSQL dalam transaksi</td></tr><tr><td>Status order dan payment</td><td>Tidak</td><td>Selalu dari PostgreSQL, harus segar</td></tr><tr><td>Cart aktif</td><td>Tidak (sebagai kebenaran)</td><td>State hidup milik user, simpan di PostgreSQL</td></tr></tbody></table></div>
+
+```mermaid
+flowchart LR
+  subgraph Redis["Redis (akselerator + state sementara)"]
+    PC["product / category cache"]
+    SS["user session"]
+    RL["login / checkout throttle"]
+    TV["top viewed (sorted set)"]
+  end
+  subgraph PG["PostgreSQL (sumber kebenaran)"]
+    INV["inventory / stok"]
+    ORD["order + payment status"]
+    CART["cart aktif"]
+  end
+  API["Go API"] --> Redis
+  API --> PG
+```
+
+<p class="fig-cap"><b>Gambar 2.</b> Peta penggunaan. Redis memegang yang cepat dan sementara; PostgreSQL memegang yang harus benar dan permanen.</p>
+
+<Box variant="tip" icon="💡" label="Stack lokal utuh dalam satu perintah"><p>Dengan `docker compose up`, kamu mendapat API plus PostgreSQL plus Redis sekaligus, mencerminkan produksi. Ini mempermudah menguji cache-aside, rate limit, dan fallback (matikan service `redis`, lalu lihat API tetap hidup) tanpa memasang apa pun secara manual.</p></Box>
+
+Peta ini adalah seluruh course dalam satu tabel: tiap "Ya" adalah teknik yang sudah kita pelajari, tiap "Tidak" adalah garis disiplin yang kita jaga. Chapter terakhir merangkum semuanya dan menunjuk ke topik lanjutan yang sengaja kita tunda.
+
+</Section>
+
+<Section num="03" id="ringkasan" title="Ringkasan" sub="Redis yang aman di produksi">
+
+<p class="lead">Chapter ini menyiapkan Redis untuk produksi: gagal dengan anggun, terpantau, terkendali memorinya, dan mudah dinyalakan di stack lokal.</p>
+
+Kita bangun fallback yang memperlakukan kegagalan Redis sebagai cache miss, dengan timeout pendek agar Redis yang lambat tidak menahan request, sehingga API tetap hidup dari PostgreSQL. Kita pantau hit rate, latency, memori, eviction, dan slowlog, lalu mengatur `maxmemory` plus `allkeys-lru` agar Redis membuang cache lama dengan tenang saat penuh. Terakhir kita rakit stack Go plus PostgreSQL plus Redis dengan Docker Compose dan memetakan di mana Redis dipakai (cache, session, rate limit, ranking) dan di mana tidak (stok, order, payment, cart).
+
+<Recap title="Yang Wajib Menempel">
+<ul>
+<li>Bedakan cache error (timeout, koneksi) dari business error; cache error berarti fallback ke database, bukan 500.</li>
+<li>Bungkus pemanggilan Redis dengan timeout pendek agar Redis yang lambat tidak menahan request.</li>
+<li>Uji ketahanan dengan mematikan Redis: API harus tetap mengembalikan 200 dari PostgreSQL.</li>
+<li>Pantau hit rate, latency, memory usage, eviction, dan slowlog; hindari `KEYS` di produksi, pakai `SCAN`.</li>
+<li>Untuk peran cache, set `maxmemory` plus kebijakan eviction (`allkeys-lru`/`allkeys-lfu`) agar memori terkendali.</li>
+<li>Rakit stack lokal dengan Docker Compose; nama service jadi hostname, `REDIS_ADDR=redis:6379`.</li>
+</ul>
+</Recap>
+
+Redis kini siap produksi: cepat saat sehat, aman saat gagal. Di **Chapter 6** kita menutup course dengan jujur menyebut topik yang sengaja ditunda (Pub/Sub, distributed lock, cache stampede, Streams) lengkap dengan peringatannya, lalu merangkum seluruh perjalanan ke dalam empat flow nyata online shop.
+
+</Section>

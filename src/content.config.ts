@@ -67,6 +67,16 @@ const docker = defineCollection({
   schema: lessonSchema,
 });
 
+// Koleksi "redis": course Redis yang sudah di-chunk dari monolit courses/redis.mdx
+// menjadi 6 chapter (busur belajar) di src/content/redis. TERPISAH dari 'courses'
+// (yang kini hanya menyimpan entry tipis redis.mdx sebagai sumber hero katalog), dari
+// 'aws', 'git', dan 'docker'. Memakai lessonSchema yang sama; dirender lewat
+// src/pages/redis/[...slug].astro.
+const redis = defineCollection({
+  loader: glob({ pattern: '**/*.mdx', base: './src/content/redis' }),
+  schema: lessonSchema,
+});
+
 // Koleksi "roadmaps": jalur kurasi yang MEREFERENSIKAN course (bukan menulis ulang materi).
 // Satu file .mdx per roadmap; body MDX opsional (intro). Data terstruktur di frontmatter.
 const roadmaps = defineCollection({
@@ -85,4 +95,4 @@ const roadmaps = defineCollection({
   }),
 });
 
-export const collections = { modules, courses, aws, git, docker, roadmaps };
+export const collections = { modules, courses, aws, git, docker, redis, roadmaps };

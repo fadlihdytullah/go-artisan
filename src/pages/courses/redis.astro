@@ -1,0 +1,73 @@
+---
+import { getEntry, getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import CourseHero from '../../components/course/CourseHero.astro';
+
+// Course Redis = course "Tracks" varian CHAPTERS: 6 chapter koleksi `redis` (hasil
+// chunk dari monolit courses/redis.mdx) sebagai daftar bernomor datar (01..06,
+// TANPA pengelompokan tahap) yang menautkan tiap chapter ke /redis/<id>. Hero +
+// styling dibagi dengan Go Luminas, AWS, Git & Docker lewat CourseHero + kelas .track-*
+// di globals.css (satu sumber, anti-drift). Entry tipis courses/redis.mdx jadi sumber
+// frontmatter hero (title/topTitle/topSub/summary/target).
+const course = await getEntry('courses', 'redis');
+const cd = course.data;
+
+const mods = (await getCollection('redis')).sort(
+  (a, b) => a.data.order - b.data.order
+);
+const firstId = mods[0]?.id ?? '01-fondasi-mental-model';
+---
+<BaseLayout title={cd.title} nav={{ variant: 'home' }}>
+  <main class="course-detail">
+    <div class="shell-col">
+      <section class="shell-band course-hero-band">
+        <CourseHero
+          eyebrow={cd.target ?? 'Course · Redis'}
+          title={cd.topTitle ?? cd.title}
+          sub={cd.topSub}
+          lede={cd.summary}
+          facts={`${mods.length} chapter`}
+          image="/redis.png"
+          primaryHref={`/redis/${firstId}`}
+        />
+      </section>
+
+      <section class="shell-band course-cur" id="kurikulum">
+        <header class="course-cur-head">
+          <h2 class="course-cur-title">Kurikulum</h2>
+          <span class="course-cur-count">{mods.length} chapter tersedia</span>
+        </header>
+
+        {/* Daftar datar 01..06 (tanpa accordion tahap). Tiap baris menautkan ke
+            /redis/<id> dengan nomor urut, judul, ringkasan, dan estimasi waktu. */}
+        <ol class="track-chapters">
+          {mods.map((mod, idx) => {
+            const numMatch = mod.id.match(/^(\d+)/);
+            const num = numMatch ? numMatch[1] : String(idx + 1).padStart(2, '0');
+            return (
+              <li class="track-chapter" style={`--i:${idx}`}>
+                <a href={`/redis/${mod.id}`} class="track-chapter-link">
+                  <span class="track-chapter-num" aria-hidden="true">{num}</span>
+                  <span class="track-chapter-body">
+                    <span class="track-chapter-title">
+                      {mod.data.topTitle}
+                      {idx === 0 && <span class="track-chapter-flag">Mulai di sini</span>}
+                    </span>
+                    {mod.data.summary && (
+                      <span class="track-chapter-sum">{mod.data.summary}</span>
+                    )}
+                  </span>
+                  <span class="track-chapter-meta">
+                    {mod.data.readingTime
+                      ? mod.data.readingTime.replace(' baca', '').replace('menit', 'min')
+                      : `${mod.data.toc.length} bagian`}
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+    </div>
+  </main>
+</BaseLayout>

@@ -38,7 +38,9 @@ const { toc, heading = 'On this page' } = Astro.props;
 </nav>
 
 <style>
-  /* Container — frame pNyWh: 330w, right hairline, padded column, sticky. */
+  /* Container — frame pNyWh: 330w, padded column, sticky. Garis pemisah kanan
+     kini digambar oleh .article-layout::before (full-height) di tiap halaman,
+     bukan border-right elemen sticky ini (yang terpotong setinggi isi TOC). */
   .article-toc {
     position: sticky;
     top: 88px;
@@ -48,7 +50,6 @@ const { toc, heading = 'On this page' } = Astro.props;
     box-sizing: border-box;
     width: 100%;
     padding: 56px 36px 56px 44px;
-    border-right: 1px solid var(--line);
     scrollbar-width: thin;
     scrollbar-color: var(--line-strong) transparent;
   }

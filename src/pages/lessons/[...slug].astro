@@ -124,12 +124,26 @@ const metaChips = d.readingTime
      TOC 330 (ArticleTOC, garis pemisah dari border-right-nya sendiri) +
      artikel 850. Flat, rounded, token-driven (reaktif tema light + reader). */
   .article-layout {
+    position: relative;
     display: grid;
     grid-template-columns: 330px minmax(0, 1fr);
     grid-template-areas:
       "toc header"
       "toc body";
     align-items: start;
+  }
+
+  /* Garis pemisah TOC ↔ artikel — full-height kolom. Dulu dari border-right
+     .article-toc, tetapi elemen itu sticky/setinggi-isi sehingga garisnya
+     terpotong. Pseudo di grid (top→bottom) menjangkau seluruh tinggi artikel. */
+  .article-layout::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 330px;
+    width: 1px;
+    background: var(--line);
   }
 
   /* TOC menempati rail kiri lintas kedua baris. Di-assign dari sini karena
@@ -269,6 +283,10 @@ const metaChips = d.readingTime
         "toc"
         "body";
       row-gap: 28px;
+    }
+    /* Kolom tunggal: tak ada rail TOC, jadi garis pemisah dimatikan. */
+    .article-layout::before {
+      display: none;
     }
     .ca-header {
       padding: 40px 28px 0;

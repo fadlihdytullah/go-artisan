@@ -2,7 +2,7 @@
 name: super-forge
 description: "Inverse of super-refine. From a thin OUTLINE/summary (typically from ChatGPT), author a BRAND-NEW Go backend learning module from scratch IN this repo: design the learning structure (chapters/sections/TOC), research up-to-date facts, curate the best source materials, and write the full enriched module, then build to verify. Aims to turn any backend topic into a Go-output module for a Backend Developer Expert track. TWO tracks: (A) COURSE track (DEFAULT) for general backend topics outside the existing 9 roadmaps (HTTP, OpenAPI, Redis, gRPC, message queues, observability, etc.) — writes into a SEPARATE `courses` collection (src/content/courses/), no skincare anchoring or JS/PHP bridge required, never touches the roadmap modules; (B) ROADMAP track (only when the user explicitly says the outline belongs to one of the 9 Web Artisan roadmaps) — writes into src/content/modules/rNcNN-slug.mdx with the original skincare anchor + JS/PHP bridge. Use whenever the user pastes an outline/bullet summary and wants it turned into a real module, asks to design the chapter/section structure for a backend topic, or wants Claude to make/research/enrich content from an outline. Triggers: 'super-forge', 'buatkan/tulis modul dari outline ini', 'kembangkan outline jadi modul', 'rancang struktur bab/chapter dari ringkasan', 'forge modul', 'tambah course backend', 'ChatGPT kasih outline, kamu yang isi'. Works IN the repo (writes .mdx, bootstraps the course collection/route if missing, creates + registers components, builds), not as a zip. Obeys the writing contract in ai-instructions.md and the design system in src/styles/globals.css."
 metadata:
-  author: opto
+  author: "Fadli Hidayatullah"
   scope: project
 ---
 

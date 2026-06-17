@@ -2,7 +2,7 @@
 name: super-refine
 description: "Refine and enrich an EXISTING Go backend learning module already present in this repo (src/content/modules/*.mdx) for the Go Artisan site (Go for experienced JS/PHP developers, building an online shop skincare backend up to AWS deploy). Use after a generated module has been unzipped into the project and needs a quality pass, or whenever the user wants to refine, enrich, deepen, polish, or update a Go module, add more visuals/diagrams (Mermaid), improve code examples, create a new reusable Astro component and wire it in, or verify facts with up-to-date Go/chi/pgx/PostgreSQL/AWS research. Triggers: 'super-refine', 'perkaya/perdalam/poles/refine modul', 'tambah visual/diagram', 'buat komponen baru untuk materi', 'update materi modul Go'. Works IN the repo (edits files, creates + registers components, builds to verify), not as a zip. Obeys the writing contract in ai-instructions.md and the design system in src/styles/globals.css."
 metadata:
-  author: opto
+  author: "Fadli Hidayatullah"
   scope: project
 ---
 
@@ -51,17 +51,17 @@ Jangan menghafal dari ingatan; baca file aslinya karena bisa berubah.
 
 ### Pemetaan modul → roadmap
 
-| Modul (src/content/modules/) | Roadmap (roadmap-md/) |
-|---|---|
-| `01-fondasi-go` | `01-go-programming-foundations.md` |
-| `02-*` | `02-go-web-api-with-chi.md` |
-| `03-*` | `03-postgresql-and-pgx.md` |
-| `04-*` | `04-clean-backend-architecture-modular-monolith.md` |
-| `05-*` | `05-online-shop-skincare-domain-mastery.md` |
-| `06-*` | `06-testing-go-backend-applications.md` |
-| `07-*` | `07-security-authentication-production-safety.md` |
-| `08-*` | `08-docker-cicd-aws-deployment.md` |
-| `09-*` | `09-advanced-backend-engineering-scaling.md` |
+| Modul (src/content/modules/) | Roadmap (roadmap-md/)                               |
+| ---------------------------- | --------------------------------------------------- |
+| `01-fondasi-go`              | `01-go-programming-foundations.md`                  |
+| `02-*`                       | `02-go-web-api-with-chi.md`                         |
+| `03-*`                       | `03-postgresql-and-pgx.md`                          |
+| `04-*`                       | `04-clean-backend-architecture-modular-monolith.md` |
+| `05-*`                       | `05-online-shop-skincare-domain-mastery.md`         |
+| `06-*`                       | `06-testing-go-backend-applications.md`             |
+| `07-*`                       | `07-security-authentication-production-safety.md`   |
+| `08-*`                       | `08-docker-cicd-aws-deployment.md`                  |
+| `09-*`                       | `09-advanced-backend-engineering-scaling.md`        |
 
 Bila modul belum punya roadmap yang jelas (mis. modul lintas topik), pilih roadmap
 yang paling banyak overlap kontennya dan catat alasannya.

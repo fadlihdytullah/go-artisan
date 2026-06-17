@@ -31,15 +31,15 @@ berchapter yang runtut, nyambung, lebih kaya, dan lebih nyata" daripada aslinya.
 
 ## Keluarga skill (satu paket, satu standar)
 
-Tiga skill ini satu keluarga Curriculum & Learning-Material Architect; pakai kontrak,
-kosakata, dan standar mutu yang sama:
+Tiga skill ini satu keluarga Curriculum & Learning-Material Architect; pakai pipeline,
+kosakata, dan standar mutu yang sama, untuk subjek apa pun (tidak terikat Go/JS/PHP):
 
 - **`super-forge`** — dari OUTLINE tipis → rancang kurikulum lalu tulis modul/course baru
   dari nol.
-- **`super-refine`** — modul roadmap yang SUDAH ada di repo → poles, perdalam, perkaya ke
-  world-class.
-- **`super-chunker`** — satu file course monolit raksasa → kurasi jadi chapter koheren +
-  perkaya. **(skill ini)**
+- **`super-refine`** — satu file materi yang SUDAH ada → poles, perdalam, perkaya ke
+  world-class (tanpa memecah struktur).
+- **`super-chunker`** — satu file course monolit raksasa → kurasi jadi banyak chapter koheren
+  + perkaya (transform struktural). **(skill ini)**
 
 Alur antar skill: course yang lahir dari `super-forge` lalu menggemuk jadi monolit diserahkan
 ke skill ini untuk dipecah; modul roadmap dipoles `super-refine`.

@@ -57,6 +57,16 @@ const git = defineCollection({
   schema: lessonSchema,
 });
 
+// Koleksi "docker": course Docker yang sudah di-chunk dari monolit courses/docker.mdx
+// menjadi 6 chapter (busur belajar) di src/content/docker. TERPISAH dari 'courses'
+// (yang kini hanya menyimpan entry tipis docker.mdx sebagai sumber hero katalog), dari
+// 'aws', dan dari 'git'. Memakai lessonSchema yang sama; dirender lewat
+// src/pages/docker/[...slug].astro.
+const docker = defineCollection({
+  loader: glob({ pattern: '**/*.mdx', base: './src/content/docker' }),
+  schema: lessonSchema,
+});
+
 // Koleksi "roadmaps": jalur kurasi yang MEREFERENSIKAN course (bukan menulis ulang materi).
 // Satu file .mdx per roadmap; body MDX opsional (intro). Data terstruktur di frontmatter.
 const roadmaps = defineCollection({
@@ -75,4 +85,4 @@ const roadmaps = defineCollection({
   }),
 });
 
-export const collections = { modules, courses, aws, git, roadmaps };
+export const collections = { modules, courses, aws, git, docker, roadmaps };

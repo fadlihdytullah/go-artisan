@@ -1,0 +1,210 @@
+---
+title: "Docker Compose & Operasi Stack Lokal - Belajar Docker"
+badge: "DOCK04"
+topTitle: "Docker Compose & Operasi Stack Lokal"
+topSub: "Satu compose.yaml dengan healthcheck, lalu log, exec, dan batas resource"
+summary: "Merangkai API Go, PostgreSQL, Redis, dan migrasi ke dalam satu compose.yaml yang menggerbangi urutan start lewat healthcheck, lalu mengoperasikan stack itu dengan log, exec interaktif, exit code, dan batas memori serta CPU."
+order: 4
+target: "Course · Docker"
+readingTime: "~22 menit baca"
+summaryHref: "#ringkasan"
+toc:
+  - { num: "01", id: "compose", title: "Docker Compose: Multi-Container Stack" }
+  - { num: "02", id: "logs-debug", title: "Logs, Exec, dan Resource" }
+  - { num: "03", id: "ringkasan", title: "Ringkasan" }
+footerTitle: "Docker Compose & Operasi Stack Lokal - Belajar Docker"
+footerSub: "Chapter 4 dari 6, Course Docker Web Artisan"
+---
+
+import { Section, Box, Steps, Step, Recap, Chip, Hero } from "@components";
+
+<Hero eyebrow="Chapter 04 &middot; Docker" title="Docker <em>Compose</em><br />&amp; Operasi Stack Lokal" sub="Satu compose.yaml dengan healthcheck, lalu log, exec, dan batas resource">
+  <p>Tiga primitif runtime dari Chapter 3 kini dirangkai jadi satu stack deklaratif: API, PostgreSQL, Redis, dan migrasi dalam satu file, lengkap dengan healthcheck yang menggerbangi urutan start dan alat untuk mengoperasikannya.</p>
+  <Fragment slot="meta">
+    <Chip icon="stack">Stack <b>multi-service</b></Chip>
+    <Chip icon="terminal">Log, <b>exec, resource</b></Chip>
+    <Chip icon="clock">~22 menit baca</Chip>
+  </Fragment>
+</Hero>
+
+Di Chapter 3 kita menyiapkan config, jaringan, dan volume satu per satu lewat flag `docker run` yang panjang. Chapter ini menyatukan semuanya: Compose mendeklarasikan seluruh stack dalam satu file, lalu kita pelajari cara mengoperasikan stack itu sehari-hari, membaca log, masuk ke container untuk debug, dan membatasi resource agar satu container tidak menjatuhkan host.
+
+<Section num="01" id="compose" title="Docker Compose: Multi-Container Stack" sub="Satu compose.yaml plus healthcheck dan startup order">
+
+<p class="lead">Compose menggantikan deretan perintah `docker run` panjang dengan satu file YAML yang mendeskripsikan seluruh stack lokalmu.</p>
+
+Aplikasi backend nyata jarang berdiri sendiri. Proyek `github.com/kamu/skincare-backend` butuh API Go, PostgreSQL untuk data, Redis untuk cache, dan satu langkah migrasi skema. Menjalankan semuanya manual dengan `docker run` dan `--network` yang benar itu repetitif dan rawan salah. Docker Compose mendefinisikan **services**, masing-masing dengan `build`/`image`, `ports`, `environment`, `depends_on`, `volumes`, dan `networks`, semuanya dalam satu `compose.yaml`.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari Sail atau multi-terminal ke satu file stack"><p>Jika di JS kamu terbiasa membuka tiga terminal (`npm run dev`, server db, worker) atau di Laravel memakai Sail, Compose adalah satu file deklaratif yang menggantikan ritual itu; `docker compose up` menyalakan seluruh stack sekaligus.</p></Box>
+
+```mermaid
+flowchart LR
+  M[migrate one-off] -->|run sekali| DB[(postgres)]
+  API[api Go] --> DB
+  API --> R[(redis)]
+  API -.depends_on service_healthy.-> DB
+```
+
+<p class="fig-cap"><b>Topologi stack lokal.</b> API bicara ke PostgreSQL dan Redis; migrasi jalan sekali sebelum API melayani trafik.</p>
+
+<h3>compose.yaml lengkap</h3>
+
+```yaml title="compose.yaml"
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: rahasia
+      POSTGRES_DB: skincare
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7
+
+  migrate:
+    image: migrate/migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/migrations
+    command:
+      ["-path", "/migrations",
+       "-database", "postgres://postgres:rahasia@postgres:5432/skincare?sslmode=disable",
+       "up"]
+
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://postgres:rahasia@postgres:5432/skincare?sslmode=disable
+      REDIS_ADDR: redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+```
+
+<p>Perhatikan tidak ada field `version:` di atas; field itu kini obsolete dan diabaikan, gaya Compose modern cukup mulai langsung dari `services:`. Layanan saling memanggil lewat nama (`postgres`, `redis`) karena Compose membuat jaringan default dengan DNS internal antar-service, persis user-defined network yang kita buat manual di Chapter 3, kini otomatis.</p>
+
+<h3>depends_on tidak menjamin "siap menerima koneksi"</h3>
+
+Ini sumber bug yang paling sering menggigit. `depends_on` polos hanya menjamin container PostgreSQL sudah **started**, bukan bahwa proses di dalamnya sudah **ready** menerima koneksi. PostgreSQL butuh beberapa detik untuk inisialisasi sebelum membuka socket. Tanpa pengaman, API-mu menembak database yang belum siap dan langsung mati.
+
+<Box variant="warn" icon="⚠️" label="Jebakan: started bukan berarti ready"><p>`depends_on` saja hanya menunggu container hidup; tambahkan `healthcheck` pada postgres plus `condition: service_healthy` agar Compose menunggu sampai `pg_isready` lulus, dan tetap pasang retry koneksi di aplikasi sebagai jaring pengaman.</p></Box>
+
+```go title="internal/db/connect.go"
+func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
+	var pool *pgxpool.Pool
+	var err error
+	for attempt := 1; attempt <= 5; attempt++ {
+		pool, err = pgxpool.New(ctx, url)
+		if err == nil && pool.Ping(ctx) == nil {
+			return pool, nil
+		}
+		time.Sleep(time.Duration(attempt) * time.Second)
+	}
+	return nil, fmt.Errorf("gagal konek db setelah retry: %w", err)
+}
+```
+
+<Box variant="tip" icon="💡" label="restart: true menjaga dependensi tetap nyambung"><p>Selain `condition`, Compose mendukung `restart: true` di bawah `depends_on`: bila sebuah dependensi (mis. postgres) di-restart lewat operasi Compose, service yang bergantung padanya ikut di-restart otomatis. Berguna agar API menyambung ulang ke database yang baru naik, bukan tergantung pada retry aplikasi saja.</p></Box>
+
+<h3>Menjalankan stack</h3>
+
+<Steps><Step><b>Nyalakan di background</b><p>`docker compose up -d` membangun image API, menarik image lain, lalu menjalankan semua service sesuai urutan dependensi.</p></Step><Step><b>Pantau log API</b><p>`docker compose logs -f api` mengikuti output API secara live untuk memastikan ia terhubung ke database dan Redis.</p></Step><Step><b>Bersihkan total</b><p>`docker compose down -v` menghentikan dan menghapus container beserta named volume `pgdata`, mengembalikan stack ke kondisi bersih.</p></Step></Steps>
+
+<Box variant="note" icon="📝" label="-v menghapus data"><p>Tambahkan `-v` pada `down` hanya saat kamu memang ingin membuang data; tanpa `-v`, volume `pgdata` tetap aman dan data PostgreSQL bertahan antar-restart.</p></Box>
+
+Stack sudah menyala. Pertanyaan berikutnya yang pasti datang: bagaimana cara membaca apa yang terjadi di dalamnya saat ada yang salah?
+
+</Section>
+
+<Section num="02" id="logs-debug" title="Logs, Exec, dan Resource" sub="stdout/stderr, debugging interaktif, dan batas resource">
+
+<p class="lead">Container yang baik tidak menulis log ke file, ia mencetak ke stdout dan membiarkan platform yang mengumpulkannya.</p>
+
+Di dunia container, konvensinya jelas: aplikasi menulis log ke **stdout** dan **stderr**, bukan ke file di dalam container. Alasannya praktis. Writable layer container itu fana (ingat Chapter 1 dan 3), jadi log yang ditulis ke file ikut hilang saat container dibuang. Dengan mencetak ke stdout/stderr, log otomatis ditangkap oleh Docker, CI, dan platform cloud, lalu bisa dibaca dengan satu perintah seragam.
+
+<Box variant="bridge" icon="🌉" label="Jembatan: dari log file ke stdout container-native"><p>Jika kamu terbiasa `console.log` yang mendarat di file atau `storage/logs/laravel.log` ala Laravel, dalam container lupakan file itu; cukup tulis ke stdout (di Go cukup `log.Print` atau logger terstruktur ke `os.Stdout`) dan platform yang mengurus pengumpulan serta rotasi.</p></Box>
+
+<h3>Membaca log dan exit code</h3>
+
+```bash title="Terminal"
+docker compose logs -f api          # ikuti log API live
+docker logs --tail 50 db            # 50 baris terakhir container db
+docker inspect -f '{{.State.ExitCode}}' api   # exit code terakhir
+```
+
+<p>Exit code memberi sinyal cepat: `0` artinya keluar normal, `1` error aplikasi, `137` umumnya berarti container di-kill karena melewati batas memori (OOM). `docker inspect` membuka seluruh metadata container, dari status, mount, sampai konfigurasi jaringan.</p>
+
+<h3>Skenario: API Go gagal konek database</h3>
+
+Misalkan `docker compose logs api` menampilkan `gagal konek db setelah retry`. Langkah debug interaktif: masuk ke container dan periksa lingkungannya dari dalam.
+
+```bash title="Terminal"
+docker exec -it api sh                       # masuk shell container api
+env | grep DATABASE_URL                       # cek env yang benar-benar terbaca
+docker exec -it db psql -U postgres -d skincare -c '\dt'   # uji koneksi dari sisi db
+```
+
+<p>Pola ini menyingkap penyebab umum: `DATABASE_URL` menunjuk `localhost` (salah, harusnya nama service `postgres`), password tidak cocok, atau database memang belum siap. `docker exec` menjalankan perintah baru di container yang sudah hidup, sementara flag `-it` memberi terminal interaktif.</p>
+
+<Box variant="note" icon="📝" label="exec untuk inspeksi, bukan maintenance"><p>`docker exec` cocok untuk mengintip kondisi sesaat, tapi bukan cara merawat container produksi jangka panjang; perubahan yang kamu lakukan dari dalam hilang saat container diganti, jadi perbaikan sejati selalu lewat image atau konfigurasi.</p></Box>
+
+<h3>Batas resource dan OOM</h3>
+
+Container bukan VM, ia berbagi CPU dan memori host yang sama. Tanpa batas, satu container bocor memori bisa menjerumuskan seluruh mesin. Docker memberi rem lewat `--memory` dan `--cpus`. Saat pemakaian memori melewati batas, kernel melakukan OOM kill dan container mati dengan exit code `137`.
+
+```bash title="Terminal"
+docker run --rm --memory=128m --cpus=1.5 \
+  ghcr.io/kamu/skincare-backend:1.0.0
+```
+
+<p>Di Compose, batas serupa diatur lewat `deploy.resources.limits` (atau `mem_limit` untuk gaya ringkas). Menetapkan batas sejak development membantu menemukan kebocoran lebih awal, sebelum tagihan produksi yang mengingatkanmu.</p>
+
+```yaml title="compose.yaml"
+services:
+  api:
+    build: .
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "1.5"
+```
+
+Inilah toolkit operasi harianmu: baca log dari stdout, masuk dengan exec saat perlu menyelidiki, dan pasang batas resource agar host aman.
+
+</Section>
+
+<Section num="03" id="ringkasan" title="Ringkasan" sub="Merakit dan mengoperasikan stack lokal">
+
+<p class="lead">Chapter ini menyatukan tiga primitif runtime menjadi satu stack deklaratif, lalu memberi alat untuk mengoperasikannya saat ada yang salah.</p>
+
+Kita mulai dari Compose yang mengganti deretan `docker run` dengan satu `compose.yaml`: service saling memanggil lewat nama di jaringan default, healthcheck plus `condition: service_healthy` menggerbangi urutan start, dan migrasi jadi langkah one-off yang selesai sebelum API naik. Lalu operasi: log ke stdout dibaca lewat `docker compose logs`, exit code (`137` menandai OOM) dibaca lewat `docker inspect`, `docker exec -it` untuk inspeksi sesaat, dan `--memory`/`--cpus` membatasi pemakaian agar host tetap aman.
+
+<Recap title="Yang Wajib Menempel">
+<ul>
+<li>Compose mendeklarasikan seluruh stack dalam satu file; `docker compose up` menyalakannya, service saling memanggil lewat nama via jaringan default.</li>
+<li>Gaya Compose modern tanpa field `version:`; cukup mulai dari `services:`.</li>
+<li>`depends_on` polos hanya menunggu container started; pakai `healthcheck` + `condition: service_healthy` agar menunggu sampai benar-benar ready, plus retry di aplikasi.</li>
+<li>`restart: true` di bawah `depends_on` me-restart service dependen otomatis saat dependensinya di-restart.</li>
+<li>Tulis log ke stdout/stderr; baca lewat `docker compose logs`, dan `docker inspect` untuk exit code (137 = OOM kill).</li>
+<li>`docker exec -it` untuk inspeksi sesaat; `--memory`/`--cpus` atau `deploy.resources` melindungi host dari container yang rakus.</li>
+</ul>
+</Recap>
+
+Stack jalan mulus di laptop. Tapi image-nya masih lokal. **Chapter 5** membawanya keluar: memberi tag dan mendistribusikannya lewat registry secara reproducible, lalu mengeraskan image produksi agar kecil, non-root, dan bebas secret.
+
+</Section>

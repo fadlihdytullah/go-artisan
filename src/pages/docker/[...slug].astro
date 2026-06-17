@@ -5,53 +5,31 @@ import ArticleTOC from '../../components/ArticleTOC.astro';
 import MermaidZoom from '../../components/MermaidZoom.astro';
 
 export async function getStaticPaths() {
-  // prev/next dihitung HANYA di dalam himpunan courses, terpisah dari roadmap modules.
-  // go-luminas DIKECUALIKAN: punya halaman statis khusus (courses/go-luminas.astro)
-  // yang membungkus 73 modul, jadi tidak boleh dobel di rute dinamis ini.
-  // aws DIKECUALIKAN juga: dilayani wrapper statis (courses/aws.astro) yang
-  // membungkus 19 modul koleksi `aws`, bukan renderer mdx dinamis ini.
-  // git DIKECUALIKAN juga: di-chunk jadi 7 chapter koleksi `git` dan dilayani
-  // wrapper statis (courses/git.astro); entry tipis git.mdx hanya sumber hero.
-  // docker DIKECUALIKAN juga: di-chunk jadi 6 chapter koleksi `docker` dan dilayani
-  // wrapper statis (courses/docker.astro); entry tipis docker.mdx hanya sumber hero.
-  const courses = (await getCollection('courses'))
-    .filter(
-      (c) =>
-        c.id !== 'go-luminas' &&
-        c.id !== 'aws' &&
-        c.id !== 'git' &&
-        c.id !== 'docker'
-    )
-    .sort((a, b) => a.data.order - b.data.order);
-  return courses.map((course, i) => {
-    const toLink = (c) =>
-      c ? { id: c.id, topTitle: c.data.topTitle, badge: c.data.badge } : null;
-    return {
-      params: { slug: course.id },
-      props: {
-        mod: course,
-        prev: toLink(courses[i - 1]),
-        next: toLink(courses[i + 1]),
-        moduleIndex: i + 1,
-        totalModules: courses.length,
-        moduleIds: courses.map((item) => item.id),
-      },
-    };
-  });
+  // Rute chapter Docker dinamis: SEMUA modul koleksi `docker` (6 chapter hasil chunk
+  // dari monolit courses/docker.mdx). Track terpisah dari 73 modul Go Luminas, dari
+  // `courses`, dari `aws`, dan dari `git`. Urutkan menurut `order` frontmatter agar
+  // konsisten dengan urutan kurikulum 01..06. prev/next dihitung HANYA di dalam koleksi ini.
+  const mods = (await getCollection('docker')).sort(
+    (a, b) => a.data.order - b.data.order
+  );
+  return mods.map((mod) => ({
+    params: { slug: mod.id },
+    props: { mod },
+  }));
 }
 
-const { mod, prev, next, moduleIndex, totalModules, moduleIds } = Astro.props;
+const { mod } = Astro.props;
 const { Content } = await render(mod);
 const d = mod.data;
 
-// Eyebrow — frame d4lirQ node bpX0n: "COURSE · OPENAPI" (mono, accent, uppercase).
-// `target` di frontmatter sudah berformat "Course · OpenAPI"; pakai apa adanya
-// dan upper-case lewat CSS. Fallback ke "Course · {badge}" bila target kosong.
+// Eyebrow — frame d4lirQ node bpX0n: "COURSE · DOCKER" (mono, accent, uppercase).
+// `target` di frontmatter (mis. "Course · Docker") dipakai apa adanya dan di-upper-case
+// lewat CSS. Fallback ke "Course · {badge}" bila target kosong.
 const eyebrow = d.target ?? `Course · ${d.badge}`;
 
 // Meta chips (frame node azTPF). Hanya `readingTime` yang tersedia sebagai data
-// nyata di frontmatter; chip "Spec/Default" pada frame bersifat khusus-konten
-// (placeholder) sehingga TIDAK diada-adakan. Tampilkan chip "Read" saja.
+// nyata di frontmatter; chip lain bersifat khusus-konten sehingga TIDAK
+// diada-adakan. Tampilkan chip "Read" saja.
 const metaChips = d.readingTime
   ? [{ key: 'Read', value: d.readingTime }]
   : [];

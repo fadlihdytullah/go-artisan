@@ -1,6 +1,6 @@
 ---
 name: super-chunker
-description: "Transform monolithic single-file courses (src/content/courses/*.mdx) into chunked multi-file lesson collections with chapters, ENRICHING each chapter as it is split. Chunking is never a plain copy-paste: every chapter is researched against real-world use cases + current best practices and given complementary, visual learning material (Mermaid, Box, Steps, Compare, CardGrid, real code, Recap) automatically. TWO modes: (A) CHUNK + ENRICH (DEFAULT) — split a monolith into per-chapter files in a dedicated collection (like the aws/ pattern), research + enrich each chapter, build a dedicated CourseHero catalog page, register the collection + routes; (B) ENRICH-only — deepen chapter files that are already split, without touching collection/routing. Targets bloated single-file courses (git.mdx, docker.mdx, http.mdx, openapi.mdx, redis.mdx — each ~1000+ lines). Uses the same lessonSchema + ModuleLayout/ArticleTOC pipeline as the rest of the platform. Triggers: 'course-chunker', 'chunk course', 'split course', 'chunk <nama-course>', 'pisah course', 'pecah modul', 'enrich course', 'perkaya course', 'chunk lalu enrich'. Works IN the repo (writes .mdx, registers collections, creates routes + catalog page, builds), not as a zip."
+description: "Act as a Curriculum & Learning-Material Architect: transform monolithic single-file courses (src/content/courses/*.mdx) into chunked multi-file lesson collections by RE-ANALYZING the existing sections and GROUPING related ones into coherent chapters (a chapter = one learning arc holding several <Section>s, like the aws/ chapters that hold 12-16 sections each), NOT mechanically one section per chapter — so the reader keeps focus and the thread stays connected ('connect the dots'). Each chapter is also ENRICHED as it is formed: researched against real-world use cases + current best practices and given complementary, visual learning material (Mermaid, Box, Steps, Compare, CardGrid, real code, Recap) automatically, with framing intro + transitions + a Recap that ties the grouped sections together. TWO modes: (A) CHUNK + ENRICH (DEFAULT) — cluster sections into chapters, write per-chapter files in a dedicated collection, research + enrich each, build a dedicated CourseHero catalog page, register the collection + routes; (B) ENRICH-only — deepen chapter files that are already split, without touching collection/routing. Targets bloated single-file courses (git.mdx, docker.mdx, http.mdx, openapi.mdx, redis.mdx — each ~1000+ lines). Uses the same lessonSchema + ModuleLayout/ArticleTOC pipeline as the rest of the platform. Triggers: 'course-chunker', 'chunk course', 'split course', 'chunk <nama-course>', 'pisah course', 'pecah modul', 'enrich course', 'perkaya course', 'chunk lalu enrich', 'kelompokkan section jadi chapter'. Works IN the repo (writes .mdx, registers collections, creates routes + catalog page, builds), not as a zip."
 metadata:
   author: "Fadli Hidayatullah"
   scope: project
@@ -8,43 +8,82 @@ metadata:
 
 # super-chunker
 
-Kebalikan dari menulis dari outline (`super-forge`). Skill ini mengambil **materi kursus
-yang sudah ada tetapi terkumpul dalam satu file raksasa** (`src/content/courses/*.mdx`
-dengan puluhan section), lalu **memecahnya menjadi file-file chapter terpisah SAMBIL
-memperkaya tiap chapter** — bukan sekadar potong-tempel. Setiap chapter hasil pecahan
-diriset ulang terhadap **use-case dunia nyata + best practice terkini** dan dilengkapi
-materi belajar pendukung & visual (Mermaid, Box, Steps, Compare, contoh kode, Recap)
-secara otomatis.
+Jalankan skill ini sebagai **Curriculum & Learning-Material Architect** untuk materi
+engineering: bukan tukang potong file, tapi perancang kurikulum yang memutuskan **bagaimana
+sebaiknya materi dipecah supaya paling enak dipelajari**. Kebalikan dari menulis dari
+outline (`super-forge`): skill ini mengambil **materi kursus yang sudah ada tetapi
+terkumpul dalam satu file raksasa** (`src/content/courses/*.mdx` dengan puluhan section),
+lalu **menata ulang section-section itu menjadi chapter yang koheren SAMBIL memperkaya tiap
+chapter** — bukan sekadar potong-tempel, dan bukan satu section = satu chapter.
 
-- `super-forge`: dari outline → tulis modul baru dari nol.
-- `super-refine`: poles & perkaya modul yang sudah jadi.
-- `super-chunker`: dari monolit raksasa → chunked **dan langsung diperkaya**.
+Inti pekerjaannya dua lapis:
 
-Tujuan besar: bukan hanya membelah file, tapi mengubah "satu halaman raksasa yang sulit
-dinavigasi" menjadi "kurikulum berchapter yang lebih kaya, lebih konkret, dan lebih nyata"
-daripada aslinya. Pemecahan memberi ruang; ruang itu diisi enrichment, bukan dibiarkan
-tipis.
+1. **Arsitektur kurikulum** — analisis ulang section yang ada, lalu **kelompokkan section
+   yang saling berkaitan ke dalam chapter yang sama** supaya pembaca tidak kehilangan
+   fokus dan benang merahnya tetap nyambung ("connecting the dots"). Satu chapter = satu
+   busur belajar (learning arc) yang menuntaskan satu kemampuan, bukan satu fragmen lepas.
+2. **Enrichment** — tiap chapter diriset ulang terhadap **use-case dunia nyata + best
+   practice terkini** dan dilengkapi materi belajar pendukung & visual (Mermaid, Box, Steps,
+   Compare, contoh kode, Recap) secara otomatis.
+
+Tujuan besar: mengubah "satu halaman raksasa yang sulit dinavigasi" menjadi "kurikulum
+berchapter yang runtut, nyambung, lebih kaya, dan lebih nyata" daripada aslinya.
+
+## Keluarga skill (satu paket, satu standar)
+
+Tiga skill ini satu keluarga Curriculum & Learning-Material Architect; pakai kontrak,
+kosakata, dan standar mutu yang sama:
+
+- **`super-forge`** — dari OUTLINE tipis → rancang kurikulum lalu tulis modul/course baru
+  dari nol.
+- **`super-refine`** — modul roadmap yang SUDAH ada di repo → poles, perdalam, perkaya ke
+  world-class.
+- **`super-chunker`** — satu file course monolit raksasa → kurasi jadi chapter koheren +
+  perkaya. **(skill ini)**
+
+Alur antar skill: course yang lahir dari `super-forge` lalu menggemuk jadi monolit diserahkan
+ke skill ini untuk dipecah; modul roadmap dipoles `super-refine`.
+
+Kosakata bersama: *learning arc* (satu chapter = satu busur belajar menuju Student Outcome),
+*Student Outcome* ("di akhir bab ini kamu bisa ..."), *connect the dots* (jahit antar
+section), *Mesin enrichment* (rubrik aset pendukung), dan prinsip **"memperjelas, bukan
+menggemukkan"**.
+
+> **Bukti dari platform**: chapter AWS yang sudah jadi (`src/content/aws/*.mdx`) masing-
+> masing memuat **12-16 `<Section>` di dalam SATU file chapter** (mis. `01-cloud-computing`
+> punya 16 section: intro → traditional vs cloud → definisi → keuntungan → IaaS/PaaS/SaaS →
+> ... → hands-on → jebakan → ringkasan). Itu bentuk target yang benar: **chapter = kumpulan
+> section terkait dalam satu busur**, BUKAN satu section per file. Katalog lalu
+> mengelompokkan chapter jadi tahap (S1..S5). Tiru pola ini.
 
 ## Filosofi inti (jangan dilupakan)
 
-**Chunk = pecah + perkaya, selalu.** Monolit dipotong karena setiap section sebenarnya
-layak jadi pelajaran mandiri. Begitu jadi chapter mandiri, ia WAJIB lebih baik dari
-potongan aslinya: ada use-case nyata, ada best practice terkini, ada visual yang
-memperjelas, ada langkah hands-on. Chapter yang isinya identik dengan section asli =
-pekerjaan belum selesai.
+**1. Kurasi dulu, baru pecah — kelompokkan, jangan fragmentasi.** Default BUKAN "satu
+section satu chapter". Section yang berurutan dan saling bergantung (membangun satu mental
+model, satu rantai prasyarat, satu alur kerja) **digabung ke chapter yang sama** supaya
+pembaca menjaga konteks. Memecah terlalu halus = pembaca kehilangan benang merah dan harus
+melompat-lompat antar halaman untuk satu ide utuh. Section asli tidak hilang: ia menjadi
+`<Section>` di dalam chapter gabungan, lengkap dengan jembatan/transisi yang
+menghubungkannya ("connect the dots").
 
-Aturan emas enrichment: **memperjelas, bukan menggemukkan.** Tiap aset tambahan harus
-"membayar tempatnya" dengan menjelaskan kesulitan nyata. Jangan menambah diagram untuk ide
-yang sudah jelas dalam satu kalimat.
+**2. Chunk = kurasi + perkaya, selalu.** Begitu jadi chapter, ia WAJIB lebih baik dari
+potongan aslinya: ada use-case nyata, best practice terkini, visual yang memperjelas, dan
+langkah hands-on. Chapter yang isinya identik dengan section asli = pekerjaan belum selesai.
+
+**3. Memperjelas, bukan menggemukkan.** Tiap aset tambahan harus "membayar tempatnya"
+dengan menjelaskan kesulitan nyata. Jangan menambah diagram untuk ide yang sudah jelas dalam
+satu kalimat, dan jangan menggabung section yang tak berhubungan hanya demi mengurangi
+jumlah file.
 
 ## Dua mode (pilih yang tepat)
 
 ### Mode A — CHUNK + ENRICH (DEFAULT)
 
 Ambil monolith course dari `src/content/courses/` (mis. `git.mdx`, `docker.mdx`,
-`http.mdx`, `openapi.mdx`, `redis.mdx`), analisis struktur `<Section>`-nya, lalu untuk
-tiap chapter: riset use-case + best practice, tulis ulang sebagai file chapter mandiri
-yang **diperkaya**, dan pasang infrastrukturnya.
+`http.mdx`, `openapi.mdx`, `redis.mdx`), **analisis ulang struktur `<Section>`-nya dan
+kelompokkan section terkait jadi chapter koheren** (lihat "Arsitektur kurikulum"), lalu
+untuk tiap chapter: riset use-case + best practice, tulis sebagai file chapter yang memuat
+section-section gabungannya secara nyambung dan **diperkaya**, lalu pasang infrastrukturnya.
 
 Aturan mode ini:
 
@@ -159,48 +198,92 @@ sungguhan memakainya, jebakan yang sering kena) ke dalam chapter.
 
 Baca file monolithic yang ditunjuk (mis. `src/content/courses/git.mdx`). Identifikasi:
 
-- Jumlah `<Section>` (di `git.mdx` ada 18) — ini kandidat jumlah chapter.
+- Daftar `<Section>` lengkap (num, id, title, sub) + bobot/panjang tiap section.
+  Di `git.mdx` ada 18 section.
 - Frontmatter asli — `title`, `badge`, `order`, `target`, `toc`, `readingTime`,
   `topTitle`, `topSub`, `summary`, `footerTitle`, `footerSub`.
 - Import — komponen & figure apa saja yang dipakai (mis. figure `Git*`).
 - Hero — eyebrow, judul, slot meta.
-- Konten tiap section — untuk menentukan granularitas chapter.
+- **Hubungan antar section** — mana yang prasyarat dari mana, mana yang berbagi mental
+  model, mana yang satu alur kerja. Ini bahan untuk pengelompokan di Langkah 1.
 
-Buat peta:
+### 1. Arsitektur kurikulum — kelompokkan section jadi chapter (inti, jangan dilewati)
+
+Ini keputusan paling penting dan paling sering salah. **Jangan** memetakan satu section ke
+satu chapter. Sebaliknya, **cari klaster section yang membentuk satu busur belajar** dan
+gabungkan jadi satu chapter, supaya pembaca menuntaskan satu kemampuan utuh tanpa kehilangan
+fokus.
+
+**Heuristik pengelompokan** (gabung section ke chapter yang sama bila):
+
+- Berbagi **mental model** yang sama (mis. "tiga area kerja" Git menaungi add/commit/diff).
+- Membentuk **rantai prasyarat** yang harus dibaca berurutan untuk masuk akal.
+- Bagian dari **satu alur kerja / satu cerita** (mis. branch → merge → conflict adalah satu
+  busur "bekerja paralel lalu menyatukan").
+- Section pendek yang **tidak berdiri sendiri** (tag, gitignore, hooks) → kumpulkan jadi
+  satu chapter tematik, bukan tiga chapter mungil.
+
+**Heuristik pemisahan** (pecah jadi chapter berbeda bila):
+
+- Beban kognitif satu chapter terlalu besar — patokan ~20-35 menit baca, atau lebih dari
+  satu **Student Outcome** yang berbeda jenis. Lewat itu, pecah di batas konsep alami.
+- Topik berpindah ke domain yang benar-benar berbeda (mis. dari "history lokal" ke
+  "kolaborasi remote").
+
+Untuk **tiap chapter** tetapkan:
+
+- **Judul chapter** yang menamai busurnya (bukan menyalin satu judul section).
+- **Student Outcome**: satu kalimat "Di akhir bab ini kamu bisa ...".
+- **Daftar section anggota** (urut) yang akan jadi `<Section>` di dalam file chapter itu.
+
+Petakan section → chapter sebagai **many-to-one**:
 
 ```
-Section 01 (kenapa-git)   → chapter 01 → 01-kenapa-git.mdx       → slug <nama>/01-kenapa-git
-Section 02 (mental-model) → chapter 02 → 02-mental-model.mdx
-...
+Chapter 01  Fondasi & Mental Model Git      ← section 01 kenapa-git, 02 mental-model, 03 setup-repo
+Chapter 02  Alur Kerja Harian: Commit       ← section 04 tracking, 05 commit-baik, 06 history
+Chapter 03  Branching, Merge & Konflik      ← section 07 branch, 08 merge, 09 conflict
+Chapter 04  Kolaborasi via Remote           ← section 10 remote, 11 pull-request, 12 branch-protection
+Chapter 05  Menulis Ulang Sejarah Aman      ← section 13 rebase, 14 undo
+Chapter 06  Konvensi & Otomasi Repo         ← section 15 tag-gitignore-hooks-conventions
+Chapter 07  Workflow Tim & Lanjutan         ← section 16 workflows, 17 advanced-troubleshoot, 18 ringkasan
 ```
 
-**Granularitas**: default satu chapter per `<Section>` puncak. Gabungkan section yang
-sangat pendek/saling bergantung, atau pecah section yang terlalu gemuk. Bila jumlah chapter
-> 12 atau ada keputusan penggabungan yang tidak jelas, **tampilkan rancangan ke pengguna
-untuk konfirmasi** sebelum menulis banyak file.
+(18 section → 7 chapter koheren — ilustrasi, BUKAN cetakan wajib. Turunkan sendiri per
+course berdasarkan heuristik, lalu cocokkan ke pola AWS: 12-16 section per chapter masih
+sehat selama satu busur.)
 
-### 1. Rancang struktur chapter
+**Konfirmasi rancangan ke pengguna** sebelum menulis: tampilkan daftar chapter + Student
+Outcome + section anggotanya. Ini gerbang wajib bila pengelompokan tak sepele atau jumlah
+chapter berubah banyak dari struktur asli.
 
-Tentukan untuk tiap chapter:
+### 2. Rancang detail tiap chapter
 
-- **Slug file**: `NN-slug.mdx` (2-digit + kebab-case dari `id` section), mis. `01-kenapa-git.mdx`.
+Untuk tiap chapter hasil pengelompokan di Langkah 1, tentukan:
+
+- **Slug file**: `NN-slug.mdx` (2-digit urut + kebab-case dari **judul chapter**, bukan dari
+  satu section), mis. `01-fondasi-mental-model.mdx`, `03-branching-merge-konflik.mdx`.
 - **Frontmatter** (skema pasti `lessonSchema`, jangan tambah/kurang field):
-  - `title`: spesifik per chapter.
+  - `title`: judul chapter (busurnya), bukan judul satu section.
   - `badge`: badge course + nomor (mis. `"GIT01"`).
   - `topTitle` / `topSub`: judul & subjudul pendek chapter.
-  - `summary`: ringkasan 1-2 kalimat.
+  - `summary`: ringkasan 1-2 kalimat yang menyebut kemampuan akhir (Student Outcome).
   - `order`: nomor urut (1, 2, 3, ...) — ruang `order` koleksi chapter terpisah dari course.
   - `target`: sama dengan course induk (mis. `"Course · Git"`, middot literal `·`).
-  - `readingTime`: realistis per chapter (mis. `"~12 menit baca"`), bukan total course.
+  - `readingTime`: realistis untuk SELURUH section di chapter ini (mis. `"~25 menit baca"`).
   - `summaryHref`: `"#ringkasan"`.
-  - `toc`: daftar `<Section>` di dalam chapter ini (1:1).
+  - `toc`: **daftar SEMUA section anggota** chapter ini (1:1 dengan tiap `<Section>` di
+    file), num berurutan 01, 02, 03, ... di dalam chapter, ditutup entri `ringkasan`.
   - `footerTitle` / `footerSub`.
 - **Import**: hanya komponen & figure yang dipakai chapter ini.
-- **Hero**: sesuai konten chapter.
+- **Hero**: membingkai busur chapter (kenapa section-section ini satu paket), bukan satu
+  sub-topik saja.
+- **Jaringan penghubung ("connect the dots")**: rencanakan kalimat transisi antar section
+  anggota dan satu paragraf pembuka yang menjelaskan alur belajar chapter — supaya gabungan
+  section terbaca sebagai satu cerita, bukan tumpukan potongan.
 - **Rencana enrichment per chapter**: catat aset apa yang akan ditambah (Mermaid? hands-on?
   compare? use-case nyata?) berdasarkan "Mesin enrichment".
 
-### 2. Bootstrap infrastruktur (sekali per course; lewati bila sudah ada)
+### 3. Bootstrap infrastruktur (sekali per course; lewati bila sudah ada)
 
 1. **`src/content.config.ts`** — tambah koleksi baru, mis. `git`:
 
@@ -248,12 +331,12 @@ Tentukan untuk tiap chapter:
 
 Verifikasi dengan `npm run build` setelah infrastruktur selesai.
 
-### 3. Tulis + perkaya chapter files (Mode A — CHUNK + ENRICH)
+### 4. Tulis + perkaya chapter files (Mode A — CHUNK + ENRICH)
 
-Untuk tiap section di monolit, tulis satu `.mdx` di `src/content/<nama>/`, **dengan
-enrichment pass** (bukan copy-paste):
+Untuk tiap **chapter** (kelompok section dari Langkah 1), tulis satu `.mdx` di
+`src/content/<nama>/`, **dengan enrichment pass** (bukan copy-paste):
 
-1. **Frontmatter** sesuai rancangan Langkah 1 (skema pasti, jangan tambah/kurang field).
+1. **Frontmatter** sesuai rancangan Langkah 2 (skema pasti, jangan tambah/kurang field).
 2. **Import** hanya komponen yang dipakai:
    ```mdx
    import { Section, Box, Steps, Step, Recap, Hero, Chip, Figure, Compare, CardGrid, Card, FileTree } from "@components";
@@ -263,28 +346,34 @@ enrichment pass** (bukan copy-paste):
    import GitThreeTreeFig01 from "@figures/GitThreeTreeFig01.astro";
    ```
 3. **Hero** (`<Hero>`) sekali di atas; judul via prop `title` (boleh `<em>` + `<br />`).
-   Slot meta dengan `<Chip>` (ikon dari daftar sah, hanya di slot meta Hero).
-4. **Section**: tiap chapter minimal punya satu `<Section>` isi + satu
-   `<Section num="XX" id="ringkasan" title="Ringkasan">` di akhir dengan `<Recap>`.
-5. **Pindahkan konten dari monolit, lalu JALANKAN "Mesin enrichment"** pada chapter ini:
+   Slot meta dengan `<Chip>` (ikon dari daftar sah, hanya di slot meta Hero). Tulis pembuka
+   chapter yang membingkai busurnya (kenapa section-section ini satu paket).
+4. **Section**: bawa **tiap section anggota** masuk sebagai `<Section num id title>`
+   tersendiri (num berurutan di dalam chapter), lalu tutup dengan
+   `<Section num="XX" id="ringkasan" title="Ringkasan">` berisi `<Recap>`. Jadi satu file
+   chapter memuat beberapa `<Section>` — persis pola AWS (12-16 section per chapter).
+5. **Hubungkan antar section ("connect the dots")**: beri kalimat transisi di awal/akhir
+   tiap section anggota supaya berpindah mulus ke section berikutnya; Recap penutup
+   merangkum keseluruhan busur, bukan satu section terakhir saja.
+6. **Pindahkan konten dari monolit, lalu JALANKAN "Mesin enrichment"** pada chapter ini:
    tambah use-case nyata + best practice (hasil riset), Mermaid/figure, Box (tip/warn/
    analogy/note), Steps hands-on, Compare, CardGrid, contoh kode idiomatik, cross-link.
-   Target: chapter keluar lebih kaya & lebih konkret daripada section aslinya.
-6. **Tanpa `<h1>`/`<h2>` manual**; sub-judul `<h3>`/`<h4>` saja.
-7. **Code blocks** fenced dengan `title="path/file"`.
-8. **Satu baris per blok teks** (kecuali fenced code & ```mermaid).
-9. **Escape**: `&#123;`/`&#125;` di teks MDX (bukan di code/mermaid). `&middot;`/`&rarr;` di
-   konteks `set:html`; literal `·`/`→` di frontmatter & prop teks polos. **Tanpa em dash.**
-10. **Frontmatter `toc` & `<Section>` sinkron 1:1**. `summaryHref = "#ringkasan"`.
+   Target: chapter keluar lebih kaya, lebih nyambung, & lebih konkret daripada aslinya.
+7. **Tanpa `<h1>`/`<h2>` manual**; sub-judul `<h3>`/`<h4>` saja.
+8. **Code blocks** fenced dengan `title="path/file"`.
+9. **Satu baris per blok teks** (kecuali fenced code & ```mermaid).
+10. **Escape**: `&#123;`/`&#125;` di teks MDX (bukan di code/mermaid). `&middot;`/`&rarr;` di
+    konteks `set:html`; literal `·`/`→` di frontmatter & prop teks polos. **Tanpa em dash.**
+11. **Frontmatter `toc` & `<Section>` sinkron 1:1**. `summaryHref = "#ringkasan"`.
 
-### 4. (Mode B — ENRICH-only) Perdalam chapter yang sudah ada
+### 5. (Mode B — ENRICH-only) Perdalam chapter yang sudah ada
 
 Untuk koleksi yang SUDAH terpecah, jalankan "Mesin enrichment" langsung pada file chapter
 yang ada — tambah Mermaid/figure, Box, Steps, Compare, CardGrid, use-case nyata, contoh
 kode, Recap. **Jangan ubah** struktur koleksi, frontmatter di luar perbaikan TOC, atau
 routing. Hanya body konten.
 
-### 5. Sinkronkan frontmatter & TOC
+### 6. Sinkronkan frontmatter & TOC
 
 - Tiap chapter punya `toc` 1:1 dengan `<Section>` di dalamnya (num/id/urutan sama).
 - `order` berurutan, tak bentrok di dalam koleksi.
@@ -293,7 +382,7 @@ routing. Hanya body konten.
 - `summaryHref = "#ringkasan"`.
 - Entry tipis `courses/<nama>.mdx`: `toc` (tahap/datar) konsisten dengan daftar chapter.
 
-### 6. Verifikasi (wajib)
+### 7. Verifikasi (wajib)
 
 ```bash
 npm run build
@@ -312,13 +401,21 @@ Sampai bersih. Cek gotcha render:
 - Prev/next berfungsi di dalam koleksi chapter.
 - (Bila ada figure `@figures/*`) figure terpakai dengan caption, bukan hilang.
 
-### 7. Poles akhir (opsional)
+### 8. Poles akhir (opsional)
 
 Setelah build bersih, tiap chapter siap diserahkan ke **`super-refine`** untuk pass kualitas
 akhir.
 
 ## Aturan keras (jangan dilanggar)
 
+- **Kelompokkan, jangan fragmentasi.** Default BUKAN satu section = satu chapter. Section
+  terkait (satu mental model / rantai prasyarat / satu alur kerja) digabung ke chapter yang
+  sama; tiap chapter = satu busur belajar dengan satu Student Outcome dan beberapa
+  `<Section>` di dalamnya (tiru pola AWS 12-16 section/chapter). Rancangan pengelompokan
+  dikonfirmasi ke pengguna sebelum menulis bila tak sepele.
+- **Connect the dots.** Section gabungan WAJIB dijahit: paragraf pembuka yang membingkai
+  busur + transisi antar section + Recap penutup yang merangkum keseluruhan, bukan tumpukan
+  potongan tanpa benang merah.
 - **Chunk ≠ copy-paste.** Tiap chapter WAJIB melewati "Mesin enrichment": minimal punya
   satu use-case nyata + satu best-practice/jebakan callout + satu visual atau hands-on yang
   relevan, ditutup `<Recap>`. Chapter yang identik dengan section asli = belum selesai.
@@ -350,13 +447,18 @@ akhir.
 
 - [ ] Mode ditentukan benar (CHUNK + ENRICH = default; ENRICH-only hanya untuk course yang
       sudah terpecah).
-- [ ] (CHUNK) Monolit dianalisis: jumlah section, frontmatter, import, figure terpetakan;
-      granularitas chapter ditentukan (dan dikonfirmasi bila > 12 / penggabungan tak jelas).
+- [ ] (CHUNK) Monolit dianalisis: section, frontmatter, import, figure, dan **hubungan antar
+      section** terpetakan.
+- [ ] (CHUNK) **Arsitektur kurikulum dirancang**: section dikelompokkan jadi chapter koheren
+      (many-to-one), tiap chapter punya judul busur + Student Outcome + daftar section
+      anggota; rancangan dikonfirmasi ke pengguna bila pengelompokan tak sepele.
 - [ ] (CHUNK) Infrastruktur di-bootstrap: koleksi di `content.config.ts`, route
       `src/pages/<nama>/[...slug].astro`, **halaman katalog `src/pages/courses/<nama>.astro`
       (CourseHero + .track-*)**, filter di `courses/[...slug].astro`, dan
       `courses/<nama>.mdx` jadi entry tipis.
-- [ ] (CHUNK) Semua chapter ditulis di `src/content/<nama>/NN-slug.mdx`.
+- [ ] (CHUNK) Semua chapter ditulis di `src/content/<nama>/NN-slug.mdx`; tiap file memuat
+      section-section anggotanya sebagai `<Section>` + Ringkasan, **dijahit dengan transisi**
+      (connect the dots), bukan potongan lepas.
 - [ ] **Tiap chapter melewati Mesin enrichment**: riset use-case nyata + best practice
       terpasang; visual/figure/Mermaid relevan; hands-on bila praktis; Compare/CardGrid bila
       perlu; contoh kode idiomatik; Recap di `#ringkasan`. Chapter lebih kaya dari aslinya.

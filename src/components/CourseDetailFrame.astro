@@ -1,0 +1,242 @@
+---
+import ArticleTOC from './ArticleTOC.astro';
+import LessonPager from './LessonPager.astro';
+
+interface ArticleTocItem {
+  num?: string;
+  id: string;
+  title: string;
+}
+
+interface Link {
+  id: string;
+  topTitle: string;
+  badge: string;
+}
+
+interface Props {
+  toc: ArticleTocItem[];
+  prev: Link | null;
+  next: Link | null;
+  basePath: string;
+  moduleId: string;
+  tocHeading?: string;
+  articleTopPadding?: boolean;
+}
+
+const {
+  toc,
+  prev,
+  next,
+  basePath,
+  moduleId,
+  tocHeading = 'On this page',
+  articleTopPadding = false,
+} = Astro.props;
+
+const hasHeader = Astro.slots.has('header');
+---
+
+<div class="shell-bleed">
+  <div class="shell-col">
+    <div
+      class:list={[
+        'course-detail-shell',
+        { 'has-header': hasHeader, 'article-top-padding': articleTopPadding },
+      ]}
+    >
+      <div class="course-detail-layout">
+        <ArticleTOC toc={toc} heading={tocHeading} />
+
+        {hasHeader && (
+          <header class="course-detail-header">
+            <slot name="header" />
+          </header>
+        )}
+
+        <article class="course-article" data-module-root data-module-id={moduleId}>
+          <slot />
+        </article>
+      </div>
+
+      <div class="pager-wrap">
+        <LessonPager prev={prev} next={next} basePath={basePath} />
+      </div>
+    </div>
+  </div>
+</div>
+
+<a href="#" id="toTop" aria-label="Kembali ke atas" title="Ke atas">
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14" /><path d="M18 11l-6 -6" /><path d="M6 11l6 -6" /></svg>
+</a>
+
+<script is:inline>
+  (function () {
+    var bt = document.getElementById('toTop');
+    function onScroll() {
+      var top = document.documentElement.scrollTop;
+      if (bt) bt.classList.toggle('show', top > 600);
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    var links = document.querySelectorAll('nav.article-toc a[data-toc-link]');
+    var sections = document.querySelectorAll('article.course-article section[id]');
+    if (links.length && sections.length && 'IntersectionObserver' in window) {
+      var obs = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) {
+              links.forEach(function (l) { l.classList.remove('active'); });
+              var active = document.querySelector(
+                'nav.article-toc a[href="#' + e.target.id + '"]'
+              );
+              if (active) active.classList.add('active');
+            }
+          });
+        },
+        { rootMargin: '-15% 0px -60% 0px' }
+      );
+      sections.forEach(function (s) { obs.observe(s); });
+    }
+  })();
+</script>
+
+<style>
+  .course-detail-shell {
+    position: relative;
+  }
+  .course-detail-shell::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 330px;
+    width: 1px;
+    background: var(--line);
+  }
+
+  .course-detail-layout {
+    display: grid;
+    grid-template-columns: 330px minmax(0, 1fr);
+    grid-template-areas: "toc body";
+    align-items: start;
+  }
+  .course-detail-shell.has-header .course-detail-layout {
+    grid-template-areas:
+      "toc header"
+      "toc body";
+  }
+
+  .course-detail-layout :global(.article-toc) {
+    grid-area: toc;
+  }
+
+  .course-detail-header {
+    grid-area: header;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 56px 56px 0;
+  }
+
+  .course-article {
+    grid-area: body;
+    min-width: 0;
+    padding: 0 56px 64px;
+  }
+  .course-detail-shell.article-top-padding .course-article {
+    padding-top: 56px;
+  }
+
+  .pager-wrap {
+    display: grid;
+    grid-template-columns: 330px minmax(0, 1fr);
+    grid-template-areas: "toc pager";
+    padding-bottom: 48px;
+  }
+  .pager-wrap :global(.mod-pager) {
+    grid-area: pager;
+    max-width: none;
+    margin: 0;
+    padding: 0 56px;
+  }
+
+  #toTop {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    background: var(--paper);
+    color: var(--ink-soft);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+    transition: opacity 0.18s ease, transform 0.18s ease, background-color 0.15s ease;
+    z-index: 40;
+  }
+  #toTop.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+  #toTop:hover {
+    background: var(--paper-soft);
+    color: var(--ink);
+  }
+
+  @media (max-width: 920px) {
+    .course-detail-layout {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas:
+        "body"
+        "toc";
+      row-gap: 28px;
+    }
+    .course-detail-shell.has-header .course-detail-layout {
+      grid-template-areas:
+        "header"
+        "toc"
+        "body";
+    }
+    .course-detail-shell::before {
+      display: none;
+    }
+    .course-detail-header {
+      padding: 40px 28px 0;
+    }
+    .course-article {
+      padding: 0 28px 56px;
+    }
+    .course-detail-shell.article-top-padding .course-article {
+      padding-top: 40px;
+    }
+    .pager-wrap {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas: "pager";
+    }
+    .pager-wrap :global(.mod-pager) {
+      padding: 0 28px;
+    }
+  }
+
+  @media (max-width: 680px) {
+    .course-detail-header {
+      padding: 36px 20px 0;
+    }
+    .course-article {
+      padding: 0 20px 44px;
+    }
+    .course-detail-shell.article-top-padding .course-article {
+      padding-top: 36px;
+    }
+    .pager-wrap :global(.mod-pager) {
+      padding: 0 20px;
+    }
+  }
+</style>

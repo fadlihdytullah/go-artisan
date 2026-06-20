@@ -9,7 +9,7 @@ import RoadmapCard from '../../components/RoadmapCard.astro';
 // agar cocok dengan frame nRB05. Saat ini hanya satu roadmap nyata (Backend Artisan,
 // available); Laravel & AI ditampilkan sebagai placeholder "coming soon" (dimmed),
 // sesuai frame yang jelas menunjukkan dua kartu placeholder.
-const roadmaps = (await getCollection('roadmaps')).sort(
+const roadmaps = (await getCollection('expeditions')).sort(
   (a, b) => a.data.order - b.data.order
 );
 
@@ -37,7 +37,7 @@ const realRoadmaps = roadmaps.map((roadmap) => {
   if (lessons) metaParts.push(`${lessons} lessons`);
   return {
     cover: roadmap.data.cover,
-    href: `/roadmaps/${roadmap.id}`,
+    href: `/expeditions/${roadmap.id}`,
     summary: roadmap.data.summary as string,
     includes,
     meta: metaParts.join(' · '),
@@ -53,36 +53,36 @@ const realRoadmaps = roadmaps.map((roadmap) => {
 const soonRoadmaps = [
   {
     cover: '/laravel-artisan.png',
-    href: '/roadmaps/laravel-artisan',
+    href: '/expeditions/laravel-artisan',
     summary:
       'Bangun aplikasi web modern dengan Laravel: dari routing, Eloquent, dan Blade, sampai REST API dan deployment.',
     includes: ['Routing', 'Eloquent', 'Blade', 'REST API'],
     coverAlt: 'Cover roadmap Laravel Artisan',
   },
   {
-    cover: '/ai-expeditions.png',
-    href: '/roadmaps/ai-expeditions',
+    cover: '/ai-for-developers.png',
+    href: '/expeditions/ai-for-developers',
     summary:
       'Petualangan membangun produk AI: LLM, RAG, embeddings, dan agent, langsung lewat proyek nyata.',
     includes: ['LLM', 'RAG', 'Embeddings', 'Agents'],
-    coverAlt: 'Cover roadmap AI Expeditions',
+    coverAlt: 'Cover roadmap AI for Developers',
   },
 ];
 ---
-<BaseLayout title="Roadmaps - Web Artisan" nav={{ variant: 'home' }}>
+<BaseLayout title="Expeditions - Web Artisan" nav={{ variant: 'home' }}>
   {/* Tubuh berbingkai: garis sisi 1180 menerus (SPEC §3) — sejajar dengan footer
       yang juga di dalam .shell-col. Nav penuh-lebar disuplai BaseLayout. */}
   <div class="shell-bleed">
     <div class="shell-col">
       {/* Header berbingkai — self-padded, JANGAN dibungkus .shell-band (SPEC §3). */}
       <SectionHeader
-        eyebrow="ROADMAPS"
-        title="Explore our roadmaps"
-        lede="Curated paths that bundle courses into one clear sequence, from zero to job-ready. Pick a path, then follow its courses in order."
+        eyebrow="EXPEDITIONS"
+        title="Explore our expeditions"
+        lede="Curated paths that bundle luminas into one clear sequence, from zero to job-ready. Pick a path, then follow its luminas in order."
       />
 
       {/* Baris kartu roadmap kaya (cover + ringkasan Indonesia + chip INCLUDES + meta/CTA). */}
-      <section class="rm-rows" aria-label="Roadmaps">
+      <section class="rm-rows" aria-label="Expeditions">
         {realRoadmaps.map((rm) => (
           <RoadmapCard
             variant="list"

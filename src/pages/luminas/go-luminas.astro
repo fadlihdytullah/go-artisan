@@ -8,7 +8,7 @@ import CourseHero from '../../components/course/CourseHero.astro';
 // modul backend (koleksi `modules`, R1..R9) sebagai 9 tahap accordion yang
 // menautkan tiap modul ke /lessons/<slug>. Hero + styling dibagi dengan AWS
 // lewat CourseHero + kelas .track-* di globals.css (satu sumber, anti-drift).
-const course = await getEntry('courses', 'go-luminas');
+const course = await getEntry('luminas', 'go-luminas');
 const cd = course.data;
 
 const mods = (await getCollection('modules')).sort(

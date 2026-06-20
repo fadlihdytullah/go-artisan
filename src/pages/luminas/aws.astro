@@ -3,50 +3,50 @@ import { getEntry, getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CourseHero from '../../components/course/CourseHero.astro';
 
-// Course Docker = course "Tracks" varian CHAPTERS: 6 chapter koleksi `docker` (hasil
-// chunk dari monolit courses/docker.mdx) sebagai daftar bernomor datar (01..06,
-// TANPA pengelompokan tahap) yang menautkan tiap chapter ke /docker/<id>. Hero +
-// styling dibagi dengan Go Luminas, AWS & Git lewat CourseHero + kelas .track-* di
-// globals.css (satu sumber, anti-drift). Entry tipis courses/docker.mdx jadi sumber
-// frontmatter hero (title/topTitle/topSub/summary/target).
-const course = await getEntry('courses', 'docker');
+// AWS Cloud Practitioner = course "Tracks" varian CHAPTERS: 19 modul koleksi
+// `aws` sebagai daftar bernomor datar (01..19, TANPA pengelompokan tahap) yang
+// menautkan tiap modul ke /aws/<id>. AWS sengaja DECOUPLED dari module-progress
+// global (id-nya tidak ada di himpunan 73 modul), jadi tanpa kartu/JS
+// learning-progress. Hero + styling dibagi dengan Go Luminas lewat CourseHero +
+// kelas .track-* di globals.css (satu sumber, anti-drift).
+const course = await getEntry('luminas', 'aws');
 const cd = course.data;
 
-const mods = (await getCollection('docker')).sort(
+const mods = (await getCollection('aws')).sort(
   (a, b) => a.data.order - b.data.order
 );
-const firstId = mods[0]?.id ?? '01-fondasi-mental-model';
+const firstId = mods[0]?.id ?? '01-cloud-computing';
 ---
 <BaseLayout title={cd.title} nav={{ variant: 'home' }}>
   <main class="course-detail">
     <div class="shell-col">
       <section class="shell-band course-hero-band">
         <CourseHero
-          eyebrow={cd.target ?? 'Course · Docker'}
+          eyebrow={cd.target ?? 'Course · AWS'}
           title={cd.topTitle ?? cd.title}
           sub={cd.topSub}
           lede={cd.summary}
-          facts={`${mods.length} chapter`}
-          image="/docker.png"
-          primaryHref={`/docker/${firstId}`}
+          facts={`${mods.length} modul`}
+          image="/aws.png"
+          primaryHref={`/aws/${firstId}`}
         />
       </section>
 
       <section class="shell-band course-cur" id="kurikulum">
         <header class="course-cur-head">
           <h2 class="course-cur-title">Kurikulum</h2>
-          <span class="course-cur-count">{mods.length} chapter tersedia</span>
+          <span class="course-cur-count">{mods.length} modul tersedia</span>
         </header>
 
-        {/* Daftar datar 01..06 (tanpa accordion tahap). Tiap baris menautkan ke
-            /docker/<id> dengan nomor urut, judul, ringkasan, dan estimasi waktu. */}
+        {/* Daftar datar 01..19 (tanpa accordion tahap). Tiap baris menautkan ke
+            /aws/<id> dengan nomor urut, judul, ringkasan, dan estimasi waktu. */}
         <ol class="track-chapters">
           {mods.map((mod, idx) => {
             const numMatch = mod.id.match(/^(\d+)/);
             const num = numMatch ? numMatch[1] : String(idx + 1).padStart(2, '0');
             return (
               <li class="track-chapter" style={`--i:${idx}`}>
-                <a href={`/docker/${mod.id}`} class="track-chapter-link">
+                <a href={`/aws/${mod.id}`} class="track-chapter-link">
                   <span class="track-chapter-num" aria-hidden="true">{num}</span>
                   <span class="track-chapter-body">
                     <span class="track-chapter-title">

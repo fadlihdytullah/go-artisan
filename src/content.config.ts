@@ -33,10 +33,10 @@ const modules = defineCollection({
   schema: lessonSchema,
 });
 
-// Koleksi "courses": kelas backend mandiri yang TERPISAH dari roadmap modules.
+// Koleksi "luminas": kelas backend mandiri yang TERPISAH dari expedition modules.
 // Memakai schema frontmatter yang sama agar bisa dirender lewat ModuleLayout.
-const courses = defineCollection({
-  loader: glob({ pattern: '**/*.mdx', base: './src/content/courses' }),
+const luminas = defineCollection({
+  loader: glob({ pattern: '**/*.mdx', base: './src/content/luminas' }),
   schema: lessonSchema,
 });
 
@@ -77,10 +77,31 @@ const redis = defineCollection({
   schema: lessonSchema,
 });
 
-// Koleksi "roadmaps": jalur kurasi yang MEREFERENSIKAN course (bukan menulis ulang materi).
-// Satu file .mdx per roadmap; body MDX opsional (intro). Data terstruktur di frontmatter.
-const roadmaps = defineCollection({
-  loader: glob({ pattern: '**/*.mdx', base: './src/content/roadmaps' }),
+const webvitals = defineCollection({
+  loader: glob({ pattern: '**/*.mdx', base: './src/content/web-vitals' }),
+  schema: lessonSchema,
+});
+
+const pictos = defineCollection({
+  loader: glob({ pattern: '**/*.mdx', base: './src/content/pictos' }),
+  schema: z.object({
+    title: z.string(),
+    topic: z.string(), // GO | GIT | HTTP | REDIS | DOCKER
+    dek: z.string(),
+    icon: z.string(),
+    readTime: z.string(),
+    date: z.string(),
+    order: z.number().default(99),
+    luminaHref: z.string().optional(),
+    luminaDesc: z.string().optional(),
+    luminaLabel: z.string().optional(),
+  }),
+});
+
+// Koleksi "expeditions": jalur kurasi yang MEREFERENSIKAN lumina (bukan menulis ulang materi).
+// Satu file .mdx per expedition; body MDX opsional (intro). Data terstruktur di frontmatter.
+const expeditions = defineCollection({
+  loader: glob({ pattern: '**/*.mdx', base: './src/content/expeditions' }),
   schema: z.object({
     title: z.string(), // mis. "Backend Artisan"
     badge: z.string(), // mis. "BACKEND"
@@ -95,4 +116,4 @@ const roadmaps = defineCollection({
   }),
 });
 
-export const collections = { modules, courses, aws, git, docker, redis, roadmaps };
+export const collections = { modules, luminas, aws, git, docker, redis, expeditions, webvitals, pictos };

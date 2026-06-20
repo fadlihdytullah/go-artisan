@@ -22,7 +22,7 @@ import CourseCard from '../../components/CourseCard.astro';
 
 // Semua course, diurut berdasar `order`: go-luminas (order 0) tampil pertama,
 // lalu http/openapi/redis. (Data fetching dipertahankan dari v1.)
-const courses = (await getCollection('courses')).sort(
+const courses = (await getCollection('luminas')).sort(
   (a, b) => a.data.order - b.data.order
 );
 
@@ -44,15 +44,15 @@ const featuredMeta = [
 const featuredSummary =
   'Seluruh 73 modul backend Go dirangkai jadi satu kurikulum 9 tahap: dari fondasi bahasa, HTTP, dan database, sampai testing, scaling, dan deploy ke AWS.';
 ---
-<BaseLayout title="Courses - Web Artisan" nav={{ variant: 'home' }}>
+<BaseLayout title="Luminas - Web Artisan" nav={{ variant: 'home' }}>
   {/* Bordered 1180 column with continuous full-height side hairlines. */}
   <div class="shell-bleed">
     <main class="shell-col">
       {/* Framed header — inside the side lines (supplies its own padding). */}
       <SectionHeader
-        eyebrow="COURSES"
-        title="Course catalog"
-        lede="Self-contained courses on the building blocks of the web. Start with Go Luminas for the full path, or go deep on a single topic when you need it."
+        eyebrow="LUMINAS"
+        title="Lumina catalog"
+        lede="Self-contained luminas on the building blocks of the web. Start with Go Luminas for the full path, or go deep on a single topic when you need it."
       />
 
       {/* Featured Go Luminas banner + the rest as a 3-col grid (one band).
@@ -61,7 +61,7 @@ const featuredSummary =
           56px and keeps both list pages identical (SPEC §3, frame padding 56). */}
       <section class="courses-grid-band">
         {featured && (
-          <a class="featured" href={`/courses/${featured.id}`}>
+          <a class="featured" href={`/luminas/${featured.id}`}>
             <span class="featured-cover">
               <img
                 src={`/${featured.id}.png`}

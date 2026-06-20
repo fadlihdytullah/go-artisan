@@ -29,7 +29,7 @@ interface Props {
 const { course, variant = 'row' } = Astro.props as Props;
 const { id, data } = course;
 
-const href = `/courses/${id}`;
+const href = `/luminas/${id}`;
 const thumb = `/${id}.png`;
 const heading = data.topTitle ?? data.title;
 const badge = data.badge ?? 'COURSE';
@@ -61,7 +61,7 @@ const minutes = data.readingTime ? data.readingTime.replace(' baca', '').trim() 
       {minutes && parts > 0 && <span class="cc-dot" aria-hidden="true">&middot;</span>}
       {parts > 0 && <span>{parts} bagian</span>}
       <span class="cc-link">
-        <span class="cc-link-label">Open course</span>
+        <span class="cc-link-label">Open lumina</span>
         <span class="cc-chev" aria-hidden="true"><Icon name="chevron-right" size={15} /></span>
       </span>
     </span>

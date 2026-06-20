@@ -16,9 +16,15 @@
   All UI copy is English (per SPEC §0). Pulled verbatim from the frame's
   text nodes. Flat, rounded, no shadow; token-driven (light + reader).
 */
+interface FooterLink {
+  label: string;
+  href: string;
+  /** Renders as non-interactive span with disabled visual. */
+  soon?: boolean;
+}
 interface FooterGroup {
   heading: string;
-  links: { label: string; href: string }[];
+  links: FooterLink[];
 }
 interface Props {
   /** Brand wordmark (kata terakhir di-aksen). */
@@ -37,31 +43,31 @@ const {
   siteName = 'Web Artisan',
   tagline = 'A platform for learning web development.',
   copyright = '© 2026 Web Artisan. Made for people building for the web.',
-  note = 'Progress saved in this browser.',
+  note = 'Course progress stored locally.',
   groups = [
     {
       heading: 'LEARN',
       links: [
-        { label: 'Roadmap', href: '/roadmaps' },
-        { label: 'Courses', href: '/courses' },
-        { label: 'All lessons', href: '/courses/go-luminas#kurikulum' },
-        { label: 'Go Luminas', href: '/courses/go-luminas' },
+        { label: 'Expeditions', href: '/expeditions' },
+        { label: 'Luminas', href: '/luminas' },
+        { label: 'All lessons', href: '/luminas/go-luminas#kurikulum' },
+        { label: 'Go Luminas', href: '/luminas/go-luminas' },
       ],
     },
     {
-      heading: 'COURSES',
+      heading: 'LUMINAS',
       links: [
-        { label: 'Learn HTTP', href: '/courses/http' },
-        { label: 'Learn OpenAPI', href: '/courses/openapi' },
-        { label: 'Learn Redis', href: '/courses/redis' },
+        { label: 'Learn HTTP', href: '/luminas/http' },
+        { label: 'Learn OpenAPI', href: '/luminas/openapi' },
+        { label: 'Learn Redis', href: '/luminas/redis' },
       ],
     },
     {
       heading: 'PLATFORM',
       links: [
-        { label: 'About', href: '/' },
-        { label: 'Local progress', href: '/' },
-        { label: 'Frontend (soon)', href: '/' },
+        { label: 'About', href: '/', soon: true },
+        { label: 'Local progress', href: '/', soon: true },
+        { label: 'Frontend', href: '/', soon: true },
       ],
     },
   ],
@@ -89,7 +95,12 @@ const tail = words[words.length - 1];
           <p class="ft-heading">{group.heading}</p>
           <ul class="ft-list">
             {group.links.map((link) => (
-              <li><a class="ft-link" href={link.href}>{link.label}</a></li>
+              <li>
+                {link.soon
+                  ? <span class="ft-link ft-link--soon">{link.label} <span class="ft-soon-badge" aria-label="coming soon">soon</span></span>
+                  : <a class="ft-link" href={link.href}>{link.label}</a>
+                }
+              </li>
             ))}
           </ul>
         </nav>
@@ -99,7 +110,9 @@ const tail = words[words.length - 1];
 
   <div class="ft-copy">
     <span class="ft-copy-text">{copyright}</span>
-    <span class="ft-copy-note">{note}</span>
+    <div class="ft-copy-right">
+      <span class="ft-copy-note">{note}</span>
+    </div>
   </div>
 </div>
 
@@ -154,7 +167,7 @@ const tail = words[words.length - 1];
     letter-spacing: -0.2px;
     color: var(--ink);
   }
-  .ft-wordmark-accent { color: var(--ink); }
+  .ft-wordmark-accent { color: var(--blue); }
   .ft-tagline {
     margin: 0;
     font-family: var(--font-body);
@@ -183,7 +196,7 @@ const tail = words[words.length - 1];
     font-size: 11px;
     font-weight: 400;
     letter-spacing: 2px;
-    color: var(--faint);
+    color: var(--ink-muted);
   }
   .ft-list {
     list-style: none;
@@ -202,11 +215,30 @@ const tail = words[words.length - 1];
   }
   .ft-link:hover { color: var(--blue); }
   .ft-link:focus-visible { outline: 2px solid var(--blue-bright); outline-offset: 2px; border-radius: var(--radius-xs); }
+  .ft-link--soon {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.45;
+    cursor: default;
+  }
+  .ft-soon-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-xs);
+    padding: 1px 5px;
+    line-height: 1.4;
+  }
 
   /* Mobile: perbesar target sentuh link footer ke >=44px (WCAG 2.5.5/2.5.8). */
   @media (max-width: 640px) {
     .ft-list { gap: 0; }
     .ft-link { display: flex; align-items: center; min-height: 44px; }
+    .ft-link--soon { min-height: 44px; }
   }
 
   /* — Baris copyright: aturan horizontal full-width di atasnya — */
@@ -222,12 +254,18 @@ const tail = words[words.length - 1];
   .ft-copy-text {
     font-family: var(--font-body);
     font-size: 13px;
-    color: var(--faint);
+    color: var(--ink-muted);
+  }
+  .ft-copy-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
   }
   .ft-copy-note {
     font-family: var(--font-mono);
     font-size: 13px;
-    color: var(--faint);
+    color: var(--ink-muted);
   }
 
   /* — Responsif — */

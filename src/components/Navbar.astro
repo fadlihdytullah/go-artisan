@@ -30,38 +30,38 @@ const tail = words[words.length - 1];
 
 const path = Astro.url.pathname.replace(/\/$/, '');
 // Switcher sadar-konteks:
-//  - Konteks COURSE satu-halaman (/courses/http|openapi|redis): tampilkan courses.
-//  - Konteks LESSON (/lessons/*) DAN landing Go Luminas (/courses/go-luminas):
+//  - Konteks LUMINA satu-halaman (/luminas/http|openapi|redis): tampilkan luminas.
+//  - Konteks LESSON (/lessons/*) DAN landing Go Luminas (/luminas/go-luminas):
 //    tampilkan 73 modul (koleksi modules) dikelompokkan jadi 9 tahap/chapter,
 //    karena Go Luminas membungkus seluruh modules.
 const isCourseContext =
-  path.startsWith('/courses/') &&
-  path !== '/courses' &&
-  path !== '/courses/go-luminas';
+  path.startsWith('/luminas/') &&
+  path !== '/luminas' &&
+  path !== '/luminas/go-luminas';
 
 // Pilih koleksi sesuai konteks. Schema keduanya sama, jadi dipakai seragam.
 // Konteks course satu-halaman EXCLUDE go-luminas (ditangani sebagai lesson/modules).
 const mods = isCourseContext
-  ? (await getCollection('courses'))
+  ? (await getCollection('luminas'))
       .filter((c) => c.id !== 'go-luminas')
       .sort((a, b) => a.data.order - b.data.order)
   : (await getCollection('modules')).sort((a, b) => a.data.order - b.data.order);
 
-const basePath = isCourseContext ? '/courses' : '/lessons';
-const switcherTitle = isCourseContext ? 'Pindah ke course' : 'Pindah ke modul';
-const unitLabel = isCourseContext ? 'course' : 'modul';
+const basePath = isCourseContext ? '/luminas' : '/lessons';
+const switcherTitle = isCourseContext ? 'Pindah ke lumina' : 'Pindah ke modul';
+const unitLabel = isCourseContext ? 'lumina' : 'modul';
 
 const current = mods.find((m) => path === `${basePath}/${m.id}`) ?? null;
 const switchLabel = current
   ? current.data.topTitle
   : isCourseContext
-    ? 'Semua course'
+    ? 'Semua lumina'
     : 'Semua modul';
 const fallbackHref = current
   ? `${basePath}/${current.id}`
   : isCourseContext
-    ? '/courses'
-    : '/courses/go-luminas#kurikulum';
+    ? '/luminas'
+    : '/luminas/go-luminas#kurikulum';
 // Hanya relevan untuk roadmap; course id (mis. "redis-dasar") tidak cocok pola r<digit>.
 const currentRoadmapNum =
   current && !isCourseContext
@@ -69,14 +69,14 @@ const currentRoadmapNum =
     : null;
 
 // Kelompokkan item untuk switcher. Roadmap dikelompokkan per nomor (r1, r2, ...);
-// course tidak punya pola itu → dijadikan satu grup tunggal berlabel "Course".
+// lumina tidak punya pola itu → dijadikan satu grup tunggal berlabel "Lumina".
 type NssGroup = { num: number; name: string; modules: typeof mods };
 const nssMap = new Map<number, NssGroup>();
 for (const mod of mods) {
   if (isCourseContext) {
     const COURSE_KEY = 0;
     if (!nssMap.has(COURSE_KEY)) {
-      nssMap.set(COURSE_KEY, { num: COURSE_KEY, name: 'Course', modules: [] });
+      nssMap.set(COURSE_KEY, { num: COURSE_KEY, name: 'Lumina', modules: [] });
     }
     nssMap.get(COURSE_KEY)!.modules.push(mod);
     continue;
@@ -84,7 +84,7 @@ for (const mod of mods) {
   const idMatch = mod.id.match(/^r(\d+)/);
   const roadmapNum = idMatch ? parseInt(idMatch[1]) : 99;
   const targetParts = mod.data.target?.split('·') ?? [];
-  const roadmapName = targetParts[1]?.trim() ?? `Roadmap ${roadmapNum}`;
+  const roadmapName = targetParts[1]?.trim() ?? `Expedition ${roadmapNum}`;
   if (!nssMap.has(roadmapNum)) {
     nssMap.set(roadmapNum, { num: roadmapNum, name: roadmapName, modules: [] });
   }
@@ -130,7 +130,7 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
       </button>
       <a class="nav-switch-fallback" href={fallbackHref}>
         <Icon name="grid" size={16} class="nav-switch-glyph" />
-        <span>{current ? `Buka ${unitLabel} ini` : isCourseContext ? 'Lihat semua course' : 'Lihat kurikulum'}</span>
+        <span>{current ? `Buka ${unitLabel} ini` : isCourseContext ? 'Lihat semua lumina' : 'Lihat kurikulum'}</span>
       </a>
       <div id="mod-switcher" popover="auto" class="nav-switch-menu">
         <div class="nss-panel">
@@ -148,7 +148,7 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
               <input
                 type="search"
                 class="nss-search-input"
-                placeholder={isCourseContext ? 'Cari course atau badge' : 'Cari modul atau badge'}
+                placeholder={isCourseContext ? 'Cari lumina atau badge' : 'Cari modul atau badge'}
                 autocomplete="off"
                 spellcheck="false"
                 data-module-filter
@@ -205,15 +205,20 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
     <div class="topbar-actions">
       <nav class="nav-primary" aria-label="Navigasi utama">
         <a
-          class={`nav-item nav-link${path === '/roadmaps' || path.startsWith('/roadmaps/') ? ' is-active' : ''}`}
-          href="/roadmaps"
-          aria-current={path === '/roadmaps' || path.startsWith('/roadmaps/') ? 'page' : undefined}
-        >Roadmap</a>
+          class={`nav-item nav-link${path === '/expeditions' || path.startsWith('/expeditions/') ? ' is-active' : ''}`}
+          href="/expeditions"
+          aria-current={path === '/expeditions' || path.startsWith('/expeditions/') ? 'page' : undefined}
+        >Expeditions</a>
         <a
-          class={`nav-item nav-link${path === '/courses' || path.startsWith('/courses/') ? ' is-active' : ''}`}
-          href="/courses"
-          aria-current={path === '/courses' || path.startsWith('/courses/') ? 'page' : undefined}
-        >Courses</a>
+          class={`nav-item nav-link${path === '/luminas' || path.startsWith('/luminas/') ? ' is-active' : ''}`}
+          href="/luminas"
+          aria-current={path === '/luminas' || path.startsWith('/luminas/') ? 'page' : undefined}
+        >Luminas</a>
+        <a
+          class={`nav-item nav-link${path === '/pictos' || path.startsWith('/pictos/') ? ' is-active' : ''}`}
+          href="/pictos"
+          aria-current={path === '/pictos' || path.startsWith('/pictos/') ? 'page' : undefined}
+        >Pictos</a>
       </nav>
       {fontControls && (
         <div class="rc-group" role="group" aria-label="Ukuran teks">
@@ -243,15 +248,20 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
 
   <div id="nav-sheet" popover="auto" class="nav-sheet">
     <a
-      class={`nav-sheet-link${path === '/roadmaps' || path.startsWith('/roadmaps/') ? ' is-active' : ''}`}
-      href="/roadmaps"
-      aria-current={path === '/roadmaps' || path.startsWith('/roadmaps/') ? 'page' : undefined}
-    >Roadmap</a>
+      class={`nav-sheet-link${path === '/pictos' || path.startsWith('/pictos/') ? ' is-active' : ''}`}
+      href="/pictos"
+      aria-current={path === '/pictos' || path.startsWith('/pictos/') ? 'page' : undefined}
+    >Pictos</a>
     <a
-      class={`nav-sheet-link${path === '/courses' || path.startsWith('/courses/') ? ' is-active' : ''}`}
-      href="/courses"
-      aria-current={path === '/courses' || path.startsWith('/courses/') ? 'page' : undefined}
-    >Courses</a>
+      class={`nav-sheet-link${path === '/expeditions' || path.startsWith('/expeditions/') ? ' is-active' : ''}`}
+      href="/expeditions"
+      aria-current={path === '/expeditions' || path.startsWith('/expeditions/') ? 'page' : undefined}
+    >Expeditions</a>
+    <a
+      class={`nav-sheet-link${path === '/luminas' || path.startsWith('/luminas/') ? ' is-active' : ''}`}
+      href="/luminas"
+      aria-current={path === '/luminas' || path.startsWith('/luminas/') ? 'page' : undefined}
+    >Luminas</a>
   </div>
 </header>
 

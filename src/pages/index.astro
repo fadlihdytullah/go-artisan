@@ -15,31 +15,31 @@ const mods = (await getCollection('modules')).sort(
 );
 const moduleIds = mods.map((mod) => mod.id);
 
-// Course (unit topik). go-luminas tampil pertama (order 0), lalu http/openapi/redis.
-const courses = (await getCollection('courses')).sort(
+// Lumina (unit topik). go-luminas tampil pertama (order 0), lalu http/openapi/redis.
+const luminas = (await getCollection('luminas')).sort(
   (a, b) => a.data.order - b.data.order
 );
-// "Latest courses" frame nr1kS → DRVjW: 3 course TERBARU (order tertinggi) + promo
-// "More courses" sebagai item terakhir. slice(-3) mengambil 3 paling baru; bila course
+// "Latest luminas" frame nr1kS → DRVjW: 3 lumina TERBARU (order tertinggi) + promo
+// "More luminas" sebagai item terakhir. slice(-3) mengambil 3 paling baru; bila lumina
 // bertambah, daftar tetap 3 kartu dan sisanya dijangkau lewat kartu browse-all.
-const latestCourses = courses.filter((c) => c.id !== 'go-luminas').slice(-3);
+const latestLuminas = luminas.filter((c) => c.id !== 'go-luminas').slice(-3);
 
-// Roadmap unggulan (Backend Artisan tersedia; Laravel & AI menyusul/dimmed).
-const roadmaps = (await getCollection('roadmaps')).sort(
+// Expedition unggulan (Backend Artisan tersedia; Laravel & AI menyusul/dimmed).
+const roadmaps = (await getCollection('expeditions')).sort(
   (a, b) => a.data.order - b.data.order
 );
 const featuredRoadmap =
   roadmaps.find((r) => r.id === 'backend-artisan') ?? roadmaps[0];
 
-// Statistik ringkas platform (dihitung langsung dari koleksi modul & course).
+// Statistik ringkas platform (dihitung langsung dari koleksi modul & lumina).
 const totalModules = mods.length;
-const totalCourses = courses.length;
-const totalRoadmaps = roadmaps.length || 3;
+const totalLuminas = luminas.length;
+const totalExpeditions = roadmaps.length || 3;
 
 // Stat band (frame nr1kS → Pad8h). Angka real dari koleksi; caption persis frame.
 const heroStats = [
-  { value: totalRoadmaps, label: 'Roadmaps', caption: 'curated learning paths' },
-  { value: totalCourses, label: 'Courses', caption: 'focused & practical' },
+  { value: totalExpeditions, label: 'Expeditions', caption: 'curated learning paths' },
+  { value: totalLuminas, label: 'Luminas', caption: 'focused & practical' },
   { value: totalModules, label: 'Lessons', caption: 'in-depth written guides' },
   { value: 1, label: 'Real project', caption: 'built end to end' },
 ];
@@ -57,18 +57,18 @@ const whyItems = [
 // Disciplines index hero (frame nr1kS → PF0nx → Disciplines Index): empat path
 // inti yang dicakup platform. Semua mengarah ke /roadmaps (listing) untuk kini.
 const heroDisciplines = [
-  { num: '01', name: 'Frontend', tag: 'Interfaces & interaction', href: '/roadmaps' },
-  { num: '02', name: 'Backend', tag: 'APIs & services', href: '/roadmaps' },
-  { num: '03', name: 'Databases', tag: 'Data & modeling', href: '/roadmaps' },
-  { num: '04', name: 'DevOps & Cloud', tag: 'Ship & scale', href: '/roadmaps' },
+  { num: '01', name: 'Frontend', tag: 'Interfaces & interaction', href: '/expeditions' },
+  { num: '02', name: 'Backend', tag: 'APIs & services', href: '/expeditions' },
+  { num: '03', name: 'Databases', tag: 'Data & modeling', href: '/expeditions' },
+  { num: '04', name: 'DevOps & Cloud', tag: 'Ship & scale', href: '/expeditions' },
 ];
 
 // CTA primer default → /roadmaps; script progress me-rewrite jadi "Continue
 // learning" → lesson berikutnya saat ada progres lokal (lihat inline script di bawah).
 const firstLessonHref = `/lessons/${mods[0]?.id ?? ''}`;
 
-// Promo cell "More courses" di akhir grid courses (frame nr1kS → L8HB9u).
-const moreCoursesHref = '/courses';
+// Promo cell "More luminas" di akhir grid luminas (frame nr1kS → L8HB9u).
+const moreCoursesHref = '/luminas';
 ---
 <BaseLayout title="Web Artisan: Learn web development, one clear path" nav={{ variant: 'home' }}>
   <main class="home-v2" data-home-progress data-module-ids={JSON.stringify(moduleIds)}>
@@ -92,11 +92,11 @@ const moreCoursesHref = '/courses';
             to ship real things, not collect browser tabs.
           </p>
           <div class="hero-v2-ctas">
-            <a class="hero-v2-primary" href="/roadmaps" data-continue-link>
-              <span data-continue-label>Explore roadmaps</span>
+            <a class="hero-v2-primary" href="/expeditions" data-continue-link>
+              <span data-continue-label>Explore expeditions</span>
               <Icon name="arrow-right" size={18} />
             </a>
-            <a class="hero-v2-secondary" href={moreCoursesHref}>Browse courses</a>
+            <a class="hero-v2-secondary" href={moreCoursesHref}>Browse luminas</a>
           </div>
         </div>
 
@@ -121,8 +121,8 @@ const moreCoursesHref = '/courses';
               </li>
             ))}
           </ul>
-          <a class="hero-v2-index-foot" href="/roadmaps">
-            View all roadmaps <Icon name="arrow-right" size={15} />
+          <a class="hero-v2-index-foot" href="/expeditions">
+            View all expeditions <Icon name="arrow-right" size={15} />
           </a>
         </div>
       </div>
@@ -134,14 +134,14 @@ const moreCoursesHref = '/courses';
     {/* ── Bordered 1180 column: Roadmaps + Courses sections ───────────────── */}
     <div class="shell-bleed">
       <div class="shell-col">
-        {/* Explore our roadmaps — frame f6AnB / ThDDR */}
-        <SectionHeader eyebrow="ROADMAPS" title="Explore our roadmaps" />
-        <section class="home-v2-band" aria-label="Roadmaps">
+        {/* Explore our expeditions — frame f6AnB / ThDDR */}
+        <SectionHeader eyebrow="EXPEDITIONS" title="Explore our expeditions" />
+        <section class="home-v2-band" aria-label="Expeditions">
           <div class="rmc-home-grid">
             <RoadmapCard
               variant="home"
               cover={featuredRoadmap?.data.cover ?? '/backend-artisan.png'}
-              href={`/roadmaps/${featuredRoadmap?.id ?? 'backend-artisan'}`}
+              href={`/expeditions/${featuredRoadmap?.id ?? 'backend-artisan'}`}
               summary="Kuasai Go dari fondasi sampai deploy: HTTP, database, kontrak API, caching, AWS."
               meta="4 courses · 117 lessons"
               status="available"
@@ -149,15 +149,15 @@ const moreCoursesHref = '/courses';
             <RoadmapCard
               variant="home"
               cover="/laravel-artisan.png"
-              href="/roadmaps/laravel-artisan"
+              href="/expeditions/laravel-artisan"
               summary="Aplikasi web modern dengan Laravel: routing, Eloquent, Blade, sampai REST API."
               meta="Coming soon"
               status="soon"
             />
             <RoadmapCard
               variant="home"
-              cover="/ai-expeditions.png"
-              href="/roadmaps/ai-expeditions"
+              cover="/ai-for-developers.png"
+              href="/expeditions/ai-for-developers"
               summary="Bangun produk AI: LLM, RAG, embeddings, dan agent lewat proyek nyata."
               meta="Coming soon"
               status="soon"
@@ -165,18 +165,18 @@ const moreCoursesHref = '/courses';
           </div>
         </section>
 
-        {/* Latest courses — frame s2XtPk / DRVjW */}
+        {/* Latest luminas — frame s2XtPk / DRVjW */}
         <SectionHeader
-          eyebrow="COURSES"
-          title="Latest courses"
-          lede="Focused, self-contained courses on the core building blocks of the web."
+          eyebrow="LUMINAS"
+          title="Latest luminas"
+          lede="Focused, self-contained luminas on the core building blocks of the web."
         />
-        <section class="home-v2-band" id="courses" aria-label="Latest courses">
-          <a class="home-v2-viewall" href="/courses">View all courses</a>
+        <section class="home-v2-band" id="luminas" aria-label="Latest luminas">
+          <a class="home-v2-viewall" href="/luminas">View all luminas</a>
           <div class="cc-home-grid">
-            {latestCourses.map((course) => <CourseCard course={course} variant="row" />)}
+            {latestLuminas.map((course) => <CourseCard course={course} variant="row" />)}
             <a class="cc-seeall" href={moreCoursesHref}>
-              <span class="cc-seeall-title">More courses</span>
+              <span class="cc-seeall-title">More luminas</span>
               <span class="cc-seeall-link">Browse the full catalog →</span>
             </a>
           </div>
@@ -222,8 +222,8 @@ const moreCoursesHref = '/courses';
           continueLink.setAttribute('href', '/lessons/' + nextId);
           continueLabel.textContent = allDone ? 'Review learning' : 'Continue learning';
         } else {
-          continueLink.setAttribute('href', '/roadmaps');
-          continueLabel.textContent = 'Explore roadmaps';
+          continueLink.setAttribute('href', '/expeditions');
+          continueLabel.textContent = 'Explore expeditions';
         }
       }
 

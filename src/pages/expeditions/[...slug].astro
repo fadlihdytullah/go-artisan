@@ -6,12 +6,12 @@ import Icon from '../../components/Icon.astro';
 
 // PRESERVED: getStaticPaths + the roadmaps collection + its courses array.
 export async function getStaticPaths() {
-  const roadmaps = await getCollection('roadmaps');
+  const roadmaps = await getCollection('expeditions');
   return roadmaps.map((r) => ({ params: { slug: r.id }, props: { roadmap: r } }));
 }
 
 const { roadmap } = Astro.props;
-const allCourses = await getCollection('courses');
+const allCourses = await getCollection('luminas');
 // Urutan course mengikuti array `courses` di frontmatter (bukan order field).
 const ordered = roadmap.data.courses
   .map((id) => allCourses.find((c) => c.id === id))
@@ -46,12 +46,12 @@ const timelineItems = ordered.map((course, i) => ({
   index: i + 1,
   title: course!.data.topTitle ?? course!.data.title,
   summary: cardSummary[course!.id] ?? course!.data.summary,
-  href: `/courses/${course!.id}`,
+  href: `/luminas/${course!.id}`,
   thumb: `/${course!.id}.png`,
   meta: cardMeta[course!.id] ?? `${course!.data.toc.length} lessons`,
 }));
 
-const firstCourseHref = ordered[0] ? `/courses/${ordered[0]!.id}` : '/courses';
+const firstCourseHref = ordered[0] ? `/luminas/${ordered[0]!.id}` : '/luminas';
 
 // Hero chips — real values pulled from the collection (UI labels English).
 const chips: { k: string; v: string }[] = [];
@@ -68,7 +68,7 @@ chips.push({ k: 'Lessons', v: String(lessonsTotal) });
       {/* ── Clean-split hero: text left (520) + 16:9 cover right (504×284) ── */}
       <section class="rmd-hero" aria-label={`Roadmap ${title}`}>
         <div class="rmd-hero-text">
-          <p class="rmd-eyebrow">ROADMAP · {title.toUpperCase()}</p>
+          <p class="rmd-eyebrow">EXPEDITION · {title.toUpperCase()}</p>
           <h1 class="rmd-title">{hero}</h1>
           <p class="rmd-lede">{desc}</p>
 

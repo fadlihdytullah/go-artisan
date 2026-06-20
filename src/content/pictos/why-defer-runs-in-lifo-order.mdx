@@ -1,0 +1,34 @@
+---
+title: "Why defer runs in LIFO order"
+topic: "GO"
+dek: "Deferred calls stack; the last one you register runs first when the function returns."
+icon: "layers"
+readTime: "3 min read"
+date: "Jun 2026"
+order: 1
+luminaHref: "/luminas/go-luminas"
+luminaDesc: "Go Luminas covers defer, panic, and recover in depth."
+luminaLabel: "Open Go Luminas"
+---
+
+In Go, `defer` schedules a function call to run when the surrounding function returns. Stack a few of them and the order surprises almost everyone the first time.
+
+## The one rule
+
+Deferred calls run last-in, first-out. The most recently deferred call runs first. Picture a stack of plates: you add to the top, and you take from the top.
+
+```go
+func process() {
+    defer fmt.Println("third")
+    defer fmt.Println("second")
+    defer fmt.Println("first")
+    // prints: first, second, third
+}
+```
+
+<div class="picto-callout">
+  <span class="picto-callout-label">RULE OF THUMB</span>
+  Read your defers from the bottom up. The last one you write is the first to run.
+</div>
+
+That ordering is exactly what you want for cleanup: open a file, defer its close; grab a lock, defer its unlock. Resources are released in the reverse order they were acquired — which is almost always the correct order.

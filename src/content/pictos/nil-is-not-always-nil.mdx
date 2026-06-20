@@ -1,0 +1,33 @@
+---
+title: "nil is not always nil"
+topic: "GO"
+dek: "A typed nil boxed in an interface compares unequal to nil. The classic Go gotcha, defused."
+icon: "bug"
+readTime: "5 min read"
+date: "May 2026"
+order: 6
+luminaHref: "/luminas/go-luminas"
+luminaDesc: "Go Luminas covers interfaces, nil semantics, and type assertions in depth."
+luminaLabel: "Open Go Luminas"
+---
+
+This is the most cited Go gotcha — and once you see the underlying model, it stops being surprising.
+
+## Interface values have two parts
+
+An interface value in Go is a pair: `(type, value)`. A nil interface has *both* fields nil. But a non-nil interface that holds a nil pointer has a type and a nil value — and that is not equal to nil.
+
+```go
+var p *MyError = nil
+var err error = p
+
+fmt.Println(p == nil)   // true  — concrete pointer is nil
+fmt.Println(err == nil) // false — interface has a type, even if value is nil
+```
+
+<div class="picto-callout">
+  <span class="picto-callout-label">THE FIX</span>
+  Return a plain nil, not a typed nil: return nil, not return (*MyError)(nil).
+</div>
+
+The most common place this bites is in error handling: a function returns a `*MyError` that is nil, assigned to an `error` interface, then compared with `== nil`. The comparison fails and the caller thinks there's an error when there isn't one. Return the interface type directly, not the concrete type.

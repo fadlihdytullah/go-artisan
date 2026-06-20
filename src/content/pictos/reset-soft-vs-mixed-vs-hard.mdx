@@ -1,0 +1,31 @@
+---
+title: "reset --soft vs --mixed vs --hard"
+topic: "GIT"
+dek: "Three reset modes, one mental model: which of HEAD, the index, and the working tree each one moves."
+icon: "git"
+readTime: "5 min read"
+date: "Jun 2026"
+order: 2
+luminaHref: "/luminas/git"
+luminaDesc: "The Git lumina covers reset, rebase, and history rewriting end to end."
+luminaLabel: "Open Git"
+---
+
+`git reset` moves HEAD — and optionally the index and working tree — to a target commit. The three modes differ only in *how far* that movement ripples.
+
+## The three pointers
+
+Git tracks your project through three distinct layers: HEAD (the current commit pointer), the index (what's staged for the next commit), and the working tree (your actual files on disk).
+
+```bash
+git reset --soft  HEAD~1   # moves HEAD only
+git reset --mixed HEAD~1   # moves HEAD + unstages changes (default)
+git reset --hard  HEAD~1   # moves HEAD + discards all local changes
+```
+
+<div class="picto-callout">
+  <span class="picto-callout-label">MENTAL MODEL</span>
+  --soft undoes the commit. --mixed undoes the commit and the stage. --hard undoes everything.
+</div>
+
+Use `--soft` when you want to recommit with a different message. Use `--mixed` when you want to re-stage selectively. Reserve `--hard` for when you truly want to throw away work — it cannot be undone without the reflog.

@@ -1,0 +1,44 @@
+---
+title: "Why your image is 1.2 GB"
+topic: "DOCKER"
+dek: "Layer caching, build context, and multi-stage builds — trim a bloated image down fast."
+icon: "package"
+readTime: "6 min read"
+date: "May 2026"
+order: 5
+luminaHref: "/luminas/docker"
+luminaDesc: "The Docker lumina covers images, containers, volumes, and Compose end to end."
+luminaLabel: "Open Docker"
+---
+
+Docker images grow large for three common reasons: a heavy base image, unnecessary files baked into a layer, and build tools that belong in the build stage but end up in production.
+
+## The three culprits
+
+A `FROM ubuntu` base pulls in the entire Ubuntu userland. Most Go or Node apps need a fraction of that. Start from `alpine` or a distroless image and the base drops from 80MB to under 10MB.
+
+Every `COPY . .` in your Dockerfile copies your entire build context — including `node_modules`, `.git`, test fixtures, and local secrets. A well-tuned `.dockerignore` is not optional.
+
+```dockerfile
+# Bad: build tools ship to production
+FROM node:20
+COPY . .
+RUN npm install && npm run build
+
+# Good: two stages, only the artifact moves forward
+FROM node:20-alpine AS build
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+```
+
+<div class="picto-callout">
+  <span class="picto-callout-label">QUICK WINS</span>
+  Multi-stage builds + a tight .dockerignore will cut most images by 60–90%.
+</div>
+
+Layer order matters too: put instructions that change rarely (installing dependencies) before instructions that change often (copying source). Docker's cache reuses unchanged layers, so a cache miss on `COPY . .` doesn't force a reinstall.

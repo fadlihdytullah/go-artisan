@@ -1,0 +1,33 @@
+---
+title: "401 vs 403, and when to use each"
+topic: "HTTP"
+dek: "Authentication is who you are; authorization is what you may do. Return the status that tells the truth."
+icon: "lock"
+readTime: "4 min read"
+date: "Jun 2026"
+order: 3
+luminaHref: "/luminas/http"
+luminaDesc: "The HTTP lumina covers status codes, headers, and request semantics in full."
+luminaLabel: "Open HTTP"
+---
+
+The difference between 401 and 403 is a common source of bugs — not because the spec is unclear, but because it's easy to conflate identity with permission.
+
+## The distinction
+
+A **401 Unauthorized** means the server doesn't know who you are. The correct fix is to authenticate: provide a token, log in, or attach credentials. The `WWW-Authenticate` header tells the client how.
+
+A **403 Forbidden** means the server knows exactly who you are — and you're not allowed. No amount of re-authentication changes this outcome.
+
+```text
+GET /admin/settings
+→ 401  if no Authorization header (who are you?)
+→ 403  if token is valid but role is "viewer" (you can't do this)
+```
+
+<div class="picto-callout">
+  <span class="picto-callout-label">QUICK CHECK</span>
+  Ask: "Would logging in fix this?" Yes → 401. No → 403.
+</div>
+
+There is one common exception: APIs sometimes return 404 instead of 403 to avoid leaking the existence of a resource to unauthorized callers. That's a deliberate security tradeoff, not a bug.

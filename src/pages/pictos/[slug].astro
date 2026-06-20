@@ -1,0 +1,367 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Icon from '../../components/Icon.astro';
+import PictoCard from '../../components/PictoCard.astro';
+
+export async function getStaticPaths() {
+  const pictos = (await getCollection('pictos')).sort(
+    (a, b) => a.data.order - b.data.order
+  );
+  return pictos.map((picto) => ({
+    params: { slug: picto.id },
+    props: { picto, all: pictos },
+  }));
+}
+
+const { picto, all } = Astro.props;
+const { Content } = await render(picto);
+const d = picto.data;
+
+const related = all
+  .filter((p) => p.id !== picto.id)
+  .sort(() => 0)
+  .slice(0, 2);
+
+const ICON_MAP: Record<string, string> = {
+  layers: 'layers', git: 'git', lock: 'lock', database: 'database',
+  package: 'package', bug: 'bug', shield: 'shield', stack: 'stack',
+};
+const glyphIcon = (ICON_MAP[d.icon] ?? 'stack') as Parameters<typeof Icon>[0]['name'];
+---
+<BaseLayout title={`${d.title} — Picto`} nav={{ variant: 'home' }}>
+  <div class="shell-bleed">
+    <div class="shell-col picto-col">
+      <div class="picto-measure">
+
+        <header class="picto-header">
+          <div class="picto-eyebrow">
+            <span class="picto-glyph" aria-hidden="true">
+              <Icon name={glyphIcon} size={19} />
+            </span>
+            <span class="picto-eyebrow-text">{d.topic} · PICTO</span>
+          </div>
+          <h1 class="picto-title">{d.title}</h1>
+          <p class="picto-lede">{d.dek}</p>
+          <div class="picto-meta">
+            <span>{d.readTime}</span>
+            <span class="picto-meta-dot" aria-hidden="true">·</span>
+            <span>{d.date}</span>
+          </div>
+        </header>
+
+        <hr class="picto-rule" />
+
+        <div class="picto-body">
+          <Content />
+        </div>
+
+        <footer class="picto-footer">
+          {d.luminaHref && (
+            <div class="picto-go-deeper">
+              <div class="pgd-text">
+                <span class="pgd-kicker">GO DEEPER</span>
+                <p class="pgd-title">{d.luminaDesc}</p>
+              </div>
+              <a href={d.luminaHref} class="pgd-cta">
+                {d.luminaLabel ?? 'Open lumina'}
+                <Icon name="arrow-right" size={15} />
+              </a>
+            </div>
+          )}
+
+          {related.length > 0 && (
+            <div class="picto-more">
+              <h2 class="picto-more-heading">More pictos</h2>
+              <div class="picto-more-grid">
+                {related.map((p) => (
+                  <PictoCard
+                    slug={p.id}
+                    topic={p.data.topic}
+                    title={p.data.title}
+                    dek={p.data.dek}
+                    icon={p.data.icon}
+                    readTime={p.data.readTime}
+                    date={p.data.date}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </footer>
+
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .picto-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 72px 0 80px;
+  }
+
+  .picto-measure {
+    width: 720px;
+    max-width: calc(100% - 112px);
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+  }
+
+  /* ── Header ──────────────────────────────────────────────── */
+  .picto-header {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .picto-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .picto-glyph {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--blue-soft);
+    color: var(--blue-bright);
+    flex: 0 0 auto;
+  }
+
+  .picto-eyebrow-text {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--blue);
+  }
+
+  .picto-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(32px, 5vw, 46px);
+    font-weight: 600;
+    letter-spacing: -1px;
+    line-height: 1.08;
+    color: var(--ink);
+  }
+
+  .picto-lede {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.6;
+    color: var(--ink-muted);
+  }
+
+  .picto-meta {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--faint);
+  }
+  .picto-meta-dot {
+    color: var(--line-strong);
+  }
+
+  /* ── Rule ────────────────────────────────────────────────── */
+  .picto-rule {
+    margin: 0;
+    border: none;
+    border-top: 1px solid var(--line);
+    width: 100%;
+  }
+
+  /* ── Body prose ──────────────────────────────────────────── */
+  .picto-body {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .picto-body :global(p) {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 16.5px;
+    line-height: 1.7;
+    color: var(--ink-soft);
+  }
+
+  .picto-body :global(h2) {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.4px;
+    line-height: 1.2;
+    color: var(--ink);
+  }
+
+  .picto-body :global(pre) {
+    margin: 0;
+    border-radius: 12px;
+    overflow-x: auto;
+  }
+
+  .picto-body :global(.picto-callout) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 18px;
+    border-radius: 10px;
+    background: var(--blue-soft);
+    border-left: 3px solid var(--blue-bright);
+  }
+
+  .picto-body :global(.picto-callout-label) {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--blue);
+  }
+
+  .picto-body :global(.picto-callout p),
+  .picto-body :global(.picto-callout > *:not(.picto-callout-label)) {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+
+  /* ── Footer ──────────────────────────────────────────────── */
+  .picto-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+  }
+
+  .picto-go-deeper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 20px 22px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+  }
+
+  .pgd-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .pgd-kicker {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--blue);
+  }
+
+  .pgd-title {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+
+  .pgd-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 18px;
+    border-radius: 9px;
+    background: var(--blue-bright);
+    color: #fcfbf7;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    flex: 0 0 auto;
+    transition: opacity 0.15s ease;
+  }
+  .pgd-cta:hover {
+    opacity: 0.88;
+  }
+
+  .picto-more {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .picto-more-heading {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--ink);
+  }
+
+  .picto-more-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+
+  /* ── Responsive ──────────────────────────────────────────── */
+  @media (max-width: 840px) {
+    .picto-col {
+      padding: 52px 0 64px;
+    }
+    .picto-measure {
+      max-width: calc(100% - 56px);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .picto-col {
+      padding: 36px 0 48px;
+    }
+    .picto-measure {
+      max-width: calc(100% - 40px);
+      gap: 24px;
+    }
+    .picto-lede {
+      font-size: 16px;
+    }
+    .picto-go-deeper {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .pgd-cta {
+      align-self: stretch;
+      justify-content: center;
+    }
+    .picto-more-grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+  }
+</style>

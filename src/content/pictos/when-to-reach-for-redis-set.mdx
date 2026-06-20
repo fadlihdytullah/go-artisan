@@ -1,0 +1,32 @@
+---
+title: "When to reach for a Redis SET"
+topic: "REDIS"
+dek: "Uniqueness, membership checks, and tag fan-out — where sets beat lists and hashes."
+icon: "database"
+readTime: "4 min read"
+date: "May 2026"
+order: 4
+luminaHref: "/luminas/redis"
+luminaDesc: "The Redis lumina covers all five core data structures with practical examples."
+luminaLabel: "Open Redis"
+---
+
+Redis has five core data structures. Lists, hashes, and sorted sets get most of the attention, but the plain `SET` is the right tool in more situations than most developers reach for it.
+
+## What a set gives you
+
+A Redis SET is an unordered collection of unique strings. Adding a duplicate is a no-op. Membership checks are O(1). Set operations — union, intersection, difference — are O(N).
+
+```redis
+SADD online:users "alice" "bob" "carol"
+SISMEMBER online:users "alice"   # → 1
+SADD online:users "alice"        # duplicate → no change, size stays 3
+SCARD online:users               # → 3
+```
+
+<div class="picto-callout">
+  <span class="picto-callout-label">REACH FOR A SET WHEN</span>
+  You need to track membership, deduplicate a stream, or fan out to tagged subscribers.
+</div>
+
+The fan-out pattern is especially useful: store a set of subscriber IDs per tag, then use `SUNIONSTORE` across tags to build a recipient list without hitting your database.

@@ -1,0 +1,172 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SectionHeader from '../../components/SectionHeader.astro';
+import PictoCard from '../../components/PictoCard.astro';
+
+const allPicktos = (await getCollection('pictos')).sort(
+  (a, b) => a.data.order - b.data.order
+);
+
+const topics = [...new Set(allPicktos.map((p) => p.data.topic))];
+
+const TOPIC_LABEL: Record<string, string> = {
+  GO: 'Go', GIT: 'Git', HTTP: 'HTTP', REDIS: 'Redis', DOCKER: 'Docker',
+};
+---
+<BaseLayout title="Pictos - Web Artisan" nav={{ variant: 'home' }}>
+  <div class="shell-bleed">
+    <div class="shell-col">
+      <SectionHeader
+        eyebrow="PICTOS"
+        title="Pictos"
+        lede="One-shot reads — a single idea explained well and done in a few minutes. Skim the catalog, or filter by topic when you want just one thing."
+      />
+
+      <section class="pictos-content" aria-label="Pictos catalog">
+        <div class="pictos-filter" role="toolbar" aria-label="Filter by topic">
+          <div class="pictos-chips">
+            <button class="chip is-active" data-filter="all" type="button">All</button>
+            {topics.map((t) => (
+              <button class="chip" data-filter={t.toLowerCase()} type="button">{TOPIC_LABEL[t] ?? t}</button>
+            ))}
+          </div>
+          <span class="pictos-count" aria-live="polite">
+            <span id="pictos-count-num">{allPicktos.length}</span> pictos
+          </span>
+        </div>
+
+        <div class="pictos-grid" id="pictos-grid">
+          {allPicktos.map((p) => (
+            <div class="picto-cell" data-topic={p.data.topic.toLowerCase()}>
+              <PictoCard
+                slug={p.id}
+                topic={p.data.topic}
+                title={p.data.title}
+                dek={p.data.dek}
+                icon={p.data.icon}
+                readTime={p.data.readTime}
+                date={p.data.date}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  const chips = document.querySelectorAll<HTMLButtonElement>('.chip[data-filter]');
+  const cells = document.querySelectorAll<HTMLElement>('.picto-cell[data-topic]');
+  const countEl = document.getElementById('pictos-count-num');
+
+  chips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      chips.forEach((c) => c.classList.remove('is-active'));
+      chip.classList.add('is-active');
+
+      const filter = chip.dataset.filter ?? 'all';
+      let visible = 0;
+      cells.forEach((cell) => {
+        const match = filter === 'all' || cell.dataset.topic === filter;
+        cell.hidden = !match;
+        if (match) visible++;
+      });
+      if (countEl) countEl.textContent = String(visible);
+    });
+  });
+</script>
+
+<style>
+  .pictos-content {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    padding: 0 56px 72px;
+    border-top: 1px solid var(--line);
+  }
+
+  .pictos-filter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 32px;
+  }
+
+  .pictos-chips {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: transparent;
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+  .chip:hover {
+    border-color: var(--line-strong);
+    color: var(--ink);
+  }
+  .chip.is-active {
+    background: var(--blue-bright);
+    border-color: transparent;
+    color: #fcfbf7;
+  }
+
+  .pictos-count {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--faint);
+  }
+
+  .pictos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+  }
+
+  .picto-cell[hidden] {
+    display: none;
+  }
+
+  @media (max-width: 900px) {
+    .pictos-content {
+      padding: 0 28px 56px;
+    }
+    .pictos-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .pictos-content {
+      padding: 0 20px 48px;
+      gap: 24px;
+    }
+    .pictos-filter {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 14px;
+      padding-top: 28px;
+    }
+    .pictos-grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+  }
+</style>

@@ -1,7 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import ArticleTOC from '../../components/ArticleTOC.astro';
+import CourseDetailFrame from '../../components/CourseDetailFrame.astro';
 import MermaidZoom from '../../components/MermaidZoom.astro';
 
 export async function getStaticPaths() {
@@ -12,13 +12,15 @@ export async function getStaticPaths() {
   const mods = (await getCollection('redis')).sort(
     (a, b) => a.data.order - b.data.order
   );
-  return mods.map((mod) => ({
+  const toLink = (m) =>
+    m ? { id: m.id, topTitle: m.data.topTitle, badge: m.data.badge } : null;
+  return mods.map((mod, i) => ({
     params: { slug: mod.id },
-    props: { mod },
+    props: { mod, prev: toLink(mods[i - 1]), next: toLink(mods[i + 1]) },
   }));
 }
 
-const { mod } = Astro.props;
+const { mod, prev, next } = Astro.props;
 const { Content } = await render(mod);
 const d = mod.data;
 
@@ -35,83 +37,35 @@ const metaChips = d.readingTime
   : [];
 ---
 <BaseLayout title={d.title} nav={{ variant: 'home' }}>
-  {/* Bordered 1180 column (continuous full-height side hairlines) — lanjut
-      menerus ke footer v2 yang dirender BaseLayout di kolom .shell-col yang sama
-      (SPEC §3). Body = grid 2 kolom: TOC 330 + artikel. */}
-  <div class="shell-bleed">
-    <div class="shell-col">
-      <div class="article-layout">
-        <ArticleTOC toc={d.toc} heading="On this page" />
+  <CourseDetailFrame
+    toc={d.toc}
+    prev={prev}
+    next={next}
+    basePath="/redis"
+    moduleId={mod.id}
+  >
+    <Fragment slot="header">
+      <p class="ca-eyebrow">{eyebrow}</p>
+      <h1 class="ca-title" set:html={d.topTitle} />
+      <p class="ca-lede">{d.summary}</p>
+      {metaChips.length > 0 && (
+        <div class="ca-meta">
+          {metaChips.map((chip) => (
+            <span class="ca-chip">
+              <span class="ca-chip-k">{chip.key}</span>
+              <span class="ca-chip-v">{chip.value}</span>
+            </span>
+          ))}
+        </div>
+      )}
+    </Fragment>
 
-        {/* Header DI LUAR <article> agar bisa di-reorder lewat grid-areas:
-            desktop = TOC di kolom kiri sejajar header+body; mobile = header
-            DULU, lalu kartu TOC, baru body (frame jW89L → U42V5Y). */}
-        <header class="ca-header">
-          <p class="ca-eyebrow">{eyebrow}</p>
-          <h1 class="ca-title" set:html={d.topTitle} />
-          <p class="ca-lede">{d.summary}</p>
-          {metaChips.length > 0 && (
-            <div class="ca-meta">
-              {metaChips.map((chip) => (
-                <span class="ca-chip">
-                  <span class="ca-chip-k">{chip.key}</span>
-                  <span class="ca-chip-v">{chip.value}</span>
-                </span>
-              ))}
-            </div>
-          )}
-        </header>
+    <hr class="ca-rule" />
 
-        <article class="course-article" data-module-root data-module-id={mod.id}>
-          <hr class="ca-rule" />
-
-          <div class="ca-body">
-            <Content />
-          </div>
-        </article>
-      </div>
+    <div class="ca-body">
+      <Content />
     </div>
-  </div>
-
-  <a href="#" id="toTop" aria-label="Kembali ke atas" title="Ke atas">
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14" /><path d="M18 11l-6 -6" /><path d="M6 11l6 -6" /></svg>
-  </a>
-
-  <script is:inline>
-    // Bilah "ke atas" + scroll-spy TOC (mandiri di halaman artikel ini —
-    // ModuleLayout TIDAK dipakai di sini, jadi skrip-skripnya tidak ikut).
-    (function () {
-      // Tombol "ke atas"
-      var bt = document.getElementById('toTop');
-      function onScroll() {
-        var top = document.documentElement.scrollTop;
-        if (bt) bt.classList.toggle('show', top > 600);
-      }
-      window.addEventListener('scroll', onScroll, { passive: true });
-      onScroll();
-
-      // Scroll-spy: nyalakan item TOC aktif (ArticleTOC memakai data-toc-link).
-      var links = document.querySelectorAll('nav.article-toc a[data-toc-link]');
-      var sections = document.querySelectorAll('article.course-article section[id]');
-      if (links.length && sections.length && 'IntersectionObserver' in window) {
-        var obs = new IntersectionObserver(
-          function (entries) {
-            entries.forEach(function (e) {
-              if (e.isIntersecting) {
-                links.forEach(function (l) { l.classList.remove('active'); });
-                var active = document.querySelector(
-                  'nav.article-toc a[href="#' + e.target.id + '"]'
-                );
-                if (active) active.classList.add('active');
-              }
-            });
-          },
-          { rootMargin: '-20% 0px -70% 0px' }
-        );
-        sections.forEach(function (s) { obs.observe(s); });
-      }
-    })();
-  </script>
+  </CourseDetailFrame>
 
   {/* Mermaid: tombol "Perbesar" + overlay fullscreen (pan & zoom). Skrip-nya
       reusable — sumber yang sama dipakai ModuleLayout, jadi perilaku zoom
@@ -120,56 +74,6 @@ const metaChips = d.readingTime
 </BaseLayout>
 
 <style>
-  /* ── Article layout (frame d4lirQ → Xb3Oe) ──────────────────────────────
-     Kolom 1180 berbingkai (garis sisi dari .shell-col) berisi grid 2 kolom:
-     TOC 330 (ArticleTOC, garis pemisah dari border-right-nya sendiri) +
-     artikel 850. Flat, rounded, token-driven (reaktif tema light + reader). */
-  .article-layout {
-    position: relative;
-    display: grid;
-    grid-template-columns: 330px minmax(0, 1fr);
-    grid-template-areas:
-      "toc header"
-      "toc body";
-    align-items: start;
-  }
-
-  /* Garis pemisah TOC ↔ artikel — full-height kolom. Dulu dari border-right
-     .article-toc, tetapi elemen itu sticky/setinggi-isi sehingga garisnya
-     terpotong. Pseudo di grid (top→bottom) menjangkau seluruh tinggi artikel. */
-  .article-layout::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 330px;
-    width: 1px;
-    background: var(--line);
-  }
-
-  /* TOC menempati rail kiri lintas kedua baris. Di-assign dari sini karena
-     .article-toc hidup di scope komponen ArticleTOC (pakai :global). */
-  .article-layout :global(.article-toc) {
-    grid-area: toc;
-  }
-
-  /* Header (frame ErcTr) — kini grid item tersendiri (kolom kanan, baris atas).
-     Padding atas+sisi yang dulu disuplai .course-article kini di sini. */
-  .ca-header {
-    grid-area: header;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    padding: 56px 56px 0;
-  }
-
-  /* Artikel/body (frame vLZqx, 850w) — kolom kanan, baris bawah. */
-  .course-article {
-    grid-area: body;
-    min-width: 0;
-    padding: 0 56px 64px;
-  }
-
   /* Eyebrow (node bpX0n) — mono 12 / 600, accent, +1.5 tracking, uppercase. */
   .ca-eyebrow {
     margin: 0;
@@ -245,56 +149,7 @@ const metaChips = d.readingTime
     margin-top: 40px;
   }
 
-  /* ── Tombol "ke atas" (selaras lesson, scoped di sini) ──────────────── */
-  #toTop {
-    position: fixed;
-    right: 24px;
-    bottom: 24px;
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 999px;
-    border: 1px solid var(--line-strong);
-    background: var(--paper);
-    color: var(--ink-soft);
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(8px);
-    transition: opacity 0.18s ease, transform 0.18s ease, background-color 0.15s ease;
-    z-index: 40;
-  }
-  #toTop.show {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateY(0);
-  }
-  #toTop:hover {
-    background: var(--paper-soft);
-    color: var(--ink);
-  }
-
-  /* ── Responsive: kolom tunggal dengan urutan Header → TOC (kartu) → Body
-     (frame jW89L → U42V5Y, gap 28). Kartu TOC duduk DI BAWAH overview. */
   @media (max-width: 920px) {
-    .article-layout {
-      grid-template-columns: minmax(0, 1fr);
-      grid-template-areas:
-        "header"
-        "toc"
-        "body";
-      row-gap: 28px;
-    }
-    /* Kolom tunggal: tak ada rail TOC, jadi garis pemisah dimatikan. */
-    .article-layout::before {
-      display: none;
-    }
-    .ca-header {
-      padding: 40px 28px 0;
-    }
-    .course-article {
-      padding: 0 28px 56px;
-    }
     /* Jarak header→TOC→rule→body kini diatur row-gap grid; rule cukup
        menempel di atas body (gap di atasnya dari grid). */
     .ca-rule {
@@ -305,12 +160,6 @@ const metaChips = d.readingTime
     }
   }
   @media (max-width: 680px) {
-    .ca-header {
-      padding: 36px 20px 0;
-    }
-    .course-article {
-      padding: 0 20px 44px;
-    }
     .ca-lede {
       font-size: 16px;
     }

@@ -1,7 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import ArticleTOC from '../../components/ArticleTOC.astro';
+import CourseDetailFrame from '../../components/CourseDetailFrame.astro';
 import MermaidZoom from '../../components/MermaidZoom.astro';
 
 export async function getStaticPaths() {
@@ -12,155 +12,32 @@ export async function getStaticPaths() {
   const mods = (await getCollection('docker')).sort(
     (a, b) => a.data.order - b.data.order
   );
-  return mods.map((mod) => ({
+  const toLink = (m) =>
+    m ? { id: m.id, topTitle: m.data.topTitle, badge: m.data.badge } : null;
+  return mods.map((mod, i) => ({
     params: { slug: mod.id },
-    props: { mod },
+    props: { mod, prev: toLink(mods[i - 1]), next: toLink(mods[i + 1]) },
   }));
 }
 
-const { mod } = Astro.props;
+const { mod, prev, next } = Astro.props;
 const { Content } = await render(mod);
 const d = mod.data;
 
 ---
 <BaseLayout title={d.title} nav={{ variant: 'home' }}>
-  {/* Bordered 1180 column (continuous full-height side hairlines) — lanjut
-      menerus ke footer v2 yang dirender BaseLayout di kolom .shell-col yang sama
-      (SPEC §3). Body = grid 2 kolom: TOC 330 + artikel. */}
-  <div class="shell-bleed">
-    <div class="shell-col">
-      <div class="article-layout">
-        <ArticleTOC toc={d.toc} heading="On this page" />
-
-        <article class="course-article" data-module-root data-module-id={mod.id}>
-          <Content />
-        </article>
-      </div>
-    </div>
-  </div>
-
-  <a href="#" id="toTop" aria-label="Kembali ke atas" title="Ke atas">
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l0 14" /><path d="M18 11l-6 -6" /><path d="M6 11l6 -6" /></svg>
-  </a>
-
-  <script is:inline>
-    // Bilah "ke atas" + scroll-spy TOC (mandiri di halaman artikel ini —
-    // ModuleLayout TIDAK dipakai di sini, jadi skrip-skripnya tidak ikut).
-    (function () {
-      // Tombol "ke atas"
-      var bt = document.getElementById('toTop');
-      function onScroll() {
-        var top = document.documentElement.scrollTop;
-        if (bt) bt.classList.toggle('show', top > 600);
-      }
-      window.addEventListener('scroll', onScroll, { passive: true });
-      onScroll();
-
-      // Scroll-spy: nyalakan item TOC aktif (ArticleTOC memakai data-toc-link).
-      var links = document.querySelectorAll('nav.article-toc a[data-toc-link]');
-      var sections = document.querySelectorAll('article.course-article section[id]');
-      if (links.length && sections.length && 'IntersectionObserver' in window) {
-        var obs = new IntersectionObserver(
-          function (entries) {
-            entries.forEach(function (e) {
-              if (e.isIntersecting) {
-                links.forEach(function (l) { l.classList.remove('active'); });
-                var active = document.querySelector(
-                  'nav.article-toc a[href="#' + e.target.id + '"]'
-                );
-                if (active) active.classList.add('active');
-              }
-            });
-          },
-          { rootMargin: '-20% 0px -70% 0px' }
-        );
-        sections.forEach(function (s) { obs.observe(s); });
-      }
-    })();
-  </script>
+  <CourseDetailFrame
+    toc={d.toc}
+    prev={prev}
+    next={next}
+    basePath="/docker"
+    moduleId={mod.id}
+  >
+    <Content />
+  </CourseDetailFrame>
 
   {/* Mermaid: tombol "Perbesar" + overlay fullscreen (pan & zoom). Skrip-nya
       reusable — sumber yang sama dipakai ModuleLayout, jadi perilaku zoom
       diagram konsisten di lesson maupun course. */}
   <MermaidZoom />
 </BaseLayout>
-
-<style>
-  .article-layout {
-    position: relative;
-    display: grid;
-    grid-template-columns: 330px minmax(0, 1fr);
-    grid-template-areas: "toc body";
-    align-items: start;
-  }
-
-  .article-layout::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 330px;
-    width: 1px;
-    background: var(--line);
-  }
-
-  .article-layout :global(.article-toc) {
-    grid-area: toc;
-  }
-
-  .course-article {
-    grid-area: body;
-    min-width: 0;
-    padding: 0 56px 64px;
-  }
-
-  /* ── Tombol "ke atas" ──────────────────────────────────────── */
-  #toTop {
-    position: fixed;
-    right: 24px;
-    bottom: 24px;
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 999px;
-    border: 1px solid var(--line-strong);
-    background: var(--paper);
-    color: var(--ink-soft);
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(8px);
-    transition: opacity 0.18s ease, transform 0.18s ease, background-color 0.15s ease;
-    z-index: 40;
-  }
-  #toTop.show {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateY(0);
-  }
-  #toTop:hover {
-    background: var(--paper-soft);
-    color: var(--ink);
-  }
-
-  @media (max-width: 920px) {
-    .article-layout {
-      grid-template-columns: minmax(0, 1fr);
-      grid-template-areas:
-        "body"
-        "toc";
-      row-gap: 28px;
-    }
-    .article-layout::before {
-      display: none;
-    }
-    .course-article {
-      padding: 0 28px 56px;
-    }
-  }
-  @media (max-width: 680px) {
-    .course-article {
-      padding: 0 20px 44px;
-    }
-  }
-</style>

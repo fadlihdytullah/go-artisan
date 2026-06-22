@@ -1659,9 +1659,12 @@ footer.shell-footer {
   outline-color: var(--blue);
 }
 
-/* ── Font override: Lora ─────────────────────────────────────── */
-[data-font="lora"] {
+/* ── Font override: Lora (hanya halaman reader) ─────────────── */
+[data-reader][data-font="lora"] {
   --font-body: "Lora", Georgia, "Times New Roman", serif;
+}
+[data-reader][data-font="lora"] body {
+  font-size: calc(16px * var(--scale));
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,0 +1,212 @@
+---
+title: "Documentation that outlives the team"
+topic: "DOCS"
+dek: "Most docs rot because every kind gets dumped in one place with one lifecycle. Separate them by purpose and decay rate — six kinds — and each one survives the people who wrote it."
+icon: "layers"
+readTime: "14 min read"
+date: "Jun 2026"
+order: 8
+---
+
+Every team has the wiki. It looked responsible the day someone created it: a single space, a tidy sidebar, a page for everything. Two years later it is a graveyard. The setup guide references a service that was deleted. The API page lists three endpoints that no longer exist and omits the twelve that do. A new engineer reads all of it, trusts none of it, and asks in Slack anyway — which is the real, expensive signal that your documentation has failed.
+
+The usual explanation is "nobody updates the docs." That is a symptom, not a cause. The cause is that we treat documentation as one thing, in one place, with one implied lifecycle. We file a setup guide, an architecture decision, an incident runbook, and an API contract in the same wiki, side by side, as if they age the same way. They do not.
+
+A setup guide is true only until the next refactor. An architecture decision is true forever — it records a choice made on a specific day with specific tradeoffs, and that choice does not stop having happened. Put both in the same bucket and you get the worst of each: the living doc rots because nobody re-checks it, and the historical doc gets "helpfully updated" until it no longer records what was actually decided.
+
+Long-lived documentation is not about writing more. It is about sorting what you write by purpose and by how fast it decays, then giving each kind its own home, its own update rule, and its own owner.
+
+<div class="picto-callout">
+  <span class="picto-callout-label">THE REAL PROBLEM</span>
+  The failure is not too little writing. It is mixing documents with different lifecycles into one bucket, so the whole bucket rots at the speed of its fastest-decaying page.
+</div>
+
+## Sort docs by lifecycle, not by topic
+
+Before deciding where a document goes, ask one question: does this describe what is true now, or what was true once? That single axis — living versus historical — does more organizing work than any folder structure.
+
+A living document tracks the current state of the system and must change every time the system changes. If it drifts, it is actively wrong, and wrong is worse than missing. A historical document is a snapshot: it captures a decision, an incident, or a proposal at a moment in time. It must never be edited to match the present, because its whole value is preserving the past.
+
+This is the same instinct behind Diátaxis, the documentation framework that splits writing into tutorials, how-to guides, reference, and explanation along two axes — study versus work, and action versus knowledge. The lesson is identical at the engineering level: a document has a job, and documents with different jobs do not belong in the same pile just because they describe the same project.
+
+<div class="picto-callout">
+  <span class="picto-callout-label">THE ORGANIZING QUESTION</span>
+  Ask "is this true now, or was it true once?" Living docs answer "now" and must be kept in sync. Historical docs answer "once" and must be kept frozen.
+</div>
+
+## Six kinds, six lifecycles
+
+In practice, engineering documentation collapses into six kinds. Each answers a different question, and each decays at a different rate.
+
+```text
+Living docs        — "what is true right now"
+Historical docs    — "why it was decided this way"
+Runbooks           — "how to handle it when it breaks"
+Architecture maps  — "how the pieces connect"
+Contracts          — "what each system promises the others"
+Data lineage       — "where this data came from"
+```
+
+The point of naming six kinds is not taxonomy for its own sake. It is that each kind has a different update rule. Living docs are rewritten constantly. Historical docs are never rewritten. Runbooks are tested on a schedule. Contracts are versioned. Lineage is captured automatically. If you cannot say how a document is supposed to be kept current, you have not finished deciding what kind it is. The rest of this article takes them one at a time.
+
+## Living docs: what is true right now
+
+Living documentation describes the present state — the README, the API reference, inline code comments, the service catalog entry. Its defining property is that the moment the code changes and the doc does not, the doc is lying. Because it decays the instant you look away, the only living docs that survive are the ones you do not maintain by hand.
+
+So generate them. An API reference should be produced from the same source the code serves: OpenAPI emitted by the framework, pkgsite for Go packages, TypeDoc or JSDoc from typed signatures, Swagger UI rendered from the spec. A README's command list can be generated from the package manifest. The rule of thumb is blunt: if a human has to remember to update a living doc, it is already obsolete.
+
+Then guard it in CI. Treat a stale doc like a failing test. A pipeline step can diff the committed OpenAPI file against the one the running app emits and fail the build when they disagree. A link checker can fail when an internal reference returns a 404. A docs-coverage gate can require every public endpoint to carry a description before it merges.
+
+<div class="picto-callout">
+  <span class="picto-callout-label">THE LIVING-DOC RULE</span>
+  If staying accurate depends on human memory, it will be wrong within a month. Generate it from the source of truth, and let CI fail when it drifts.
+</div>
+
+## Historical docs: why it is the way it is
+
+The most valuable documentation a team owns is usually the cheapest to write and the easiest to skip: the record of why. Six months from now someone will look at a strange decision — a queue where a direct call would do, a denormalized column, a vendor nobody likes — and ask why it is there. Without a record they will either cargo-cult it forward or rip it out and rediscover the original reason the hard way.
+
+The canonical form is the Architecture Decision Record. An ADR is short, immutable, and follows a fixed shape popularized by Michael Nygard.
+
+```text
+Title:        a short numbered noun phrase (0007-use-outbox-pattern)
+Status:       proposed | accepted | superseded by 0012
+Context:      the forces in play — constraints, requirements, pressures
+Decision:     what we chose, written in active voice
+Consequences: what gets easier, and what gets harder, as a result
+```
+
+The discipline that makes ADRs work is that you never edit a decision to reflect a newer one. When the choice changes you write a new ADR and mark the old one "superseded by," leaving a chain a future reader can walk. The same immutability applies to RFCs (the proposal that came before the decision) and post-mortems (the record of what an incident taught you). Keep them in the repo as Markdown so they version alongside the code that embodies them.
+
+<div class="picto-callout">
+  <span class="picto-callout-label">NEVER EDIT HISTORY</span>
+  A historical doc that gets "updated" stops being history. Supersede it with a new record and leave the old one standing.
+</div>
+
+## Runbooks: how to handle it at 3 a.m.
+
+A runbook is the documentation you read under stress, when something is on fire and the person who built the system is asleep. Its audience is a tired on-call engineer, so it cannot be an essay. It has to be a procedure: do this, observe that, if you see one thing go here, if you see another go there.
+
+The hard truth about runbooks is that an untested one is worse than none, because it promises a safety net that is not actually there. The deploy steps reference a script that moved. The rollback assumes a flag that was removed. The only way to trust a runbook is to run it on a schedule — in a game day, a failover drill, or simply by following it literally the next time the situation it covers actually happens, and fixing every line that lied.
+
+Write the steps as a procedure with explicit decision points and exact commands, not prose to be interpreted at 3 a.m.
+
+```text
+SYMPTOM   checkout p99 latency over 2s, error rate climbing
+1. Open the orders dashboard. Is the DB connection pool saturated?
+2. Pool exhausted    → scale the orders deployment to 6 replicas
+                       kubectl scale deploy/orders --replicas=6
+3. Pool healthy      → check the Redis cache hit rate
+4. Redis down        → flip the cache-bypass flag, page the data team
+5. Recovered         → note the trigger in the incident channel, file a ticket
+```
+
+<div class="picto-callout">
+  <span class="picto-callout-label">RUNBOOK RULE</span>
+  An untested runbook is fiction. Drill it, or follow it for real and fix every wrong line while the memory is fresh.
+</div>
+
+## Architecture maps: how the pieces connect
+
+New engineers do not think in files. They think in boxes and arrows. An architecture map is the high-level picture — which services exist, what talks to what, where data crosses a trust boundary — that lets someone hold the system in their head before reading a single line of code.
+
+The trap is detail. A diagram that shows every class and every queue is as useless as no diagram, because it goes stale in a week and nobody can read it anyway. The C4 model handles this with zoom levels: a System Context diagram for the whole landscape, a Container diagram for the deployable units, and a Component diagram only where a service is complex enough to earn one. You rarely need the fourth level.
+
+```text
+C4 zoom levels
+  Context    — your system as one box among users and external systems
+  Container  — apps, services, datastores, and the calls between them
+  Component  — the major parts inside one container (only when needed)
+  Code       — class-level detail, almost never worth drawing by hand
+```
+
+Keep the map at a level that changes only when the architecture genuinely changes — when you add a service, not when you add an endpoint. Diagrams-as-code tools (Mermaid living in the repo, Structurizr or C4-PlantUML, Excalidraw for a whiteboard feel) keep the picture in version control, right next to the ADR that explains why it looks the way it does.
+
+<div class="picto-callout">
+  <span class="picto-callout-label">MAP, DON'T PHOTOCOPY</span>
+  Draw the level that changes when the architecture changes. A diagram that updates on every endpoint is a diagram nobody will update.
+</div>
+
+## Contracts: what each system promises
+
+The moment two services talk, the shape of the message between them becomes a contract — and a contract that lives only in someone's memory is a production incident waiting for a deploy. Contract documentation is the explicit, versioned definition of every interface: REST payloads in OpenAPI, event schemas in JSON Schema or Avro, RPC messages in Protobuf.
+
+What makes a contract different from ordinary living docs is that other teams build against it, so you cannot just change it. The governing rule is backward compatibility: you may add optional fields, but you may not remove a field, rename one, or tighten a type without a versioning and deprecation plan. Break a contract silently and you break every consumer at once.
+
+```text
+SAFE (backward compatible)        BREAKING (needs a version bump)
+add an optional field             remove or rename a field
+add a new endpoint                change a field's type
+relax a validation rule           tighten a validation rule
+add a new enum value, carefully   make an optional field required
+```
+
+Make the contract executable so it cannot drift from reality. Consumer-driven contract testing with a tool like Pact has each consumer publish what it actually relies on, then fails the provider's build when a change would break them. That turns "we documented the API" into "the build proves the API still keeps its promises."
+
+<div class="picto-callout">
+  <span class="picto-callout-label">THE CONTRACT RULE</span>
+  Add, never remove, without a version. Then make a test enforce it — a documented contract nobody verifies is just a hopeful comment.
+</div>
+
+## Data lineage: where this number came from
+
+In any system with a data pipeline, the question that eventually stops everyone is "where did this number come from?" A figure on a dashboard looks wrong, or a regulator asks how a value was derived, and you have to trace it backward through every join, filter, and transform to the raw source. That trace is data lineage, and it is the one kind of documentation you should almost never write by hand.
+
+Hand-drawn lineage is obsolete the moment a pipeline changes, which is constantly. The modern approach is to emit lineage as the pipeline runs. OpenLineage is the open standard for this — an LF AI & Data project that defines a common event format for runs, jobs, and datasets, with native producers for Airflow, dbt, and Spark. The events flow into a backend: Marquez, its reference implementation, or a catalog like DataHub or OpenMetadata, with Apache Atlas still common inside Hadoop estates. Lineage becomes a queryable graph instead of a stale picture.
+
+```text
+raw.orders  ──▶  dbt: stg_orders  ──▶  dbt: fct_revenue  ──▶  dashboard: MRR
+                                              ▲
+raw.refunds ──────────────────────────────────┘
+   (captured automatically as OpenLineage events, not drawn by hand)
+```
+
+<div class="picto-callout">
+  <span class="picto-callout-label">LINEAGE RULE</span>
+  If you draw lineage by hand, it is already wrong. Emit it from the pipeline as a standard event and let the graph build itself.
+</div>
+
+## Keep them alive: ownership, cadence, decay
+
+Sorting docs into six kinds buys nothing if no one owns the result. The practices that keep documentation alive are the same ones that keep code alive, because the most durable idea in this whole field is docs-as-code: write docs in plain text (Markdown, MDX, AsciiDoc), store them in the repo beside the code, review them in the same pull request, and publish them from CI.
+
+Docs-as-code gives you four things a wiki never will. Version control, so a doc changes in the same commit as the code it describes. Review, so a stale doc is caught the way a bug is. A single source of truth, so the same fact is not copied into four pages that will disagree within a month. And automation, so a static-site generator — Docusaurus, MkDocs Material, VitePress, or Starlight for an Astro shop — turns the repo into a searchable site, with Algolia DocSearch or Typesense layered on top.
+
+The governance is light but non-negotiable. Every document needs a named owner, not a team, because a team owns nothing. Living docs get a review cadence, and quarterly is enough for most. And there is a deprecation policy: when a doc describes something that no longer exists, you archive it with a tombstone rather than leave it to mislead. A "last reviewed" date on every living page turns staleness from invisible into a number you can put on a dashboard.
+
+<div class="picto-callout">
+  <span class="picto-callout-label">THE GOVERNANCE MINIMUM</span>
+  One named owner per doc. A review cadence for living docs. An archive policy for dead ones. Everything else is optional; these three are not.
+</div>
+
+## The anti-patterns that quietly kill docs
+
+Most documentation does not fail loudly. It degrades through a handful of recognizable patterns, and naming them is half the cure.
+
+The wiki graveyard is the default end state: pages accumulate, nothing is deleted, and the ratio of true to false content slides until readers learn to trust none of it. Copy-paste docs are the same fact pasted into four places, which guarantees that at least three are wrong after the next change — the fix is always a single source of truth and a link to it. Over-documentation buries the one paragraph that matters under forty that do not, so the page is technically complete and practically unread. Under-documentation is its mirror: a README and nothing else, with no record of why anything is the way it is. And the orphan doc has no owner and no audience, which means no one will ever notice when it goes wrong.
+
+```text
+wiki graveyard       → archive aggressively; deletion is maintenance
+copy-paste docs      → one source of truth, link to it everywhere else
+over-documentation   → cut to what a reader needs, link the rest
+under-documentation  → at minimum, capture the "why" in ADRs
+orphan docs          → no owner means adopt it or delete it
+```
+
+<div class="picto-callout">
+  <span class="picto-callout-label">THE TELL</span>
+  If a new engineer reads your docs and still asks in Slack, the docs failed — no matter how many pages exist.
+</div>
+
+## Treat documentation as a product
+
+The shift that makes all of this stick is to stop thinking of documentation as a chore attached to code and start treating it as a product with users. The developer reading your README is the user. The on-call engineer opening your runbook at 3 a.m. is the user. They have a job to do, a limited budget of attention, and a low tolerance for being lied to.
+
+A product mindset changes the questions you ask. Not "did we write it down" but "can the reader find it, trust it, and act on it." You invest in docs the way you invest in code — with ownership, review, tests, and deletion — because the return is the same: less cognitive load, faster onboarding, fewer interruptions, and a system that does not live or die with the people who happened to build it.
+
+Documentation that outlives the team is not the documentation that says the most. It is the documentation whose authors sorted what they wrote by purpose, generated what could be generated, froze what was history, tested what was operational, and gave every page an owner.
+
+<div class="picto-callout">
+  <span class="picto-callout-label">THE MINDSET</span>
+  Documentation is a product and the developer is the user. Invest in it like code, and it will outlast the people who wrote it.
+</div>

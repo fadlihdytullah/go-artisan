@@ -11,7 +11,7 @@ const allPicktos = (await getCollection('pictos')).sort(
 const topics = [...new Set(allPicktos.map((p) => p.data.topic))];
 
 const TOPIC_LABEL: Record<string, string> = {
-  GO: 'Go', GIT: 'Git', HTTP: 'HTTP', REDIS: 'Redis', DOCKER: 'Docker',
+  GO: 'Go', GIT: 'Git', HTTP: 'HTTP', REDIS: 'Redis', DOCKER: 'Docker', DOCS: 'Docs',
 };
 ---
 <BaseLayout title="Pictos - Web Artisan" nav={{ variant: 'home' }}>

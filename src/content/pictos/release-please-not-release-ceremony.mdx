@@ -1,48 +1,48 @@
 ---
 title: "Replace release ceremony with Release Please"
 topic: "GIT"
-dek: "Trade manual version bumps, a Confluence changelog, and a release branch for Conventional Commits, Git tags, and one automated release PR."
+dek: "Tukar version bump manual, changelog di Confluence, dan release branch dengan Conventional Commits, Git tag, dan satu release PR otomatis."
 icon: "git"
-readTime: "11 min read"
+readTime: "11 menit baca"
 date: "Jun 2026"
 order: 7
 luminaHref: "/luminas/git"
-luminaDesc: "The Git lumina covers branching, merge strategy, and team workflows like trunk-based development end to end."
-luminaLabel: "Open Git"
+luminaDesc: "Lumina Git membahas branching, strategi merge, dan workflow tim seperti trunk-based development secara tuntas."
+luminaLabel: "Buka Git"
 ---
 
-A common release flow looks responsible: bump the version in `package.json` by hand, write the changelog in Confluence, merge your working branch into `develop`, cut a release branch, merge `develop` into it, then open one more PR into `master`. It ships every time. It also quietly taxes you every time.
+Alur rilis yang umum terlihat bertanggung jawab: naikkan versi di `package.json` dengan tangan, tulis changelog di Confluence, merge working branch ke `develop`, potong sebuah release branch, merge `develop` ke dalamnya, lalu buka satu PR lagi ke `master`. Ia selalu berhasil mengirim. Ia juga diam-diam memajakimu setiap kali.
 
 ```text
-1. Bump package.json version by hand
-2. Write the changelog in Confluence
+1. Naikkan versi package.json dengan tangan
+2. Tulis changelog di Confluence
 3. Merge working branch → develop (PR)
-4. Create a release branch
+4. Buat release branch
 5. Merge develop → release branch
 6. Merge release branch → master (PR)
-7. Production deploys
+7. Produksi ter-deploy
 ```
 
-Each step is a place to forget the version bump, to let the changelog drift away from the code that actually changed, or to keep a frozen QA branch alive long after the team stopped needing one. Without Git tags there is no single, honest marker of what production is running.
+Tiap langkah adalah tempat untuk lupa menaikkan versi, untuk membiarkan changelog menjauh dari kode yang sebenarnya berubah, atau untuk menjaga sebuah branch QA beku tetap hidup lama setelah tim berhenti membutuhkannya. Tanpa Git tag, tidak ada penanda tunggal yang jujur tentang apa yang sedang dijalankan produksi.
 
 <div class="picto-callout">
-  <span class="picto-callout-label">THE REAL PROBLEM</span>
-  The old flow is not wrong. It just wraps manual ceremony around something CI can do reliably and never forget.
+  <span class="picto-callout-label">MASALAH SEBENARNYA</span>
+  Alur lama tidak salah. Ia hanya membungkus seremoni manual di sekitar sesuatu yang bisa dilakukan CI dengan andal dan tak pernah lupa.
 </div>
 
-## What you are actually automating
+## Apa yang sebenarnya kamu otomatiskan
 
-Strip the ceremony down to four moving parts and the picture gets simple.
+Kupas seremoninya jadi empat bagian bergerak dan gambarannya jadi sederhana.
 
 ```text
-Git tag             = the official release version
-CHANGELOG.md        = release notes, living inside the repo
-Conventional Commit = the input that generates those notes
-Release Please      = the bot that opens the release PR, writes
-                      the changelog, tags, and cuts the GitHub Release
+Git tag             = versi rilis resmi
+CHANGELOG.md        = release notes, hidup di dalam repo
+Conventional Commit = input yang meng-generate notes itu
+Release Please      = bot yang membuka release PR, menulis
+                      changelog, memberi tag, dan memotong GitHub Release
 ```
 
-Production deployment hangs off the release, not off every push to `master`. And for a private app that never gets published to npm, the `package.json` version is optional. The Git tag is the release identity, and it reads exactly the way a human expects.
+Deployment produksi bergantung pada rilis, bukan pada tiap push ke `master`. Dan untuk aplikasi privat yang tak pernah dipublikasikan ke npm, versi di `package.json` itu opsional. Git tag adalah identitas rilis, dan ia terbaca persis seperti yang diharapkan manusia.
 
 ```text
 v1.0.0
@@ -50,82 +50,82 @@ v1.1.0
 v1.1.1
 ```
 
-## The shape of the new flow
+## Bentuk alur yang baru
 
-The same beats stay, but the boring half becomes automatic.
+Ketukan yang sama tetap ada, tapi separuh yang membosankan jadi otomatis.
 
 ```text
 feature branch
   ↓ squash merge
 develop
-  ↓ staging deploy
-develop → master  (merge commit, not squash)
+  ↓ deploy staging
+develop → master  (merge commit, bukan squash)
   ↓
-Release Please opens a release PR
-  ↓ merge the PR
+Release Please membuka release PR
+  ↓ merge PR-nya
 Git tag + GitHub Release
   ↓
-production deploy
+deploy produksi
 ```
 
-Feature branches are squash-merged into `develop`. The merge from `develop` into `master` keeps its individual commits. Release Please reads the meaningful `feat:` and `fix:` commits that landed on `master`, and production deploys only after a release is cut.
+Feature branch di-squash-merge ke `develop`. Merge dari `develop` ke `master` mempertahankan tiap commit-nya. Release Please membaca commit `feat:` dan `fix:` bermakna yang mendarat di `master`, dan produksi hanya ter-deploy setelah sebuah rilis dipotong.
 
-## Merge strategy is the load-bearing choice
+## Strategi merge adalah pilihan penyangga
 
-This is the one decision the whole workflow rests on, and it points in two different directions depending on where you are.
+Ini satu keputusan yang menjadi tumpuan seluruh workflow, dan ia mengarah ke dua arah berbeda tergantung kamu di mana.
 
-**Feature into develop: squash and merge.** You want one clean commit per ticket, not the noisy `wip`, `fix typo`, `oops` trail from the branch. That single squash title is what the changelog will quote, so it must be a Conventional Commit.
+**Feature ke develop: squash and merge.** Kamu ingin satu commit bersih per tiket, bukan jejak `wip`, `fix typo`, `oops` yang berisik dari branch. Judul squash tunggal itulah yang akan dikutip changelog, jadi ia harus berupa Conventional Commit.
 
 ```text
-# branch commits (noise)
+# commit di branch (derau)
 feat(navbar): flatten Shop All mega-menu
 feat(shop-all): revamp filters, hero banner & page surfaces
 feat(home): reorder sections & restore Beauty Impact
 
-# squash title that lands on develop (signal)
+# judul squash yang mendarat di develop (sinyal)
 feat(shop-all): revamp homepage, Shop All, and navbar
 ```
 
-**Develop into master: a real merge commit.** Squashing here would collapse every `feat` and `fix` into one vague `chore: merge develop to master`, and Release Please would see nothing worth releasing. A merge commit preserves all the clean commits so the bot can still read them.
+**Develop ke master: merge commit sungguhan.** Squash di sini akan meruntuhkan tiap `feat` dan `fix` jadi satu `chore: merge develop to master` yang kabur, dan Release Please tidak akan melihat apa pun yang layak dirilis. Sebuah merge commit mempertahankan semua commit bersih agar bot masih bisa membacanya.
 
 <div class="picto-callout">
-  <span class="picto-callout-label">THE ONE RULE</span>
-  Squash small branches into develop. Never squash develop into master.
+  <span class="picto-callout-label">SATU ATURAN</span>
+  Squash branch kecil ke develop. Jangan pernah squash develop ke master.
 </div>
 
-## Conventional Commits are the input
+## Conventional Commits adalah input-nya
 
-Release notes are only as good as the commit titles feeding them. A small, boring vocabulary is enough.
+Release notes hanya sebaik judul commit yang menyuapinya. Kosakata kecil dan membosankan sudah cukup.
 
 ```text
-feat(scope):     a user-facing feature or improvement
-fix(scope):      a user-facing bug fix
-perf(scope):     a performance improvement
-refactor(scope): internal restructuring, no behavior change
-chore(scope):    tooling or maintenance
-docs(scope):     documentation only
-style(scope):    formatting or styling cleanup
+feat(scope):     fitur atau peningkatan yang dilihat pengguna
+fix(scope):      perbaikan bug yang dilihat pengguna
+perf(scope):     peningkatan performa
+refactor(scope): penataan ulang internal, perilaku tak berubah
+chore(scope):    tooling atau pemeliharaan
+docs(scope):     dokumentasi saja
+style(scope):    perapian format atau styling
 ```
 
-The prefix decides the version bump, which is the whole point of skipping manual bumps.
+Prefix-nya menentukan kenaikan versi, dan itulah inti dari melewati bump manual.
 
 ```text
-feat:                      → minor release (1.1.0)
-fix:                       → patch release (1.1.1)
-feat! / BREAKING CHANGE:   → major release (2.0.0)
+feat:                      → rilis minor (1.1.0)
+fix:                       → rilis patch (1.1.1)
+feat! / BREAKING CHANGE:   → rilis major (2.0.0)
 chore / docs / style /
-refactor:                  → usually no release note
+refactor:                  → biasanya tanpa release note
 ```
 
-Write titles a stranger could read in a changelog. The good ones describe a product change; the bad ones describe nothing.
+Tulis judul yang bisa dibaca orang asing di sebuah changelog. Yang bagus menggambarkan perubahan produk; yang buruk tidak menggambarkan apa-apa.
 
 ```text
-# good
+# bagus
 feat(shop-all): revamp homepage, Shop All, and navbar
 fix(cart): prevent duplicate checkout submission
 perf(product-list): reduce initial render cost
 
-# bad
+# buruk
 Neo 2260
 update stuff
 fix bug
@@ -133,13 +133,13 @@ merge develop
 ```
 
 <div class="picto-callout">
-  <span class="picto-callout-label">THE GOTCHA</span>
-  If the squash title is not a Conventional Commit, Release Please ignores it. A green Action run with no release PR almost always means exactly this.
+  <span class="picto-callout-label">JEBAKANNYA</span>
+  Kalau judul squash bukan Conventional Commit, Release Please mengabaikannya. Run Action yang hijau tanpa release PR hampir selalu berarti persis ini.
 </div>
 
-## Wiring the GitHub Action
+## Merangkai GitHub Action
 
-One workflow watches `master` and does the bookkeeping. `release-type: simple` is the strategy for a generic repo that has no language version file to maintain, so `package.json` is left untouched.
+Satu workflow mengawasi `master` dan mengerjakan pembukuannya. `release-type: simple` adalah strategi untuk repo generik yang tidak punya file versi bahasa untuk dirawat, jadi `package.json` dibiarkan utuh.
 
 ```yaml title=".github/workflows/release-please.yml"
 name: Release Please
@@ -166,11 +166,11 @@ jobs:
           target-branch: master
 ```
 
-On every push to `master`, the action scans the Conventional Commits since the last release tag, then opens or updates a single Release Please PR. That PR is where `CHANGELOG.md` gets rewritten. Merge it, and the action creates the Git tag and the GitHub Release. If your production branch is `main`, swap both `master` lines for `main` — the branch name in the config must match reality.
+Pada tiap push ke `master`, action memindai Conventional Commits sejak tag rilis terakhir, lalu membuka atau memperbarui satu Release Please PR. Di PR itulah `CHANGELOG.md` ditulis ulang. Merge ia, dan action membuat Git tag dan GitHub Release. Kalau branch produksimu `main`, ganti kedua baris `master` jadi `main`, karena nama branch di config harus cocok dengan kenyataan.
 
-## No previous tag? Set a baseline
+## Belum ada tag sebelumnya? Tetapkan baseline
 
-Plenty of repos have years of history and zero release tags. Do not rewrite history and do not backfill old changelogs. Tag the current production branch once, and let automation take over from there.
+Banyak repo punya riwayat bertahun-tahun dan nol tag rilis. Jangan menulis ulang riwayat dan jangan menambal changelog lama. Beri tag pada branch produksi saat ini sekali saja, dan biarkan otomasi mengambil alih dari sana.
 
 ```bash
 git checkout master
@@ -179,19 +179,19 @@ git tag -a v1.0.0 -m "v1.0.0 baseline release"
 git push origin v1.0.0
 ```
 
-Seed `CHANGELOG.md` with a single honest entry so the file exists and the story has a starting point.
+Beri benih `CHANGELOG.md` dengan satu entri jujur agar file-nya ada dan ceritanya punya titik awal.
 
 ```md
 # Changelog
 
 ## v1.0.0
 
-Initial baseline release. This marks the current production state
-before adopting automated release notes. Everything after this point
-is tracked automatically.
+Rilis baseline awal. Ini menandai keadaan produksi saat ini
+sebelum mengadopsi release notes otomatis. Semua setelah titik ini
+dilacak otomatis.
 ```
 
-From `v1.0.0` onward, every release is generated from the commits that come after it. A finished changelog entry stays short on purpose, because it summarizes product changes rather than echoing raw commit history.
+Dari `v1.0.0` dan seterusnya, tiap rilis di-generate dari commit yang datang sesudahnya. Entri changelog yang sudah jadi sengaja tetap pendek, karena ia merangkum perubahan produk alih-alih menggemakan riwayat commit mentah.
 
 ```md
 ## [1.1.0](https://github.com/org/repo/compare/v1.0.0...v1.1.0) (2026-06-18)
@@ -201,11 +201,11 @@ From `v1.0.0` onward, every release is generated from the commits that come afte
 * revamp homepage, Shop All, and navbar
 ```
 
-One ticket becomes one line. If two changes are truly independent, that is a sign they wanted to be two PRs.
+Satu tiket jadi satu baris. Kalau dua perubahan benar-benar independen, itu pertanda keduanya ingin jadi dua PR.
 
-## Deploy on release, not on every push
+## Deploy saat rilis, bukan tiap push
 
-Pushing to `master` should not deploy production. A release being cut should. That single shift guarantees every production deploy has a tag behind it, which makes rollback and audit trivial. The cleanest way to wire it is to keep Release Please and the deploy in the same workflow, each deploy step gated by the action's `release_created` output.
+Push ke `master` seharusnya tidak men-deploy produksi. Sebuah rilis yang dipotonglah yang seharusnya. Pergeseran tunggal itu menjamin tiap deploy produksi punya tag di belakangnya, yang membuat rollback dan audit jadi sepele. Cara paling bersih merangkainya adalah menjaga Release Please dan deploy di workflow yang sama, tiap langkah deploy digerbangi oleh output `release_created` milik action.
 
 ```yaml title=".github/workflows/release-and-deploy.yml"
 name: Release Please and Production Deploy
@@ -252,29 +252,29 @@ jobs:
 
       - name: Deploy production
         if: ${{ steps.release.outputs.release_created }}
-        run: echo "Put production deploy command here"
+        run: echo "Taruh perintah deploy produksi di sini"
 ```
 
-`release_created` is only `true` after the Release Please PR is merged and a release is actually cut. Every push that does not produce a release runs the first step and stops, so production never deploys ahead of its own release metadata.
+`release_created` hanya `true` setelah Release Please PR di-merge dan sebuah rilis benar-benar dipotong. Tiap push yang tidak menghasilkan rilis menjalankan langkah pertama lalu berhenti, jadi produksi tak pernah ter-deploy mendahului metadata rilisnya sendiri.
 
-## Gotchas worth pinning
+## Jebakan yang layak dicatat
 
-A few sharp edges show up the first week and then never again once you know them.
+Beberapa sudut tajam muncul di minggu pertama lalu tak pernah lagi setelah kamu tahu.
 
-A successful Action run does not always mean a release PR exists. If the only commits since the last tag are merge commits or non-conventional titles like `Neo 2260`, there is nothing releasable and the bot correctly opens nothing. After a squash merge, only the final squash title matters — the original branch commits are gone.
+Run Action yang sukses tidak selalu berarti ada release PR. Kalau satu-satunya commit sejak tag terakhir adalah merge commit atau judul non-konvensional seperti `Neo 2260`, tidak ada yang bisa dirilis dan bot dengan benar tidak membuka apa-apa. Setelah squash merge, hanya judul squash final yang penting, commit asli di branch sudah hilang.
 
-The same-workflow pattern above is not a style preference, it is a workaround. A GitHub Release created by the default `GITHUB_TOKEN` will not trigger a separate workflow that listens on `release: published`. Gating the deploy on `release_created` inside one workflow sidesteps that entirely.
+Pola satu-workflow di atas bukan preferensi gaya, ia sebuah workaround. GitHub Release yang dibuat `GITHUB_TOKEN` default tidak akan memicu workflow terpisah yang mendengarkan `release: published`. Menggerbangi deploy pada `release_created` di dalam satu workflow menghindari itu sepenuhnya.
 
 <div class="picto-callout">
-  <span class="picto-callout-label">TEAM RULES</span>
-  Conventional Commit titles on every PR. Squash into develop, merge-commit into master. Never hand-edit the version of a private app. Tag a baseline once. Deploy on release, not on push. Split unrelated changes into separate PRs.
+  <span class="picto-callout-label">ATURAN TIM</span>
+  Judul Conventional Commit di tiap PR. Squash ke develop, merge-commit ke master. Jangan pernah mengedit versi aplikasi privat dengan tangan. Beri tag baseline sekali. Deploy saat rilis, bukan saat push. Pecah perubahan tak terkait jadi PR terpisah.
 </div>
 
-## The takeaway
+## Intinya
 
-Manual steps are not the enemy; repetitive ceremony is. Let engineers spend their judgment on the one thing only they can decide, and let the pipeline handle versioning, the changelog, the tag, and the deploy trigger.
+Langkah manual bukan musuhnya; seremoni berulanglah musuhnya. Biarkan engineer menghabiskan penilaian mereka pada satu hal yang hanya bisa mereka putuskan, dan biarkan pipeline menangani versioning, changelog, tag, dan pemicu deploy.
 
 <div class="picto-callout">
-  <span class="picto-callout-label">THE MINDSET</span>
-  Humans decide release readiness. Automation handles release mechanics.
+  <span class="picto-callout-label">POLA PIKIRNYA</span>
+  Manusia memutuskan kesiapan rilis. Otomasi menangani mekanika rilis.
 </div>

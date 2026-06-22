@@ -1,212 +1,212 @@
 ---
 title: "Documentation that outlives the team"
 topic: "DOCS"
-dek: "Most docs rot because every kind gets dumped in one place with one lifecycle. Separate them by purpose and decay rate — six kinds — and each one survives the people who wrote it."
+dek: "Kebanyakan dokumentasi membusuk karena semua jenis ditumpuk di satu tempat dengan satu siklus hidup. Pisahkan berdasarkan tujuan dan laju pembusukannya, enam jenis, dan masing-masing bertahan melampaui orang yang menulisnya."
 icon: "layers"
-readTime: "14 min read"
+readTime: "14 menit baca"
 date: "Jun 2026"
 order: 8
 ---
 
-Every team has the wiki. It looked responsible the day someone created it: a single space, a tidy sidebar, a page for everything. Two years later it is a graveyard. The setup guide references a service that was deleted. The API page lists three endpoints that no longer exist and omits the twelve that do. A new engineer reads all of it, trusts none of it, and asks in Slack anyway — which is the real, expensive signal that your documentation has failed.
+Setiap tim punya wiki. Pada hari ia dibuat, semuanya terlihat bertanggung jawab: satu ruang, sidebar yang rapi, satu halaman untuk segalanya. Dua tahun kemudian, ia jadi kuburan. Panduan setup merujuk ke service yang sudah dihapus. Halaman API memuat tiga endpoint yang sudah tidak ada dan melewatkan dua belas yang sebenarnya ada. Engineer baru membaca semuanya, tidak memercayai satu pun, lalu tetap bertanya di Slack, dan itulah sinyal mahal yang sebenarnya bahwa dokumentasimu gagal.
 
-The usual explanation is "nobody updates the docs." That is a symptom, not a cause. The cause is that we treat documentation as one thing, in one place, with one implied lifecycle. We file a setup guide, an architecture decision, an incident runbook, and an API contract in the same wiki, side by side, as if they age the same way. They do not.
+Penjelasan yang biasa muncul adalah "tidak ada yang memperbarui dokumentasi". Itu gejala, bukan akar masalah. Akarnya: kita memperlakukan dokumentasi sebagai satu hal, di satu tempat, dengan satu siklus hidup yang tersirat. Kita menaruh panduan setup, keputusan arsitektur, runbook insiden, dan kontrak API di wiki yang sama, berdampingan, seolah-olah semuanya menua dengan cara yang sama. Padahal tidak.
 
-A setup guide is true only until the next refactor. An architecture decision is true forever — it records a choice made on a specific day with specific tradeoffs, and that choice does not stop having happened. Put both in the same bucket and you get the worst of each: the living doc rots because nobody re-checks it, and the historical doc gets "helpfully updated" until it no longer records what was actually decided.
+Panduan setup hanya benar sampai refactor berikutnya. Keputusan arsitektur benar selamanya, karena ia mencatat pilihan yang dibuat pada hari tertentu dengan trade-off tertentu, dan pilihan itu tidak berhenti pernah terjadi. Taruh keduanya di ember yang sama dan kamu dapat sisi terburuk masing-masing: dokumen hidup membusuk karena tidak ada yang mengeceknya ulang, dan dokumen historis terus "diperbarui dengan niat baik" sampai ia tidak lagi mencatat apa yang sebenarnya diputuskan.
 
-Long-lived documentation is not about writing more. It is about sorting what you write by purpose and by how fast it decays, then giving each kind its own home, its own update rule, and its own owner.
-
-<div class="picto-callout">
-  <span class="picto-callout-label">THE REAL PROBLEM</span>
-  The failure is not too little writing. It is mixing documents with different lifecycles into one bucket, so the whole bucket rots at the speed of its fastest-decaying page.
-</div>
-
-## Sort docs by lifecycle, not by topic
-
-Before deciding where a document goes, ask one question: does this describe what is true now, or what was true once? That single axis — living versus historical — does more organizing work than any folder structure.
-
-A living document tracks the current state of the system and must change every time the system changes. If it drifts, it is actively wrong, and wrong is worse than missing. A historical document is a snapshot: it captures a decision, an incident, or a proposal at a moment in time. It must never be edited to match the present, because its whole value is preserving the past.
-
-This is the same instinct behind Diátaxis, the documentation framework that splits writing into tutorials, how-to guides, reference, and explanation along two axes — study versus work, and action versus knowledge. The lesson is identical at the engineering level: a document has a job, and documents with different jobs do not belong in the same pile just because they describe the same project.
+Dokumentasi yang berumur panjang bukan soal menulis lebih banyak. Ia soal memilah apa yang kamu tulis berdasarkan tujuan dan seberapa cepat ia membusuk, lalu memberi tiap jenis rumahnya sendiri, aturan pembaruannya sendiri, dan pemiliknya sendiri.
 
 <div class="picto-callout">
-  <span class="picto-callout-label">THE ORGANIZING QUESTION</span>
-  Ask "is this true now, or was it true once?" Living docs answer "now" and must be kept in sync. Historical docs answer "once" and must be kept frozen.
+  <span class="picto-callout-label">MASALAH SEBENARNYA</span>
+  Kegagalannya bukan karena terlalu sedikit menulis. Tapi karena mencampur dokumen dengan siklus hidup berbeda ke dalam satu ember, sehingga seluruh ember membusuk secepat halaman yang paling cepat basi.
 </div>
 
-## Six kinds, six lifecycles
+## Pilah dokumen berdasarkan siklus hidup, bukan topik
 
-In practice, engineering documentation collapses into six kinds. Each answers a different question, and each decays at a different rate.
+Sebelum memutuskan ke mana sebuah dokumen ditaruh, tanyakan satu hal: apakah ini menggambarkan yang berlaku sekarang, atau yang dulu pernah berlaku? Satu sumbu itu, hidup versus historis, melakukan lebih banyak pengorganisasian daripada struktur folder mana pun.
+
+Dokumen hidup melacak keadaan sistem saat ini dan harus berubah setiap kali sistem berubah. Kalau ia melenceng, ia aktif salah, dan salah lebih buruk daripada tidak ada. Dokumen historis adalah snapshot: ia menangkap sebuah keputusan, insiden, atau usulan pada satu momen waktu. Ia tidak boleh diedit agar cocok dengan masa kini, karena justru nilainya ada pada menjaga masa lalu.
+
+Ini insting yang sama di balik Diátaxis, kerangka dokumentasi yang membagi tulisan menjadi tutorial, how-to guide, reference, dan explanation di sepanjang dua sumbu: belajar versus bekerja, dan tindakan versus pengetahuan. Pelajarannya identik di level engineering: sebuah dokumen punya tugas, dan dokumen dengan tugas berbeda tidak pantas ditumpuk jadi satu hanya karena menggambarkan proyek yang sama.
+
+<div class="picto-callout">
+  <span class="picto-callout-label">PERTANYAAN PEMILAH</span>
+  Tanyakan "apakah ini berlaku sekarang, atau dulu pernah berlaku?" Dokumen hidup menjawab "sekarang" dan harus terus sinkron. Dokumen historis menjawab "dulu" dan harus dibekukan.
+</div>
+
+## Enam jenis, enam siklus hidup
+
+Dalam praktik, dokumentasi engineering mengerucut menjadi enam jenis. Masing-masing menjawab pertanyaan berbeda, dan masing-masing membusuk dengan laju berbeda.
 
 ```text
-Living docs        — "what is true right now"
-Historical docs    — "why it was decided this way"
-Runbooks           — "how to handle it when it breaks"
-Architecture maps  — "how the pieces connect"
-Contracts          — "what each system promises the others"
-Data lineage       — "where this data came from"
+Living docs        - "apa yang berlaku sekarang"
+Historical docs    - "kenapa dulu diputuskan begini"
+Runbook            - "cara menanganinya saat rusak"
+Architecture map   - "bagaimana semua bagian terhubung"
+Contract           - "apa yang dijanjikan tiap sistem ke sistem lain"
+Data lineage       - "dari mana data ini berasal"
 ```
 
-The point of naming six kinds is not taxonomy for its own sake. It is that each kind has a different update rule. Living docs are rewritten constantly. Historical docs are never rewritten. Runbooks are tested on a schedule. Contracts are versioned. Lineage is captured automatically. If you cannot say how a document is supposed to be kept current, you have not finished deciding what kind it is. The rest of this article takes them one at a time.
+Menamai enam jenis bukan demi taksonomi itu sendiri. Intinya, tiap jenis punya aturan pembaruan berbeda. Dokumen hidup ditulis ulang terus-menerus. Dokumen historis tidak pernah ditulis ulang. Runbook diuji secara berkala. Contract diberi versi. Lineage ditangkap otomatis. Kalau kamu tidak bisa menyebutkan bagaimana sebuah dokumen seharusnya dijaga tetap mutakhir, berarti kamu belum selesai memutuskan ia jenis apa. Sisa artikel ini membahasnya satu per satu.
 
-## Living docs: what is true right now
+## Living docs: apa yang berlaku sekarang
 
-Living documentation describes the present state — the README, the API reference, inline code comments, the service catalog entry. Its defining property is that the moment the code changes and the doc does not, the doc is lying. Because it decays the instant you look away, the only living docs that survive are the ones you do not maintain by hand.
+Dokumentasi hidup menggambarkan keadaan saat ini: README, API reference, komentar inline di kode, entri service catalog. Sifat khasnya, begitu kode berubah dan dokumennya tidak, dokumen itu berbohong. Karena ia membusuk begitu kamu memalingkan muka, satu-satunya dokumen hidup yang bertahan adalah yang tidak kamu rawat dengan tangan.
 
-So generate them. An API reference should be produced from the same source the code serves: OpenAPI emitted by the framework, pkgsite for Go packages, TypeDoc or JSDoc from typed signatures, Swagger UI rendered from the spec. A README's command list can be generated from the package manifest. The rule of thumb is blunt: if a human has to remember to update a living doc, it is already obsolete.
+Maka, generate. API reference seharusnya dihasilkan dari sumber yang sama yang dilayani kode: OpenAPI yang dipancarkan framework, pkgsite untuk package Go, TypeDoc atau JSDoc dari signature bertipe, Swagger UI yang dirender dari spec. Daftar perintah di README bisa di-generate dari package manifest. Patokannya tegas: kalau seorang manusia harus ingat untuk memperbarui dokumen hidup, ia sudah usang.
 
-Then guard it in CI. Treat a stale doc like a failing test. A pipeline step can diff the committed OpenAPI file against the one the running app emits and fail the build when they disagree. A link checker can fail when an internal reference returns a 404. A docs-coverage gate can require every public endpoint to carry a description before it merges.
+Lalu jaga di CI. Perlakukan dokumen basi seperti test yang gagal. Satu langkah pipeline bisa men-diff file OpenAPI yang di-commit dengan yang dipancarkan aplikasi yang berjalan, dan menggagalkan build saat keduanya berbeda. Link checker bisa gagal saat referensi internal mengembalikan 404. Gerbang docs-coverage bisa mewajibkan tiap endpoint publik membawa deskripsi sebelum di-merge.
 
 <div class="picto-callout">
-  <span class="picto-callout-label">THE LIVING-DOC RULE</span>
-  If staying accurate depends on human memory, it will be wrong within a month. Generate it from the source of truth, and let CI fail when it drifts.
+  <span class="picto-callout-label">ATURAN DOKUMEN HIDUP</span>
+  Kalau akurasinya bergantung pada ingatan manusia, ia akan salah dalam sebulan. Generate dari sumber kebenaran, dan biarkan CI gagal saat ia melenceng.
 </div>
 
-## Historical docs: why it is the way it is
+## Historical docs: kenapa jadinya begini
 
-The most valuable documentation a team owns is usually the cheapest to write and the easiest to skip: the record of why. Six months from now someone will look at a strange decision — a queue where a direct call would do, a denormalized column, a vendor nobody likes — and ask why it is there. Without a record they will either cargo-cult it forward or rip it out and rediscover the original reason the hard way.
+Dokumentasi paling berharga yang dimiliki tim biasanya paling murah ditulis dan paling gampang dilewati: catatan tentang kenapa. Enam bulan dari sekarang, seseorang akan melihat keputusan aneh, sebuah queue padahal panggilan langsung sudah cukup, kolom yang didenormalisasi, vendor yang tidak disukai siapa pun, lalu bertanya kenapa itu ada. Tanpa catatan, mereka akan cargo-cult meneruskannya atau mencabutnya lalu menemukan ulang alasan aslinya dengan cara yang sulit.
 
-The canonical form is the Architecture Decision Record. An ADR is short, immutable, and follows a fixed shape popularized by Michael Nygard.
+Bentuk kanoniknya adalah Architecture Decision Record. ADR itu pendek, immutable, dan mengikuti bentuk baku yang dipopulerkan Michael Nygard.
 
 ```text
-Title:        a short numbered noun phrase (0007-use-outbox-pattern)
+Title:        frasa benda pendek bernomor (0007-use-outbox-pattern)
 Status:       proposed | accepted | superseded by 0012
-Context:      the forces in play — constraints, requirements, pressures
-Decision:     what we chose, written in active voice
-Consequences: what gets easier, and what gets harder, as a result
+Context:      gaya-gaya yang berperan (batasan, kebutuhan, tekanan)
+Decision:     apa yang kita pilih, ditulis dalam kalimat aktif
+Consequences: apa yang jadi lebih mudah, dan apa yang jadi lebih sulit
 ```
 
-The discipline that makes ADRs work is that you never edit a decision to reflect a newer one. When the choice changes you write a new ADR and mark the old one "superseded by," leaving a chain a future reader can walk. The same immutability applies to RFCs (the proposal that came before the decision) and post-mortems (the record of what an incident taught you). Keep them in the repo as Markdown so they version alongside the code that embodies them.
+Disiplin yang membuat ADR berhasil: kamu tidak pernah mengedit sebuah keputusan agar mencerminkan keputusan yang lebih baru. Saat pilihan berubah, kamu menulis ADR baru dan menandai yang lama "superseded by", meninggalkan rantai yang bisa ditelusuri pembaca di masa depan. Immutability yang sama berlaku untuk RFC (usulan yang mendahului keputusan) dan post-mortem (catatan tentang apa yang diajarkan sebuah insiden). Simpan di repo sebagai Markdown agar ia berversi seiring kode yang mewujudkannya.
 
 <div class="picto-callout">
-  <span class="picto-callout-label">NEVER EDIT HISTORY</span>
-  A historical doc that gets "updated" stops being history. Supersede it with a new record and leave the old one standing.
+  <span class="picto-callout-label">JANGAN EDIT SEJARAH</span>
+  Dokumen historis yang "diperbarui" berhenti jadi sejarah. Gantikan dengan catatan baru dan biarkan yang lama tetap berdiri.
 </div>
 
-## Runbooks: how to handle it at 3 a.m.
+## Runbook: cara menanganinya jam 3 pagi
 
-A runbook is the documentation you read under stress, when something is on fire and the person who built the system is asleep. Its audience is a tired on-call engineer, so it cannot be an essay. It has to be a procedure: do this, observe that, if you see one thing go here, if you see another go there.
+Runbook adalah dokumentasi yang kamu baca di bawah tekanan, saat ada yang terbakar dan orang yang membangun sistemnya sedang tidur. Audiensnya engineer on-call yang lelah, jadi ia tidak boleh berupa esai. Ia harus jadi prosedur: lakukan ini, amati itu, kalau kamu lihat satu hal pergi ke sini, kalau lihat hal lain pergi ke sana.
 
-The hard truth about runbooks is that an untested one is worse than none, because it promises a safety net that is not actually there. The deploy steps reference a script that moved. The rollback assumes a flag that was removed. The only way to trust a runbook is to run it on a schedule — in a game day, a failover drill, or simply by following it literally the next time the situation it covers actually happens, and fixing every line that lied.
+Kebenaran pahit soal runbook: yang belum diuji lebih buruk daripada tidak ada, karena ia menjanjikan jaring pengaman yang sebenarnya tidak ada. Langkah deploy merujuk ke script yang sudah pindah. Prosedur rollback mengasumsikan flag yang sudah dihapus. Satu-satunya cara memercayai runbook adalah menjalankannya secara berkala, dalam game day, latihan failover, atau cukup dengan mengikutinya apa adanya saat situasi yang ia cakup benar-benar terjadi, sambil memperbaiki tiap baris yang berbohong.
 
-Write the steps as a procedure with explicit decision points and exact commands, not prose to be interpreted at 3 a.m.
+Tulis langkah-langkahnya sebagai prosedur dengan titik keputusan eksplisit dan perintah persis, bukan prosa yang harus ditafsirkan jam 3 pagi.
 
 ```text
-SYMPTOM   checkout p99 latency over 2s, error rate climbing
-1. Open the orders dashboard. Is the DB connection pool saturated?
-2. Pool exhausted    → scale the orders deployment to 6 replicas
+GEJALA    p99 latency checkout di atas 2s, error rate naik
+1. Buka dashboard orders. Apakah connection pool DB jenuh?
+2. Pool habis        → scale deployment orders ke 6 replica
                        kubectl scale deploy/orders --replicas=6
-3. Pool healthy      → check the Redis cache hit rate
-4. Redis down        → flip the cache-bypass flag, page the data team
-5. Recovered         → note the trigger in the incident channel, file a ticket
+3. Pool sehat        → cek hit rate cache Redis
+4. Redis mati        → aktifkan flag cache-bypass, page tim data
+5. Pulih             → catat pemicunya di channel insiden, buka tiket
 ```
 
 <div class="picto-callout">
-  <span class="picto-callout-label">RUNBOOK RULE</span>
-  An untested runbook is fiction. Drill it, or follow it for real and fix every wrong line while the memory is fresh.
+  <span class="picto-callout-label">ATURAN RUNBOOK</span>
+  Runbook yang belum diuji itu fiksi. Latih, atau ikuti betulan saat insiden dan perbaiki tiap baris yang salah selagi ingatannya masih segar.
 </div>
 
-## Architecture maps: how the pieces connect
+## Architecture map: bagaimana semua bagian terhubung
 
-New engineers do not think in files. They think in boxes and arrows. An architecture map is the high-level picture — which services exist, what talks to what, where data crosses a trust boundary — that lets someone hold the system in their head before reading a single line of code.
+Engineer baru tidak berpikir dalam file. Mereka berpikir dalam kotak dan panah. Architecture map adalah gambaran tingkat tinggi, service apa saja yang ada, apa berbicara dengan apa, di mana data melewati batas kepercayaan, yang memungkinkan seseorang memegang sistem di kepalanya sebelum membaca satu baris kode pun.
 
-The trap is detail. A diagram that shows every class and every queue is as useless as no diagram, because it goes stale in a week and nobody can read it anyway. The C4 model handles this with zoom levels: a System Context diagram for the whole landscape, a Container diagram for the deployable units, and a Component diagram only where a service is complex enough to earn one. You rarely need the fourth level.
+Jebakannya ada di detail. Diagram yang menampilkan tiap class dan tiap queue sama tak bergunanya dengan tanpa diagram, karena ia basi dalam seminggu dan tetap tak terbaca siapa pun. Model C4 menanganinya dengan level zoom: diagram System Context untuk seluruh lanskap, diagram Container untuk unit yang dideploy, dan diagram Component hanya di tempat sebuah service cukup rumit untuk layak digambar. Kamu jarang butuh level keempat.
 
 ```text
-C4 zoom levels
-  Context    — your system as one box among users and external systems
-  Container  — apps, services, datastores, and the calls between them
-  Component  — the major parts inside one container (only when needed)
-  Code       — class-level detail, almost never worth drawing by hand
+Level zoom C4
+  Context    - sistemmu sebagai satu kotak di antara user dan sistem luar
+  Container  - app, service, datastore, dan panggilan di antaranya
+  Component  - bagian utama di dalam satu container (hanya bila perlu)
+  Code       - detail level class, hampir tak pernah layak digambar tangan
 ```
 
-Keep the map at a level that changes only when the architecture genuinely changes — when you add a service, not when you add an endpoint. Diagrams-as-code tools (Mermaid living in the repo, Structurizr or C4-PlantUML, Excalidraw for a whiteboard feel) keep the picture in version control, right next to the ADR that explains why it looks the way it does.
+Jaga peta di level yang hanya berubah saat arsitektur benar-benar berubah, saat kamu menambah service, bukan saat menambah endpoint. Tool diagram-as-code (Mermaid yang hidup di repo, Structurizr atau C4-PlantUML, Excalidraw untuk nuansa papan tulis) menjaga gambar di version control, tepat di sebelah ADR yang menjelaskan kenapa bentuknya begitu.
 
 <div class="picto-callout">
-  <span class="picto-callout-label">MAP, DON'T PHOTOCOPY</span>
-  Draw the level that changes when the architecture changes. A diagram that updates on every endpoint is a diagram nobody will update.
+  <span class="picto-callout-label">PETAKAN, JANGAN FOTOKOPI</span>
+  Gambar level yang berubah saat arsitektur berubah. Diagram yang ikut berubah tiap kali ada endpoint adalah diagram yang tak akan ada yang memperbaruinya.
 </div>
 
-## Contracts: what each system promises
+## Contract: apa yang dijanjikan tiap sistem
 
-The moment two services talk, the shape of the message between them becomes a contract — and a contract that lives only in someone's memory is a production incident waiting for a deploy. Contract documentation is the explicit, versioned definition of every interface: REST payloads in OpenAPI, event schemas in JSON Schema or Avro, RPC messages in Protobuf.
+Begitu dua service saling bicara, bentuk pesan di antara keduanya menjadi sebuah contract, dan contract yang hidup hanya di ingatan seseorang adalah insiden produksi yang menunggu sebuah deploy. Dokumentasi contract adalah definisi setiap interface yang eksplisit dan berversi: payload REST dalam OpenAPI, schema event dalam JSON Schema atau Avro, pesan RPC dalam Protobuf.
 
-What makes a contract different from ordinary living docs is that other teams build against it, so you cannot just change it. The governing rule is backward compatibility: you may add optional fields, but you may not remove a field, rename one, or tighten a type without a versioning and deprecation plan. Break a contract silently and you break every consumer at once.
+Yang membedakan contract dari dokumen hidup biasa: tim lain membangun di atasnya, jadi kamu tidak bisa seenaknya mengubahnya. Aturan utamanya backward compatibility: kamu boleh menambah field opsional, tapi tidak boleh menghapus field, mengganti namanya, atau memperketat tipe tanpa rencana versioning dan deprecation. Merusak contract diam-diam berarti merusak semua consumer sekaligus.
 
 ```text
-SAFE (backward compatible)        BREAKING (needs a version bump)
-add an optional field             remove or rename a field
-add a new endpoint                change a field's type
-relax a validation rule           tighten a validation rule
-add a new enum value, carefully   make an optional field required
+AMAN (backward compatible)          MERUSAK (perlu naik versi)
+tambah field opsional               hapus atau ganti nama field
+tambah endpoint baru                ubah tipe sebuah field
+longgarkan aturan validasi          perketat aturan validasi
+tambah nilai enum baru, hati-hati   jadikan field opsional wajib
 ```
 
-Make the contract executable so it cannot drift from reality. Consumer-driven contract testing with a tool like Pact has each consumer publish what it actually relies on, then fails the provider's build when a change would break them. That turns "we documented the API" into "the build proves the API still keeps its promises."
+Buat contract dapat dieksekusi agar ia tidak melenceng dari kenyataan. Consumer-driven contract testing dengan tool seperti Pact membuat tiap consumer mempublikasikan apa yang benar-benar ia andalkan, lalu menggagalkan build provider saat sebuah perubahan akan merusak mereka. Itu mengubah "kita sudah mendokumentasikan API" menjadi "build membuktikan API masih menepati janjinya".
 
 <div class="picto-callout">
-  <span class="picto-callout-label">THE CONTRACT RULE</span>
-  Add, never remove, without a version. Then make a test enforce it — a documented contract nobody verifies is just a hopeful comment.
+  <span class="picto-callout-label">ATURAN CONTRACT</span>
+  Tambah, jangan hapus, tanpa versi. Lalu buat sebuah test menegakkannya, karena contract yang didokumentasikan tapi tak diverifikasi cuma komentar penuh harapan.
 </div>
 
-## Data lineage: where this number came from
+## Data lineage: dari mana angka ini berasal
 
-In any system with a data pipeline, the question that eventually stops everyone is "where did this number come from?" A figure on a dashboard looks wrong, or a regulator asks how a value was derived, and you have to trace it backward through every join, filter, and transform to the raw source. That trace is data lineage, and it is the one kind of documentation you should almost never write by hand.
+Di sistem apa pun yang punya data pipeline, pertanyaan yang akhirnya menghentikan semua orang adalah "dari mana angka ini berasal?" Sebuah angka di dashboard terlihat salah, atau regulator bertanya bagaimana sebuah nilai diturunkan, dan kamu harus menelusurinya mundur lewat tiap join, filter, dan transformasi sampai ke sumber mentah. Penelusuran itu adalah data lineage, dan ia satu-satunya jenis dokumentasi yang hampir tidak pernah boleh kamu tulis dengan tangan.
 
-Hand-drawn lineage is obsolete the moment a pipeline changes, which is constantly. The modern approach is to emit lineage as the pipeline runs. OpenLineage is the open standard for this — an LF AI & Data project that defines a common event format for runs, jobs, and datasets, with native producers for Airflow, dbt, and Spark. The events flow into a backend: Marquez, its reference implementation, or a catalog like DataHub or OpenMetadata, with Apache Atlas still common inside Hadoop estates. Lineage becomes a queryable graph instead of a stale picture.
+Lineage gambar tangan usang begitu sebuah pipeline berubah, yang terjadi terus-menerus. Pendekatan modern adalah memancarkan lineage saat pipeline berjalan. OpenLineage adalah standar terbuka untuk ini, proyek LF AI & Data yang mendefinisikan format event bersama untuk run, job, dan dataset, dengan produser native untuk Airflow, dbt, dan Spark. Event-nya mengalir ke sebuah backend: Marquez, implementasi rujukannya, atau katalog seperti DataHub atau OpenMetadata, dengan Apache Atlas yang masih umum di lingkungan Hadoop. Lineage jadi graph yang bisa di-query alih-alih gambar basi.
 
 ```text
 raw.orders  ──▶  dbt: stg_orders  ──▶  dbt: fct_revenue  ──▶  dashboard: MRR
                                               ▲
 raw.refunds ──────────────────────────────────┘
-   (captured automatically as OpenLineage events, not drawn by hand)
+   (ditangkap otomatis sebagai event OpenLineage, bukan digambar tangan)
 ```
 
 <div class="picto-callout">
-  <span class="picto-callout-label">LINEAGE RULE</span>
-  If you draw lineage by hand, it is already wrong. Emit it from the pipeline as a standard event and let the graph build itself.
+  <span class="picto-callout-label">ATURAN LINEAGE</span>
+  Kalau kamu menggambar lineage dengan tangan, ia sudah salah. Pancarkan dari pipeline sebagai event standar dan biarkan graph-nya membangun dirinya sendiri.
 </div>
 
-## Keep them alive: ownership, cadence, decay
+## Menjaganya tetap hidup: kepemilikan, ritme, pembusukan
 
-Sorting docs into six kinds buys nothing if no one owns the result. The practices that keep documentation alive are the same ones that keep code alive, because the most durable idea in this whole field is docs-as-code: write docs in plain text (Markdown, MDX, AsciiDoc), store them in the repo beside the code, review them in the same pull request, and publish them from CI.
+Memilah dokumen jadi enam jenis tidak ada gunanya kalau tidak ada yang memiliki hasilnya. Praktik yang menjaga dokumentasi tetap hidup sama dengan yang menjaga kode tetap hidup, karena ide paling tahan lama di seluruh bidang ini adalah docs-as-code: tulis dokumen dalam teks polos (Markdown, MDX, AsciiDoc), simpan di repo bersama kode, review di pull request yang sama, dan publikasikan dari CI.
 
-Docs-as-code gives you four things a wiki never will. Version control, so a doc changes in the same commit as the code it describes. Review, so a stale doc is caught the way a bug is. A single source of truth, so the same fact is not copied into four pages that will disagree within a month. And automation, so a static-site generator — Docusaurus, MkDocs Material, VitePress, or Starlight for an Astro shop — turns the repo into a searchable site, with Algolia DocSearch or Typesense layered on top.
+Docs-as-code memberimu empat hal yang tidak akan pernah diberikan wiki. Version control, sehingga sebuah dokumen berubah di commit yang sama dengan kode yang ia gambarkan. Review, sehingga dokumen basi tertangkap seperti bug tertangkap. Satu sumber kebenaran, sehingga fakta yang sama tidak disalin ke empat halaman yang akan saling bertentangan dalam sebulan. Dan otomasi, sehingga static-site generator (Docusaurus, MkDocs Material, VitePress, atau Starlight untuk yang memakai Astro) mengubah repo jadi situs yang bisa dicari, dengan Algolia DocSearch atau Typesense di atasnya.
 
-The governance is light but non-negotiable. Every document needs a named owner, not a team, because a team owns nothing. Living docs get a review cadence, and quarterly is enough for most. And there is a deprecation policy: when a doc describes something that no longer exists, you archive it with a tombstone rather than leave it to mislead. A "last reviewed" date on every living page turns staleness from invisible into a number you can put on a dashboard.
+Tata kelolanya ringan tapi tidak bisa ditawar. Tiap dokumen butuh pemilik bernama, bukan sebuah tim, karena tim tidak memiliki apa-apa. Dokumen hidup diberi ritme review, dan kuartalan sudah cukup untuk kebanyakan. Dan ada kebijakan deprecation: saat sebuah dokumen menggambarkan sesuatu yang sudah tidak ada, kamu mengarsipkannya dengan nisan alih-alih membiarkannya menyesatkan. Tanggal "terakhir ditinjau" di tiap halaman hidup mengubah kebasian dari tak terlihat jadi angka yang bisa kamu taruh di dashboard.
 
 <div class="picto-callout">
-  <span class="picto-callout-label">THE GOVERNANCE MINIMUM</span>
-  One named owner per doc. A review cadence for living docs. An archive policy for dead ones. Everything else is optional; these three are not.
+  <span class="picto-callout-label">MINIMUM TATA KELOLA</span>
+  Satu pemilik bernama per dokumen. Ritme review untuk dokumen hidup. Kebijakan arsip untuk yang mati. Selebihnya opsional; tiga ini tidak.
 </div>
 
-## The anti-patterns that quietly kill docs
+## Anti-pattern yang diam-diam membunuh dokumentasi
 
-Most documentation does not fail loudly. It degrades through a handful of recognizable patterns, and naming them is half the cure.
+Kebanyakan dokumentasi tidak gagal dengan ribut. Ia merosot lewat segelintir pola yang mudah dikenali, dan menamainya adalah separuh dari obatnya.
 
-The wiki graveyard is the default end state: pages accumulate, nothing is deleted, and the ratio of true to false content slides until readers learn to trust none of it. Copy-paste docs are the same fact pasted into four places, which guarantees that at least three are wrong after the next change — the fix is always a single source of truth and a link to it. Over-documentation buries the one paragraph that matters under forty that do not, so the page is technically complete and practically unread. Under-documentation is its mirror: a README and nothing else, with no record of why anything is the way it is. And the orphan doc has no owner and no audience, which means no one will ever notice when it goes wrong.
+Wiki graveyard adalah kondisi akhir default: halaman menumpuk, tidak ada yang dihapus, dan rasio konten benar terhadap salah terus merosot sampai pembaca belajar untuk tidak memercayai satu pun. Copy-paste docs adalah fakta yang sama ditempel di empat tempat, yang menjamin setidaknya tiga di antaranya salah setelah perubahan berikutnya, dan obatnya selalu satu sumber kebenaran plus tautan ke sana. Over-documentation mengubur satu paragraf yang penting di bawah empat puluh yang tidak, sehingga halaman itu lengkap secara teknis tapi praktis tak terbaca. Under-documentation adalah cerminannya: hanya README dan tidak ada yang lain, tanpa catatan kenapa segalanya jadi begini. Dan orphan doc tidak punya pemilik dan tidak punya audiens, yang berarti tidak akan ada yang menyadari saat ia jadi salah.
 
 ```text
-wiki graveyard       → archive aggressively; deletion is maintenance
-copy-paste docs      → one source of truth, link to it everywhere else
-over-documentation   → cut to what a reader needs, link the rest
-under-documentation  → at minimum, capture the "why" in ADRs
-orphan docs          → no owner means adopt it or delete it
+wiki graveyard       → arsipkan agresif; menghapus itu perawatan
+copy-paste docs      → satu sumber kebenaran, tautkan dari tempat lain
+over-documentation   → pangkas ke yang dibutuhkan pembaca, tautkan sisanya
+under-documentation  → minimal, tangkap "kenapa"-nya dalam ADR
+orphan docs          → tanpa pemilik berarti adopsi atau hapus
 ```
 
 <div class="picto-callout">
-  <span class="picto-callout-label">THE TELL</span>
-  If a new engineer reads your docs and still asks in Slack, the docs failed — no matter how many pages exist.
+  <span class="picto-callout-label">TANDANYA</span>
+  Kalau engineer baru membaca dokumentasimu dan tetap bertanya di Slack, dokumentasinya gagal, sebanyak apa pun halaman yang ada.
 </div>
 
-## Treat documentation as a product
+## Perlakukan dokumentasi sebagai produk
 
-The shift that makes all of this stick is to stop thinking of documentation as a chore attached to code and start treating it as a product with users. The developer reading your README is the user. The on-call engineer opening your runbook at 3 a.m. is the user. They have a job to do, a limited budget of attention, and a low tolerance for being lied to.
+Pergeseran yang membuat semua ini melekat adalah berhenti menganggap dokumentasi sebagai tugas tempelan pada kode dan mulai memperlakukannya sebagai produk dengan pengguna. Developer yang membaca README-mu adalah pengguna. Engineer on-call yang membuka runbook-mu jam 3 pagi adalah pengguna. Mereka punya pekerjaan yang harus selesai, anggaran perhatian yang terbatas, dan toleransi rendah terhadap dibohongi.
 
-A product mindset changes the questions you ask. Not "did we write it down" but "can the reader find it, trust it, and act on it." You invest in docs the way you invest in code — with ownership, review, tests, and deletion — because the return is the same: less cognitive load, faster onboarding, fewer interruptions, and a system that does not live or die with the people who happened to build it.
+Pola pikir produk mengubah pertanyaan yang kamu ajukan. Bukan "apakah kita sudah menuliskannya" melainkan "apakah pembaca bisa menemukannya, memercayainya, dan menindaklanjutinya". Kamu berinvestasi pada dokumentasi seperti kamu berinvestasi pada kode, dengan kepemilikan, review, test, dan penghapusan, karena imbalannya sama: beban kognitif lebih kecil, onboarding lebih cepat, lebih sedikit interupsi, dan sistem yang tidak hidup atau mati bersama orang yang kebetulan membangunnya.
 
-Documentation that outlives the team is not the documentation that says the most. It is the documentation whose authors sorted what they wrote by purpose, generated what could be generated, froze what was history, tested what was operational, and gave every page an owner.
+Dokumentasi yang berumur lebih panjang dari timnya bukan dokumentasi yang paling banyak bicara. Ia dokumentasi yang penulisnya memilah apa yang ditulis berdasarkan tujuan, men-generate yang bisa di-generate, membekukan yang historis, menguji yang operasional, dan memberi tiap halaman seorang pemilik.
 
 <div class="picto-callout">
-  <span class="picto-callout-label">THE MINDSET</span>
-  Documentation is a product and the developer is the user. Invest in it like code, and it will outlast the people who wrote it.
+  <span class="picto-callout-label">POLA PIKIRNYA</span>
+  Dokumentasi adalah produk dan developer adalah penggunanya. Investasikan padanya seperti pada kode, dan ia akan bertahan lebih lama dari orang yang menulisnya.
 </div>

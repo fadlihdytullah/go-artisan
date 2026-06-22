@@ -40,9 +40,12 @@ const { title, nav, hideFooter = false } = Astro.props;
       try {
         var r = document.documentElement;
         var t = localStorage.getItem('reader-theme');
-        // Migrasi nilai lama: sepia→reader, dark→light, nilai asing→light.
+        // Migrasi nilai lama: sepia→reader. Dark sekarang tema resmi.
         if (t === 'sepia') t = 'reader';
-        if (t === 'dark' || (t !== 'light' && t !== 'reader')) t = 'light';
+        if (t !== 'light' && t !== 'reader' && t !== 'dark') {
+          // Auto-detect: gunakan preferensi sistem jika belum ada pilihan user
+          t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
         r.setAttribute('data-theme', t);
         var s = localStorage.getItem('reader-scale');
         if (s) r.style.setProperty('--scale', s);
@@ -140,11 +143,12 @@ const { title, nav, hideFooter = false } = Astro.props;
     // Kontrol baca: toggle tema (light ⇄ reader) + ukuran font. Aktif di semua halaman.
     (function () {
       var root = document.documentElement;
-      var THEMES = ['light', 'reader'];
+      var THEMES = ['light', 'reader', 'dark'];
       // Tabler Icons (MIT) — bagian dalam SVG per tema baca.
       var ICON = {
         light: '<path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7" />',
         reader: '<path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0" /><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0" /><path d="M3 6l0 13" /><path d="M12 6l0 13" /><path d="M21 6l0 13" />',
+        dark: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />',
       };
       function iconSvg(inner) {
         return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';

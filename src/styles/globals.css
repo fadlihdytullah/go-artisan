@@ -1409,6 +1409,109 @@ footer.shell-footer {
 
 [data-theme="reader"] .chip { background: var(--paper-soft); }
 
+/* ── Theme: Dark (warm dark reading mode) ────────────────────── */
+
+/* Dark mode hangat (warm charcoal, bukan cold gray). Terracotta accent
+   diterangkan agar AA di latar gelap. Konsisten dgn hue v2 (terracotta + cream)
+   tapi versi gelap untuk baca malam / low-light. */
+[data-theme="dark"] {
+  --bg:          #1a1814;   /* warm charcoal — page background */
+  --paper:       #242019;   /* surface card / konten */
+  --paper-soft:  #2a261e;   /* calm surface / zebra */
+  --ink:         #e8e2d6;   /* teks utama — warm off-white */
+  --ink-soft:    #b8b0a0;   /* secondary text */
+  --ink-muted:   #8a826f;   /* meta/caption — AA di dark bg */
+  --line:        #3a352a;   /* hairline */
+  --line-strong: #4a4438;   /* divider tegas */
+
+  /* Terracotta accent — diterangkan untuk dark bg, AA >= 4.5:1 */
+  --blue:        #d4845e;   /* accent-deep: teks/link interaktif */
+  --blue-bright: #c0714a;   /* accent: fill/dekorasi */
+  --blue-soft:   #352a20;   /* tint terracotta di dark */
+  --blue-mid:    #4a3828;   /* border tint terracotta */
+
+  /* alias → terracotta */
+  --orange:        #d4845e;
+  --orange-bright: #c0714a;
+  --orange-soft:   #352a20;
+
+  /* struktural — coklat-tinta sangat gelap hangat */
+  --navy:        #161310;
+  --navy-soft:   #1e1a15;
+
+  /* faint — caption samar, diterangkan agar AA di dark bg */
+  --faint:       #7a725f;
+
+  /* ilustrasi / lavender — diredam agar tidak menyala di dark */
+  --paper-illus: #201c16;
+  --lav:         #6b667e;   /* lavender diredam */
+  --lav-soft:    #2a262e;   /* panel lavender sangat gelap */
+  --lav-line:    #4a4558;
+
+  /* semantic — warm variants untuk dark */
+  --teal:   #3db8a0;  --teal-soft:   #1e302b;
+  --green:  #6ab878;  --green-soft:  #1e2e20;
+  --red:    #e06b58;  --red-soft:    #35201a;
+  --violet: #9a8ad0;  --violet-soft: #262030;
+
+  --code-bg: #141110;   /* kode: sangat gelap, warm */
+  --shadow: none; --shadow-lg: none;
+}
+
+/* Dark: chip & recap surface */
+[data-theme="dark"] .chip { background: var(--paper-soft); }
+
+/* Dark: code block header & border lebih lembut */
+[data-theme="dark"] pre.astro-code {
+  border-color: rgba(255, 255, 255, .08);
+}
+[data-theme="dark"] pre.astro-code .cb-head {
+  border-bottom-color: rgba(255, 255, 255, .06);
+  background: rgba(255, 255, 255, .03);
+}
+
+/* Dark: mermaid background lebih gelap */
+[data-theme="dark"] .mermaid {
+  background: var(--paper-soft);
+  border-color: var(--line);
+}
+[data-theme="dark"] .mermaid svg {
+  filter: brightness(.92);
+}
+
+/* Dark: gambar konten sedikit diredam agar tidak menyala (bukan icon SVG) */
+[data-theme="dark"] img:not([width]):not([height]):not(.logo-badge):not(.rc-ic) {
+  filter: brightness(.92) contrast(1.02);
+}
+[data-theme="dark"] .roadmap-banner-media img,
+[data-theme="dark"] .roadmap-detail-media img,
+[data-theme="dark"] .roadmap-detail-hero-media img,
+[data-theme="dark"] .course-landing-hero-media img,
+[data-theme="dark"] .card img {
+  filter: brightness(.92) contrast(1.02);
+}
+
+/* Dark: selection lebih terang */
+[data-theme="dark"] ::selection {
+  background: color-mix(in srgb, var(--blue-bright) 35%, transparent);
+  color: var(--ink);
+}
+
+/* Dark: scrollbar lebih gelap */
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+}
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Dark: focus ring lebih terang */
+[data-theme="dark"] .rc-btn:focus-visible,
+[data-theme="dark"] .nav-brand:focus-visible,
+[data-theme="dark"] a:focus-visible {
+  outline-color: var(--blue);
+}
+
 @media (prefers-reduced-motion: reduce) {
   body { transition: none; }
   html { scroll-behavior: auto; }

@@ -49,7 +49,7 @@ Hard constraints:
 | `D5LI78` | Roadmap Detail — Timeline | 1440×1791 | `roadmaps/[...slug].astro` |
 
 Known sub-node IDs (may be stale — verify via snapshot_layout):
-- Home: nav `MtVvn`, footer `hVGBd`, logo mark `uHTFB` (uses logo.png), roadmaps row `e5k6lK`.
+- Home: nav `MtVvn`, footer `hVGBd`, logo mark `uHTFB` (uses logo.webp), roadmaps row `e5k6lK`.
 - Roadmap Detail: hero `ofowU` (horizontal split: text left `YGmmZ` w520, cover `AdT7Q` 504×284, CTA wrap `KFRjP`), timeline section `vZ1zQ`, spine `ma5qn`.
 
 ## 2. Tokens (v2)
@@ -107,10 +107,10 @@ it. Lessons keep `ModuleLayout` (TOC-sidebar layout), just reskinned to v2 token
 
 ## 4. Assets (`public/`)
 
-`logo.png` (browser+brush mark on lavender — nav logo), `favicon.svg`,
-course thumbs 1:1: `http.png`, `openapi.png`, `redis.png`, `go-luminas.png`,
-roadmap covers 16:9 (title baked into artwork): `backend-artisan.png`,
-`laravel-artisan.png`, `ai-expeditions.png`, `aws-cloud-practitioner.png`.
+`logo.webp` (browser+brush mark on lavender — nav logo), `favicon.svg`,
+course thumbs 1:1: `http.webp`, `openapi.webp`, `redis.webp`, `go-luminas.webp`,
+roadmap covers 16:9 (title baked into artwork): `backend-artisan.webp`,
+`laravel-artisan.webp`, `ai-expeditions.webp`, `aws-cloud-practitioner.webp`.
 
 ## 5. Per-frame composition
 
@@ -121,7 +121,7 @@ no side lines) → Stats band (4 stats, bracketed by full-width horizontal rules
 **Explore our roadmaps** (3 roadmap cards: Backend Artisan = live; Laravel Artisan,
 AI Expeditions = coming-soon DIMMED; 16:9 covers) → **Latest courses** (2-col course
 cards: http / openapi / redis; 1:1 thumbs) → Why band (terracotta panel) → CTA band →
-footer. Nav = logo.png mark + "Web Artisan" wordmark; menu only "Roadmap" + "Courses".
+footer. Nav = logo.webp mark + "Web Artisan" wordmark; menu only "Roadmap" + "Courses".
 
 ### Courses — List (`zmpXy`)
 Framed header (inside the lines) → featured **Go Luminas** banner → 3-col grid of the
@@ -154,7 +154,7 @@ footer.
 
 ## 6. Component inventory to build/upgrade
 
-Shared chrome: `PageShell.astro` (new), upgrade `Navbar.astro` → v2 (logo.png mark +
+Shared chrome: `PageShell.astro` (new), upgrade `Navbar.astro` → v2 (logo.webp mark +
 wordmark, Roadmap/Courses), new/upgraded **Footer** (full-width top rule + vertical
 menu dividers + copyright row).
 

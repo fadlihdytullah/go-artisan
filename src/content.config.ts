@@ -108,7 +108,7 @@ const expeditions = defineCollection({
     summary: z.string(), // ringkasan 1-2 kalimat (kartu/indeks)
     hero: z.string(), // headline besar di halaman roadmap
     desc: z.string(), // paragraf deskripsi hero
-    cover: z.string(), // path banner landscape di public/, mis. "/backend-artisan.png"
+    cover: z.string(), // path banner landscape di public/, mis. "/backend-artisan.webp"
     order: z.number().default(99), // urutan di /roadmaps
     courses: z.array(z.string()).min(1), // daftar URUT course.id yang direferensikan
     level: z.string().optional(), // mis. "Pemula sampai mahir"

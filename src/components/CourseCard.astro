@@ -5,8 +5,8 @@
 //   dan Courses-list grid (zmpXy › yjcrs › T3uH9) = varian stacked/grid.
 //
 // Prop tetap KOMPATIBEL: `course` = satu entry koleksi `courses`.
-// Thumbnail dari konvensi /{course.id}.png (aset di public/ root: http.png,
-// openapi.png, redis.png, go-luminas.png — BUKAN /img/). href → /courses/{id}.
+// Thumbnail dari konvensi /{course.id}.webp (aset di public/ root: http.webp,
+// openapi.webp, redis.webp, go-luminas.webp — BUKAN /img/). href → /courses/{id}.
 //
 // Dua varian:
 //   • "row"  (DEFAULT) — horizontal: thumb 1:1 di KIRI, body di kanan. Dipakai
@@ -30,7 +30,7 @@ const { course, variant = 'row' } = Astro.props as Props;
 const { id, data } = course;
 
 const href = `/luminas/${id}`;
-const thumb = `/${id}.png`;
+const thumb = `/${id}.webp`;
 const heading = data.topTitle ?? data.title;
 const badge = data.badge ?? 'COURSE';
 

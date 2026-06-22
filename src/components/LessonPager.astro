@@ -1,0 +1,41 @@
+---
+interface Link {
+  id: string;
+  topTitle: string;
+  badge: string;
+}
+
+interface Props {
+  prev: Link | null;
+  next: Link | null;
+  basePath: string;
+}
+
+const { prev, next, basePath } = Astro.props;
+---
+
+<nav class="mod-pager" aria-label="Navigasi modul">
+  {prev ? (
+    <a class="pager-card pager-prev" href={`${basePath}/${prev.id}`}>
+      <span class="pager-dir">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
+        Sebelumnya
+      </span>
+      <span class="pager-name">{prev.topTitle}</span>
+    </a>
+  ) : (
+    <span class="pager-card pager-prev pager-empty" aria-hidden="true"></span>
+  )}
+
+  {next ? (
+    <a class="pager-card pager-next" href={`${basePath}/${next.id}`}>
+      <span class="pager-dir">
+        Selanjutnya
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
+      </span>
+      <span class="pager-name">{next.topTitle}</span>
+    </a>
+  ) : (
+    <span class="pager-card pager-next pager-empty" aria-hidden="true"></span>
+  )}
+</nav>

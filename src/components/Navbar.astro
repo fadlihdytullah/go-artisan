@@ -31,9 +31,12 @@ const tail = words[words.length - 1];
 const path = Astro.url.pathname.replace(/\/$/, '');
 // Switcher sadar-konteks:
 //  - Konteks LUMINA satu-halaman (/luminas/http|openapi|redis): tampilkan luminas.
-//  - Konteks LESSON (/lessons/*) DAN landing Go Luminas (/luminas/go-luminas):
+//  - Konteks GO-LUMINAS (/go-luminas/*) DAN landing Go Luminas (/luminas/go-luminas):
 //    tampilkan 73 modul (koleksi modules) dikelompokkan jadi 9 tahap/chapter,
 //    karena Go Luminas membungkus seluruh modules.
+const isGoLuminasContext =
+  path.startsWith('/go-luminas/') ||
+  path.startsWith('/luminas/go-luminas');
 const isCourseContext =
   path.startsWith('/luminas/') &&
   path !== '/luminas' &&
@@ -47,7 +50,7 @@ const mods = isCourseContext
       .sort((a, b) => a.data.order - b.data.order)
   : (await getCollection('modules')).sort((a, b) => a.data.order - b.data.order);
 
-const basePath = isCourseContext ? '/luminas' : '/lessons';
+const basePath = isCourseContext ? '/luminas' : '/go-luminas';
 const switcherTitle = isCourseContext ? 'Pindah ke lumina' : 'Pindah ke modul';
 const unitLabel = isCourseContext ? 'lumina' : 'modul';
 

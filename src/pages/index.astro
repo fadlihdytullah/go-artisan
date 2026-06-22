@@ -65,7 +65,7 @@ const heroDisciplines = [
 
 // CTA primer default → /roadmaps; script progress me-rewrite jadi "Continue
 // learning" → lesson berikutnya saat ada progres lokal (lihat inline script di bawah).
-const firstLessonHref = `/lessons/${mods[0]?.id ?? ''}`;
+const firstLessonHref = `/go-luminas/${mods[0]?.id ?? ''}`;
 
 // Promo cell "More luminas" di akhir grid luminas (frame nr1kS → L8HB9u).
 const moreCoursesHref = '/luminas';
@@ -219,7 +219,7 @@ const moreCoursesHref = '/luminas';
         // Tanpa progres lokal: biarkan default desain ("Explore roadmaps" → /roadmaps).
         // Begitu ada progres: jadikan tombol penerus belajar ke lesson berikutnya.
         if (completedCount > 0) {
-          continueLink.setAttribute('href', '/lessons/' + nextId);
+          continueLink.setAttribute('href', '/go-luminas/' + nextId);
           continueLabel.textContent = allDone ? 'Review learning' : 'Continue learning';
         } else {
           continueLink.setAttribute('href', '/expeditions');

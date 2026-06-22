@@ -6,7 +6,7 @@ import CourseHero from '../../components/course/CourseHero.astro';
 
 // Go Luminas = course unggulan "Tracks" varian PHASES: membungkus SELURUH 73
 // modul backend (koleksi `modules`, R1..R9) sebagai 9 tahap accordion yang
-// menautkan tiap modul ke /lessons/<slug>. Hero + styling dibagi dengan AWS
+// menautkan tiap modul ke /go-luminas/<slug>. Hero + styling dibagi dengan AWS
 // lewat CourseHero + kelas .track-* di globals.css (satu sumber, anti-drift).
 const course = await getEntry('luminas', 'go-luminas');
 const cd = course.data;
@@ -45,7 +45,7 @@ const roadmaps = Array.from(roadmapMap.values()).sort((a, b) => a.num - b.num);
           lede={cd.summary}
           facts={`${mods.length} modul · ${roadmaps.length} tahap`}
           image="/go-luminas.webp"
-          primaryHref={`/lessons/${mods[0]?.id ?? ''}`}
+          primaryHref={`/go-luminas/${mods[0]?.id ?? ''}`}
           adaptiveProgress={true}
         />
       </section>
@@ -79,7 +79,7 @@ const roadmaps = Array.from(roadmapMap.values()).sort((a, b) => a.num - b.num);
               <ol class="track-modules">
                 {roadmap.modules.map((mod, localIdx) => (
                   <li class="track-module" style={`--i:${localIdx}`} data-module-item data-module-id={mod.id}>
-                    <a href={`/lessons/${mod.id}`} class="track-module-link" data-module-link>
+                    <a href={`/go-luminas/${mod.id}`} class="track-module-link" data-module-link>
                       <span class="track-module-ico" aria-hidden="true">
                         {/* circle (todo) */}
                         <svg class="ico-todo" viewBox="0 0 24 24" width="18" height="18" fill="none"
@@ -141,7 +141,7 @@ const roadmaps = Array.from(roadmapMap.values()).sort((a, b) => a.num - b.num);
         var nextId = api.getNextModuleId(moduleIds);
         var allDone = completedCount === moduleIds.length;
 
-        continueLink.setAttribute('href', '/lessons/' + nextId);
+        continueLink.setAttribute('href', '/go-luminas/' + nextId);
         continueLabel.textContent = allDone ? 'Review course' : completedCount > 0 ? 'Continue learning' : 'Start learning';
 
         document.querySelectorAll('[data-module-item]').forEach(function (item) {

@@ -20,10 +20,10 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import SectionHeader from '../../components/SectionHeader.astro';
 import CourseCard from '../../components/CourseCard.astro';
 
-// Semua course, diurut berdasar `order`: go-luminas (order 0) tampil pertama,
-// lalu http/openapi/redis. (Data fetching dipertahankan dari v1.)
+// Latest first: diurut `order` menurun supaya lumina terbaru (order tertinggi) muncul
+// lebih dulu di grid. Go Luminas tetap di-pin sebagai banner FLAGSHIP di bawah.
 const courses = (await getCollection('luminas')).sort(
-  (a, b) => a.data.order - b.data.order
+  (a, b) => b.data.order - a.data.order
 );
 
 // Featured Go Luminas = course order 0; sisanya masuk grid 3-kolom.

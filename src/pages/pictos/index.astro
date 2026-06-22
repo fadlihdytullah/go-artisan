@@ -4,8 +4,9 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import SectionHeader from '../../components/SectionHeader.astro';
 import PictoCard from '../../components/PictoCard.astro';
 
+// Latest first: urutkan `order` menurun supaya picto terbaru (order tertinggi) di atas.
 const allPicktos = (await getCollection('pictos')).sort(
-  (a, b) => a.data.order - b.data.order
+  (a, b) => b.data.order - a.data.order
 );
 
 const topics = [...new Set(allPicktos.map((p) => p.data.topic))];

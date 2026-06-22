@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
+import { satteri } from '@astrojs/markdown-satteri';
 import mermaid from 'astro-mermaid';
 import tailwindcss from '@tailwindcss/vite';
 
@@ -62,8 +63,7 @@ export default defineConfig({
     plugins: [tailwindcss()],
   },
   markdown: {
-    // Heading id otomatis dipakai TOC; angka section di-handle CSS counter.
-    smartypants: true,
+    processor: satteri({ features: { gfm: true, smartPunctuation: true } }),
     // Code block: satu tema gelap konsisten (permukaan kode selalu gelap di semua
     // tema baca, seperti terminal). Warna permukaan dioverride ke --code-bg via CSS.
     shikiConfig: {

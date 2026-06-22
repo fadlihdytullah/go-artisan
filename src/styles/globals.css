@@ -1361,6 +1361,143 @@ footer.shell-footer {
   .topbar-title span { display: none; }
 }
 
+/* ── Reader panel (popover) ──────────────────────────────────── */
+
+.rc-reader-toggle {
+  width: 38px;
+  height: 38px;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+}
+.rc-reader-toggle:hover {
+  background: var(--nav-fill-hover);
+}
+.rc-reader-glyph {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  line-height: 1;
+  transition: color .15s ease;
+}
+.rc-reader-toggle:hover .rc-reader-glyph {
+  color: var(--nav-ink);
+}
+
+.reader-panel {
+  position: fixed;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, .12);
+  inset: unset;
+  margin: 0;
+  overflow: visible;
+}
+
+@supports not (selector(:popover-open)) {
+  .reader-panel { display: none; }
+}
+
+.rp-section + .rp-section {
+  margin-top: 14px;
+}
+
+.rp-label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+  margin: 0 0 8px 0;
+}
+
+.rp-group {
+  display: flex;
+  gap: 6px;
+}
+
+.rp-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.rp-btn:hover {
+  color: var(--ink);
+  background: var(--nav-fill-hover);
+}
+.rp-btn.is-active {
+  color: var(--nav-ink);
+  background: var(--blue-soft);
+  border-color: var(--blue-mid);
+}
+.rp-btn:focus-visible {
+  outline: 2px solid var(--blue-bright);
+  outline-offset: 2px;
+}
+
+.rp-font-inter {
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+.rp-font-lora {
+  font-family: "Lora", Georgia, "Times New Roman", serif;
+  font-weight: 600;
+}
+
+.rp-size {
+  gap: 0;
+}
+.rp-size-btn {
+  flex: none;
+  min-width: 44px;
+  font-weight: 700;
+  font-size: 14px;
+}
+.rp-size-btn:first-child {
+  border-radius: var(--radius-xs) 0 0 var(--radius-xs);
+}
+.rp-size-btn:last-child {
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+}
+.rp-size-btn + .rp-size-btn {
+  border-left: 0;
+}
+.rp-size-btn.rp-size-reset {
+  border-radius: 0;
+  font-weight: 500;
+  min-width: 36px;
+}
+.rp-size-reset:hover {
+  color: var(--nav-ink);
+}
+
+@media (max-width: 430px) {
+  .reader-panel {
+    width: calc(100vw - 24px) !important;
+    left: 12px !important;
+  }
+}
+
 /* ── Theme: Reader (reading mode) ───────────────────────────── */
 
 /* Reader = parchment lebih hangat dari hue v2 yang SAMA (terracotta + cream),
@@ -1520,6 +1657,11 @@ footer.shell-footer {
 [data-theme="dark"] .nav-brand:focus-visible,
 [data-theme="dark"] a:focus-visible {
   outline-color: var(--blue);
+}
+
+/* ── Font override: Lora ─────────────────────────────────────── */
+[data-font="lora"] {
+  --font-body: "Lora", Georgia, "Times New Roman", serif;
 }
 
 @media (prefers-reduced-motion: reduce) {

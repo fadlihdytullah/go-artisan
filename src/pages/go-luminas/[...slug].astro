@@ -23,7 +23,7 @@ const { mod, prev, next } = Astro.props;
 const { Content } = await render(mod);
 const d = mod.data;
 ---
-<BaseLayout title={d.title} nav={{ variant: 'home' }}>
+<BaseLayout title={d.title} nav={{ variant: 'home', readerControls: true }}>
   <CourseDetailFrame
     toc={d.toc}
     prev={prev}

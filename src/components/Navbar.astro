@@ -12,14 +12,16 @@ interface Props {
   moduleTitle?: string; // konteks halaman saat di modul (dipakai sbg fallback judul)
   moduleSub?: string;
   summaryHref?: string;
-  fontControls?: boolean; // tampilkan pengatur ukuran font (modul saja)
-  toc?: boolean; // tampilkan tombol menu TOC (mobile)
+  fontControls?: boolean;
+  readerControls?: boolean;
+  toc?: boolean;
 }
 const {
   variant,
   siteName = 'Web Artisan',
   summaryHref,
   fontControls = false,
+  readerControls = false,
   toc = false,
 } = Astro.props;
 
@@ -223,16 +225,55 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
           aria-current={path === '/pictos' || path.startsWith('/pictos/') ? 'page' : undefined}
         >Pictos</a>
       </nav>
-      {fontControls && (
-        <div class="rc-group" role="group" aria-label="Ukuran teks">
-          <button type="button" class="rc-btn" data-font="dec" aria-label="Perkecil ukuran teks">A<Icon name="minus" size={12} class="rc-ic" /></button>
-          <span class="rc-sep"></span>
-          <button type="button" class="rc-btn" data-font="inc" aria-label="Perbesar ukuran teks">A<Icon name="plus" size={13} class="rc-ic" /></button>
-        </div>
+      {readerControls ? (
+        <>
+          <button type="button" class="rc-btn rc-reader-toggle" popovertarget="reader-panel" aria-controls="reader-panel" aria-expanded="false" aria-label="Pengaturan baca">
+            <span class="rc-reader-glyph" aria-hidden="true">Aa</span>
+          </button>
+          <div id="reader-panel" popover="auto" class="reader-panel">
+            <div class="rp-section">
+              <p class="rp-label">Tema</p>
+              <div class="rp-group" role="group" aria-label="Tema baca">
+                <button type="button" class="rp-btn" data-theme-opt="light" aria-label="Tema terang">
+                  <Icon name="sun" size={16} />
+                  <span>Terang</span>
+                </button>
+                <button type="button" class="rp-btn" data-theme-opt="reader" aria-label="Tema baca">
+                  <Icon name="book" size={16} />
+                  <span>Baca</span>
+                </button>
+                <button type="button" class="rp-btn" data-theme-opt="dark" aria-label="Tema gelap">
+                  <Icon name="moon" size={16} />
+                  <span>Gelap</span>
+                </button>
+              </div>
+            </div>
+            <div class="rp-section">
+              <p class="rp-label">Font</p>
+              <div class="rp-group" role="group" aria-label="Font baca">
+                <button type="button" class="rp-btn" data-font-opt="inter" aria-label="Font Inter">
+                  <span class="rp-font-inter">Inter</span>
+                </button>
+                <button type="button" class="rp-btn" data-font-opt="lora" aria-label="Font Lora">
+                  <span class="rp-font-lora">Lora</span>
+                </button>
+              </div>
+            </div>
+            <div class="rp-section">
+              <p class="rp-label">Ukuran teks</p>
+              <div class="rp-group rp-size" role="group" aria-label="Ukuran teks">
+                <button type="button" class="rp-btn rp-size-btn" data-font="dec" aria-label="Perkecil ukuran teks">A<Icon name="minus" size={12} class="rc-ic" /></button>
+                <button type="button" class="rp-btn rp-size-btn rp-size-reset" data-font="reset" aria-label="Atur ulang ukuran teks">A</button>
+                <button type="button" class="rp-btn rp-size-btn" data-font="inc" aria-label="Perbesar ukuran teks">A<Icon name="plus" size={13} class="rc-ic" /></button>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <button type="button" class="rc-btn rc-theme" data-theme-toggle aria-label="Ganti tema (Terang / Baca / Gelap)">
+          <span class="ti" aria-hidden="true"><Icon name="sun" size={18} /></span>
+        </button>
       )}
-      <button type="button" class="rc-btn rc-theme" data-theme-toggle aria-label="Ganti tema (Terang / Baca / Gelap)">
-        <span class="ti" aria-hidden="true"><Icon name="sun" size={18} /></span>
-      </button>
       <button
         type="button"
         class="nav-burger"
@@ -398,5 +439,37 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
     sheet.addEventListener('toggle', function () {
       burger.setAttribute('aria-expanded', sheet.matches(':popover-open') ? 'true' : 'false');
     });
+  })();
+
+  // Reader panel popover: posisi di bawah tombol Aa, sync aria-expanded.
+  (function () {
+    var btn = document.querySelector('.rc-reader-toggle');
+    var panel = document.getElementById('reader-panel');
+    if (!btn || !panel || typeof panel.showPopover !== 'function') return;
+    function positionPanel() {
+      var r = btn.getBoundingClientRect();
+      var w = Math.min(300, window.innerWidth - 24);
+      var left = Math.max(12, Math.min(r.right - w, window.innerWidth - w - 12));
+      panel.style.width = w + 'px';
+      panel.style.left = left + 'px';
+      panel.style.top = r.bottom + 8 + 'px';
+    }
+    panel.addEventListener('toggle', function () {
+      btn.setAttribute('aria-expanded', panel.matches(':popover-open') ? 'true' : 'false');
+      if (panel.matches(':popover-open')) {
+        requestAnimationFrame(positionPanel);
+      }
+    });
+    btn.addEventListener('click', function () {
+      if (!panel.matches(':popover-open')) {
+        positionPanel();
+      }
+    });
+    window.addEventListener('resize', function () {
+      if (panel.matches(':popover-open')) positionPanel();
+    });
+    window.addEventListener('scroll', function () {
+      if (panel.matches(':popover-open')) positionPanel();
+    }, { passive: true });
   })();
 </script>

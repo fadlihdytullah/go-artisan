@@ -29,7 +29,7 @@ const ICON_MAP: Record<string, string> = {
 };
 const glyphIcon = (ICON_MAP[d.icon] ?? 'stack') as Parameters<typeof Icon>[0]['name'];
 ---
-<BaseLayout title={`${d.title} — Picto`} nav={{ variant: 'home' }}>
+<BaseLayout title={`${d.title} — Picto`} nav={{ variant: 'home', readerControls: true }}>
   <div class="shell-bleed">
     <div class="shell-col picto-col">
       <div class="picto-measure">

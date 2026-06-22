@@ -11,6 +11,7 @@ export interface NavProps {
   moduleSub?: string;
   summaryHref?: string;
   fontControls?: boolean;
+  readerControls?: boolean;
   toc?: boolean;
 }
 interface Props {
@@ -34,21 +35,27 @@ const { title, nav, hideFooter = false } = Astro.props;
     href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400;1,9..144,500&family=Inter:wght@400;450;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
     rel="stylesheet"
   />
-  {/* Cegah FOUC: terapkan tema & skala sebelum render — di SEMUA halaman */}
+  {/* Cegah FOUC: terapkan tema, skala, & font sebelum render — di SEMUA halaman */}
   <script is:inline>
     (function () {
       try {
         var r = document.documentElement;
         var t = localStorage.getItem('reader-theme');
-        // Migrasi nilai lama: sepia→reader. Dark sekarang tema resmi.
         if (t === 'sepia') t = 'reader';
         if (t !== 'light' && t !== 'reader' && t !== 'dark') {
-          // Auto-detect: gunakan preferensi sistem jika belum ada pilihan user
           t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
         r.setAttribute('data-theme', t);
         var s = localStorage.getItem('reader-scale');
         if (s) r.style.setProperty('--scale', s);
+        var f = localStorage.getItem('reader-font');
+        if (f === 'lora') {
+          r.setAttribute('data-font', 'lora');
+          var link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap';
+          document.head.appendChild(link);
+        }
       } catch (e) {}
     })();
   </script>
@@ -140,27 +147,21 @@ const { title, nav, hideFooter = false } = Astro.props;
   )}
 
   <script is:inline>
-    // Kontrol baca: toggle tema (light ⇄ reader) + ukuran font. Aktif di semua halaman.
+    // Kontrol baca: tema + font + ukuran teks. Aktif di semua halaman.
     (function () {
       var root = document.documentElement;
       var THEMES = ['light', 'reader', 'dark'];
-      // Tabler Icons (MIT) — bagian dalam SVG per tema baca.
-      var ICON = {
-        light: '<path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7" />',
-        reader: '<path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0" /><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0" /><path d="M3 6l0 13" /><path d="M12 6l0 13" /><path d="M21 6l0 13" />',
-        dark: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />',
-      };
-      function iconSvg(inner) {
-        return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
-      }
+      var FONTS = ['inter', 'lora'];
       var MIN = 0.85, MAX = 1.3, STEP = 0.1;
       var scale = parseFloat(localStorage.getItem('reader-scale')) || 1;
+      var font = localStorage.getItem('reader-font') || 'inter';
+      var loraLoaded = !!document.querySelector('link[href*="family=Lora"]');
 
       function setTheme(t) {
         root.setAttribute('data-theme', t);
         try { localStorage.setItem('reader-theme', t); } catch (e) {}
-        document.querySelectorAll('[data-theme-toggle] .ti').forEach(function (el) {
-          el.innerHTML = iconSvg(ICON[t]);
+        document.querySelectorAll('[data-theme-opt]').forEach(function (el) {
+          el.classList.toggle('is-active', el.getAttribute('data-theme-opt') === t);
         });
       }
       function setScale(s) {
@@ -168,19 +169,43 @@ const { title, nav, hideFooter = false } = Astro.props;
         root.style.setProperty('--scale', scale);
         try { localStorage.setItem('reader-scale', scale); } catch (e) {}
       }
+      function setFont(f) {
+        font = FONTS.indexOf(f) !== -1 ? f : 'inter';
+        root.setAttribute('data-font', font);
+        try { localStorage.setItem('reader-font', font); } catch (e) {}
+        if (font === 'lora' && !loraLoaded) {
+          var link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap';
+          document.head.appendChild(link);
+          loraLoaded = true;
+        }
+        document.querySelectorAll('[data-font-opt]').forEach(function (el) {
+          el.classList.toggle('is-active', el.getAttribute('data-font-opt') === font);
+        });
+      }
 
-      // Sanitasi nilai awal (atribut/localStorage lama) sebelum init:
-      // sepia→reader, dark→light, nilai asing→light.
       var initial = root.getAttribute('data-theme');
       if (initial === 'sepia') initial = 'reader';
       if (THEMES.indexOf(initial) === -1) initial = 'light';
       setTheme(initial);
       setScale(scale);
+      setFont(font);
 
+      document.querySelectorAll('[data-theme-opt]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          setTheme(btn.getAttribute('data-theme-opt'));
+        });
+      });
       document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var i = THEMES.indexOf(root.getAttribute('data-theme'));
           setTheme(THEMES[(i + 1) % THEMES.length]);
+        });
+      });
+      document.querySelectorAll('[data-font-opt]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          setFont(btn.getAttribute('data-font-opt'));
         });
       });
       document.querySelectorAll('[data-font="inc"]').forEach(function (b) {
@@ -188,6 +213,9 @@ const { title, nav, hideFooter = false } = Astro.props;
       });
       document.querySelectorAll('[data-font="dec"]').forEach(function (b) {
         b.addEventListener('click', function () { setScale(scale - STEP); });
+      });
+      document.querySelectorAll('[data-font="reset"]').forEach(function (b) {
+        b.addEventListener('click', function () { setScale(1); });
       });
     })();
   </script>

@@ -93,6 +93,11 @@
   --red:    #c14a39;  --red-soft:    #f7e6df;
   --violet: #6a5aa6;  --violet-soft: #ece6f3;
 
+  /* warn box — amber-clay tones */
+  --warn-bg:     #f7e8d6;
+  --warn-border: #e6c7a1;
+  --warn-label:  #9c5a2a;
+
   --code-bg: #241f17;   /* permukaan kode: coklat-tinta gelap hangat (v2) */
   --shadow: none;       /* FLAT — wajib */
   --shadow-lg: none;    /* FLAT — wajib */
@@ -697,13 +702,13 @@ ul.clean li::before {
 
 /* Tone: warn / "hati-hati" — amber-clay wash + amber border, amber-deep label. */
 .warn {
-  background: #f7e8d6;
-  border-color: #e6c7a1;
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
 }
 
 .warn .box-tag,
 .warn .b-head {
-  color: #9c5a2a;
+  color: var(--warn-label);
 }
 
 /* Tone: exam — violet wash, violet label. */
@@ -1453,6 +1458,11 @@ footer.shell-footer {
   --green:  #6ab878;  --green-soft:  #1e2e20;
   --red:    #e06b58;  --red-soft:    #35201a;
   --violet: #9a8ad0;  --violet-soft: #262030;
+
+  /* warn box — amber diterangkan untuk dark bg */
+  --warn-bg:     #352a1e;
+  --warn-border: #5a4a30;
+  --warn-label:  #d4a05e;
 
   --code-bg: #141110;   /* kode: sangat gelap, warm */
   --shadow: none; --shadow-lg: none;

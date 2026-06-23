@@ -863,7 +863,6 @@ figcaption b {
 
 table {
   width: 100%;
-  min-width: 540px;
   border-collapse: collapse;
   background: var(--paper);
   font-size: calc(14px * var(--scale));
@@ -911,6 +910,34 @@ td {
 td b,
 td strong {
   color: var(--ink);
+}
+
+/* ── Tables: responsive mobile ────────────────────────────────────
+   Bare <table> (tanpa .tbl-wrap) dapat scroll horizontal via
+   display:block + overflow-x:auto. Padding & font diperkecil agar
+   muat di layar sempit. Tabel di dalam .tbl-wrap tidak terpengaruh
+   display block karena override di bawah. */
+@media (max-width: 920px) {
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tbl-wrap table,
+  .tblwrap table {
+    display: table;
+    overflow: visible;
+  }
+  th,
+  td {
+    padding: 10px 10px;
+    font-size: 13px;
+  }
+  thead th,
+  th {
+    font-size: 10px;
+    letter-spacing: .03em;
+  }
 }
 
 /* ── Definitions ─────────────────────────────────────────────── */

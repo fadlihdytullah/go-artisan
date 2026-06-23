@@ -4,26 +4,32 @@
 // TOC markup (data-toc-link anchors + .num + .active) so the existing scroll-spy
 // script in ModuleLayout/BaseLayout lights the active item. Flat, rounded, v2
 // tokens; scoped styles only (does NOT touch globals.css). Light + reader themes.
+// Mobile: toggleable drawer (slides from left) instead of static card.
 
 export interface ArticleTocItem {
-  /** Optional ordinal, e.g. "01". Rendered in the mono num slot when present. */
   num?: string;
-  /** Heading id — the anchor target (without the leading "#"). */
   id: string;
-  /** Section title. May contain inline HTML (rendered via set:html). */
   title: string;
 }
 
 interface Props {
   toc: ArticleTocItem[];
-  /** Eyebrow label above the list. */
   heading?: string;
 }
 
 const { toc, heading = 'On this page' } = Astro.props;
 ---
 
+<button type="button" class="toc-fab" data-toc-fab aria-label="Buka daftar isi" aria-expanded="false">
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h12M3 18h18"/></svg>
+</button>
+<div class="toc-backdrop" data-toc-backdrop hidden></div>
 <nav class="article-toc" aria-label={heading}>
+  <div class="toc-drawer-head">
+    <button type="button" class="toc-close" data-toc-close aria-label="Tutup daftar isi">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
   <span class="article-toc-eyebrow">{heading}</span>
   <ul class="article-toc-list">
     {toc.map((item) => (
@@ -36,6 +42,51 @@ const { toc, heading = 'On this page' } = Astro.props;
     ))}
   </ul>
 </nav>
+
+<script is:inline>
+  (function () {
+    var fab = document.querySelector('[data-toc-fab]');
+    var backdrop = document.querySelector('[data-toc-backdrop]');
+    var closeBtn = document.querySelector('[data-toc-close]');
+    var nav = document.querySelector('nav.article-toc');
+    if (!fab || !nav) return;
+
+    function isMobile() {
+      return window.matchMedia('(max-width: 920px)').matches;
+    }
+
+    function open() {
+      document.documentElement.classList.add('toc-open');
+      fab.setAttribute('aria-expanded', 'true');
+      if (backdrop) backdrop.hidden = false;
+      if (isMobile()) nav.setAttribute('aria-hidden', 'false');
+    }
+    function close() {
+      document.documentElement.classList.remove('toc-open');
+      fab.setAttribute('aria-expanded', 'false');
+      if (backdrop) backdrop.hidden = true;
+      if (isMobile()) nav.setAttribute('aria-hidden', 'true');
+    }
+
+    fab.addEventListener('click', open);
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    if (backdrop) backdrop.addEventListener('click', close);
+
+    var tocLinks = nav.querySelectorAll('a[data-toc-link]');
+    tocLinks.forEach(function (link) {
+      link.addEventListener('click', function () {
+        setTimeout(close, 150);
+      });
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && document.documentElement.classList.contains('toc-open')) {
+        close();
+        fab.focus();
+      }
+    });
+  })();
+</script>
 
 <style>
   /* Container — frame pNyWh: 330w, padded column, sticky. Garis pemisah kanan
@@ -135,28 +186,122 @@ const { toc, heading = 'On this page' } = Astro.props;
     font-weight: 600;
   }
 
-  /* Narrow viewports: kotak TOC jadi KARTU yang duduk di bawah course overview
-     (frame jW89L → U6lWey: radius 12, fill paper, hairline, pad 20/18, gap 12).
-     Inset kiri/kanan via margin agar sejajar dengan header & body (28→20px). */
+  .toc-fab {
+    display: none;
+  }
+  .toc-backdrop {
+    display: none;
+  }
+  .toc-drawer-head {
+    display: none;
+  }
+
   @media (max-width: 920px) {
-    .article-toc {
-      position: static;
-      max-height: none;
-      width: auto;
-      margin: 0 28px;
-      padding: 20px 18px;
-      border-right: 0;
-      border: 1px solid var(--line);
-      border-radius: var(--radius-card);
+    .toc-fab {
+      display: grid;
+      place-items: center;
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      border: 1px solid var(--line-strong);
       background: var(--paper);
+      color: var(--ink-soft);
+      cursor: pointer;
+      z-index: 50;
+      transition: background-color 0.15s ease, color 0.15s ease, opacity 0.18s ease, transform 0.18s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+    .toc-fab:hover {
+      background: var(--paper-soft);
+      color: var(--ink);
+    }
+    .toc-fab[aria-expanded="true"] {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.8);
+    }
+
+    .toc-backdrop {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(15, 23, 42, .5);
+      backdrop-filter: blur(2px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.26s ease;
+    }
+    .toc-backdrop[hidden] {
+      display: none;
+    }
+    html.toc-open .toc-backdrop {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .toc-drawer-head {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 4px;
+    }
+    .toc-close {
+      width: 36px;
+      height: 36px;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--ink-muted);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+    .toc-close:hover {
+      background: var(--line);
+      color: var(--ink);
+    }
+
+    .article-toc {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 70;
+      width: min(82vw, 320px);
+      max-height: 100%;
+      margin: 0;
+      padding: 18px 18px 32px;
+      border-right: 1px solid var(--line);
+      border-radius: 0;
+      background: var(--paper);
+      transform: translateX(-100%);
+      transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow-y: auto;
+    }
+    html.toc-open .article-toc {
+      transform: none;
     }
     .article-toc-eyebrow {
       margin-bottom: 12px;
     }
   }
+
   @media (max-width: 680px) {
+    .toc-fab {
+      left: 20px;
+      bottom: 20px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
     .article-toc {
-      margin: 0 20px;
+      transition: none;
+    }
+    .toc-backdrop {
+      transition: none;
     }
   }
 </style>

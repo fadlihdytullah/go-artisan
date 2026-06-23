@@ -292,11 +292,6 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
 
   <div id="nav-sheet" popover="auto" class="nav-sheet">
     <a
-      class={`nav-sheet-link${path === '/pictos' || path.startsWith('/pictos/') ? ' is-active' : ''}`}
-      href="/pictos"
-      aria-current={path === '/pictos' || path.startsWith('/pictos/') ? 'page' : undefined}
-    >Pictos</a>
-    <a
       class={`nav-sheet-link${path === '/expeditions' || path.startsWith('/expeditions/') ? ' is-active' : ''}`}
       href="/expeditions"
       aria-current={path === '/expeditions' || path.startsWith('/expeditions/') ? 'page' : undefined}
@@ -306,6 +301,11 @@ const nssGroups = Array.from(nssMap.values()).sort((a, b) => a.num - b.num);
       href="/luminas"
       aria-current={path === '/luminas' || path.startsWith('/luminas/') ? 'page' : undefined}
     >Luminas</a>
+    <a
+      class={`nav-sheet-link${path === '/pictos' || path.startsWith('/pictos/') ? ' is-active' : ''}`}
+      href="/pictos"
+      aria-current={path === '/pictos' || path.startsWith('/pictos/') ? 'page' : undefined}
+    >Pictos</a>
   </div>
 </header>
 

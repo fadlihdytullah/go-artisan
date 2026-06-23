@@ -72,6 +72,22 @@ const hasHeader = Astro.slots.has('header');
 
 <script is:inline>
   (function () {
+    var toggle = document.querySelector('.toc-toggle');
+    var panel = document.getElementById('article-toc-panel');
+    if (toggle && panel) {
+      toggle.addEventListener('click', function () {
+        var expanded = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', String(!expanded));
+        panel.classList.toggle('is-open');
+      });
+      panel.querySelectorAll('a[data-toc-link]').forEach(function (a) {
+        a.addEventListener('click', function () {
+          toggle.setAttribute('aria-expanded', 'false');
+          panel.classList.remove('is-open');
+        });
+      });
+    }
+
     var bt = document.getElementById('toTop');
     function onScroll() {
       var top = document.documentElement.scrollTop;
@@ -201,8 +217,8 @@ const hasHeader = Astro.slots.has('header');
     .course-detail-shell.has-header .course-detail-layout {
       grid-template-areas:
         "header"
-        "toc"
-        "body";
+        "body"
+        "toc";
     }
     .course-detail-shell::before {
       display: none;

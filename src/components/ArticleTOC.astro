@@ -23,7 +23,11 @@ interface Props {
 const { toc, heading = 'On this page' } = Astro.props;
 ---
 
-<nav class="article-toc" aria-label={heading}>
+<button class="toc-toggle" aria-expanded="false" aria-controls="article-toc-panel">
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h12M3 18h18" /></svg>
+  <span>{heading}</span>
+</button>
+<nav class="article-toc" id="article-toc-panel" aria-label={heading}>
   <span class="article-toc-eyebrow">{heading}</span>
   <ul class="article-toc-list">
     {toc.map((item) => (
@@ -135,26 +139,59 @@ const { toc, heading = 'On this page' } = Astro.props;
     font-weight: 600;
   }
 
-  /* Narrow viewports: kotak TOC jadi KARTU yang duduk di bawah course overview
-     (frame jW89L → U6lWey: radius 12, fill paper, hairline, pad 20/18, gap 12).
-     Inset kiri/kanan via margin agar sejajar dengan header & body (28→20px). */
+  .toc-toggle {
+    display: none;
+  }
+
   @media (max-width: 920px) {
+    .toc-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 28px 12px;
+      padding: 10px 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-card);
+      background: var(--paper);
+      color: var(--ink-soft);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+    .toc-toggle:hover {
+      background: var(--paper-soft);
+      color: var(--ink);
+    }
+    .toc-toggle[aria-expanded="true"] {
+      background: var(--blue-soft);
+      color: var(--blue);
+      border-color: var(--blue);
+    }
     .article-toc {
-      position: static;
-      max-height: none;
+      display: none;
       width: auto;
       margin: 0 28px;
-      padding: 20px 18px;
+      padding: 16px 18px;
       border-right: 0;
       border: 1px solid var(--line);
       border-radius: var(--radius-card);
       background: var(--paper);
     }
+    .article-toc.is-open {
+      display: block;
+    }
     .article-toc-eyebrow {
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
   }
   @media (max-width: 680px) {
+    .toc-toggle {
+      margin: 0 20px 12px;
+    }
     .article-toc {
       margin: 0 20px;
     }

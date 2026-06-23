@@ -135,28 +135,18 @@ const { toc, heading = 'On this page' } = Astro.props;
     font-weight: 600;
   }
 
-  /* Narrow viewports: kotak TOC jadi KARTU yang duduk di bawah course overview
-     (frame jW89L → U6lWey: radius 12, fill paper, hairline, pad 20/18, gap 12).
-     Inset kiri/kanan via margin agar sejajar dengan header & body (28→20px). */
+  /* Narrow viewports: TOC ditaruh di bottom-sheet oleh CourseDetailFrame.
+     Di sini hanya atur padding & hapus styling kartu — sheet yang handle border/shadow. */
   @media (max-width: 920px) {
     .article-toc {
       position: static;
       max-height: none;
-      width: auto;
-      margin: 0 28px;
-      padding: 20px 18px;
-      border-right: 0;
-      border: 1px solid var(--line);
-      border-radius: var(--radius-card);
-      background: var(--paper);
+      padding: 0;
+      border: none;
+      background: transparent;
     }
     .article-toc-eyebrow {
-      margin-bottom: 12px;
-    }
-  }
-  @media (max-width: 680px) {
-    .article-toc {
-      margin: 0 20px;
+      display: none;
     }
   }
 </style>

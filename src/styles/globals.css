@@ -303,84 +303,7 @@ main[data-module-root] {
   padding-bottom: 112px;
 }
 
-/* ── TOC ─────────────────────────────────────────────────────── */
-
-nav.toc {
-  position: sticky;
-  top: 88px;
-  align-self: start;
-  height: calc(100vh - 108px);
-  overflow-y: auto;
-  padding: 32px 0;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
-}
-
-nav.toc .toc-label {
-  display: block;
-  margin: 0 0 14px;
-  color: var(--ink-muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-}
-
-nav.toc ol {
-  display: block;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  counter-reset: toc;
-}
-
-nav.toc li {
-  margin: 0;
-}
-
-nav.toc a {
-  display: flex;
-  align-items: baseline;
-  gap: 11px;
-  padding: 7px 14px;
-  color: var(--ink-soft);
-  border-left: 2px solid var(--hair-soft);
-  font-size: calc(13.5px * var(--scale));
-  font-weight: 500;
-  line-height: 1.4;
-  text-decoration: none;
-  transition: color .15s ease, border-color .15s ease;
-}
-
-nav.toc a .num {
-  flex: none;
-  min-width: 16px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-muted);
-  transition: color .15s ease;
-}
-
-nav.toc a:hover {
-  color: var(--ink);
-  border-left-color: color-mix(in srgb, var(--ink) 18%, transparent);
-}
-
-nav.toc a:hover .num {
-  color: var(--ink-soft);
-}
-
-nav.toc a.active {
-  color: var(--blue);
-  border-left-color: var(--blue);
-  font-weight: 650;
-}
-
-nav.toc a.active .num {
-  color: var(--blue);
-}
+/* ── (legacy TOC section removed — replaced by ArticleTOC.astro) ── */
 
 /* ── Hero ────────────────────────────────────────────────────── */
 
@@ -1235,9 +1158,6 @@ footer.shell-footer {
     display: block;
   }
 
-  nav.toc {
-    display: none;
-  }
 }
 
 @media (max-width: 680px) {
@@ -1748,70 +1668,7 @@ footer.shell-footer {
   .rc-group { display: none; }
 }
 
-/* Kontras nomor TOC dinaikkan (ink-muted → ink-soft) */
-nav.toc a .num { color: var(--ink-soft); }
-
-/* Drawer TOC: kepala & backdrop (default tersembunyi di desktop) */
-.toc-head { display: none; }
-.toc-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  background: rgba(15, 23, 42, .5);
-  backdrop-filter: blur(2px);
-}
-@media (min-width: 921px) {
-  .toc-backdrop { display: none !important; }
-}
-
-/* ── Drawer TOC (mobile ≤920px) — kembalikan navigasi yang hilang ── */
-@media (max-width: 920px) {
-  .nav-menu-btn { display: inline-flex; }
-  .nav-context { display: none; }
-
-  nav.toc {
-    display: block;
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    z-index: 70;
-    width: min(82vw, 320px);
-    height: 100%;
-    margin: 0;
-    padding: 18px 18px 32px;
-    background: var(--paper);
-    border-right: 1px solid var(--line);
-    border-right: 1px solid var(--line);
-    transform: translateX(-100%);
-    transition: transform .26s cubic-bezier(.4, 0, .2, 1);
-    overflow-y: auto;
-  }
-  html.toc-open nav.toc { transform: none; }
-
-  .toc-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-  }
-  .toc-close {
-    width: 40px;
-    height: 40px;
-    border: 0;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--ink-muted);
-    font-size: 26px;
-    line-height: 1;
-    cursor: pointer;
-  }
-  .toc-close:hover { background: var(--line); color: var(--ink); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  nav.toc { transition: none; }
-}
+/* (legacy TOC drawer section removed — replaced by CourseDetailFrame bottom-sheet) */
 
 /* ══════════════════════════════════════════════════════════════════════
    REVAMP 2026 - component utilities (raw CSS + token dari @theme inline).
@@ -2368,22 +2225,7 @@ nav.toc a .num { color: var(--ink-soft); }
 .mod-back svg { width: 16px; height: 16px; transition: transform .15s ease; }
 .mod-back:hover svg { transform: translateX(-2px); }
 
-.toc-eyebrow {
-  display: block;
-  margin: 0 0 16px;
-  color: var(--ink-muted);
-  font-size: 12px;
-  font-weight: 650;
-  letter-spacing: 0;
-}
-@media (max-width: 920px) {
-  .toc-eyebrow { display: none; }
-}
-
-nav.toc a { border-radius: var(--radius-sm); }
-nav.toc a.active {
-  background: linear-gradient(90deg, color-mix(in srgb, var(--blue) 12%, transparent), transparent 80%);
-}
+/* (legacy .toc-eyebrow + nav.toc a removed — replaced by ArticleTOC scoped styles) */
 
 /* ── Module page: prev/next pager ────────────────────────────────────── */
 

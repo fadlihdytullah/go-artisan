@@ -140,18 +140,21 @@ const { toc, heading = 'On this page' } = Astro.props;
      Inset kiri/kanan via margin agar sejajar dengan header & body (28→20px). */
   @media (max-width: 920px) {
     .article-toc {
-      position: static;
-      max-height: none;
+      position: sticky;
+      top: 64px;
+      z-index: 30;
+      max-height: calc(100vh - 80px);
       width: auto;
       margin: 0 28px;
-      padding: 20px 18px;
+      padding: 16px 18px;
       border-right: 0;
       border: 1px solid var(--line);
       border-radius: var(--radius-card);
       background: var(--paper);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     }
     .article-toc-eyebrow {
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
   }
   @media (max-width: 680px) {
